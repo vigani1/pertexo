@@ -42,6 +42,7 @@ export type ApiFixtureOptions = Readonly<{
   authenticationMail?: (local: AuthenticationMail) => AuthenticationMail;
   automationTokens?: boolean;
   callbacks?: ApiConfig['callbacks'];
+  codeSettings?: ApiConfig['codeSettings'];
   artifacts?: ApiConfig['artifacts'];
   /** F07-owned qualification namespace, never a shared database selection. */
   databaseNamespace?: 'f07_organization';

@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
+import { checkArtifactReferences } from '../../artifacts/references/lock-references.js';
 import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { requireWorkflowCallTargets } from '../../shared/resources/require-workflow-call-targets.js';
 import { requireConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
@@ -23,5 +23,10 @@ export async function admitDraftCandidate(
   requirePlaceableDefinitionAdditions(previous, graph, catalog);
   await requireWorkflowCallTargets(client, actor, graph, previous);
   await requireConnectionBindings(client, actor, graph, previous);
-  await lockArtifactReferences(client, actor.workspaceId, graph, actor.actorId);
+  return checkArtifactReferences(
+    client,
+    actor.workspaceId,
+    graph,
+    actor.actorId,
+  );
 }

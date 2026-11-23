@@ -11,6 +11,7 @@ import type {
 import {
   describeStepChange,
   diffWorkflowGraphs,
+  graphSteps,
 } from '@/features/workflow-drafts/public';
 
 type DraftNode = WorkflowGraphContract['nodes'][number];
@@ -79,10 +80,24 @@ function DraftChanges({
     },
     {
       label: 'Changed',
-      items: diff.changed.map(({ after: node, aspects }) => ({
-        id: node.id,
-        text: `${name(node)} · ${describeStepChange(aspects)}`,
-      })),
+      items: diff.changed.map(({ before: previous, after: node, aspects }) => {
+        const details = [
+          describeStepChange(
+            aspects.filter((aspect) => aspect !== 'configVersion'),
+          ),
+          ...(aspects.includes('configVersion')
+            ? [
+                `Configuration version ${String(previous.configVersion)} → ${String(node.configVersion)}`,
+              ]
+            : []),
+        ].filter(Boolean);
+        return { id: node.id, text: [name(node), ...details].join(' · ') };
+      }),
+    },
+    { label: 'Links added', items: linkChanges(after, diff.addedLinks, name) },
+    {
+      label: 'Links removed',
+      items: linkChanges(before, diff.removedLinks, name),
     },
   ];
   return (
@@ -102,11 +117,6 @@ function DraftChanges({
             </ul>
           </div>
         ))}
-      {diff.linksAdded > 0 || diff.linksRemoved > 0 ? (
-        <p className="text-muted-foreground">
-          Links added {diff.linksAdded} · Links removed {diff.linksRemoved}
-        </p>
-      ) : null}
       {diff.notes.map(({ id, kind, label }) => (
         <p key={id}>
           Note {kind} · {label}
@@ -120,4 +130,26 @@ function DraftChanges({
       ) : null}
     </section>
   );
+}
+
+function linkChanges(
+  graph: WorkflowGraphContract,
+  links: ReturnType<typeof diffWorkflowGraphs>['addedLinks'],
+  name: (node: DraftNode) => string,
+) {
+  if (links.length === 0) return [];
+  const steps = new Map(
+    graphSteps(graph).map(({ node }) => [node.id, name(node)]),
+  );
+  const endpoint = ({ nodeId, port }: (typeof links)[number]['source']) =>
+    `${steps.get(nodeId) ?? nodeId} (${port})`;
+  return links.map(({ source, target }) => ({
+    id: JSON.stringify([
+      source.nodeId,
+      source.port,
+      target.nodeId,
+      target.port,
+    ]),
+    text: `${endpoint(source)} → ${endpoint(target)}`,
+  }));
 }

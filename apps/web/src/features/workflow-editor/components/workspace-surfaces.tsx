@@ -13,6 +13,7 @@ import type { useCanvasEditing } from './workspace-canvas';
 type CanvasEditing = ReturnType<typeof useCanvasEditing>;
 type SurfaceProps = Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
+  placeable: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   overlays: ComponentProps<typeof WorkflowCanvas>['overlays'];
   sampleScope: Parameters<typeof stepSamplesQueryOptions>[0];
@@ -24,6 +25,7 @@ type SurfaceProps = Readonly<{
 }>;
 export function WorkspaceSurface({
   definitions,
+  placeable,
   editable,
   overlays,
   sampleScope,
@@ -61,7 +63,7 @@ export function WorkspaceSurface({
     >
       {showStartPicker ? (
         <StartPicker
-          definitions={definitions}
+          definitions={placeable}
           editable={editable}
           onPick={adding.placement.addAtCentre}
         />

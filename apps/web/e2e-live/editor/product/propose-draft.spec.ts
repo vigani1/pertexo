@@ -109,6 +109,9 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
     await request.getByRole('button', { name: 'Send to model' }).click();
     const review = page.getByRole('dialog', { name: 'Review proposed draft' });
     await expect(review).toContainText('Prepare order');
+    await expect(review).toContainText(
+      'Start order intake (out) → Prepare order (in)',
+    );
     expect(inference.calls).toHaveLength(3);
     expect(JSON.stringify(inference.calls)).not.toContain(key);
     expect(await readEditorDraft(page, path)).toEqual(draft);

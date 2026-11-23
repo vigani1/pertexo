@@ -2,12 +2,14 @@ import { workflowValidateResponseSchema } from '@pertexo/contracts';
 import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
   safeParseWorkflowGraphDraft,
+  placeableDefinitions,
+  workflowDefinitionPlacementIssues,
+  type GraphValidationIssue,
   startingConfig,
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
-import { setupRequiresUser } from '../../platform/workflow/step-setup.validation.js';
 import { restoreDraftFields } from './masked-draft.js';
 
 type ProposalInspection = Parameters<
@@ -51,12 +53,21 @@ export async function inspectProposalCandidate(
       restored.issues,
       restored.issues.filter(({ code }) => code === 'masked_value_changed'),
     );
+  const { items, codeSettings } = catalog.execute();
+  const placeable = placeableDefinitions(items, codeSettings);
+  const placementIssues = workflowDefinitionPlacementIssues(
+    draft.graphJson,
+    restored.graph,
+    { definitions: placeable.map(({ definition }) => definition) },
+  );
+  if (placementIssues.length > 0)
+    return rejected(placementIssues, placementIssues);
   const admitted = safeParseWorkflowGraphDraft({
     ...restored.graph,
     nodes: initializeAddedSteps(
       draft.graphJson.nodes,
       restored.graph.nodes,
-      catalog.execute().items,
+      placeable,
     ),
   });
   if (!admitted.success)
@@ -109,7 +120,8 @@ function initializeAddedSteps(
   return level.map((node) => {
     const original = existing.get(node.id);
     const definition =
-      original === undefined
+      original?.definition.key !== node.definition.key ||
+      original.definition.version !== node.definition.version
         ? catalog.find(
             (item) =>
               item.definition.key === node.definition.key &&
@@ -120,11 +132,13 @@ function initializeAddedSteps(
       definition === undefined
         ? node.config
         : startingConfig(definition, level, node.config);
+    const configVersion = definition?.configVersion ?? node.configVersion;
     const { structured } = node;
-    if (structured === undefined) return { ...node, config };
+    if (structured === undefined) return { ...node, config, configVersion };
     return {
       ...node,
       config,
+      configVersion,
       structured: {
         ...structured,
         body: {
@@ -150,14 +164,16 @@ function rejected(
   issues: readonly ProposalIssue[],
   feedback: readonly ProposalIssue[],
 ) {
-  const parsed = workflowValidateResponseSchema.shape.issues.safeParse(issues);
+  const parsed = workflowValidateResponseSchema.shape.issues.safeParse(
+    issues.map(({ path, code, message }) => ({ path, code, message })),
+  );
   return parsed.success
     ? { kind: 'rejected' as const, issues: parsed.data, feedback }
     : { kind: 'invalid_response' as const };
 }
 
 function publicationFeedback(
-  issues: readonly ProposalIssue[],
+  issues: readonly GraphValidationIssue[],
   submitted: WorkflowGraph,
   restored: WorkflowGraph,
 ) {
@@ -187,7 +203,7 @@ function publicationFeedback(
     }
   return issues.filter(
     (issue) =>
-      !(setupRequiresUser in issue && issue[setupRequiresUser]) &&
+      issue.kind !== 'requires_user' &&
       !issue.path.includes('.connectionRefs.') &&
       !protectedPaths.some(
         (path) =>

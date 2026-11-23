@@ -17,8 +17,8 @@ import type { z } from 'zod';
 type StepDefinition = ReturnType<typeof resolvePlatformNodeDefinition>;
 type Problem = z.core.$ZodIssue;
 
-// The proposal service uses this marker internally. Issue responses omit it.
-export const setupRequiresUser = Symbol('setupRequiresUser');
+type SetupIssue = GraphValidationIssue &
+  Required<Pick<GraphValidationIssue, 'kind'>>;
 type FieldSchema = Readonly<{
   properties?: Readonly<Record<string, Readonly<{ title?: string }>>>;
 }>;
@@ -31,10 +31,8 @@ const ENGINE_SUPPLIES_INPUT = new Set(['core.merge']);
  * same schemas the step checks itself with. Only what is knowable now counts:
  * setup and literal values. A mapped input is judged when its value exists.
  */
-export function stepSetupIssues(
-  graph: WorkflowGraph,
-): readonly GraphValidationIssue[] {
-  const issues: GraphValidationIssue[] = [];
+export function stepSetupIssues(graph: WorkflowGraph): readonly SetupIssue[] {
+  const issues: SetupIssue[] = [];
   const levels = [{ graph, path: '$' }];
   for (const level of levels)
     for (const node of level.graph.nodes) {
@@ -71,7 +69,7 @@ function configAndConnectionIssues(
   node: WorkflowNode,
   definition: StepDefinition,
   path: string,
-): readonly GraphValidationIssue[] {
+): readonly SetupIssue[] {
   const parsed = definition.configSchema.safeParse(node.config);
   if (parsed.success)
     return (definition.requiredConnectionsForConfig?.(parsed.data) ?? [])
@@ -100,7 +98,7 @@ function inputIssues(
   node: WorkflowNode,
   definition: StepDefinition,
   path: string,
-): readonly GraphValidationIssue[] {
+): readonly SetupIssue[] {
   if (
     isWorkflowTriggerDefinition(node.definition) ||
     ENGINE_SUPPLIES_INPUT.has(node.definition.key)
@@ -135,12 +133,12 @@ function inputIssues(
   });
 }
 
-function issue(path: string, message: string, missing: boolean) {
+function issue(path: string, message: string, missing: boolean): SetupIssue {
   return {
     code: 'invalid_graph' as const,
     path,
     message,
-    [setupRequiresUser]: missing,
+    kind: missing ? 'requires_user' : 'correctable',
   };
 }
 

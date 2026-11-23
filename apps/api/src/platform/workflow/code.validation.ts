@@ -35,6 +35,7 @@ export function codeStepPublicationIssues(
         issues.push({
           code: 'invalid_graph',
           path,
+          kind: 'requires_user',
           message: 'Code steps are disabled by the administrator.',
         });
       const parsed = CORE_CODE_CONFIG_SCHEMA.safeParse(node.config);

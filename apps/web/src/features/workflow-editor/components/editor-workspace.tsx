@@ -121,6 +121,7 @@ export function EditorWorkspace({
       canvas={
         <WorkspaceSurface
           definitions={definitions}
+          placeable={placeable}
           editable={editable}
           overlays={overlays}
           sampleScope={{

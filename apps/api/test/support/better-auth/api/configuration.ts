@@ -82,6 +82,7 @@ export function fixtureApiConfiguration(
       ? {}
       : { callbacks: options.callbacks }),
     identity,
+    codeSettings: options.codeSettings ?? defaults.codeSettings,
     redisUrl: options.redisUrl ?? testStackSetting('REDIS_URL'),
     ...(options.artifacts === undefined
       ? {}

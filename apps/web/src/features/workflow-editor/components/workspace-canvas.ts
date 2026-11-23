@@ -1,3 +1,4 @@
+import { placeableDefinitions } from '@pertexo/workflow-model';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
@@ -206,10 +207,12 @@ export function useCanvasEditing({
     },
     () => paused,
   );
-  // Existing Code steps remain visible when this instance disables new ones.
-  const placeable =
-    codeSettings?.enabled === false
-      ? definitions.filter(({ definition }) => definition.key !== 'core.code')
-      : definitions;
-  return { editable, canvasRef, addStep, adding, selection, placeable };
+  return {
+    editable,
+    canvasRef,
+    addStep,
+    adding,
+    selection,
+    placeable: placeableDefinitions(definitions, codeSettings),
+  };
 }

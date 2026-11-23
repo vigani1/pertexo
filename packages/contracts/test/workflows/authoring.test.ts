@@ -13,11 +13,47 @@ import {
   workflowValidateResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
 import {
+  draftProposalDisclosureSchema,
+  draftProposalResultSchema,
+} from '../../src/schemas/workflows/assistant/proposal.js';
+import { explanationDisclosureSchema } from '../../src/schemas/workflows/assistant/explanation.js';
+import {
   workflowAuthoringOpenApiDocument,
   workflowSettingsRoutes,
 } from '../../src/server.js';
 
 describe('workflow-authoring public contracts', () => {
+  it('accepts shared assistant disclosures and keeps run status specific to explanations', () => {
+    const ready = {
+      kind: 'ready',
+      connectionName: 'Assistant',
+      host: 'model.example.test',
+      model: 'example',
+      confirmation: 'confirmation',
+    };
+    for (const disclosure of [
+      draftProposalDisclosureSchema,
+      explanationDisclosureSchema,
+    ]) {
+      expect(disclosure.parse(ready)).toEqual(ready);
+      expect(disclosure.parse({ kind: 'connection_unavailable' })).toEqual({
+        kind: 'connection_unavailable',
+      });
+    }
+    const runNotFailed = { kind: 'run_not_failed' };
+    expect(explanationDisclosureSchema.parse(runNotFailed)).toEqual(
+      runNotFailed,
+    );
+    expect(draftProposalDisclosureSchema.safeParse(runNotFailed).success).toBe(
+      false,
+    );
+    expect(
+      draftProposalResultSchema.parse({ kind: 'request_too_large' }),
+    ).toEqual({
+      kind: 'request_too_large',
+    });
+  });
+
   it('requires an explicit current-publication comparison and rejects malformed metadata', () => {
     const report = {
       valid: true,

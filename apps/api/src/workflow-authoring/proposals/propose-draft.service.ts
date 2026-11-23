@@ -15,6 +15,7 @@ import {
   AGENT_TOOL_LIMITS,
   type AgentToolCall,
   type JsonValue,
+  type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
 import type { ConnectionLookupDependencies } from '../../connections/lookups/lookup-options.service.js';
@@ -107,7 +108,7 @@ export class ProposeDraftService {
     const requestId = generatePersistedId();
     const usages: ModelUsage[] = [];
     const actor = { ...storeContext(input), workflowId: input.workflowId };
-    const outcome = await this.infer(prepared, prompt, {
+    const outcome = await this.infer(prepared, prompt, draft.graphJson, {
       deadlineAt,
       signal,
       usages,
@@ -172,6 +173,7 @@ export class ProposeDraftService {
   private async infer(
     prepared: PreparedAssistant,
     prompt: string,
+    draft: WorkflowGraph,
     {
       inspect,
       ...budget
@@ -186,7 +188,9 @@ export class ProposeDraftService {
     const finish = (
       result:
         | CandidateInspection
-        | { kind: ReturnType<typeof failureOutcome> } = lastCandidate ?? {
+        | {
+            kind: ReturnType<typeof failureOutcome> | 'request_too_large';
+          } = lastCandidate ?? {
         kind: 'invalid_response',
       },
     ) => ({ result, rounds });
@@ -202,7 +206,12 @@ export class ProposeDraftService {
       });
       if (turn.kind === 'request_too_large') {
         rounds -= Number(correcting);
-        return finish(lastCandidate ?? { kind: 'provider_failure' });
+        return finish(
+          lastCandidate ?? {
+            kind:
+              history.length === 0 ? 'request_too_large' : 'provider_failure',
+          },
+        );
       }
       if (turn.kind === 'invalid_response') return finish();
       if (turn.kind !== 'call') return finish({ kind: turn.kind });
@@ -217,7 +226,12 @@ export class ProposeDraftService {
         if (!canContinue) return finish();
         history.push({
           call,
-          result: catalogToolResult(this.catalog, call.name, call.arguments),
+          result: catalogToolResult(
+            this.catalog,
+            call.name,
+            call.arguments,
+            draft,
+          ),
         });
         continue;
       }

@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import type { ZodError } from 'zod';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   nodeArtifactReferenceSchema,
@@ -21,25 +22,71 @@ import { artifactMetadataMatches } from '../metadata.js';
 import { ARTIFACT_UPLOAD_PURPOSE } from '../artifact.js';
 import { ArtifactMetadataNotFoundError } from '../artifact.errors.js';
 
-/** JSON is already bounded and validated by its owning persistence boundary. */
+type LocatedReference = Readonly<{
+  path: string;
+  reference: NodeArtifactReference;
+}>;
+type MalformedReference = Readonly<{
+  kind: 'malformed';
+  path: string;
+  error: ZodError;
+}>;
+type ArtifactReferenceRefusal =
+  | MalformedReference
+  | Readonly<{
+      kind: 'unavailable';
+      path: string;
+      error: ArtifactMetadataNotFoundError;
+    }>;
+
 export function collectArtifactReferences(
   value: unknown,
 ): readonly NodeArtifactReference[] {
-  const found: NodeArtifactReference[] = [];
-  const pending: unknown[] = [value];
+  const collected = locateReferences(value);
+  if (collected.kind === 'malformed') throw collected.error;
+  return collected.references.map(({ reference }) => reference);
+}
+
+/** JSON is already bounded by its owning persistence boundary. */
+function locateReferences(
+  value: unknown,
+):
+  | MalformedReference
+  | Readonly<{ kind: 'collected'; references: readonly LocatedReference[] }> {
+  const references: LocatedReference[] = [];
+  const pending = [{ value, path: '$' }];
   while (pending.length > 0) {
-    const current = pending.pop();
+    const entry = pending.pop();
+    if (entry === undefined) continue;
+    const { value: current, path } = entry;
     if (Array.isArray(current)) {
       const children: readonly unknown[] = current;
-      pending.push(...children);
+      pending.push(
+        ...children.map((value, index) => ({
+          value,
+          path: `${path}[${String(index)}]`,
+        })),
+      );
     } else if (isRecord(current)) {
       if (isArtifactDescriptor(current)) {
         const { kind: _kind, ...descriptor } = current;
-        found.push(nodeArtifactReferenceSchema.parse(descriptor));
-      } else pending.push(...Object.values(current));
+        const parsed = nodeArtifactReferenceSchema.safeParse(descriptor);
+        if (!parsed.success)
+          return { kind: 'malformed', path, error: parsed.error };
+        references.push({ reference: parsed.data, path });
+      } else {
+        pending.push(
+          ...Object.entries(current).map(([key, value]) => ({
+            value,
+            path: /^[a-zA-Z_][a-zA-Z_0-9]*$/u.test(key)
+              ? `${path}.${key}`
+              : `${path}[${JSON.stringify(key)}]`,
+          })),
+        );
+      }
     }
   }
-  return found;
+  return { kind: 'collected', references };
 }
 
 export async function lockArtifactReferences(
@@ -48,12 +95,29 @@ export async function lockArtifactReferences(
   value: unknown,
   actorId: string,
 ): Promise<void> {
-  const references = collectArtifactReferences(value);
-  if (references.length === 0) return;
+  const refusal = await checkArtifactReferences(
+    client,
+    workspaceId,
+    value,
+    actorId,
+  );
+  if (refusal !== undefined) throw refusal.error;
+}
+
+export async function checkArtifactReferences(
+  client: PoolClient,
+  workspaceId: string,
+  value: unknown,
+  actorId: string,
+): Promise<ArtifactReferenceRefusal | undefined> {
+  const collected = locateReferences(value);
+  if (collected.kind === 'malformed') return collected;
+  const { references } = collected;
+  if (references.length === 0) return undefined;
   const result = await lockAvailableReferenceRows(
     client,
     workspaceId,
-    sortedIds(references),
+    sortedIds(references.map(({ reference }) => reference)),
   );
   const visible = await visibleArtifactIds(
     client,
@@ -62,12 +126,23 @@ export async function lockArtifactReferences(
       .filter((row) => row.purpose !== ARTIFACT_UPLOAD_PURPOSE)
       .map((row) => row.id),
   );
-  assertRows(
-    references,
-    result.filter(
-      (row) => row.purpose === ARTIFACT_UPLOAD_PURPOSE || visible.has(row.id),
-    ),
+  const rows = new Map(
+    result
+      .filter(
+        (row) => row.purpose === ARTIFACT_UPLOAD_PURPOSE || visible.has(row.id),
+      )
+      .map((row) => [row.id, row]),
   );
+  const unavailable = references.find(
+    ({ reference }) => !matchesRow(reference, rows),
+  );
+  return unavailable === undefined
+    ? undefined
+    : {
+        kind: 'unavailable',
+        path: unavailable.path,
+        error: new ArtifactMetadataNotFoundError(),
+      };
 }
 
 export async function requireNodeArtifactReference(
@@ -152,19 +227,20 @@ function assertRows(
   previewRunId?: string,
 ): void {
   const byId = new Map(rows.map((row) => [row.id, row]));
-  for (const reference of references) {
-    const row = byId.get(reference.artifactId.toLowerCase());
-    const invalidArtifactAuthority =
-      row === undefined ||
-      (row.previewRunId !== null && previewRunId === undefined) ||
-      !artifactMetadataMatches(
-        {
-          byteLength: row.byteLength,
-          mediaType: row.mediaType,
-          sha256: row.sha256,
-        },
-        reference,
-      );
-    if (invalidArtifactAuthority) throw new ArtifactMetadataNotFoundError();
-  }
+  for (const reference of references)
+    if (!matchesRow(reference, byId, previewRunId))
+      throw new ArtifactMetadataNotFoundError();
+}
+
+function matchesRow(
+  reference: NodeArtifactReference,
+  rows: ReadonlyMap<string, ArtifactReferenceRow>,
+  previewRunId?: string,
+): boolean {
+  const row = rows.get(reference.artifactId.toLowerCase());
+  return (
+    row !== undefined &&
+    (row.previewRunId === null || previewRunId !== undefined) &&
+    artifactMetadataMatches(row, reference)
+  );
 }

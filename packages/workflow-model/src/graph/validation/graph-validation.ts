@@ -44,6 +44,7 @@ export type GraphIssueCode = (typeof GRAPH_ISSUE_CODES)[number];
 
 export interface GraphValidationIssue {
   readonly code: GraphIssueCode;
+  readonly kind?: 'requires_user' | 'correctable';
   readonly path: string;
   readonly message: string;
 }

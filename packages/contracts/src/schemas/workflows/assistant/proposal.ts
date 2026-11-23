@@ -6,21 +6,18 @@ import {
   workflowValidateResponseSchema,
 } from '../authoring.js';
 import {
-  explainFailedRunRequestSchema,
-  explanationDisclosureSchema,
-} from './explanation.js';
+  assistantReadyDisclosureSchema,
+  assistantUnavailableSchema,
+} from './disclosure.js';
+import { explainFailedRunRequestSchema } from './explanation.js';
 
 export const DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS = 4_000;
 export const PROPOSAL_CORRECTION_ROUNDS = 2;
 const rounds = z.int().min(0).max(PROPOSAL_CORRECTION_ROUNDS);
 
-const unavailable = z.strictObject({
-  kind: z.enum(['not_configured', 'connection_unavailable']),
-});
-
 export const draftProposalDisclosureSchema = z.union([
-  unavailable,
-  explanationDisclosureSchema.options[1],
+  assistantUnavailableSchema,
+  assistantReadyDisclosureSchema,
 ]);
 
 export const draftProposalRequestSchema = explainFailedRunRequestSchema.extend({
@@ -28,12 +25,13 @@ export const draftProposalRequestSchema = explainFailedRunRequestSchema.extend({
 });
 
 export const draftProposalResultSchema = z.union([
-  unavailable,
+  assistantUnavailableSchema,
   z.strictObject({
     kind: z.enum([
       'confirmation_changed',
       'timeout',
       'response_too_large',
+      'request_too_large',
       'invalid_response',
       'provider_failure',
     ]),

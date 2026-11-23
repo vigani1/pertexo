@@ -1,5 +1,9 @@
 import { modelUsageSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
+import {
+  assistantReadyDisclosureSchema,
+  assistantUnavailableSchema,
+} from './disclosure.js';
 
 const ASSISTANT_BOUNDS = {
   answerCharacters: 6_000,
@@ -7,19 +11,14 @@ const ASSISTANT_BOUNDS = {
   confirmationCharacters: 128,
 } as const;
 
-const unavailable = z.strictObject({
-  kind: z.enum(['not_configured', 'run_not_failed', 'connection_unavailable']),
+const runNotFailedSchema = z.strictObject({
+  kind: z.literal('run_not_failed'),
 });
 
 export const explanationDisclosureSchema = z.union([
-  unavailable,
-  z.strictObject({
-    kind: z.literal('ready'),
-    connectionName: z.string(),
-    host: z.string(),
-    model: z.string(),
-    confirmation: z.string(),
-  }),
+  assistantUnavailableSchema,
+  runNotFailedSchema,
+  assistantReadyDisclosureSchema,
 ]);
 
 export const explainFailedRunRequestSchema = z.strictObject({
@@ -32,7 +31,8 @@ export const explanationModelAnswerSchema = z.strictObject({
 });
 
 export const explainFailedRunResultSchema = z.union([
-  unavailable,
+  assistantUnavailableSchema,
+  runNotFailedSchema,
   z.strictObject({
     kind: z.enum([
       'confirmation_changed',

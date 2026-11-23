@@ -307,3 +307,31 @@ describe('workflow issues', () => {
     expect(groups[2]?.issues[0]?.message).toMatch(/loop back on themselves/u);
   });
 });
+
+it('identifies both endpoints when a link changes destination', () => {
+  const steps = [
+    node('start', 'core.manual'),
+    node('previous', 'core.set'),
+    node('next', 'core.set'),
+  ];
+  const source = { nodeId: 'start', port: 'out' };
+  const previous = { nodeId: 'previous', port: 'in' };
+  const next = { nodeId: 'next', port: 'in' };
+  const before = graph(steps, [{ id: 'link', source, target: previous }]);
+  const after = graph(steps, [{ id: 'link', source, target: next }]);
+  expect(diffWorkflowGraphs(before, after)).toMatchObject({
+    addedLinks: [{ source, target: next }],
+    removedLinks: [{ source, target: previous }],
+    linksAdded: 1,
+    linksRemoved: 1,
+  });
+});
+
+it('reports a configuration version change even when setup values stay the same', () => {
+  const before = node('prepare', 'core.set');
+  const after = { ...before, configVersion: 2 };
+  expect(
+    diffWorkflowGraphs(graph([before]), graph([after]), { ignoreLayout: true })
+      .changed,
+  ).toEqual([{ before, after, aspects: ['configVersion'] }]);
+});

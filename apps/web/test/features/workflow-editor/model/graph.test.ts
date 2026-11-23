@@ -1,3 +1,4 @@
+import { placeableDefinitions } from '@pertexo/workflow-model';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 
 import {
@@ -18,10 +19,7 @@ import {
   restoreWorkflowElements,
 } from '@/features/workflow-editor/model/graph/removal';
 
-import {
-  groupStepChoices,
-  placeableDefinitions,
-} from '@/features/workflow-editor/model/step-catalog';
+import { groupStepChoices } from '@/features/workflow-editor/model/step-catalog';
 
 import { describeTestPath } from '@/features/workflow-editor/model/test-path';
 
