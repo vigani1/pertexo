@@ -7,7 +7,7 @@ import {
   workflowVersions,
   users,
 } from '@pertexo/database/schema';
-import { workflowGraphStepSql } from '../../queries/execution/graph-step.repository.js';
+import { workflowGraphStepSql } from '../../../shared/run-records/graph-step.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
