@@ -1,5 +1,9 @@
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
-import { dataTableConfigSchema } from '@pertexo/node-sdk';
+import {
+  dataTableConfigSchema,
+  dataTableFindConfigSchema,
+  isIdBoundFindRows,
+} from '@pertexo/node-sdk';
 import { expect, type Page } from '@playwright/test';
 import {
   dataTableResultSchema,
@@ -43,7 +47,10 @@ export async function qualifyColumnNames({
     (node) => node.id === nodeId,
   );
   if (original === undefined) throw new Error('Original table step missing');
-  const bindings = dataTableConfigSchema.parse(original.config).columnBindings;
+  const schema = isIdBoundFindRows(original.definition)
+    ? dataTableFindConfigSchema
+    : dataTableConfigSchema;
+  const bindings = schema.parse(original.config).columnBindings;
   if (bindings?.amount === undefined)
     throw new Error('Original amount binding missing');
   const { amount, ...unchanged } = bindings;

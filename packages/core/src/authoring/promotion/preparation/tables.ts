@@ -32,7 +32,7 @@ export function rebindPromotionTable(
   const binding = workflowDataTableBinding(sourceNode);
   if (binding === undefined || (binding.location === 'tool' && !binding.find))
     return node;
-  const { config, location, find } = binding;
+  const { config, location, idBound } = binding;
   const identity = dataTableIdentity(config);
   const source = sourceTables.find((table) =>
     matchesDataTableIdentity(table, identity),
@@ -104,7 +104,7 @@ export function rebindPromotionTable(
   });
   return replaceWorkflowDataTableBinding(node, location, {
     table: target.name,
-    ...(find ? { tableId: target.id } : {}),
+    ...(idBound ? { tableId: target.id } : {}),
     columnBindings: bindings,
   });
 }

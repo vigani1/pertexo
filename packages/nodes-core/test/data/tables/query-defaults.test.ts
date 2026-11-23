@@ -33,6 +33,14 @@ describe('data-table steps without a query', () => {
           result: { kind: 'bounded_output' },
         },
       },
+      {
+        definition: { key: 'core.table_find', version: 2 },
+        agentTool: {
+          effect: 'read',
+          inputFields: ['query'],
+          result: { kind: 'bounded_output' },
+        },
+      },
     ]);
   });
 

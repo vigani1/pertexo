@@ -176,7 +176,7 @@ function replaceConnections(
 function portableTableBindings(graph: WorkflowGraph): WorkflowGraph {
   return mapWorkflowNodes(graph, (node) => {
     const binding = workflowDataTableBinding(node);
-    if (binding?.find !== true || binding.config.tableId === undefined)
+    if (binding?.idBound !== true || binding.config.tableId === undefined)
       return node;
     const { table, columnBindings } = binding.config;
     return replaceWorkflowDataTableBinding(node, binding.location, {

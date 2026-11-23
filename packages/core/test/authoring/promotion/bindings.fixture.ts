@@ -1,3 +1,4 @@
+import { FIND_ROWS_V2 } from '@pertexo/node-sdk';
 import { connectionCreateRequestSchema } from '@pertexo/contracts';
 import { randomUUID, createHash } from 'node:crypto';
 import { expect } from 'vitest';
@@ -27,17 +28,18 @@ const keys = [
   'core.terminate',
 ];
 
+const definitions = [...keys.map((key) => ({ key, version: 1 })), FIND_ROWS_V2];
+
 export const config = parseDatabaseConfig({ connectionString: apiUrl, max: 2 });
 
 export const db = createWorkflowAuthoringFixtureDatabase(config, {
-  definitionCatalog: { definitions: keys.map((key) => ({ key, version: 1 })) },
+  definitionCatalog: { definitions },
   portableCatalog: {
-    definitions: keys.map((key) => ({
-      key,
-      version: 1,
+    definitions: definitions.map((definition) => ({
+      ...definition,
       configVersion: 1,
       slots:
-        key === 'test.placeholder'
+        definition.key === 'test.placeholder'
           ? [
               {
                 slot: 'service',

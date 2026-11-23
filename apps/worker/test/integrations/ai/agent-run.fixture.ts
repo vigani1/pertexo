@@ -45,7 +45,13 @@ export async function publishAgentRun(
         approval?: boolean;
         timeoutMillis?: number;
       },
-  shape?: Parameters<typeof publishAgent>[3]['shape'],
+  {
+    shape,
+    legacy = false,
+  }: Readonly<{
+    shape?: Parameters<typeof publishAgent>[3]['shape'];
+    legacy?: boolean;
+  }> = {},
 ) {
   const connectionId = randomUUID();
   const tableName = `Agent Orders ${connectionId.slice(0, 8)}`;
@@ -97,7 +103,7 @@ export async function publishAgentRun(
         ],
         keyColumn: 'key',
       });
-      if (write === undefined) expectedTableId = table.id;
+      if (write === undefined && !legacy) expectedTableId = table.id;
       await tables.importRows({
         ...actor,
         idempotencyKey: randomUUID(),

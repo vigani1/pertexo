@@ -718,7 +718,7 @@ async function start(
     inputRate?: number;
     deferWorker?: boolean;
     write?: Parameters<typeof startAgentRun>[2];
-    shape?: Parameters<typeof startAgentRun>[3];
+    shape?: NonNullable<Parameters<typeof startAgentRun>[3]>['shape'];
     slackUrl?: string;
   } = {},
 ) {
@@ -753,7 +753,7 @@ async function start(
       provider.baseUrl,
       new ConnectionEnvelopeEncryption(new ContextKeyProvider(key)),
       options.write,
-      options.shape,
+      { shape: options.shape },
     );
     if (options.deferWorker !== true) worker.startOnce();
     return {

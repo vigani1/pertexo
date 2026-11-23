@@ -153,10 +153,13 @@ it('rebinds renamed stable table IDs by current name while preserving old output
   const selection = await published({
     ...emptyGraph,
     nodes: [
-      node('find', 'core.table_find', {
-        table: name,
-        columnBindings: { key: 'key', amount: 'amount' },
-      }),
+      {
+        ...node('find', 'core.table_find', {
+          table: name,
+          columnBindings: { key: 'key', amount: 'amount' },
+        }),
+        definition: { key: 'core.table_find', version: 2 },
+      },
     ],
   });
   const { review } = await promote(selection);

@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { advanceRun } from '@pertexo/core/runs';
 import { createDataTablesStore } from '@pertexo/core/data-tables';
-import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import {
   ConnectionEnvelopeEncryption,
   parseAllowedPrivateNetworks,
 } from '@pertexo/secrets/server';
+import { FIND_ROWS_V2 } from '@pertexo/node-sdk';
 import { AGENT_FIND_ROWS } from '@pertexo/workflow-model';
 
 import { createNodeAttemptExecutionEngine } from '../../../src/attempts/execution/engine.js';
@@ -22,11 +22,7 @@ import {
   testNodeAttemptRuntime,
 } from '../../support/runtime-factories.js';
 import { chat, fakeModel, json } from './model.fixture.js';
-import {
-  agentRegistry,
-  catalog,
-  executableCatalog,
-} from './agent-registry.fixture.js';
+import { agentRegistry, executableCatalog } from './agent-registry.fixture.js';
 import { actor, alias, config, model } from './agent.fixture.js';
 
 import {
@@ -74,7 +70,7 @@ it('preserves a published Find rows tool through a table rename and inline execu
     provider.baseUrl,
     encryption,
     undefined,
-    'linear-sets',
+    { shape: 'linear-sets' },
   );
   const queued = await runFindRows(workflowId, encryption, false);
   const table = await agentTable(workflowId);
@@ -115,32 +111,13 @@ it('preserves a published Find rows tool through a table rename and inline execu
 it('still executes an existing name-bound Find rows pin', async () => {
   await using provider = await fakeModel(answers);
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
-  const publishedId = await publishAgentRun(
+  const workflowId = await publishAgentRun(
     provider.baseUrl,
     encryption,
     undefined,
-    'linear-sets',
+    { shape: 'linear-sets', legacy: true },
   );
-  // Insert the original name-bound draft in the pre-ID published shape.
-  const [draft] = await fixture.ownerQuery<{ graph_json: unknown }>(
-    'select graph_json from app.workflow_drafts where workflow_id=$1',
-    [publishedId],
-  );
-  expect(draft).toBeDefined();
-  const workflowId = randomUUID();
-  const workflowVersionId = randomUUID();
-  await insertCompiledWorkflow(fixture.ownerQuery, {
-    ...actor,
-    graph: draft?.graph_json,
-    identity: { workflowId, workflowVersionId },
-    name: 'Legacy Agent pin',
-    catalog,
-  });
-  await fixture.ownerQuery(
-    'update app.workflows set published_version_id=$2 where id=$1',
-    [workflowId, workflowVersionId],
-  );
-  await runFindRows(workflowId, encryption, false);
+  await runFindRows(workflowId, encryption, false, AGENT_FIND_ROWS);
   expect(provider.calls).toHaveLength(2);
 });
 
@@ -199,6 +176,7 @@ async function runFindRows(
   workflowId: string,
   encryption: ConnectionEnvelopeEncryption,
   inlineSteps: boolean,
+  toolDefinition: typeof FIND_ROWS_V2 | typeof AGENT_FIND_ROWS = FIND_ROWS_V2,
 ) {
   const database = config(fixture.workerUrl);
   const maintenanceDatabase = config(fixture.dispatcherUrl);
@@ -345,7 +323,7 @@ async function runFindRows(
     );
     expect(admission?.agent_work).toMatchObject({
       parentInvocationKey: expect.any(String) as unknown,
-      definition: AGENT_FIND_ROWS,
+      definition: toolDefinition,
       alias,
       work: { kind: 'tool_call', ordinal: 1 },
     });

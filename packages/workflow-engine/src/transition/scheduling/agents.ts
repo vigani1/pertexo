@@ -1,5 +1,4 @@
 import {
-  AGENT_STEP,
   validateCallableValue,
   type AgentToolCall,
 } from '@pertexo/workflow-model';
@@ -301,7 +300,7 @@ function admitAgentWork(
         agent,
         invocationKey: next.invocationKey,
         work: { kind: 'model_turn' },
-        definition: AGENT_STEP,
+        definition: tool.agentDefinition,
       },
       occurredAt,
     );

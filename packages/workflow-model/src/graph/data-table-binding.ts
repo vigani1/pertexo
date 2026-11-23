@@ -1,5 +1,6 @@
 import {
   isDataTableDefinition,
+  isIdBoundFindRows,
   type DataTableFindConfig,
 } from '@pertexo/node-sdk';
 import {
@@ -17,6 +18,7 @@ export function workflowDataTableBinding(
     return {
       location: 'step' as const,
       find: node.definition.key === AGENT_FIND_ROWS.key,
+      idBound: isIdBoundFindRows(node.definition),
       config: node.config as DataTableFindConfig,
     };
   if (!isAgentDefinition(node.definition)) return undefined;
@@ -26,6 +28,7 @@ export function workflowDataTableBinding(
   return {
     location: 'tool' as const,
     find: settings.data.tool.definition.key === AGENT_FIND_ROWS.key,
+    idBound: isIdBoundFindRows(settings.data.tool.definition),
     config: settings.data.tool.config as DataTableFindConfig,
   };
 }

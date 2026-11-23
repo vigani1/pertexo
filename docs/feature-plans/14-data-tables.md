@@ -53,9 +53,9 @@ No service, role, queue, package or CI job is added.
 - All active members can read/export. Owners/admins/builders manage tables and
   rows; only owners/admins change quotas. Suspended/deleting workspaces are
   read-only. No new role or automation-token capability in this slice.
-- Table names are unique. Find rows steps and Agent tools bind a table ID in
-  new publications. Existing published versions and table writes keep resolving
-  their name bindings. Workflow exports use names and carry no table IDs or row
+- Table names are unique. Find rows v2 steps and tools in Agent v2 bind a table
+  ID at publication. Find rows v1 and table writes keep resolving their name
+  bindings. Workflow exports use names and carry no table IDs or row
   data. Deletion requires explicit confirmation and makes ID-bound references
   fail even when another table takes the old name. Schema changes follow the
   bounded evolution rules below. Cross-workspace lookup and user-defined

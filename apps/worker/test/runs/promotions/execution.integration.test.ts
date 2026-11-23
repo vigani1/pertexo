@@ -37,7 +37,10 @@ import {
   definitions,
   policies,
 } from './execution/promotions-execution.fixture.js';
-import { createPromotionChildGraph } from './execution/graphs.js';
+import {
+  createPromotionChildGraph,
+  expectPromotedTableBindings,
+} from './execution/graphs.js';
 
 describe.runIf(fixture.enabled)(
   'promoted definitions on the real worker',
@@ -136,6 +139,7 @@ describe.runIf(fixture.enabled)(
               'Bearer source-only',
             ),
             targetConnection = await connection(targetId, 'Bearer target-only');
+          const tableIds = new Map<string, string>();
           for (const [workspaceId, amount, rate] of [
             [sourceId, 100, 42],
             [targetId, 900, 7],
@@ -156,6 +160,7 @@ describe.runIf(fixture.enabled)(
               keyColumn: 'key',
               idempotencyKey: randomUUID(),
             });
+            tableIds.set(workspaceId, table.id);
             await tables.importRows({
               ...scope(workspaceId),
               tableId: table.id,
@@ -163,8 +168,14 @@ describe.runIf(fixture.enabled)(
               idempotencyKey: randomUUID(),
             });
           }
-          const { resultType, child } =
-            createPromotionChildGraph(sourceConnection);
+          const sourceTableId = tableIds.get(sourceId);
+          const targetTableId = tableIds.get(targetId);
+          if (sourceTableId === undefined || targetTableId === undefined)
+            throw new Error('Promotion tables missing');
+          const { resultType, child } = createPromotionChildGraph(
+            sourceConnection,
+            sourceTableId,
+          );
           async function publish(graph: WorkflowGraph, name: string) {
             const created = await authoring.createWorkflow({
               ...scope(sourceId),
@@ -279,10 +290,7 @@ describe.runIf(fixture.enabled)(
             promotedChild.publishedVersionId ?? '',
             actorId,
           );
-          expect(
-            destination?.graphJson.nodes.find((step) => step.id === 'http')
-              ?.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT],
-          ).toBe(targetConnection);
+          expectPromotedTableBindings(destination?.graphJson, targetTableId);
           capabilities = await createWorkerNodeRuntimeCapabilities({
             database: workerConfig,
             connectionEncryption: encryptionConfig,

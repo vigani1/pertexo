@@ -2,6 +2,8 @@ import {
   boundedNodeJsonRecordSchema,
   dataTableConfigSchema,
   dataTableFindConfigSchema,
+  FIND_ROWS_V1,
+  FIND_ROWS_V2,
   MODEL_IDENTIFIER_MAX_CHARACTERS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -14,10 +16,8 @@ import { approvalConfigSchema } from '../pending-tasks/approval.js';
 import { PENDING_TASK_LIMITS } from '../pending-tasks/pending-task-limits.js';
 
 export const AGENT_STEP = Object.freeze({ key: 'ai.agent', version: 1 });
-export const AGENT_FIND_ROWS = Object.freeze({
-  key: 'core.table_find',
-  version: 1,
-});
+export const AGENT_STEP_V2 = Object.freeze({ key: AGENT_STEP.key, version: 2 });
+export const AGENT_FIND_ROWS = FIND_ROWS_V1;
 export const AGENT_INSERT_ROW = Object.freeze({
   key: 'core.table_insert',
   version: 1,
@@ -81,76 +81,93 @@ const writePermission = z.discriminatedUnion('kind', [
   }),
 ]);
 
-export const agentConfigSchema = z
-  .strictObject({
-    model: z
-      .string()
-      .trim()
-      .min(1)
-      .max(MODEL_IDENTIFIER_MAX_CHARACTERS)
-      .meta({ title: 'Model identifier' }),
-    timeoutMillis: z
-      .number()
-      .int()
-      .positive()
-      .max(AGENT_TIMEOUT_MAX_MILLIS)
-      .meta({ title: 'Agent deadline' })
-      .optional(),
-    tool: z.union([
-      toolSetup.extend({
-        definition: z.strictObject({
-          key: z.literal(WORKFLOW_CALL.key),
-          version: z.literal(WORKFLOW_CALL.version),
+const legacyFindTool = toolSetup.extend({
+  definition: z.strictObject({
+    key: z.literal(FIND_ROWS_V1.key),
+    version: z.literal(FIND_ROWS_V1.version),
+  }),
+});
+
+const idBoundFindTool = toolSetup.extend({
+  definition: z.strictObject({
+    key: z.literal(FIND_ROWS_V2.key),
+    version: z.literal(FIND_ROWS_V2.version),
+  }),
+  config: dataTableFindConfigSchema,
+});
+
+function agentConfig(findTool: typeof legacyFindTool | typeof idBoundFindTool) {
+  return z
+    .strictObject({
+      model: z
+        .string()
+        .trim()
+        .min(1)
+        .max(MODEL_IDENTIFIER_MAX_CHARACTERS)
+        .meta({ title: 'Model identifier' }),
+      timeoutMillis: z
+        .number()
+        .int()
+        .positive()
+        .max(AGENT_TIMEOUT_MAX_MILLIS)
+        .meta({ title: 'Agent deadline' })
+        .optional(),
+      tool: z.union([
+        toolSetup.extend({
+          definition: z.strictObject({
+            key: z.literal(WORKFLOW_CALL.key),
+            version: z.literal(WORKFLOW_CALL.version),
+          }),
+          config: workflowCallConfigSchema.extend({
+            input: callableTypeStructuralSchema.refine(
+              (type) => type.type === 'object',
+            ),
+          }),
+          writePermission,
         }),
-        config: workflowCallConfigSchema.extend({
-          input: callableTypeStructuralSchema.refine(
-            (type) => type.type === 'object',
-          ),
+        findTool,
+        toolSetup.extend({
+          definition: z.strictObject({
+            key: z.literal(AGENT_INSERT_ROW.key),
+            version: z.literal(AGENT_INSERT_ROW.version),
+          }),
+          writePermission,
         }),
-        writePermission,
-      }),
-      toolSetup.extend({
-        definition: z.strictObject({
-          key: z.literal(AGENT_FIND_ROWS.key),
-          version: z.literal(AGENT_FIND_ROWS.version),
+        toolSetup.extend({
+          definition: z.strictObject({
+            key: z.literal(AGENT_SEND_SLACK_MESSAGE.key),
+            version: z.literal(AGENT_SEND_SLACK_MESSAGE.version),
+          }),
+          config: z.strictObject({
+            channelId: z.string().min(1).meta({ title: 'Slack channel ID' }),
+            timeoutMillis: z
+              .number()
+              .int()
+              .positive()
+              .meta({ title: 'Slack timeout' }),
+          }),
+          writePermission,
         }),
-        config: dataTableFindConfigSchema,
-      }),
-      toolSetup.extend({
-        definition: z.strictObject({
-          key: z.literal(AGENT_INSERT_ROW.key),
-          version: z.literal(AGENT_INSERT_ROW.version),
-        }),
-        writePermission,
-      }),
-      toolSetup.extend({
-        definition: z.strictObject({
-          key: z.literal(AGENT_SEND_SLACK_MESSAGE.key),
-          version: z.literal(AGENT_SEND_SLACK_MESSAGE.version),
-        }),
-        config: z.strictObject({
-          channelId: z.string().min(1).meta({ title: 'Slack channel ID' }),
-          timeoutMillis: z
-            .number()
-            .int()
-            .positive()
-            .meta({ title: 'Slack timeout' }),
-        }),
-        writePermission,
-      }),
-    ]),
-  })
-  .refine(
-    ({ tool, timeoutMillis }) =>
-      !('writePermission' in tool) ||
-      tool.writePermission.kind === 'allow' ||
-      (timeoutMillis ?? AGENT_TIMEOUT_DEFAULT_MILLIS) >
-        tool.writePermission.config.expiresAfterSeconds * MILLIS_PER_SECOND,
-    {
-      path: ['timeoutMillis'],
-      message: 'The Agent deadline must exceed the tool approval expiry.',
-    },
-  );
+      ]),
+    })
+    .refine(
+      ({ tool, timeoutMillis }) =>
+        !('writePermission' in tool) ||
+        tool.writePermission.kind === 'allow' ||
+        (timeoutMillis ?? AGENT_TIMEOUT_DEFAULT_MILLIS) >
+          tool.writePermission.config.expiresAfterSeconds * MILLIS_PER_SECOND,
+      {
+        path: ['timeoutMillis'],
+        message: 'The Agent deadline must exceed the tool approval expiry.',
+      },
+    );
+}
+export const agentConfigV1Schema = agentConfig(legacyFindTool);
+export const agentConfigV2Schema = agentConfig(idBoundFindTool);
+export const agentConfigSchema = z.union([
+  agentConfigV1Schema,
+  agentConfigV2Schema,
+]);
 
 export type AgentConfig = z.output<typeof agentConfigSchema>;
 
@@ -174,7 +191,8 @@ export function isAgentDefinition(
 ): boolean {
   return (
     definition?.key === AGENT_STEP.key &&
-    definition.version === AGENT_STEP.version
+    (definition.version === AGENT_STEP.version ||
+      definition.version === AGENT_STEP_V2.version)
   );
 }
 

@@ -66,7 +66,7 @@ key is selected. All schema changes are atomic and audited: a duplicate, stale
 revision, invalid default or quota failure changes nothing. Close and reopen the
 dialog if another writer changed the table while it was open.
 
-Deleting a table asks you to type its name. New Find rows publications keep the
+Deleting a table asks you to type its name. Find rows v2 publications keep the
 original table ID. Select a replacement table and republish after deletion.
 Name-bound steps and older pins can resolve a table with the original name.
 

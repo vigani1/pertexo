@@ -41,7 +41,7 @@ describe('core node catalog', () => {
       expectRecursivelyFrozen(manifest);
   });
 
-  it('keeps every legacy core definition available', () => {
+  it('keeps every queued core definition available', () => {
     expect(
       CORE_NODE_DEFINITION_REGISTRATIONS.filter(
         ({ manifest }) => manifest.execution !== 'inline',
@@ -57,6 +57,7 @@ describe('core node catalog', () => {
       'core.table_update@1',
       'core.table_upsert@1',
       'core.table_delete@1',
+      'core.table_find@2',
       'core.text@1',
       'core.number@1',
       'core.crypto@1',
