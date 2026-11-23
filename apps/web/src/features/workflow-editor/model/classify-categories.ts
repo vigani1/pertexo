@@ -14,6 +14,32 @@ export function readClassifyCategories(
   return parsed.success ? parsed.data : undefined;
 }
 
+export function validateClassifyCategoryEdit(
+  categories: readonly ClassifyCategory[],
+  category: ClassifyCategory,
+  field: 'label' | 'description',
+  text: string,
+) {
+  const others = categories.filter(({ id }) => id !== category.id);
+  // Put the edited row last so the schema assigns a duplicate label to it.
+  const parsed = classifyCategoriesSchema.safeParse([
+    ...others,
+    { ...category, [field]: text },
+  ]);
+  const value = parsed.data?.at(-1)?.[field];
+  if (value !== undefined) return { ok: true, value } as const;
+  const problem = parsed.error?.issues.find(
+    ({ path }) => path[0] === others.length && path[1] === field,
+  );
+  if (problem?.code === 'too_small')
+    return { ok: false, reason: 'empty' } as const;
+  if (problem?.code === 'too_big')
+    return { ok: false, reason: 'too_long' } as const;
+  if (problem?.code === 'custom')
+    return { ok: false, reason: 'duplicate' } as const;
+  return { ok: false, reason: 'invalid' } as const;
+}
+
 export function classifyPortLabels(
   config: WorkflowNode['config'],
 ): Readonly<Record<string, string>> {

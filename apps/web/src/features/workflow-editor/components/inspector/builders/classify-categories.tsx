@@ -10,7 +10,10 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import { readClassifyCategories } from '../../../model/classify-categories';
+import {
+  readClassifyCategories,
+  validateClassifyCategoryEdit,
+} from '../../../model/classify-categories';
 import { moved } from '../../../model/inspector/setup-builders';
 import { BuilderCard, EntryActions, LiveTextField } from './parts';
 
@@ -159,23 +162,20 @@ function CategoryFields({
           value: category[field],
           format: (value) => value,
           parse: (text) => {
-            const value = text.trim();
-            if (value === '') return { ok: false, error: 'Enter a value.' };
-            if (value.length > limit)
-              return {
-                ok: false,
-                error: `Use at most ${formatCount(limit, 'character')}.`,
-              };
-            if (
-              field === 'label' &&
-              categories.some(
-                (entry) =>
-                  entry.id !== category.id &&
-                  entry.label.toLowerCase() === value.toLowerCase(),
-              )
-            )
-              return { ok: false, error: 'Use a unique category name.' };
-            return { ok: true, value };
+            const edit = validateClassifyCategoryEdit(
+              categories,
+              category,
+              field,
+              text,
+            );
+            if (edit.ok) return edit;
+            const errors = {
+              empty: 'Enter a value.',
+              too_long: `Use at most ${formatCount(limit, 'character')}.`,
+              duplicate: 'Use a unique category name.',
+              invalid: 'Enter a valid category value.',
+            };
+            return { ok: false, error: errors[edit.reason] };
           },
           onCommit: (value) => {
             update(field, value);
