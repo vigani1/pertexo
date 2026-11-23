@@ -99,6 +99,8 @@ export type {
 } from './providers/integration-module.js';
 export { INTEGRATION_MODULES } from './modules.js';
 
+export { applyHttpAuth, credentialText } from './providers/http-auth.js';
+
 export type { ConnectionDefinition } from './providers/connection-definition.js';
 
 export type { ConnectionLookup } from './providers/connection-lookup.js';

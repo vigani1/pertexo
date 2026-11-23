@@ -5,7 +5,7 @@ import type {
 import type { z } from 'zod';
 import type { ProviderHttpRequest } from './http-client.js';
 
-type AuthRecipe =
+export type AuthRecipe =
   | Readonly<{ kind: 'header_map'; field: string }>
   | Readonly<{ kind: 'named_header'; name: string; field: string }>
   | Readonly<{ kind: 'query'; name: string; field: string }>
