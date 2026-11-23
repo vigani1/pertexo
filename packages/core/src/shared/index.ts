@@ -22,6 +22,7 @@ export type {} from './command-receipt.errors.js';
 export type {} from './retention-deletion.repository.js';
 export type {} from './run-records/run-retention.repository.js';
 export type {} from './run-records/execution-source.repository.js';
+export type {} from './run-records/graph-step.repository.js';
 export type {} from './run-records/run-events.repository.js';
 export type {} from './run-records/schedule-run-input.schemas.js';
 export type {} from './run-records/poll-run-input.js';
