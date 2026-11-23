@@ -1,9 +1,5 @@
 import type { JsonValue } from '@pertexo/workflow-model';
-import type {
-  JoinState,
-  LoopState,
-  IterationScopePart,
-} from '../workflow-execution.js';
+import type { LoopState, IterationScopePart } from '../workflow-execution.js';
 import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
 import {
   isAgentDefinition,
@@ -19,6 +15,10 @@ import {
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
 import { executableFailureRoutes } from '../compilation/verified-executable.js';
+import {
+  projectMergeInput,
+  selectMergeInput,
+} from '../control-nodes/merge-input.js';
 import { operationError } from '../input-checks/engine-values.js';
 import {
   branchPathHasPrefix,
@@ -86,16 +86,11 @@ export async function readInlineAttemptInput(
     invocationKey: attempt.invocationKey,
     value: attempt.output,
   }));
-  const join = state.joins.get(invocationKey);
-  const selected = join?.selectedBranchIds;
+  const merge = selectMergeInput(state.joins.get(invocationKey));
   const { scope, loop } = enclosingLoop(state, invocation);
   const attemptIds = [
     ...(loop?.collection.kind === 'inline' ? [loop.collection.attemptId] : []),
-    ...(join?.ledger.flatMap(({ branchId, output }) =>
-      selected?.includes(branchId) && output?.kind === 'inline'
-        ? [output.attemptId]
-        : [],
-    ) ?? []),
+    ...(merge?.attemptIds ?? []),
   ];
   const route = executableFailureRoutes(input.executable).find(
     ({ entryNodeId }) => entryNodeId === nodeId,
@@ -136,7 +131,10 @@ export async function readInlineAttemptInput(
     ),
     ...successes.map(({ attemptId, output }) => [attemptId, output] as const),
   ]);
-  const coordinatorInput = mergeInput(join, outputs);
+  const projectedMerge =
+    merge === undefined ? undefined : projectMergeInput(merge, outputs);
+  if (projectedMerge?.kind === 'missing_output')
+    operationError('attempt_invalid', 'settled Merge output is missing');
   const prepared = prepareNodeAttemptInput(
     {
       executable: input.executable,
@@ -165,7 +163,7 @@ export async function readInlineAttemptInput(
       ...(options.expressionEvaluator === undefined
         ? {}
         : { expressionEvaluator: options.expressionEvaluator }),
-      coordinatorInput,
+      coordinatorInput: projectedMerge?.input,
     },
     prepared,
   );
@@ -180,44 +178,6 @@ function agentFailureSourceId(
     ({ id, definition }) =>
       id === sourceNodeId && isAgentDefinition(definition),
   )?.id;
-}
-
-function mergeInput(
-  join: JoinState | undefined,
-  outputs: ReadonlyMap<string, JsonValue>,
-) {
-  const selected = join?.selectedBranchIds;
-  return join === undefined || selected === undefined
-    ? undefined
-    : {
-        selectedBranchIds: selected,
-        ledger: Object.fromEntries(
-          join.ledger.map(
-            ({
-              branchId,
-              disposition,
-              output,
-            }): readonly [
-              string,
-              Readonly<{ disposition: typeof disposition; output?: unknown }>,
-            ] => {
-              if (selected.includes(branchId) && output?.kind === 'inline') {
-                const value = outputs.get(output.attemptId);
-                if (value === undefined)
-                  operationError(
-                    'attempt_invalid',
-                    'settled Merge output is missing',
-                  );
-                return [branchId, { disposition, output: value }] as const;
-              }
-              return [
-                branchId,
-                { disposition, ...(output === undefined ? {} : { output }) },
-              ] as const;
-            },
-          ),
-        ),
-      };
 }
 
 function enclosingLoop(

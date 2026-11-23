@@ -12,7 +12,11 @@ import {
   type LoopState,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import { parseCheckpoint } from '@pertexo/workflow-engine/server';
+import {
+  parseCheckpoint,
+  projectMergeInput,
+  selectMergeInput,
+} from '@pertexo/workflow-engine/server';
 import { withLoopResults } from './values/loop-results.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { loadAgentAttemptInput } from './agent-attempt-input.js';
@@ -61,42 +65,26 @@ async function coordinatorInput(
   request: LoadInputsInput,
   checkpoint: WorkflowCheckpoint,
 ): Promise<NodeAttemptInputs['coordinatorInput']> {
-  const join = checkpoint.joins.find(
-    ({ joinInvocationKey }) =>
-      joinInvocationKey === request.lease.invocationKey,
+  const merge = selectMergeInput(
+    checkpoint.joins.find(
+      ({ joinInvocationKey }) =>
+        joinInvocationKey === request.lease.invocationKey,
+    ),
   );
-  const selected = join?.selectedBranchIds;
-  if (join === undefined || selected === undefined) return undefined;
-  const attemptIds = join.ledger.flatMap(({ branchId, output }) =>
-    selected.includes(branchId) && output?.kind === 'inline'
-      ? [output.attemptId]
-      : [],
-  );
+  if (merge === undefined) return undefined;
   const outputs = new Map(
     (
       await store.readAttemptOutputs({
         lease: request.lease,
-        attemptIds,
+        attemptIds: merge.attemptIds,
         signal: request.signal,
       })
     ).map(({ attemptId, output }) => [attemptId, output]),
   );
-  return Object.freeze({
-    ledger: Object.fromEntries(
-      join.ledger.map(({ branchId, disposition, output }) => {
-        if (output === undefined) return [branchId, { disposition }];
-        if (!selected.includes(branchId) || output.kind !== 'inline')
-          return [branchId, { disposition, output }];
-        if (!outputs.has(output.attemptId))
-          throw new NodeAttemptStateCorruptError();
-        return [
-          branchId,
-          { disposition, output: outputs.get(output.attemptId) },
-        ];
-      }),
-    ),
-    selectedBranchIds: selected,
-  });
+  const projected = projectMergeInput(merge, outputs);
+  if (projected.kind === 'missing_output')
+    throw new NodeAttemptStateCorruptError();
+  return projected.input;
 }
 
 /** The active loop instance the attempt's innermost iteration belongs to. */
