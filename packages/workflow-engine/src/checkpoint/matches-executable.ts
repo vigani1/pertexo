@@ -1,3 +1,6 @@
+import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
+import type { AgentWorkIdentity } from '../invocations/agent-invocation.js';
+import { executableAgentTool } from '../compilation/verified-executable.js';
 import { isAgentDefinition, isPendingTaskNode } from '@pertexo/workflow-model';
 import { assertFailureCheckpoint } from '../failure-routing/checkpoint.js';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
@@ -236,36 +239,15 @@ export function assertCheckpointMatchesExecutable(
   const agents = new Map(
     checkpoint.agents?.map((agent) => [agent.parentInvocationKey, agent]),
   );
-  for (const key of agents.keys()) {
-    const parent = invocationsByKey.get(key);
-    if (
-      parent === undefined ||
-      parent.agentWork !== undefined ||
-      !isAgentDefinition(nodesById.get(parent.nodeId)?.definition)
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'Agent continuation has no pinned Agent parent',
-      );
-  }
+  assertAgentContinuations(executable, agents, invocationsByKey, nodesById);
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     if (invocation.agentWork !== undefined) {
-      const work = invocation.agentWork;
-      const parent = invocationsByKey.get(work.parentInvocationKey);
-      const agent = agents.get(work.parentInvocationKey);
-      if (
-        parent?.nodeId !== invocation.nodeId ||
-        agent === undefined ||
-        work.turn > agent.turn ||
-        !sameIterationPath(parent.iterationPath, invocation.iterationPath) ||
-        !branchPathHasPrefix(parent.branchPath, invocation.branchPath) ||
-        !branchPathHasPrefix(invocation.branchPath, parent.branchPath)
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'Agent work does not belong to its parent',
-        );
+      assertAgentWork(executable, invocation, {
+        work: invocation.agentWork,
+        parent: invocationsByKey.get(invocation.agentWork.parentInvocationKey),
+        agent: agents.get(invocation.agentWork.parentInvocationKey),
+      });
       invocationKeys.add(invocation.invocationKey);
       continue;
     }
@@ -289,4 +271,57 @@ export function assertCheckpointMatchesExecutable(
     );
   for (const loop of checkpoint.loops)
     assertCheckpointLoopIdentity(loop, checkpoint, nodesById);
+}
+
+function assertAgentContinuations(
+  executable: CompiledWorkflowExecutable,
+  agents: ReadonlyMap<string, AgentContinuation>,
+  invocationsByKey: ReadonlyMap<string, CheckpointInvocation>,
+  nodesById: ReadonlyMap<string, ExecutionNode>,
+): void {
+  for (const [key, { phase }] of agents) {
+    const parent = invocationsByKey.get(key);
+    if (
+      parent === undefined ||
+      parent.agentWork !== undefined ||
+      !isAgentDefinition(nodesById.get(parent.nodeId)?.definition) ||
+      ('ordinal' in phase &&
+        executableAgentTool(executable, parent.nodeId, phase.toolAlias) ===
+          undefined)
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'Agent continuation has no pinned Agent parent',
+      );
+  }
+}
+
+function assertAgentWork(
+  executable: CompiledWorkflowExecutable,
+  invocation: CheckpointInvocation,
+  {
+    work,
+    parent,
+    agent,
+  }: Readonly<{
+    work: AgentWorkIdentity;
+    parent: CheckpointInvocation | undefined;
+    agent: AgentContinuation | undefined;
+  }>,
+): void {
+  if (
+    parent?.nodeId !== invocation.nodeId ||
+    agent === undefined ||
+    work.turn > agent.turn ||
+    (work.work.kind === 'tool_call' &&
+      executableAgentTool(executable, invocation.nodeId, work.toolAlias) ===
+        undefined) ||
+    !sameIterationPath(parent.iterationPath, invocation.iterationPath) ||
+    !branchPathHasPrefix(parent.branchPath, invocation.branchPath) ||
+    !branchPathHasPrefix(invocation.branchPath, parent.branchPath)
+  )
+    operationError(
+      'workflow_identity_invalid',
+      'Agent work does not belong to its parent',
+    );
 }

@@ -1,6 +1,6 @@
 import {
   PROMOTION_LIMITS,
-  workflowDataTableBinding,
+  workflowDataTableBindings,
   replaceWorkflowDataTableBinding,
 } from '@pertexo/workflow-model';
 import {
@@ -29,9 +29,24 @@ export function rebindPromotionTable(
     requirement: Omit<WorkflowPromotionRequirement, 'workflowId'>,
   ) => void,
 ): WorkflowNode {
-  const binding = workflowDataTableBinding(sourceNode);
-  if (binding === undefined || (binding.location === 'tool' && !binding.find))
-    return node;
+  return workflowDataTableBindings(sourceNode).reduce(
+    (bound, binding) =>
+      binding.location === 'tool' && !binding.find
+        ? bound
+        : rebindTable(bound, binding, { sourceTables, targetTables }, report),
+    node,
+  );
+}
+
+function rebindTable(
+  node: WorkflowNode,
+  binding: ReturnType<typeof workflowDataTableBindings>[number],
+  {
+    sourceTables,
+    targetTables,
+  }: Omit<Parameters<typeof rebindPromotionTable>[1], 'sourceNode'>,
+  report: Parameters<typeof rebindPromotionTable>[2],
+): WorkflowNode {
   const { config, location, idBound } = binding;
   const identity = dataTableIdentity(config);
   const source = sourceTables.find((table) =>

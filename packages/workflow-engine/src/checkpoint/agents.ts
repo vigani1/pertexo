@@ -1,3 +1,4 @@
+import { optionalAgentToolAlias } from './agent-work.js';
 import {
   AGENT_LIMITS,
   compareOrdinal,
@@ -169,10 +170,14 @@ function parsePhase(value: unknown): AgentContinuation['phase'] {
       return { kind, output: attemptReceipt(value.output, 'Agent output') };
     case 'proposed_call':
     case 'running_tool':
-      assertExactKeys(value, ['kind', 'ordinal', 'proposal']);
+      assertExactKeys(value, ['kind', 'ordinal', 'proposal'], ['toolAlias']);
       return { kind, ...toolCall(value) };
     case 'approval_wait': {
-      assertExactKeys(value, ['kind', 'ordinal', 'proposal'], ['task']);
+      assertExactKeys(
+        value,
+        ['kind', 'ordinal', 'proposal'],
+        ['task', 'toolAlias'],
+      );
       if (value.task === undefined) return { kind, ...toolCall(value) };
       const task = parseOutputReference(value.task, 'Agent approval');
       assertCheckpoint(
@@ -188,6 +193,7 @@ function parsePhase(value: unknown): AgentContinuation['phase'] {
 
 function toolCall(value: Record<string, unknown>) {
   return {
+    ...optionalAgentToolAlias(value.toolAlias),
     ordinal: boundedInteger(value.ordinal, 1, AGENT_LIMITS.toolCalls),
     proposal: attemptReceipt(value.proposal, 'Agent proposal'),
   };

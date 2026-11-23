@@ -1,6 +1,8 @@
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
+  AGENT_STEP_V3,
   agentConfigSchema,
+  agentConfigV3Schema,
   isAgentDefinition,
   type GraphValidationIssue,
   type WorkflowGraph,
@@ -27,7 +29,11 @@ export function stepSettingsIssues(
 function stepSettingsIssue(node: WorkflowNode): GraphValidationIssue {
   const path = `$.nodes.${node.id}.config`;
   if (isAgentDefinition(node.definition)) {
-    const config = agentConfigSchema.safeParse(node.config);
+    const schema =
+      node.definition.version === AGENT_STEP_V3.version
+        ? agentConfigV3Schema
+        : agentConfigSchema;
+    const config = schema.safeParse(node.config);
     const deadline = config.error?.issues.find(
       (issue) => issue.code === 'custom' && issue.path[0] === 'timeoutMillis',
     );

@@ -7,13 +7,16 @@ import { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from '@pertexo/node-sdk/server';
 import {
   AGENT_STEP,
   AGENT_STEP_V2,
+  AGENT_STEP_V3,
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_TOOL_LIMITS,
   agentMappedInputSchema,
   agentConfigV1Schema,
   agentConfigV2Schema,
+  agentConfigV3Schema,
   agentToolCallSchema,
   agentTurnOutputSchema,
+  type AgentToolConfig,
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
@@ -36,20 +39,7 @@ function agentRegistration(
   schema: typeof agentConfigV1Schema | typeof agentConfigV2Schema,
 ) {
   const configSchema = schema.superRefine(({ tool }, context) => {
-    if (!('channelId' in tool.config)) return;
-    const { channelId, timeoutMillis } = tool.config;
-    if (!slackChannelIdSchema.safeParse(channelId).success)
-      context.addIssue({
-        code: 'custom',
-        path: ['tool', 'config', 'channelId'],
-        message: 'Choose a Slack channel.',
-      });
-    if (!slackSendMessageConfigSchema.safeParse({ timeoutMillis }).success)
-      context.addIssue({
-        code: 'custom',
-        path: ['tool', 'config', 'timeoutMillis'],
-        message: 'Use a supported Slack request timeout.',
-      });
+    checkSlackToolSetup(tool.config, ['tool', 'config'], context);
   });
 
   const manifest: NodeManifest = Object.freeze({
@@ -86,7 +76,72 @@ function agentRegistration(
   });
 }
 
+export const multiToolAgentTurnInputSchema = agentTurnInputSchema
+  .omit({ toolSchema: true })
+  .extend({
+    tools: z
+      .array(
+        z.strictObject({
+          name: z.string(),
+          description: z.string(),
+          inputSchema: boundedNodeJsonRecordSchema,
+        }),
+      )
+      .min(1)
+      .max(AGENT_TOOL_LIMITS.tools),
+  });
+
+const legacyAgent = agentRegistration(AGENT_STEP, agentConfigV1Schema);
+const idBoundAgent = agentRegistration(AGENT_STEP_V2, agentConfigV2Schema);
+const multiToolConfig = agentConfigV3Schema.superRefine(
+  ({ tools }, context) => {
+    for (const [index, { config }] of tools.entries())
+      checkSlackToolSetup(config, ['tools', index, 'config'], context);
+  },
+);
+
+function checkSlackToolSetup(
+  config: AgentToolConfig['config'],
+  path: readonly (string | number)[],
+  context: z.RefinementCtx,
+): void {
+  if (!('channelId' in config)) return;
+  if (!slackChannelIdSchema.safeParse(config.channelId).success)
+    context.addIssue({
+      code: 'custom',
+      path: [...path, 'channelId'],
+      message: 'Choose a Slack channel.',
+    });
+  if (
+    !slackSendMessageConfigSchema.safeParse({
+      timeoutMillis: config.timeoutMillis,
+    }).success
+  )
+    context.addIssue({
+      code: 'custom',
+      path: [...path, 'timeoutMillis'],
+      message: 'Use a supported Slack request timeout.',
+    });
+}
+
 export const AGENT_REGISTRATIONS = [
-  agentRegistration(AGENT_STEP, agentConfigV1Schema),
-  agentRegistration(AGENT_STEP_V2, agentConfigV2Schema),
+  legacyAgent,
+  idBoundAgent,
+  {
+    ...idBoundAgent,
+    configSchema: multiToolConfig,
+    inputSchema: multiToolAgentTurnInputSchema,
+    manifest: Object.freeze({
+      ...idBoundAgent.manifest,
+      definition: AGENT_STEP_V3,
+      executor: AGENT_STEP_V3,
+      configSchema: generateSchemaDocument(multiToolConfig),
+      inputSchema: generateSchemaDocument(multiToolAgentTurnInputSchema),
+      display: {
+        ...idBoundAgent.manifest.display,
+        name: 'Agent',
+        description: 'Use a model with workspace tools',
+      },
+    }) satisfies NodeManifest,
+  },
 ];

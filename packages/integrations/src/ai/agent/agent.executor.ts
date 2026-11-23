@@ -4,7 +4,10 @@ import type { z } from 'zod';
 import { registerProviderExecutor } from '../../providers/provider-executor.js';
 import type { ModelClient } from '../model-client.js';
 import { runAgentTurn } from '../run-model.js';
-import type { agentTurnInputSchema } from './agent.definition.js';
+import type {
+  agentTurnInputSchema,
+  multiToolAgentTurnInputSchema,
+} from './agent.definition.js';
 
 export function createAgentExecutor(
   client: ModelClient,
@@ -13,9 +16,20 @@ export function createAgentExecutor(
 ) {
   return registerProviderExecutor(definition, undefined, async (invocation) => {
     const { model, tool } = invocation.config as AgentConfig;
-    const { prompt, input, history, toolSchema } = invocation.input as z.output<
-      typeof agentTurnInputSchema
+    const admitted = invocation.input as z.output<
+      typeof agentTurnInputSchema | typeof multiToolAgentTurnInputSchema
     >;
+    const { prompt, input, history } = admitted;
+    const tools =
+      'tools' in admitted
+        ? admitted.tools
+        : [
+            {
+              name: tool.alias,
+              description: tool.description,
+              inputSchema: admitted.toolSchema,
+            },
+          ];
     return runAgentTurn(
       {
         client,
@@ -33,13 +47,7 @@ export function createAgentExecutor(
         now,
       },
       {
-        tools: [
-          {
-            name: tool.alias,
-            description: tool.description,
-            inputSchema: toolSchema,
-          },
-        ],
+        tools,
         history,
       },
     );

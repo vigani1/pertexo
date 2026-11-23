@@ -1,7 +1,7 @@
 import { compareOrdinal } from '../values/ordering.js';
 import {
   AGENT_SLACK_CONNECTION_SLOT,
-  agentConfigSchema,
+  readAgentConfig,
   isAgentDefinition,
 } from '../flow/control-nodes/agent.js';
 import type { WorkflowGraph, WorkflowNode } from './workflow-graph.schemas.js';
@@ -37,14 +37,11 @@ export function workflowIntegrationUsage(
       `${node.definition.key}\u0000${String(node.definition.version)}`,
     );
     const agent = isAgentDefinition(node.definition);
-    const tool = agent
-      ? agentConfigSchema.safeParse(node.config).data?.tool.definition
-      : undefined;
-    const agentIntegration =
-      tool === undefined
-        ? undefined
-        : definitions.get(`${tool.key}\u0000${String(tool.version)}`);
-    for (const integration of [direct, agentIntegration]) {
+    const agentIntegrations = (readAgentConfig(node)?.tools ?? []).map(
+      ({ definition }) =>
+        definitions.get(`${definition.key}\u0000${String(definition.version)}`),
+    );
+    for (const integration of [direct, ...agentIntegrations]) {
       if (integration === undefined) continue;
       for (const slot of integration.connectionSlots) {
         if (

@@ -81,6 +81,7 @@ export type { InlineAdvanceOptions } from './transition/advance-inline-chain.js'
 export type { AgentAttemptInput } from './attempt/agent-input.js';
 export {
   isAgentModelTurnInvocationKey,
+  agentToolAliasFromInvocationKey,
   isAgentWorkInvocationKey,
 } from './invocations/agent-invocation.js';
 export type { AgentModelRates } from './control-nodes/agent-continuation.js';

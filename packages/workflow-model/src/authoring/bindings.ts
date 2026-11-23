@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { canonicalJson } from '../values/json/canonical.js';
 import type { WorkflowGraph } from '../graph/workflow-graph.schemas.js';
-import { workflowCallTarget } from '../flow/callable/dependencies.js';
+import { workflowCallTargets } from '../flow/callable/dependencies.js';
 
 const uuidSchema = z.uuid();
 
@@ -14,8 +14,7 @@ function callTargets(graph: WorkflowGraph): Map<string, string> {
     const current = pending.pop();
     if (current === undefined) break;
     for (const node of current.graph.nodes) {
-      const target = workflowCallTarget(node);
-      if (target !== undefined)
+      for (const target of workflowCallTargets(node))
         targets.set(
           canonicalJson([[...current.path, node.id], node.definition, target]),
           target.workflowId,

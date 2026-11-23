@@ -81,11 +81,16 @@ export function resumeAgentApproval(
     return;
   }
   if (decision === undefined) return;
-  const { ordinal, proposal } = phase;
+  const { ordinal, proposal, toolAlias } = phase;
   if (decision === 'approved') {
     state.agents.set(parent.invocationKey, {
       ...agent,
-      phase: { kind: 'proposed_call', ordinal, proposal },
+      phase: {
+        kind: 'proposed_call',
+        ordinal,
+        proposal,
+        ...(toolAlias === undefined ? {} : { toolAlias }),
+      },
     });
   } else if (decision === 'rejected' || decision === 'expired') {
     state.agents.set(parent.invocationKey, {

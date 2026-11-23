@@ -33,7 +33,10 @@ import {
   agentChildInvocationKey,
   isAgentChildOf,
 } from '../invocations/agent-invocation.js';
-import { executableAgentTool } from '../compilation/verified-executable.js';
+import {
+  executableAgentTool,
+  executableAgentTools,
+} from '../compilation/verified-executable.js';
 
 // Predecessor outputs arrive keyed by step and invocation: JSON may spend six
 // bytes per character of those identities, plus fixed punctuation, and three
@@ -342,7 +345,10 @@ function resolveAttemptNode(
 ): WorkflowExecutableNode {
   const parentKey = expectedInvocationKey(input, node.id);
   const work = input.agent?.identity;
-  const pinned = executableAgentTool(input.executable, node.id);
+  const pinned =
+    work?.work.kind === 'tool_call'
+      ? executableAgentTool(input.executable, node.id, work.toolAlias)
+      : executableAgentTools(input.executable, node.id)[0];
   const expectedKey =
     work === undefined
       ? parentKey

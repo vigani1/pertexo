@@ -10,6 +10,7 @@ import {
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_STEP,
   AGENT_STEP_V2,
+  AGENT_STEP_V3,
   CORE_INLINE_DEFINITION_VERSION,
   PENDING_TASK_LIMITS,
   WORKFLOW_CALL,
@@ -63,6 +64,7 @@ export async function publishAgent(
       | 'sibling-set'
       | 'failure-handler'
       | 'for-each'
+      | 'multi-tool'
       | undefined;
     expectedTableId?: string | undefined;
   }>,
@@ -104,6 +106,7 @@ export async function publishAgent(
     config: toolConfig,
     ...toolPermission(write, approval, expiry),
   };
+  const settings = fixtureAgentSettings(shape, tool, table, expectedTableId);
   const graph: WorkflowGraph = {
     settings: { maxRunDurationMs: 90_000 },
     callable: {
@@ -126,10 +129,10 @@ export async function publishAgent(
           {
             model,
             ...(timeoutMillis === undefined ? {} : { timeoutMillis }),
-            tool,
+            ...settings.config,
           },
         ),
-        definition: agentDefinition,
+        definition: settings.definition ?? agentDefinition,
         connectionRefs: {
           model_api_key: connectionId,
           ...(slack === undefined
@@ -151,6 +154,7 @@ export async function publishAgent(
     'sibling-set': addAgentSiblingSet,
     'failure-handler': addAgentFailureHandler,
     'for-each': loopOverAgent,
+    'multi-tool': (graph: WorkflowGraph) => graph,
   };
   const published = await publishAgentFixtureGraph(
     authoring,
@@ -159,12 +163,53 @@ export async function publishAgent(
   );
   expect(agentConfigIn(published.version.graphJson)).toEqual({
     ...graph.nodes[1]?.config,
-    tool: {
-      ...tool,
-      config: expectedPublishedToolConfig(toolConfig, expectedTableId),
-    },
+    ...settings.expected,
   });
   return published.version.workflowId;
+}
+
+function fixtureAgentSettings(
+  shape: Parameters<typeof publishAgent>[3]['shape'],
+  tool: Readonly<{
+    alias: string;
+    description: string;
+    definition: WorkflowGraph['nodes'][number]['definition'];
+    config: WorkflowGraph['nodes'][number]['config'];
+  }>,
+  table: string,
+  expectedTableId: string | undefined,
+) {
+  if (shape !== 'multi-tool')
+    return {
+      definition: undefined,
+      config: { tool },
+      expected: {
+        tool: {
+          ...tool,
+          config: expectedPublishedToolConfig(tool.config, expectedTableId),
+        },
+      },
+    };
+  const read = {
+    alias,
+    description: 'Look up one workspace order',
+    definition: FIND_ROWS_V2,
+    config: { table },
+  };
+  const write = { ...tool, alias: 'insert_order' };
+  return {
+    definition: AGENT_STEP_V3,
+    config: { tools: [read, write] },
+    expected: {
+      tools: [
+        {
+          ...read,
+          config: expectedPublishedToolConfig(read.config, expectedTableId),
+        },
+        write,
+      ],
+    },
+  };
 }
 
 function agentConfigIn(

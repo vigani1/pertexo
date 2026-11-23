@@ -30,23 +30,24 @@ export function resumeAgent(
     case 'proposed_call':
       return {
         kind: 'admit_tool',
-        invocationKey: toolKey(phase.ordinal),
+        invocationKey: toolKey(phase.ordinal, phase.toolAlias),
         proposal: phase.proposal,
       };
     case 'running_tool':
       return {
         kind: 'observe_tool',
-        invocationKey: toolKey(phase.ordinal),
+        invocationKey: toolKey(phase.ordinal, phase.toolAlias),
       };
     case 'approval_wait':
     case 'completion':
       return phase;
   }
 
-  function toolKey(ordinal: number) {
+  function toolKey(ordinal: number, toolAlias: string | undefined) {
     return agentChildInvocationKey(workflowVersionId, parentInvocationKey, {
       turn,
       work: { kind: 'tool_call', ordinal },
+      ...(toolAlias === undefined ? {} : { toolAlias }),
     });
   }
 }

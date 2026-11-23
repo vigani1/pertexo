@@ -90,6 +90,13 @@ entry point, queue, role or worker type.
 
 ## Tests that prove it
 
+New Agent steps use version 3 and can configure several tools with distinct
+aliases. Each proposal uses the selected tool's published setup and approval
+rule. Versions 1 and 2 retain their one-tool configuration.
+
+The live editor proof shows the two-tool setup in [light](evidence/f61/agent-multi-tool-setup-light.png)
+and [dark](evidence/f61/agent-multi-tool-setup-dark.png) themes.
+
 Through the real worker and database, exercise a malicious tool proposal,
 bad arguments, expired and double-submitted approval, connection revocation
 and another workspace's tool target. Prove each limit before further

@@ -2,8 +2,8 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { DescribeStep } from '@/features/catalog/public';
 import type { DataTableFindConfig } from '@pertexo/node-sdk';
 import {
-  agentToolAllowedWithoutApproval,
-  workflowDataTableBinding,
+  agentToolsAllowedWithoutApproval,
+  workflowDataTableBindings,
 } from '@pertexo/workflow-model';
 import {
   branchPorts,
@@ -18,6 +18,10 @@ export type StepLabel = Readonly<{
   agentWriteAllowed?: true;
   branchPorts?: BranchPorts;
   findRowsTable?: Pick<DataTableFindConfig, 'table' | 'tableId'>;
+  agentReadTables?: ReadonlyMap<
+    string,
+    Pick<DataTableFindConfig, 'table' | 'tableId'>
+  >;
 }>;
 
 type GraphLabel = Readonly<{
@@ -41,12 +45,12 @@ export function graphLabels(
       const kind = describe(node.definition).name;
       const label = node.label?.trim();
       const ports = branchPorts(node);
-      const binding = workflowDataTableBinding(node);
+      const tables = findRowsTables(node);
       const connected = {
         ...(ports === undefined ? {} : { branchPorts: ports }),
         definitionKey: node.definition.key,
-        ...(binding?.find === true ? { findRowsTable: binding.config } : {}),
-        ...(agentToolAllowedWithoutApproval(node) === undefined
+        ...tables,
+        ...(agentToolsAllowedWithoutApproval(node).length === 0
           ? {}
           : { agentWriteAllowed: true as const }),
         ...(Object.keys(node.connectionRefs).length > 0
@@ -67,4 +71,19 @@ export function graphLabels(
   };
   if (graph !== undefined) visit({ current: graph, root: true });
   return labels;
+}
+
+function findRowsTables(node: WorkflowGraphContract['nodes'][number]) {
+  const bindings = workflowDataTableBindings(node).filter(({ find }) => find);
+  const first = bindings[0];
+  if (first === undefined) return {};
+  return first.location === 'step'
+    ? { findRowsTable: first.config }
+    : {
+        agentReadTables: new Map(
+          bindings.flatMap(({ toolAlias, config }) =>
+            toolAlias === undefined ? [] : [[toolAlias, config] as const],
+          ),
+        ),
+      };
 }

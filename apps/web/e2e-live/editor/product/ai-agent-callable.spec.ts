@@ -103,9 +103,10 @@ test('pins a callable workflow as an Agent tool and opens its child from the ins
     await expect
       .poll(async () => {
         const { graph } = await readEditorDraft(page, parent);
-        return graph.nodes.find(
+        const tools = graph.nodes.find(
           ({ definition }) => definition.key === 'ai.agent',
-        )?.config.tool;
+        )?.config.tools;
+        return Array.isArray(tools) ? tools[0] : undefined;
       })
       .toMatchObject({
         definition: { key: 'core.call', version: 1 },

@@ -1,5 +1,5 @@
-import { validLegacyToolArguments } from './accept-agent-proposal.js';
-import { type DefinitionIdentity } from '@pertexo/node-sdk';
+import type { DefinitionIdentity } from '@pertexo/node-sdk';
+import { agentToolForAlias } from '../../compilation/agent-tools.js';
 import type { AgentTool } from './agent-scheduler.js';
 import type { AgentContinuation } from '../../control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../control-nodes/resume-agent.js';
@@ -17,7 +17,8 @@ import { operationError } from '../../input-checks/engine-values.js';
 import type { AgentChild } from '../../invocations/agent-invocation.js';
 import type { InvocationState } from '../../workflow-execution.js';
 import { invocationIdentity } from '../status.js';
-import { openAgentApproval, resumeAgentApproval } from './agent-approval.js';
+import { resumeAgentApproval } from './agent-approval.js';
+import { acceptAgentProposal } from './accept-agent-proposal.js';
 import { finishAgentInvocation } from './settle-agent-invocation.js';
 import {
   isTerminalNodeStatus,
@@ -85,7 +86,8 @@ export function advanceAgents(
   for (const parent of state.invocations.values()) {
     if (parent.agentWork !== undefined || isTerminalNodeStatus(parent.status))
       continue;
-    const tool = scheduler.tools.get(parent.nodeId);
+    const tools = scheduler.tools.get(parent.nodeId) ?? [];
+    const tool = tools[0];
     if (tool === undefined) continue;
     let agent = state.agents.get(parent.invocationKey);
     if (agent === undefined && parent.status === 'ready') {
@@ -119,14 +121,17 @@ export function advanceAgents(
       state.agents.set(parent.invocationKey, agent);
     }
     if (agent !== undefined)
-      advanceAgent(state, parent, { agent, tool }, occurredAt);
+      advanceAgent(state, parent, { agent, tools }, occurredAt);
   }
 }
 
 function advanceAgent(
   state: MutableWorkflowTransition,
   parent: InvocationState,
-  { agent, tool }: Readonly<{ agent: AgentContinuation; tool: AgentTool }>,
+  {
+    agent,
+    tools,
+  }: Readonly<{ agent: AgentContinuation; tools: readonly AgentTool[] }>,
   occurredAt: string,
 ) {
   const next = resumeAgent(state.current.workflowVersionId, agent);
@@ -135,6 +140,18 @@ function advanceAgent(
     resumeAgentApproval(state, parent, { agent, phase: next }, occurredAt);
     return;
   }
+  const tool =
+    next.kind === 'model_turn'
+      ? tools[0]
+      : agentToolForAlias(
+          tools,
+          'toolAlias' in agent.phase ? agent.phase.toolAlias : undefined,
+        );
+  if (tool === undefined)
+    operationError(
+      'workflow_identity_invalid',
+      'Agent tool phase has no pinned tool',
+    );
   const child = state.invocations.get(next.invocationKey);
   if (child === undefined) {
     admitAgentWork(state, parent, { agent, tool, next }, occurredAt);
@@ -155,7 +172,7 @@ function advanceAgent(
   settleAgentChild(
     state,
     parent,
-    { agent, tool, child, modelTurn: next.kind === 'model_turn' },
+    { agent, tools, child, modelTurn: next.kind === 'model_turn' },
     occurredAt,
   );
 }
@@ -165,12 +182,12 @@ function settleAgentChild(
   parent: InvocationState,
   {
     agent,
-    tool,
+    tools,
     child,
     modelTurn,
   }: Readonly<{
     agent: AgentContinuation;
-    tool: AgentTool;
+    tools: readonly AgentTool[];
     child: InvocationState;
     modelTurn: boolean;
   }>,
@@ -188,10 +205,14 @@ function settleAgentChild(
         child.output,
       )
     : undefined;
+  const tool =
+    receipt?.kind === 'proposal'
+      ? agentToolForAlias(tools, receipt.call.name)
+      : undefined;
   const decision =
     receipt === undefined
       ? settleAgentTool(agent, { output: child.output })
-      : settleModelReceipt(agent, receipt, tool.alias);
+      : settleModelReceipt(agent, receipt, tool);
   if (decision.kind === 'refused') {
     finishAgentInvocation(state, parent, occurredAt, {
       status: 'failed',
@@ -201,33 +222,14 @@ function settleAgentChild(
   }
   if (
     receipt?.kind === 'proposal' &&
-    decision.agent.phase.kind === 'proposed_call'
-  ) {
-    if (
-      receipt.admission?.kind === 'refused' ||
-      (receipt.admission === undefined &&
-        !validLegacyToolArguments(tool, receipt.call.arguments))
-    ) {
-      finishAgentInvocation(state, parent, occurredAt, {
-        status: 'failed',
-        reasonCode: 'agent.tool_arguments',
-      });
-      return;
-    }
-    if (tool.approval !== undefined) {
-      openAgentApproval(
-        state,
-        child,
-        {
-          agent: decision.agent,
-          phase: decision.agent.phase,
-          config: tool.approval,
-        },
-        occurredAt,
-      );
-      return;
-    }
-  }
+    tool !== undefined &&
+    !acceptAgentProposal(
+      state,
+      { parent, child, agent: decision.agent, tool, receipt },
+      occurredAt,
+    )
+  )
+    return;
   state.agents.set(parent.invocationKey, decision.agent);
   if (decision.agent.phase.kind === 'completion') {
     if (receipt?.kind !== 'final')
@@ -311,7 +313,7 @@ function admitChild(
   state: MutableWorkflowTransition,
   parent: InvocationState,
   {
-    agent: { parentInvocationKey, turn },
+    agent: { parentInvocationKey, turn, phase },
     invocationKey,
     work,
     ...attribution
@@ -324,7 +326,12 @@ function admitChild(
   }>,
   occurredAt: string,
 ) {
-  const agentWork = { parentInvocationKey, turn, work };
+  const agentWork = {
+    parentInvocationKey,
+    turn,
+    work,
+    ...('toolAlias' in phase ? { toolAlias: phase.toolAlias } : {}),
+  };
   const invocation: InvocationState = {
     ...invocationIdentity(parent),
     invocationKey,
@@ -336,6 +343,6 @@ function admitChild(
   state.nodeRunAdmissionKeys.add(invocationKey);
   state.eventDrafts.push({
     ...transitionEvent('node.ready', occurredAt, { invocation }),
-    agentWork: { ...agentWork, ...attribution },
+    agentWork: { parentInvocationKey, turn, work, ...attribution },
   });
 }

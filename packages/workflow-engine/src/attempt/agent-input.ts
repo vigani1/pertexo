@@ -1,5 +1,6 @@
 import {
   AGENT_TOOL_LIMITS,
+  AGENT_STEP_V3,
   validateCallableValue,
   inspectJsonValue,
   type JsonValue,
@@ -8,7 +9,10 @@ import type { DefinitionIdentity } from '@pertexo/node-sdk';
 import { parseStoredAgentTurn } from '../control-nodes/agent-model-receipt.js';
 import type { AgentWorkIdentity } from '../invocations/agent-invocation.js';
 import { isJsonRecord, operationError } from '../input-checks/engine-values.js';
-import { executableAgentTool } from '../compilation/verified-executable.js';
+import {
+  executableAgentTool,
+  executableAgentTools,
+} from '../compilation/verified-executable.js';
 import type { NodeAttemptInputSource } from './node-attempt.types.js';
 
 export type AgentAttemptInput = Readonly<{
@@ -21,16 +25,26 @@ export function resolveAgentAttemptInput(
   input: Pick<NodeAttemptInputSource, 'agent' | 'executable' | 'nodeId'>,
   mapped: JsonValue,
 ): Readonly<{ value: JsonValue; admitted?: true }> {
-  const pinned = executableAgentTool(input.executable, input.nodeId);
-  if (input.agent === undefined || pinned === undefined)
-    return { value: mapped };
+  if (input.agent === undefined) return { value: mapped };
   const { identity, history, proposal } = input.agent;
+  const tools = executableAgentTools(input.executable, input.nodeId);
   if (identity.work.kind === 'tool_call') {
     const { proposal: call, admission } = acceptedProposal(proposal);
+    const pinned = executableAgentTool(
+      input.executable,
+      input.nodeId,
+      identity.toolAlias,
+    );
+    if (pinned === undefined || pinned.alias !== call.name)
+      operationError(
+        'attempt_invalid',
+        'Agent tool invocation disagrees with its proposal',
+      );
+    if (admission?.kind === 'refused')
+      operationError('attempt_invalid', 'Agent tool proposal was refused');
     if (admission?.kind === 'accepted')
       return { value: admission.input, admitted: true };
     if (
-      call.name !== pinned.alias ||
       Object.keys(call.arguments).some(
         (field) => !pinned.policy.inputFields.includes(field),
       )
@@ -41,30 +55,50 @@ export function resolveAgentAttemptInput(
       );
     return { value: toolInput(pinned, call.arguments) };
   }
-  const { inputSchema, policy } = pinned;
-  const properties = inputSchema.properties;
-  if (!isJsonRecord(properties) || !isJsonRecord(mapped))
+  const first = tools[0];
+  if (first === undefined || !isJsonRecord(mapped))
     operationError('attempt_invalid', 'Agent tool input schema is missing');
   return {
     value: {
       ...mapped,
-      toolSchema:
-        pinned.callable === undefined
-          ? {
-              type: 'object',
-              properties: Object.fromEntries(
-                Object.entries(properties).filter(([name]) =>
-                  policy.inputFields.includes(name),
-                ),
-              ),
-              additionalProperties: false,
-            }
-          : inputSchema,
-      history: history.map(({ proposal: saved, result }) => ({
-        call: acceptedProposal(saved).proposal,
-        result: disclosedResult(result, policy.result),
-      })),
+      ...(first.agentDefinition.version === AGENT_STEP_V3.version
+        ? {
+            tools: tools.map((tool) => ({
+              name: tool.alias,
+              description: tool.description,
+              inputSchema: proposalSchema(tool),
+            })),
+          }
+        : { toolSchema: proposalSchema(first) }),
+      history: history.map(({ proposal: saved, result }) => {
+        const { proposal: call } = acceptedProposal(saved);
+        const tool = executableAgentTool(
+          input.executable,
+          input.nodeId,
+          call.name,
+        );
+        if (tool === undefined)
+          operationError('attempt_invalid', 'Agent history has no pinned tool');
+        return { call, result: disclosedResult(result, tool.policy.result) };
+      }),
     },
+  };
+}
+
+function proposalSchema(tool: AgentTool): JsonValue {
+  const { inputSchema, policy } = tool;
+  if (tool.callable !== undefined) return inputSchema;
+  const properties = inputSchema.properties;
+  if (!isJsonRecord(properties))
+    operationError('attempt_invalid', 'Agent tool input schema is missing');
+  return {
+    type: 'object',
+    properties: Object.fromEntries(
+      Object.entries(properties).filter(([name]) =>
+        policy.inputFields.includes(name),
+      ),
+    ),
+    additionalProperties: false,
   };
 }
 
@@ -129,7 +163,11 @@ export function withAgentProposalAdmission(
   )
     return output;
   const { proposal } = acceptedProposal(output);
-  const tool = executableAgentTool(input.executable, input.nodeId);
+  const tool = executableAgentTool(
+    input.executable,
+    input.nodeId,
+    proposal.name,
+  );
   const allowed =
     tool?.alias === proposal.name &&
     Object.keys(proposal.arguments).every((field) =>

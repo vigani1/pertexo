@@ -1,6 +1,7 @@
 import {
   propertyDefaults,
   AGENT_FIND_ROWS,
+  AGENT_STEP_V3,
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_LIMITS,
@@ -9,6 +10,8 @@ import {
   WORKFLOW_CALL,
 } from '@pertexo/workflow-model';
 import { formatByteSize } from '@pertexo/node-sdk';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Disclosure } from '@/components/ui/disclosure';
 import { formatCount } from '@/lib/format/count';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
@@ -28,7 +31,13 @@ import { useInspectorSession } from '../use-session';
 import { DataTableSetup } from './table-setup';
 import { ChoiceSelect } from '../fields/choice-select';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { agentTools, configuredAgentTool } from '../../../model/agent-tool';
+import {
+  agentDraftTools,
+  agentTools,
+  configuredAgentTool,
+  retainedAgentConnections,
+  toolFormAt,
+} from '../../../model/agent-tool';
 import { AgentCallableSetup } from './agent-callable-setup';
 import { AgentApprovalSetup } from './agent-approval-setup';
 
@@ -46,7 +55,7 @@ export function AgentSetup({
   schema: unknown;
   config: NodeConfig;
   form: NodeFormApi;
-  agentVersion: 1 | 2;
+  agentVersion: 1 | 2 | 3;
 }>) {
   const deadline =
     typeof config.timeoutMillis === 'number'
@@ -64,12 +73,16 @@ export function AgentSetup({
         form={form}
         jsonOnlySettings={false}
       />
-      <AgentToolSetup
-        schema={schema}
-        config={config}
-        form={form}
-        agentVersion={agentVersion}
-      />
+      {agentVersion === AGENT_STEP_V3.version ? (
+        <AgentToolList schema={schema} config={config} form={form} />
+      ) : (
+        <AgentToolSetup
+          schema={schema}
+          config={config}
+          form={form}
+          agentVersion={agentVersion}
+        />
+      )}
       <p className="text-sm text-muted-foreground">
         The mapped task and input, tool schemas and bounded tool results enter
         the model request.
@@ -95,6 +108,100 @@ export function AgentSetup({
   );
 }
 
+function AgentToolList({
+  schema,
+  config,
+  form,
+}: Readonly<{
+  schema: unknown;
+  config: NodeConfig;
+  form: NodeFormApi;
+}>) {
+  const tools = agentDraftTools(config);
+  const listed = tools.length === 0 ? [{}] : tools;
+  const [selected, select] = useState(0);
+  const index = Math.min(selected, listed.length - 1);
+  const replaceTools = (next: readonly NodeConfig[]) => {
+    form.commit(
+      (node) => ({
+        config: withConfigValue(node.config, 'tools', next),
+        connectionRefs: retainedAgentConnections(node.connectionRefs, next),
+      }),
+      'agent-tools',
+    );
+  };
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-semibold">Agent tools</h3>
+        <ul className="flex flex-wrap gap-2" aria-label="Agent tools">
+          {listed.map((tool, indexInList) => {
+            const choice = configuredAgentTool(
+              { tool },
+              agentTools(AGENT_STEP_V3.version),
+            );
+            const label =
+              typeof tool.alias === 'string' && tool.alias !== ''
+                ? tool.alias
+                : choice.label;
+            return (
+              <li key={indexInList}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={indexInList === index ? 'default' : 'outline'}
+                  aria-pressed={indexInList === index}
+                  onClick={() => select(indexInList)}
+                >
+                  {label}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+        {form.editable ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={listed.length >= AGENT_TOOL_LIMITS.tools}
+              onClick={() => {
+                replaceTools([...listed, {}]);
+                select(listed.length);
+              }}
+            >
+              Add tool
+            </Button>
+            {listed.length > 1 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  replaceTools(
+                    listed.filter((_, position) => position !== index),
+                  );
+                  select(Math.max(0, index - 1));
+                }}
+              >
+                Remove tool
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <AgentToolSetup
+        key={index}
+        schema={schema}
+        config={{ ...config, tool: listed[index] ?? {} }}
+        form={toolFormAt(form, index)}
+        agentVersion={AGENT_STEP_V3.version}
+      />
+    </>
+  );
+}
+
 function AgentToolSetup({
   schema,
   config,
@@ -104,7 +211,7 @@ function AgentToolSetup({
   schema: unknown;
   config: NodeConfig;
   form: NodeFormApi;
-  agentVersion: 1 | 2;
+  agentVersion: 1 | 2 | 3;
 }>) {
   const { callScope, definitions } = useInspectorSession();
   const tools = agentTools(agentVersion);
@@ -243,7 +350,12 @@ function AgentToolSetup({
 
 function agentToolSchemas(schema: unknown): readonly unknown[] {
   const properties = isRecord(schema) ? schema.properties : undefined;
-  const tool = isRecord(properties) ? properties.tool : undefined;
+  const many = isRecord(properties) ? properties.tools : undefined;
+  const tool = isRecord(many)
+    ? many.items
+    : isRecord(properties)
+      ? properties.tool
+      : undefined;
   return isRecord(tool) && Array.isArray(tool.anyOf)
     ? (tool.anyOf as unknown[])
     : [];

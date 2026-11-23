@@ -2,7 +2,8 @@ import type { PoolClient } from 'pg';
 
 import {
   approvalConfigSchema,
-  agentConfigSchema,
+  AGENT_STEP_V3,
+  readAgentConfig,
   inputRequestConfigSchema,
   InvalidWorkflowGraphError,
   isHumanTaskDefinition,
@@ -31,10 +32,9 @@ export async function validateApprovalAudience(
           nodes: node.structured.body.nodes,
           path: `${path}.structured.body`,
         });
-      const task = taskAudience(node);
-      if (task === undefined) continue;
-      for (const id of task.audience.memberIds)
-        members.set(id, [...(members.get(id) ?? []), `${path}.${task.path}`]);
+      for (const task of taskAudiences(node))
+        for (const id of task.audience.memberIds)
+          members.set(id, [...(members.get(id) ?? []), `${path}.${task.path}`]);
     }
   if (members.size === 0) return;
   const result = await shareLockActiveMembers(client, workspaceId, [
@@ -54,23 +54,30 @@ export async function validateApprovalAudience(
   if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);
 }
 
-function taskAudience(node: WorkflowNode) {
-  if (isAgentDefinition(node.definition)) {
-    const settings = agentConfigSchema.safeParse(node.config);
-    if (!settings.success) return undefined;
-    const { tool } = settings.data;
-    if ('writePermission' in tool && tool.writePermission.kind === 'approval')
-      return {
-        audience: tool.writePermission.config.audience,
-        path: 'config.tool.writePermission.config.audience.memberIds',
-      };
-    return undefined;
-  }
-  if (!isHumanTaskDefinition(node.definition)) return undefined;
+function taskAudiences(node: WorkflowNode) {
+  if (isAgentDefinition(node.definition))
+    return (readAgentConfig(node)?.tools ?? []).flatMap((tool, index) => {
+      if (
+        !('writePermission' in tool) ||
+        tool.writePermission.kind !== 'approval'
+      )
+        return [];
+      const path =
+        node.definition.version === AGENT_STEP_V3.version
+          ? `tools[${String(index)}]`
+          : 'tool';
+      return [
+        {
+          audience: tool.writePermission.config.audience,
+          path: `config.${path}.writePermission.config.audience.memberIds`,
+        },
+      ];
+    });
+  if (!isHumanTaskDefinition(node.definition)) return [];
   const { audience } = (
     node.definition.key === 'core.approval'
       ? approvalConfigSchema
       : inputRequestConfigSchema
   ).parse(node.config);
-  return { audience, path: 'config.audience.memberIds' };
+  return [{ audience, path: 'config.audience.memberIds' }];
 }

@@ -1,3 +1,4 @@
+import { agentDraftTools, hasSlackAgentTool } from '../../../model/agent-tool';
 import { useInspectorSession } from '../use-session';
 import { GuardrailsSetup } from '../builders/guardrails-setup';
 import { RunValuesSetup } from '../run-values/setup';
@@ -13,11 +14,9 @@ import { useMemo, useState } from 'react';
 import {
   DATABASE_POLL_TRIGGER,
   AGENT_STEP,
-  AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
   isPollingTriggerDefinition,
   isGuardrailsDefinition,
-  isRecord,
 } from '@pertexo/workflow-model';
 import {
   databasePollingGuidance,
@@ -96,10 +95,7 @@ function CatalogSetupTab({
   const onlyJson = definition === undefined;
   const showJson = onlyJson || jsonMode;
   const agent = node.definition.key === AGENT_STEP.key;
-  const sendsSlack =
-    isRecord(node.config.tool) &&
-    isRecord(node.config.tool.definition) &&
-    node.config.tool.definition.key === AGENT_SEND_SLACK_MESSAGE.key;
+  const sendsSlack = agent && hasSlackAgentTool(agentDraftTools(node.config));
   const slots = (definition?.connectionRequirements ?? []).filter(
     (slot) =>
       !isGuardrailsDefinition(node.definition) &&
