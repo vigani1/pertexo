@@ -83,21 +83,18 @@ export function modelEndpointHost(credential: ModelCredential): string {
   return new URL(modelEndpoint(credential, 'models')).host;
 }
 
-const anthropicHeaders = { 'anthropic-version': '2023-06-01' } as const;
+export function modelProtocolHeaders(
+  credential: ModelCredential,
+): Readonly<Record<string, string>> {
+  return credential.endpoint === 'anthropic'
+    ? { 'anthropic-version': '2023-06-01' }
+    : {};
+}
 
 function modelAuth(credential: ModelCredential) {
   return credential.endpoint === 'anthropic'
     ? ({ kind: 'named_header', name: 'x-api-key', field: 'apiKey' } as const)
     : ({ kind: 'bearer', field: 'apiKey' } as const);
-}
-
-export function modelHeaders(
-  credential: ModelCredential,
-): Readonly<Record<string, string>> {
-  const auth = modelAuth(credential);
-  return auth.kind === 'named_header'
-    ? { ...anthropicHeaders, [auth.name]: credential[auth.field] }
-    : { authorization: `Bearer ${credential[auth.field]}` };
 }
 
 export const MODEL_CONNECTION = {
@@ -130,7 +127,7 @@ export const MODEL_CONNECTION = {
     target: {
       resolve: (credential: ModelCredential) => ({
         url: modelEndpoint(credential, 'models'),
-        headers: credential.endpoint === 'anthropic' ? anthropicHeaders : {},
+        headers: modelProtocolHeaders(credential),
       }),
     },
     success: {

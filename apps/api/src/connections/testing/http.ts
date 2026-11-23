@@ -1,11 +1,15 @@
-import { readJsonPointer } from '@pertexo/integrations/server';
+import {
+  applyHttpAuth,
+  credentialText,
+  readJsonPointer,
+} from '@pertexo/integrations/server';
 import { HttpStatus } from '@nestjs/common';
 import type {
   ConnectionTestRequest,
   ParsedConnectionCredential,
 } from '@pertexo/contracts';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
-import { isRecord, type ConnectionTestOutcome } from '@pertexo/workflow-model';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import { connectionTestProviderKey } from '../management/connection-serialization.js';
 import type { ConnectionHttpClient } from '../ports.js';
 import type { decodeCredential } from './credentials.js';
@@ -45,7 +49,8 @@ export async function testHttpConnection(
       ? request.url
       : recipe.target;
   if (url === 'entered_url') throw new ConnectionSecretEncryptionError();
-  const applied = applyAuth(url, auth, credential);
+  const invalidCredential = () => new ConnectionSecretEncryptionError();
+  const applied = applyHttpAuth(url, auth, credential, invalidCredential);
   const headers = { ...recipe.headers, ...applied.headers };
   const body = recipe.body;
   if (body !== undefined)
@@ -62,7 +67,7 @@ export async function testHttpConnection(
             ...Object.fromEntries(
               Object.entries(body.credentialFields).map(([key, field]) => [
                 key,
-                credentialText(credential, field),
+                credentialText(credential, field, invalidCredential),
               ]),
             ),
           }),
@@ -87,78 +92,6 @@ export async function testHttpConnection(
   } finally {
     bytes?.fill(0);
   }
-}
-
-function applyAuth(
-  url: string,
-  auth: DecodedCredential['auth'],
-  credential: ParsedConnectionCredential,
-): Pick<
-  Parameters<ConnectionHttpClient['execute']>[0],
-  'url' | 'headers' | 'sensitiveValues'
-> {
-  switch (auth.kind) {
-    case 'header_map': {
-      const fields: Readonly<Record<string, unknown>> = credential;
-      const headers = fields[auth.field];
-      if (!isRecord(headers)) throw new ConnectionSecretEncryptionError();
-      const entries = Object.entries(headers).map(([key, value]) => {
-        if (typeof value !== 'string')
-          throw new ConnectionSecretEncryptionError();
-        return [key, value] as const;
-      });
-      return {
-        url,
-        headers: Object.fromEntries(entries),
-        sensitiveValues: entries.map(([, value]) => value),
-      };
-    }
-    case 'named_header': {
-      const value = credentialText(credential, auth.field);
-      return { url, headers: { [auth.name]: value }, sensitiveValues: [value] };
-    }
-    case 'query': {
-      const value = credentialText(credential, auth.field);
-      const target = new URL(url);
-      target.searchParams.set(auth.name, value);
-      return { url: target.href, sensitiveValues: [value] };
-    }
-    case 'basic': {
-      const username = credentialText(credential, auth.username);
-      const password = credentialText(credential, auth.password);
-      const bytes = Buffer.from(`${username}:${password}`);
-      const encoded = bytes.toString('base64');
-      bytes.fill(0);
-      return {
-        url,
-        headers: { authorization: `Basic ${encoded}` },
-        sensitiveValues: [username, password, encoded],
-      };
-    }
-    case 'bearer': {
-      const token = credentialText(credential, auth.field);
-      return {
-        url,
-        headers: { authorization: `Bearer ${token}` },
-        sensitiveValues: [token],
-      };
-    }
-    case 'oauth2':
-    case 'postgres':
-    case 'signing':
-    case 'smtp':
-      throw new ConnectionSecretEncryptionError();
-  }
-}
-
-function credentialText(
-  credential: ParsedConnectionCredential,
-  key: string,
-): string {
-  const fields: Readonly<Record<string, unknown>> = credential;
-  const value = fields[key];
-  if (typeof value !== 'string') throw new ConnectionSecretEncryptionError();
-  return value;
 }
 
 function httpTestOutcome(

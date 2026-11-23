@@ -5,6 +5,7 @@ import {
   classifySecureHttpError,
   classifySecureHttpResponse,
 } from '../http/outcome-policy.js';
+import { applyHttpAuth } from '../providers/http-auth.js';
 import type { ProviderHttpClient } from '../providers/http-client.js';
 import {
   inspectProviderHttpError,
@@ -12,8 +13,9 @@ import {
 } from '../providers/http.errors.js';
 import { chatCompletions } from './chat-completions.js';
 import {
+  MODEL_CONNECTION,
   modelEndpoint,
-  modelHeaders,
+  modelProtocolHeaders,
   type ModelCredential,
 } from './connections.definition.js';
 import { messages } from './messages.js';
@@ -64,11 +66,21 @@ export function createModelClient(
           throw modelFailure('request_too_large', {
             possiblyDispatched: dispatched,
           });
+        const auth = applyHttpAuth(
+          modelEndpoint(credential, adapter.path),
+          MODEL_CONNECTION.auth.resolve(credential),
+          credential,
+          () =>
+            modelFailure('credential_rejected', {
+              possiblyDispatched: dispatched,
+            }),
+        );
         const response = await http.executeStreaming(
           {
-            url: modelEndpoint(credential, adapter.path),
+            ...auth,
             headers: {
-              ...modelHeaders(credential),
+              ...modelProtocolHeaders(credential),
+              ...auth.headers,
               'content-type': 'application/json',
             },
             method: 'POST',
@@ -77,7 +89,6 @@ export function createModelClient(
             signal,
             maxRedirects: 0,
             maxResponseBytes: MODEL_LIMITS.responseBytes,
-            sensitiveValues: [credential.apiKey],
             rejectSensitiveResponse: true,
             beforeDispatch: async () => {
               await beforeDispatch();
