@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { PERTEXO_HOST_RELEASE } from '@pertexo/node-sdk/server';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import {
   connectionFormCatalog,
@@ -21,7 +22,7 @@ const release = {
   publisher: 'example',
   integration: 'weather',
   version: '1.0.0',
-  hostRelease: { min: '0.2.0', below: '0.3.0' },
+  hostRelease: { min: '0.0.0', below: '999.0.0' },
   origin: 'https://weather.example.com',
   presentation: {
     name: 'Weather',
@@ -125,8 +126,8 @@ it.each([
   ],
   [
     'incompatible host range',
-    { ...release, hostRelease: { min: '0.1.0', below: '0.2.0' } },
-    /community\.example\.weather@1\.0\.0.*\[0\.1\.0, 0\.2\.0\).*0\.2\.0/u,
+    { ...release, hostRelease: { min: '0.0.0', below: PERTEXO_HOST_RELEASE } },
+    `community.example.weather@1.0.0 has incompatible host range [0.0.0, ${PERTEXO_HOST_RELEASE}) for host ${PERTEXO_HOST_RELEASE}`,
   ],
   [
     'slot reference without a connection',
