@@ -28,11 +28,25 @@ export async function inspectCandidate(
   if (base.revision !== input.expectedRevision)
     throw new WorkflowRevisionConflictError(base.revision, representationTag);
   try {
-    await admitDraftCandidate(client, input, {
+    const refusal = await admitDraftCandidate(client, input, {
       previous: base.graphJson,
       graph: input.graph,
       catalog: catalogs.placementDefinitionCatalog,
     });
+    if (refusal !== undefined)
+      return {
+        kind: 'rejected' as const,
+        issues: [
+          {
+            code: 'invalid_graph' as const,
+            path: refusal.path,
+            message:
+              refusal.kind === 'malformed'
+                ? 'The attachment reference is malformed.'
+                : 'The attachment is unavailable.',
+          },
+        ],
+      };
   } catch (error) {
     if (
       error instanceof WorkflowDefinitionPlacementError ||
@@ -57,9 +71,7 @@ export async function inspectCandidate(
     draft,
     validation: publication.validation,
     graphIssues:
-      publication.kind === 'refused' && publication.issueSource === 'graph'
-        ? publication.validation.issues
-        : [],
+      publication.kind === 'graph_refused' ? publication.validation.issues : [],
     representationTag,
   };
 }

@@ -13,6 +13,7 @@ type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type StepChangeAspect =
   | 'label'
   | 'setup'
+  | 'configVersion'
   | 'inputs'
   | 'connections'
   | 'enabled'
@@ -31,11 +32,14 @@ export type WorkflowGraphDiff = Readonly<{
   removed: readonly WorkflowNode[];
   changed: readonly ChangedStep[];
   notes: readonly NoteChange[];
+  addedLinks: readonly LinkEndpoints[];
+  removedLinks: readonly LinkEndpoints[];
   linksAdded: number;
   linksRemoved: number;
 }>;
 
 type GraphEdge = WorkflowGraphContract['edges'][number];
+type LinkEndpoints = Pick<GraphEdge, 'source' | 'target'>;
 type GraphLevel = Readonly<{
   nodes: readonly WorkflowNode[];
   edges?: readonly GraphEdge[];
@@ -101,10 +105,23 @@ export function diffWorkflowGraphs(
     if (aspects.length > 0)
       changed.push({ before: previous.node, after: node, aspects });
   }
-  const edgeKey = (edge: GraphEdge) =>
+  const edgeKey = (edge: LinkEndpoints) =>
     `${edge.source.nodeId}\u0000${edge.source.port}\u0000${edge.target.nodeId}\u0000${edge.target.port}`;
-  const beforeEdges = new Set(graphLinks(before).map(edgeKey));
-  const afterEdges = new Set(graphLinks(after).map(edgeKey));
+  const byEndpoints = (graph: WorkflowGraphContract) =>
+    new Map(
+      graphLinks(graph).map(({ source, target }) => [
+        edgeKey({ source, target }),
+        { source, target },
+      ]),
+    );
+  const beforeEdges = byEndpoints(before);
+  const afterEdges = byEndpoints(after);
+  const addedLinks = [...afterEdges].flatMap(([key, link]) =>
+    beforeEdges.has(key) ? [] : [link],
+  );
+  const removedLinks = [...beforeEdges].flatMap(([key, link]) =>
+    afterEdges.has(key) ? [] : [link],
+  );
   return {
     added,
     notes: diffNotes(before, after),
@@ -112,8 +129,10 @@ export function diffWorkflowGraphs(
       .map(({ node }) => node)
       .filter((node) => !afterIds.has(node.id)),
     changed,
-    linksAdded: [...afterEdges].filter((key) => !beforeEdges.has(key)).length,
-    linksRemoved: [...beforeEdges].filter((key) => !afterEdges.has(key)).length,
+    addedLinks,
+    removedLinks,
+    linksAdded: addedLinks.length,
+    linksRemoved: removedLinks.length,
   };
 }
 
@@ -134,6 +153,8 @@ function changedAspects(
     before.definition.version !== after.definition.version
   )
     aspects.push('type');
+  if (before.configVersion !== after.configVersion)
+    aspects.push('configVersion');
   if ((before.label ?? '') !== (after.label ?? '')) aspects.push('label');
   if (
     !sameJson(before.config, after.config) ||
@@ -162,6 +183,7 @@ function sameJson(left: unknown, right: unknown): boolean {
 const ASPECT_WORDS: Readonly<Record<StepChangeAspect, string>> = {
   label: 'renamed',
   setup: 'setup',
+  configVersion: 'configuration version',
   inputs: 'inputs',
   connections: 'connection',
   enabled: 'turned on or off',

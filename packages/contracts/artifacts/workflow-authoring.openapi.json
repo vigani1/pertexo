@@ -12663,6 +12663,7 @@
                   "confirmation_changed",
                   "timeout",
                   "response_too_large",
+                  "request_too_large",
                   "invalid_response",
                   "provider_failure"
                 ]
@@ -15198,9 +15199,21 @@
                 "type": "string",
                 "enum": [
                   "not_configured",
-                  "run_not_failed",
                   "connection_unavailable"
                 ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "run_not_failed"
               }
             },
             "required": [
@@ -15264,9 +15277,21 @@
                 "type": "string",
                 "enum": [
                   "not_configured",
-                  "run_not_failed",
                   "connection_unavailable"
                 ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "run_not_failed"
               }
             },
             "required": [

@@ -115,7 +115,7 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant,
   );
-  if (inspected.kind === 'refused') throw inspected.error;
+  if (inspected.kind !== 'ready') throw inspected.error;
   return inspected.publication;
 }
 

@@ -27,6 +27,7 @@ const outcomeCopy = {
   confirmation_changed:
     'The draft or assistant settings changed. Review the disclosure again.',
   timeout: 'The model request timed out.',
+  request_too_large: 'This draft is too large to send to the AI assistant.',
   response_too_large: 'The proposal exceeded the size limit.',
   invalid_response: 'The model returned an unreadable proposal.',
   provider_failure: 'The AI provider could not complete the request.',

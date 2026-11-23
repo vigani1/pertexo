@@ -446,6 +446,7 @@ export {
 } from './values/variables/workspace-variable.schemas.js';
 
 // Authoring
+export { placeableDefinitions } from './authoring/setup/placeable-definitions.js';
 export { startingConfig } from './authoring/setup/starting-config.js';
 export {
   isJsonObject,

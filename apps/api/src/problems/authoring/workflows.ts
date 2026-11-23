@@ -178,11 +178,12 @@ export const workflowProblems = [
     });
   }),
   errorRegistration(InvalidWorkflowGraphError, (error) => {
-    if (
-      error.issues.some(
-        (issue) => !apiProblemIssueSchema.safeParse(issue).success,
-      )
-    )
+    const issues = error.issues.map(({ path, code, message }) => ({
+      path,
+      code,
+      message,
+    }));
+    if (issues.some((issue) => !apiProblemIssueSchema.safeParse(issue).success))
       // Not the error itself: its issues hold what the person wrote, which stays
       // out of the log.
       return validationUnavailable(
@@ -190,7 +191,7 @@ export const workflowProblems = [
       );
     return applicationError('workflow.invalid', {
       safeDetail: 'The workflow cannot be published in its current form.',
-      details: { issues: error.issues },
+      details: { issues },
     });
   }),
   errorRegistration(WorkflowEngineError, (error) => {

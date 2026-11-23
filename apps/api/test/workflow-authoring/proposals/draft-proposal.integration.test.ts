@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -13,6 +14,7 @@ import {
 } from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { ASSISTANT_TIMEOUT_MILLIS } from '../../../src/workflow-authoring/assistant-inference.js';
+import { proposalAdmissionCases } from './proposal-admission.cases.js';
 import { proposalCorrectionCases } from './proposal-correction.cases.js';
 import { createNodeProviderHttpClient } from '../../../src/platform/connections/http-client.js';
 import {
@@ -64,6 +66,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
   });
   const api = useBetterAuthRealApi('draft_proposal', {
+    codeSettings: { ...DEFAULT_CODE_SETTINGS, enabled: false },
     connections: {
       config: { kmsKeyReference: 'local-inference', region: 'us-east-1' },
       services: () => ({
@@ -145,6 +148,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   let workspace: string;
   let correctionOwner: Browser;
   let correctionWorkspace: string;
+  let admissionOwner: Browser;
+  let admissionWorkspace: string;
 
   beforeAll(async () => {
     await new Promise<void>((resolve) =>
@@ -164,6 +169,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       );
     correctionOwner = (await newUser()).browser;
     correctionWorkspace = (await workspaceFor(correctionOwner)).path;
+    admissionOwner = (await newUser()).browser;
+    admissionWorkspace = (await workspaceFor(admissionOwner)).path;
   });
 
   async function workspaceFor(browser: Browser) {
@@ -280,6 +287,17 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect((await draft(path)).payload).toBe(base.payload);
   });
 
+  proposalAdmissionCases({
+    workflow: () => workflow(admissionWorkspace, admissionOwner),
+    propose: (path, script) => propose(path, script, admissionOwner),
+    draft: (path) => draft(path, admissionOwner),
+    save: (path, etag, graph) => save(path, etag, graph, admissionOwner),
+    requests,
+    manual,
+    httpRequest,
+    httpWorkflow,
+  });
+
   it('checks publication rules and does not apply a reviewed proposal after another save', async () => {
     const path = await workflow();
     const original = await draft(path);
@@ -327,7 +345,11 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       ...httpWorkflow,
       nodes: [
         manual,
-        { ...httpRequest, config: { url: 'https://orders.example.test' } },
+        {
+          ...httpRequest,
+          configVersion: 99,
+          config: { url: 'https://orders.example.test' },
+        },
       ],
     };
     const result = await propose(path, [
@@ -342,6 +364,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
             { id: manual.id },
             {
               id: httpRequest.id,
+              configVersion: 1,
               config: { method: 'GET', url: 'https://orders.example.test' },
             },
           ],
@@ -486,14 +509,14 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     return `${path}/workflows/${workflowCreateResponseSchema.parse(result.json()).workflow.id}`;
   }
 
-  function draft(path: string) {
-    return api.send('GET', `${path}/draft`, { browser: owner });
+  function draft(path: string, browser = owner) {
+    return api.send('GET', `${path}/draft`, { browser });
   }
 
-  function save(path: string, etag: unknown, graph: unknown) {
+  function save(path: string, etag: unknown, graph: unknown, browser = owner) {
     expect(typeof etag).toBe('string');
     return api.send('PUT', `${path}/draft`, {
-      browser: owner,
+      browser,
       headers: { 'If-Match': String(etag) },
       payload: { graph },
     });

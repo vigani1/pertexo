@@ -1,3 +1,4 @@
+import { placeableDefinitions } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { Table2Icon, WaypointsIcon } from 'lucide-react';
 import {
@@ -90,28 +91,6 @@ const BUNDLES: readonly BundleRule[] = Object.freeze([
     place: 'last',
   },
 ]);
-
-/**
- * One definition per step type, the way people pick steps: the catalog can
- * list several versions of a key, and a new step uses the highest one. The
- * result keeps the catalog's order of first appearance.
- */
-export function placeableDefinitions(
-  definitions: readonly NodeDefinitionCatalogItem[],
-): readonly NodeDefinitionCatalogItem[] {
-  const chosen = new Map<string, NodeDefinitionCatalogItem>();
-  for (const candidate of definitions) {
-    if (candidate.presentation?.community?.retained) continue;
-    const key = candidate.definition.key;
-    const current = chosen.get(key);
-    if (
-      current === undefined ||
-      candidate.definition.version > current.definition.version
-    )
-      chosen.set(key, candidate);
-  }
-  return [...chosen.values()];
-}
 
 /**
  * Placeable steps grouped under human headings and filtered by a search over

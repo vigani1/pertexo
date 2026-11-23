@@ -29,10 +29,9 @@ type PublicationInspection =
       publication: CompiledPublication;
     }>
   | Readonly<{
-      kind: 'refused';
+      kind: 'graph_refused' | 'resource_refused';
       validation: Extract<GraphValidationResult, { ok: false }>;
       error: InvalidWorkflowGraphError | WorkflowEngineError;
-      issueSource: 'graph' | 'resources';
     }>;
 
 /** Inspect the saved graph against current resources before producing an immutable publication. */
@@ -56,13 +55,12 @@ export async function compilePublicationGraph(
   );
   if (!validation.ok)
     return {
-      kind: 'refused',
+      kind: 'graph_refused',
       validation,
       error: new InvalidWorkflowGraphError(validation.issues),
-      issueSource: 'graph',
     };
-  let issueSource: 'graph' | 'resources' = 'graph';
-  try {
+
+  const parsed = await inspectPhase('graph_refused', validation, () => {
     const parsedGraph = parseWorkflowGraphForPublish(
       graphJson,
       variant.definitionCatalog,
@@ -73,11 +71,15 @@ export async function compilePublicationGraph(
     );
     if (settingsIssues.length > 0)
       throw new InvalidWorkflowGraphError(settingsIssues);
-    issueSource = 'resources';
+    return parsedGraph;
+  });
+  if (parsed.kind !== 'ready') return parsed;
+
+  const bound = await inspectPhase('resource_refused', validation, async () => {
     const tables = await bindPublicationTables(
       client,
       input.workspaceId,
-      parsedGraph,
+      parsed.value,
     );
     if (tables.kind === 'refused')
       throw new InvalidWorkflowGraphError(tables.issues);
@@ -97,36 +99,61 @@ export async function compilePublicationGraph(
       graph,
       input.actorId,
     );
-    // Injected compilers return unknown executable JSON, so this is its boundary.
-    issueSource = 'graph';
-    const executable = executableSchema.parse(
-      variant.executableCompiler(graph),
-    );
-    issueSource = 'resources';
-    const versionId = generatePersistedId();
-    const { calls } = await validatePublicationCalls(
-      client,
-      {
-        workspaceId: input.workspaceId,
-        workflowId: input.workflowId,
-        workflowVersionId: versionId,
-        executableChecksum: executable.checksum,
-      },
-      graph,
-      validation.expandedInvocations,
-    );
-    return {
-      kind: 'ready',
-      validation,
-      publication: Object.freeze({
-        versionId,
-        calls,
-        checksum: executable.checksum,
-        definitionCatalog: variant.definitionCatalog,
-        executable,
+    return graph;
+  });
+  if (bound.kind !== 'ready') return bound;
+
+  const { value: graph } = bound;
+  // Injected compilers return unknown executable JSON.
+  const compiled = await inspectPhase('graph_refused', validation, () =>
+    executableSchema.parse(variant.executableCompiler(graph)),
+  );
+  if (compiled.kind !== 'ready') return compiled;
+
+  const { value: executable } = compiled;
+  const dependencies = await inspectPhase(
+    'resource_refused',
+    validation,
+    async () => {
+      const versionId = generatePersistedId();
+      const { calls } = await validatePublicationCalls(
+        client,
+        {
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          workflowVersionId: versionId,
+          executableChecksum: executable.checksum,
+        },
         graph,
-      }),
-    };
+        validation.expandedInvocations,
+      );
+      return { versionId, calls };
+    },
+  );
+  if (dependencies.kind !== 'ready') return dependencies;
+
+  return {
+    kind: 'ready',
+    validation,
+    publication: Object.freeze({
+      ...dependencies.value,
+      checksum: executable.checksum,
+      definitionCatalog: variant.definitionCatalog,
+      executable,
+      graph,
+    }),
+  };
+}
+
+type PublicationRefusal = Exclude<PublicationInspection, { kind: 'ready' }>;
+
+async function inspectPhase<T>(
+  kind: PublicationRefusal['kind'],
+  validation: Extract<GraphValidationResult, { ok: true }>,
+  inspect: () => T | Promise<T>,
+): Promise<{ kind: 'ready'; value: T } | PublicationRefusal> {
+  try {
+    return { kind: 'ready', value: await inspect() };
   } catch (error) {
     if (
       !(error instanceof InvalidWorkflowGraphError) &&
@@ -145,9 +172,8 @@ export async function compilePublicationGraph(
     ];
     // Preserve publication's specific error while the draft check presents its issues.
     return {
-      kind: 'refused',
+      kind,
       error: graphError ?? error,
-      issueSource,
       validation: { ...validation, ok: false, issues },
     };
   }

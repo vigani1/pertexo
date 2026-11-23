@@ -4,7 +4,7 @@ import { describeStep } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import { useEditorStore } from '../../model/state/context';
 import { definitionIdentity } from '../../model/graph/adapter';
-import { isStartTrigger, placeableDefinitions } from '../../model/step-catalog';
+import { isStartTrigger } from '../../model/step-catalog';
 
 /**
  * An empty draft starts with a trigger: Webhook, Schedule or Manual. When
@@ -26,12 +26,11 @@ export function StartPicker({
   );
   if (!empty) return null;
   // One choice per step type, at the version a new step would use.
-  const placeable = placeableDefinitions(definitions);
-  const triggers = placeable.filter(isStartTrigger);
+  const triggers = definitions.filter(isStartTrigger);
   const steps =
     triggers.length > 0
       ? []
-      : placeable.filter((definition) => definition.family !== 'trigger');
+      : definitions.filter((definition) => definition.family !== 'trigger');
   const copy = startCopy({
     editable,
     hasTriggers: triggers.length > 0,
