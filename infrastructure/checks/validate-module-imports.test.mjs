@@ -37,11 +37,19 @@ test('reserves the community author loader for the CLI', () => {
     }),
     [],
   );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/api/src/start.ts':
+        "const { loadPlatformRegistry: load } = await import('@pertexo/node-catalog/server');",
+    }),
+    [],
+  );
   for (const file of ['apps/api/src/start.ts', 'apps/worker/src/start.ts'])
     for (const declaration of [
       named,
       "import * as catalog from '@pertexo/node-catalog/server'; catalog['loadAuthorCommunityRelease']('.', 'release.json');",
       "const { loadAuthorCommunityRelease: load } = await import('@pertexo/node-catalog/server');",
+      "const { loadPlatformRegistry, ...catalog } = await import('@pertexo/node-catalog/server');",
       "export { loadAuthorCommunityRelease as load } from '@pertexo/node-catalog/server';",
     ])
       assert.match(

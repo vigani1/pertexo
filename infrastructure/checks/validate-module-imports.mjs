@@ -297,6 +297,33 @@ function exposesAuthorLoader(statement) {
   );
 }
 
+function exposesDeferredAuthorLoader(node, source) {
+  if (ts.isImportTypeNode(node))
+    return (
+      node.qualifier === undefined ||
+      node.qualifier.getText(source).split('.')[0] === authorLoader
+    );
+
+  const awaited = node.parent;
+  const declaration = awaited.parent;
+  if (
+    !ts.isAwaitExpression(awaited) ||
+    !ts.isVariableDeclaration(declaration) ||
+    !ts.isObjectBindingPattern(declaration.name)
+  )
+    return true;
+
+  // A binding that names its exports cannot pass the whole namespace onward.
+  return declaration.name.elements.some((binding) => {
+    const imported = binding.propertyName ?? binding.name;
+    return (
+      binding.dotDotDotToken !== undefined ||
+      !(ts.isIdentifier(imported) || ts.isStringLiteralLike(imported)) ||
+      imported.text === authorLoader
+    );
+  });
+}
+
 /** Static local runtime imports only; deferred imports do not create startup cycles. */
 export function validateModuleImports(sources) {
   const errors = [];
@@ -438,11 +465,7 @@ export function validateModuleImports(sources) {
           argument.text.startsWith('@/') ||
           argument.text.startsWith('@pertexo/'))
       ) {
-        if (
-          !ts.isImportTypeNode(node) ||
-          node.qualifier === undefined ||
-          node.qualifier.getText(source).split('.')[0] === authorLoader
-        )
+        if (exposesDeferredAuthorLoader(node, source))
           checkAuthorLoader(argument.text);
         inspectSpecifier(argument.text, false);
       }
