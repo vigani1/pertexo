@@ -26,6 +26,7 @@ import {
 
 const CONNECTION_ID = '11111111-1111-4111-8111-111111111111';
 const VERSION_ID = '22222222-2222-4222-8222-222222222222';
+const FIXTURE_ADDRESS = { address: '93.184.216.34', family: 4 } as const;
 
 export async function checkExample(
   release: Awaited<ReturnType<typeof loadAuthorCommunityRelease>>,
@@ -184,8 +185,7 @@ function fixtureProvider(origin: string, example: ConformanceExample) {
   const client = createProviderHttpClient(
     new SecureHttpClient(
       {
-        resolve: () =>
-          Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
+        resolve: () => Promise.resolve([FIXTURE_ADDRESS]),
       },
       transport,
     ),
