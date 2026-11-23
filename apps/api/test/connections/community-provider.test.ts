@@ -100,7 +100,7 @@ function fixture() {
     publisher: 'example',
     integration: 'widgets',
     version,
-    hostRelease: { min: '0.2.0', below: '0.3.0' },
+    hostRelease: { min: '0.0.0', below: '999.0.0' },
     origin,
     presentation: {
       name: 'Widgets',
