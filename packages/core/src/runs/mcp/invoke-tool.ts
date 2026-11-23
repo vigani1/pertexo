@@ -17,15 +17,10 @@ import {
   listMcpWorkflows,
   readMcpWorkflow,
 } from './exposure.repository.js';
+import { invocationReference } from './invocation-reference.js';
 import { McpToolUnavailableError } from './mcp.errors.js';
 
 export type McpCaller = WorkspaceActor & Readonly<{ tokenId: string }>;
-
-function invocationReference(runId: string, tokenId: string): string {
-  return Buffer.from(
-    `${runId}.${commandRequestHash({ runId, tokenId })}`,
-  ).toString('base64url');
-}
 
 export function invokeMcpTool(
   pool: Pool,
