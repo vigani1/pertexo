@@ -131,8 +131,7 @@ export function withAgentProposalAdmission(
   const { proposal } = acceptedProposal(output);
   const tool = executableAgentTool(input.executable, input.nodeId);
   const allowed =
-    tool !== undefined &&
-    proposal.name === tool.alias &&
+    tool?.alias === proposal.name &&
     Object.keys(proposal.arguments).every((field) =>
       tool.policy.inputFields.includes(field),
     ) &&
