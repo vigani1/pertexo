@@ -31,6 +31,8 @@ export function isAgentChildOf(
 }
 
 const modelTurn = 'model';
+const MODEL_NODE_PART_COUNT = 4;
+const ALIASED_TOOL_NODE_PART_COUNT = 6;
 
 function agentNodeComponent(key: string): string | undefined {
   const [, component] = key.split('|');
@@ -45,14 +47,16 @@ export function isAgentWorkInvocationKey(key: string): boolean {
 
 export function isAgentModelTurnInvocationKey(key: string): boolean {
   const parts = agentNodeComponent(key)?.split(encodeURIComponent(':'));
-  return parts?.length === 4 && parts[3] === modelTurn;
+  return parts?.length === MODEL_NODE_PART_COUNT && parts[3] === modelTurn;
 }
 
 export function agentToolAliasFromInvocationKey(
   key: string,
 ): string | undefined {
   const parts = agentNodeComponent(key)?.split(encodeURIComponent(':'));
-  return parts?.length === 6 && parts[3] === 'tool' ? parts[5] : undefined;
+  return parts?.length === ALIASED_TOOL_NODE_PART_COUNT && parts[3] === 'tool'
+    ? parts[5]
+    : undefined;
 }
 
 /** A NUL in the encoded node component cannot originate in a graph node ID. */
