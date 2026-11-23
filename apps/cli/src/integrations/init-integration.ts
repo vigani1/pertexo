@@ -8,6 +8,7 @@ import {
 } from './conformance.schemas.js';
 
 export const INTEGRATION_FILE = 'integration.json';
+const SCAFFOLD_JSON_INDENT = 2;
 
 export async function initIntegration() {
   const release = {
@@ -103,7 +104,7 @@ and its SHA-256 as release assets.
 }
 
 function formatJson(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`;
+  return `${JSON.stringify(value, null, SCAFFOLD_JSON_INDENT)}\n`;
 }
 
 function nextMajorRelease(): string {
