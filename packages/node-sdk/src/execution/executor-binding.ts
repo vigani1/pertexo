@@ -4,6 +4,7 @@ import { NodeRegistryCompatibilityError } from './node-execution.errors.js';
 import type { CoreNodeExecutorRegistration } from './node-execution.types.js';
 
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
+export const PERTEXO_HOST_RELEASE = '0.2.0';
 
 export function validateInlineFallback(
   manifest: NodeManifest,

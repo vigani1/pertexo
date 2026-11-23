@@ -7,6 +7,10 @@ own.
 
 ## Unreleased
 
+- Set the next release version in `PERTEXO_HOST_RELEASE` on main before tagging.
+  The release workflow requires the tag to match the version embedded in the
+  host.
+
 - Squash migrations through 0122 into one catalog-equivalent baseline. Existing
   installations with the complete matching history are adopted without
   recreating their database or changing data and sessions. Older installations

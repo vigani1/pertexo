@@ -35,10 +35,10 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - name: Check the version names a main commit with a green CI run
+      - name: Check the host release and verify green CI on main
         run: |
           set -euo pipefail
-          [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Not a release version: $VERSION" >&2; exit 1; }
+          node infrastructure/single-server/delivery/verify-host-release.mjs "$VERSION"
           node infrastructure/single-server/delivery/verify-ci.mjs "$GITHUB_SHA"
       - name: Read the release notes from CHANGELOG.md
         run: |
