@@ -38,8 +38,11 @@ precedence: unknown effects, cancellation, deadline, unhandled failure, success.
 Callable result validation can still fail the run after a handler succeeds;
 handling does not invent a missing business result.
 
-One `node_failure` mapping alternative exposes only the selected entry's source
+One `node_failure` mapping alternative exposes the selected entry's source
 `nodeId`, `invocationKey`, `attemptNumber`, `errorKind` and `safeErrorCode`.
+For an Agent failure, the handler also receives `nodeLabel` from the published
+graph, falling back to `nodeId` when the step has no label. The failed child
+invocation owns the attempt and the stored failure evidence.
 Later handler steps use ordinary outputs. Failure data is separate from
 successful output and cannot become a global expression namespace. The source's
 bounded inline `failure_ref` is mandatory execution data bound to the exact
