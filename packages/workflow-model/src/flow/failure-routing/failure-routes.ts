@@ -6,6 +6,7 @@ export const WORKFLOW_FAILURE_PORT = '__failure';
 
 export const WORKFLOW_FAILURE_FIELDS = [
   'nodeId',
+  'nodeLabel',
   'invocationKey',
   'attemptNumber',
   'errorKind',

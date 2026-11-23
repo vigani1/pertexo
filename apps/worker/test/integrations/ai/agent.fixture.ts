@@ -31,6 +31,7 @@ export const config = (url: string) =>
 export const commandKey = () =>
   createHash('sha256').update(randomUUID()).digest('hex');
 export const alias = 'find_order';
+export const agentFailureLabel = 'Look up the order';
 export const model = 'fake-agent';
 export const slackChannel = 'CAGENTTEST';
 export const slackBotToken = 'xoxb-agent-synthetic-test';
@@ -183,7 +184,9 @@ function addAgentFailureHandler(graph: WorkflowGraph): WorkflowGraph {
   return {
     settings: graph.settings,
     nodes: [
-      ...graph.nodes,
+      ...graph.nodes.map((step) =>
+        step.id === 'agent' ? { ...step, label: agentFailureLabel } : step,
+      ),
       node('handler', 'core.terminate', {
         result: { kind: 'node_failure', nodeId: 'agent', path: '$' },
       }),

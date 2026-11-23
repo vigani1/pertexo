@@ -10,8 +10,10 @@ import {
   runCheckpoints,
   workflowCalls,
   pendingRunTasks,
+  workflowVersions,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { workflowGraphStepSql } from '../../shared/run-records/graph-step.repository.js';
 import { runAbortReason } from '../control.repository.js';
 
 type Input = LoadInputsInput;
@@ -199,11 +201,23 @@ export function readSourceFailureRows(
 ) {
   const sourceNode = alias(nodeRuns, 'source');
   const handler = alias(nodeRuns, 'handler');
+  const graph = workflowGraphStepSql(
+    sql`${workflowVersions.graphJson}`,
+    sql`${sourceNode.nodeId}`,
+  );
   return drizzle(client)
     .select({
       failureRef: sourceNode.failureRef,
       invocationKey: sourceNode.invocationKey,
       currentAttemptNumber: sourceNode.currentAttemptNumber,
+      agentLabel: sql<string | null>`case
+        when ${sourceNode.invocationKey} <> ${sourceFailure.invocationKey} then (
+          select nullif(btrim(graph_node.value->>'label'), '')
+          from ${workflowVersions}
+          cross join lateral (${graph}) graph_node
+          where ${workflowVersions.workspaceId}=${sourceNode.workspaceId}
+            and ${workflowVersions.id}=${lease.workflowVersionId}
+        ) end`,
     })
     .from(sourceNode)
     .innerJoin(

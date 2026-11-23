@@ -10,7 +10,13 @@ import { ContextKeyProvider } from '../../support/attempts/http-node-attempt/enc
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { cancelFixtureRun } from '../../support/coordinator/runs/control.js';
 import { ServiceProcess } from '../../support/recovery/processes.js';
-import { actor, alias, config, slackChannel } from './agent.fixture.js';
+import {
+  actor,
+  agentFailureLabel,
+  alias,
+  config,
+  slackChannel,
+} from './agent.fixture.js';
 import { startAgentRun } from './agent-run.fixture.js';
 import type { AgentWorkerSettings } from './agent-worker.fixture.js';
 import { chat, fakeModel, json } from './model.fixture.js';
@@ -345,6 +351,7 @@ it('publishes and runs the Agent failure edge with the failed model attempt evid
       value: {
         result: {
           nodeId: 'agent',
+          nodeLabel: agentFailureLabel,
           attemptNumber: 1,
           safeErrorCode: 'model.invalid_response',
         },
