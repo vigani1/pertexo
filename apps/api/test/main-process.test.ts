@@ -57,10 +57,10 @@ async function runChild(
 }
 
 async function runSignalChild(
-  environment: NodeJS.ProcessEnv = process.env,
+  databaseCloseFails = false,
 ): Promise<Awaited<ReturnType<typeof runChild>>> {
   const child = spawn(process.execPath, [signalFixturePath], {
-    env: environment,
+    env: { ...process.env, DB_CLOSE_FAIL: databaseCloseFails ? '1' : '0' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -129,10 +129,7 @@ describe('compiled API main process', () => {
   });
 
   it('attempts every owner and exits nonzero when signal cleanup fails', async () => {
-    const result = await runSignalChild({
-      ...process.env,
-      DB_CLOSE_FAIL: '1',
-    });
+    const result = await runSignalChild(true);
 
     expect(result).toMatchObject({ code: 1, signal: null });
     expect(result.output.match(/telemetry\.closed/g)).toHaveLength(1);
