@@ -59,3 +59,17 @@ it('refuses two modules that claim the same step during catalog assembly', () =>
     registerIntegrationModules([http, { ...slack, steps: http.steps }]),
   ).toThrow('Duplicate integration step key: http.request');
 });
+
+it('refuses a connection whose slot has no primary definition during catalog assembly', () => {
+  expect(() =>
+    registerIntegrationModules([
+      {
+        ...http,
+        connections: http.connections.map((connection) => ({
+          ...connection,
+          slot: { ...connection.slot, primary: false },
+        })),
+      },
+    ]),
+  ).toThrow('Invalid integration slot reference');
+});
