@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { isStoredDataError } from '../../src/shared/stored-values.js';
-import { readTablesByNames } from '../../src/data-tables/table-lookups.repository.js';
+import { readTablesByIdentity } from '../../src/data-tables/table-lookups.repository.js';
 import {
   apiPool,
   queryAsOwner,
@@ -92,7 +92,9 @@ it.each([
           }),
         () =>
           withTenantScopedClient(apiPool, { workspaceId }, (client) =>
-            readTablesByNames(drizzle(client), workspaceId, [damaged.name]),
+            readTablesByIdentity(drizzle(client), workspaceId, [
+              { name: damaged.name },
+            ]),
           ),
       ];
       for (const read of reads) {

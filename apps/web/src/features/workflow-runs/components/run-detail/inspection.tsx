@@ -1,4 +1,7 @@
 import type { WorkflowCallSummary } from '@pertexo/contracts';
+import { useQuery } from '@tanstack/react-query';
+import { dataTableIdentity, matchesDataTableIdentity } from '@pertexo/node-sdk';
+import { tablesQuery } from '@/features/data-tables/public';
 import { AgentActivity } from './timeline/agent-activity';
 import {
   AGENT_STEP,
@@ -97,6 +100,7 @@ export function RunStepDetails({
           {stepTag(row, nowMs)}
         </span>
       </div>
+      <FindRowsTable binding={row.findRowsTable} scope={scope} />
       <StepHistory row={row} scope={scope} nowMs={nowMs} />
       {onSelectStep === undefined ? null : (
         <AgentActivity
@@ -190,6 +194,33 @@ export function RunStepDetails({
         </dl>
       </Disclosure>
     </div>
+  );
+}
+
+function FindRowsTable({
+  binding,
+  scope,
+}: Readonly<{
+  binding: RunTimelineRow['findRowsTable'];
+  scope: RunDataScope;
+}>) {
+  const query = useQuery({
+    ...tablesQuery({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+    }),
+    enabled: binding !== undefined,
+  });
+  if (binding === undefined) return null;
+  const identity = dataTableIdentity(binding);
+  const table = query.data?.tables.find((table) =>
+    matchesDataTableIdentity(table, identity),
+  );
+  return (
+    <p className="mt-2 text-xs text-subtle-foreground">
+      Workspace table {table?.name ?? binding.table}
+    </p>
   );
 }
 

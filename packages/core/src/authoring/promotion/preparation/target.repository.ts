@@ -6,16 +6,18 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
+import { readTablesByIdentity } from '../../../data-tables/table-lookups.repository.js';
 
 export function readTargetTables(
   client: PoolClient,
   workspaceId: string,
   names: readonly string[],
 ) {
-  return readTablesByNames(drizzle(client), workspaceId, [...names]).catch(
-    rethrowQueryFailure,
-  );
+  return readTablesByIdentity(
+    drizzle(client),
+    workspaceId,
+    names.map((name) => ({ name })),
+  ).catch(rethrowQueryFailure);
 }
 
 /** The target's table schemas, share-locked, and its variable set revision. */

@@ -6,6 +6,7 @@ import { connectionScope } from '../../../shared/resources/connection-scope.repo
 import {
   parseWorkflowGraphDraft,
   workflowNodes,
+  workflowDataTableBinding,
 } from '@pertexo/workflow-model';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
@@ -14,8 +15,8 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
-import { isDataTableDefinition, type DataTableConfig } from '@pertexo/node-sdk';
-import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
+import { dataTableIdentity } from '@pertexo/node-sdk';
+import { readTablesByIdentity } from '../../../data-tables/table-lookups.repository.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import type { PromotionGraphBudget } from './graph.js';
 import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
@@ -90,17 +91,17 @@ export async function readPromotionSources(
     ),
     connectionIds,
   });
-  const tableNames = [
-    ...new Set(
-      nodes
-        .filter((node) => isDataTableDefinition(node.definition))
-        .map((node) => (node.config as DataTableConfig).table),
-    ),
-  ];
-  const tables = await readTablesByNames(
+  const tableIdentities = nodes.flatMap((node) => {
+    const binding = workflowDataTableBinding(node);
+    return binding === undefined ||
+      (binding.location === 'tool' && !binding.find)
+      ? []
+      : [dataTableIdentity(binding.config)];
+  });
+  const tables = await readTablesByIdentity(
     drizzle(client),
     workspaceId,
-    tableNames,
+    tableIdentities,
   ).catch(rethrowQueryFailure);
   return { workflows, connections, tables };
 }

@@ -3,20 +3,21 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   DataTableError,
-  isDataTableDefinition,
+  dataTableIdentity,
+  matchesDataTableIdentity,
   resolveDataTableBindings,
-  type DataTableConfig,
 } from '@pertexo/node-sdk';
 import {
-  agentConfigSchema,
-  isAgentDefinition,
+  mapWorkflowNodes,
+  replaceWorkflowDataTableBinding,
+  workflowDataTableBinding,
   isRecord,
   type WorkflowNode,
   type WorkflowGraph,
   type GraphValidationIssue,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { readTablesByNames } from '../table-lookups.repository.js';
+import { readTablesByIdentity } from '../table-lookups.repository.js';
 import type { DataTableDefinition } from '../data-table-commands.types.js';
 import { readVersionNodes } from './references.repository.js';
 
@@ -48,7 +49,7 @@ function literalAliases(node: ReferenceNode): string[] {
 
 function references(graph: ReferenceGraph) {
   const found: {
-    config: DataTableConfig;
+    binding: NonNullable<ReturnType<typeof workflowDataTableBinding>>;
     path: string;
     label: string;
     node: ReferenceNode;
@@ -63,23 +64,14 @@ function references(graph: ReferenceGraph) {
           nodes: node.structured.body.nodes,
           path: `${path}.structured.body`,
         });
-      if (isDataTableDefinition(node.definition))
+      const binding = workflowDataTableBinding(node);
+      if (binding !== undefined)
         found.push({
-          config: node.config as DataTableConfig,
-          path,
+          binding,
+          path: binding.location === 'tool' ? `${path}.config.tool` : path,
           label: node.label ?? node.id,
           node,
         });
-      else if (isAgentDefinition(node.definition)) {
-        const settings = agentConfigSchema.safeParse(node.config);
-        if (settings.success && 'table' in settings.data.tool.config)
-          found.push({
-            config: settings.data.tool.config,
-            path: `${path}.config.tool`,
-            label: node.label ?? node.id,
-            node: { ...node, inputMappings: {} },
-          });
-      }
     }
   return found;
 }
@@ -90,18 +82,22 @@ function issuesFor(
 ): readonly GraphValidationIssue[] {
   return refs.flatMap((ref) => {
     try {
-      const table = tables.find((table) => table.name === ref.config.table);
+      const { config, location } = ref.binding;
+      const identity = dataTableIdentity(config);
+      const table = tables.find((table) =>
+        matchesDataTableIdentity(table, identity),
+      );
       if (table === undefined)
         throw new DataTableError(
           'not_found',
-          `Table ${ref.config.table} is unavailable. Select an existing table.`,
+          `Table ${config.table} is unavailable. Select an existing table.`,
         );
       const names = resolveDataTableBindings({
         columns: table.columns,
-        bindings: ref.config.columnBindings,
+        bindings: config.columnBindings,
         hasRemovedColumns: table.hasRemovedColumns,
       });
-      for (const alias of literalAliases(ref.node))
+      for (const alias of location === 'step' ? literalAliases(ref.node) : [])
         if (!Object.hasOwn(names, alias))
           throw new DataTableError(
             'invalid_values',
@@ -126,14 +122,91 @@ export async function dataTableReferenceIssues(
   workspaceId: string,
   graph: WorkflowGraph,
 ): Promise<readonly GraphValidationIssue[]> {
-  const refs = references(graph);
-  if (refs.length === 0) return [];
-  const found = await readTablesByNames(
+  const { issues } = await reviewTableReferences(client, workspaceId, graph);
+  return issues;
+}
+
+/** Publication resolves existing draft names to IDs under the same reference locks. */
+export async function bindPublicationTables(
+  client: PoolClient,
+  workspaceId: string,
+  graph: WorkflowGraph,
+) {
+  const { issues, refs, found } = await reviewTableReferences(
+    client,
+    workspaceId,
+    graph,
+  );
+  if (issues.length > 0) return { kind: 'refused', issues } as const;
+  const byName = new Map(found.map((table) => [table.name, table.id]));
+  const pins = new Map(
+    refs.flatMap(({ node, binding }) => {
+      if (!binding.find || binding.config.tableId !== undefined) return [];
+      const tableId = byName.get(binding.config.table);
+      return tableId === undefined
+        ? []
+        : [[node, { binding, tableId }] as const];
+    }),
+  );
+  return {
+    kind: 'bound',
+    graph:
+      pins.size === 0
+        ? graph
+        : mapWorkflowNodes(graph, (node) => {
+            const pin = pins.get(node);
+            if (pin === undefined) return node;
+            return replaceWorkflowDataTableBinding(node, pin.binding.location, {
+              ...pin.binding.config,
+              tableId: pin.tableId,
+            });
+          }),
+  } as const;
+}
+
+/** A portable export uses current names and carries no workspace table IDs. */
+export async function projectPortableTableNames(
+  client: PoolClient,
+  workspaceId: string,
+  graph: WorkflowGraph,
+): Promise<WorkflowGraph> {
+  const pins = new Map(
+    references(graph).flatMap(({ node, binding }) =>
+      binding.config.tableId === undefined ? [] : [[node, binding] as const],
+    ),
+  );
+  if (pins.size === 0) return graph;
+  const tables = await readTablesByIdentity(
     drizzle(client),
     workspaceId,
-    refs.map((ref) => ref.config.table),
+    [...pins.values()].map(({ config }) => dataTableIdentity(config)),
   ).catch(rethrowQueryFailure);
-  return issuesFor(refs, found);
+  const names = new Map(tables.map((table) => [table.id, table.name]));
+  return mapWorkflowNodes(graph, (node) => {
+    const binding = pins.get(node);
+    if (binding === undefined) return node;
+    const name = names.get(binding.config.tableId ?? '');
+    return name === undefined
+      ? node
+      : replaceWorkflowDataTableBinding(node, binding.location, {
+          ...binding.config,
+          table: name,
+        });
+  });
+}
+
+async function reviewTableReferences(
+  client: PoolClient,
+  workspaceId: string,
+  graph: WorkflowGraph,
+) {
+  const refs = references(graph);
+  const found = await readTablesByIdentity(
+    drizzle(client),
+    workspaceId,
+    refs.map(({ binding }) => dataTableIdentity(binding.config)),
+  ).catch(rethrowQueryFailure);
+  return { refs, found, issues: issuesFor(refs, found) };
 }
 
 /** Every published start, including Call, replay and recovery, crosses this fence. */
@@ -145,10 +218,10 @@ export async function requireRunTableReferences(
   if (nodes === undefined || nodes === null) return;
   const refs = references({ nodes });
   if (refs.length === 0) return;
-  const found = await readTablesByNames(
+  const found = await readTablesByIdentity(
     transaction.db,
     transaction.workspaceId,
-    refs.map((ref) => ref.config.table),
+    refs.map(({ binding }) => dataTableIdentity(binding.config)),
   );
   const issues = issuesFor(refs, found);
   if (issues.length > 0)

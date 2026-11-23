@@ -53,12 +53,13 @@ No service, role, queue, package or CI job is added.
 - All active members can read/export. Owners/admins/builders manage tables and
   rows; only owners/admins change quotas. Suspended/deleting workspaces are
   read-only. No new role or automation-token capability in this slice.
-- Table names are unique and stable; step configs store the name so workflow
-  export/import contains references only, never table data. Deleting a table
-  requires explicit confirmation and makes references fail clearly; recreating
-  the name is an explicit retargeting choice. The UI explains this. Schema
-  changes follow the bounded evolution rules below. Cross-workspace lookup and
-  user-defined indexes stay later.
+- Table names are unique. Find rows steps and Agent tools bind a table ID in
+  new publications. Existing published versions and table writes keep resolving
+  their name bindings. Workflow exports use names and carry no table IDs or row
+  data. Deletion requires explicit confirmation and makes ID-bound references
+  fail even when another table takes the old name. Schema changes follow the
+  bounded evolution rules below. Cross-workspace lookup and user-defined
+  indexes stay later.
 - CSV import uses the existing pinned csv-parse dependency, RFC 4180/UTF-8/BOM,
   headers matching columns, a 1 MiB request bound and at most 1,000 rows per
   atomic import. Complete export streams the whole filtered result within table quotas,

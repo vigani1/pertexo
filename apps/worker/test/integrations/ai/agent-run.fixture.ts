@@ -85,6 +85,7 @@ export async function publishAgentRun(
     connections.close,
   ];
   try {
+    let expectedTableId: string | undefined;
     if (typeof write !== 'object') {
       const table = await tables.create({
         ...actor,
@@ -96,6 +97,7 @@ export async function publishAgentRun(
         ],
         keyColumn: 'key',
       });
+      if (write === undefined) expectedTableId = table.id;
       await tables.importRows({
         ...actor,
         idempotencyKey: randomUUID(),
@@ -149,6 +151,7 @@ export async function publishAgentRun(
     return await publishAgent(authoring, connectionId, tableName, {
       write: tool,
       shape,
+      expectedTableId,
     });
   } finally {
     await Promise.allSettled(owners.reverse().map((close) => close()));

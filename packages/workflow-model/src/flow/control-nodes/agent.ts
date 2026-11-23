@@ -1,6 +1,7 @@
 import {
   boundedNodeJsonRecordSchema,
   dataTableConfigSchema,
+  dataTableFindConfigSchema,
   MODEL_IDENTIFIER_MAX_CHARACTERS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -113,6 +114,7 @@ export const agentConfigSchema = z
           key: z.literal(AGENT_FIND_ROWS.key),
           version: z.literal(AGENT_FIND_ROWS.version),
         }),
+        config: dataTableFindConfigSchema,
       }),
       toolSetup.extend({
         definition: z.strictObject({

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   generateSchemaDocument,
   dataTableConfigSchema,
+  dataTableFindConfigSchema,
   DATA_TABLE_OPERATIONS,
   dataTableQuerySchema,
   dataTableValuesSchema,
@@ -36,7 +37,6 @@ const tableDisplay = {
     sideEffect: 'This changes real rows in a workspace data table.',
   },
 };
-const DATA_TABLE_CONFIG_SCHEMA = dataTableConfigSchema;
 const FIND_ROWS_AGENT_TOOL = Object.freeze({
   effect: 'read',
   inputFields: Object.freeze(['query']),
@@ -63,12 +63,14 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
       version: 1,
     });
     const inputSchema = DATA_TABLE_INPUT_SCHEMAS[operation];
+    const configSchema =
+      operation === 'find' ? dataTableFindConfigSchema : dataTableConfigSchema;
     const manifest: NodeManifest = Object.freeze({
       definition,
       family: operation === 'find' ? 'transform' : 'action',
       display: Object.freeze(tableDisplay[operation]),
       configVersion: 1,
-      configSchema: generateSchemaDocument(DATA_TABLE_CONFIG_SCHEMA),
+      configSchema: generateSchemaDocument(configSchema),
       inputSchema: generateSchemaDocument(inputSchema),
       outputSchema: generateSchemaDocument(dataTableResultSchema),
       ports: Object.freeze({
@@ -88,7 +90,7 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
     });
     return {
       manifest,
-      configSchema: DATA_TABLE_CONFIG_SCHEMA,
+      configSchema,
       inputSchema,
       outputSchema: dataTableResultSchema,
     };
