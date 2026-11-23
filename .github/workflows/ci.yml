@@ -241,10 +241,11 @@ jobs:
     runs-on: ubuntu-latest
     # The worker leg runs three suite shards on one runner. The longest shard
     # took 14 minutes, with additional time for setup and cold recovery on a
-    # busy runner. The services leg runs its suites and storage and backup
-    # qualification in 10 to 13 minutes.
+    # busy runner. The services leg grew with the MCP, assistant and community
+    # suites: on 2026-11-23 it took 14 to 20 minutes (setup 3.5, suites 14.5,
+    # storage and backup qualification 2.5), and one run was cancelled at 20.
     timeout-minutes:
-      ${{ matrix.group == 'worker' && 24 || matrix.group == 'services' && 20 ||
+      ${{ matrix.group == 'worker' && 24 || matrix.group == 'services' && 25 ||
       15 }}
     strategy:
       fail-fast: false
