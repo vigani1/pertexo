@@ -15,6 +15,7 @@ import {
   readdirSync,
   existsSync,
   rmSync,
+  statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { parseEnv } from 'node:util';
@@ -1029,6 +1030,16 @@ test('stops admission and drains workers before enabling a community generation'
     readFileSync(join(f.state, 'community.env'), 'utf8'),
     'COMMUNITY_GENERATION=fixture\n',
   );
+});
+
+test('creates the empty community bind source as the operator before Compose runs', (t) => {
+  // Docker creates a missing bind source as root, which would leave
+  // community/ unwritable for the next preflight's staging (EACCES on mkdtemp).
+  const f = fixture(t);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(f.commands().some(({ args }) => args.includes('compose')));
+  assert.ok(statSync(join(f.state, 'community', 'empty')).isDirectory());
 });
 
 test('drains the worker before stopping the Code runner', (t) => {
