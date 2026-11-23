@@ -55,6 +55,10 @@ select_release() {
   fi
 }
 compose() {
+  # The services bind the staged community generation, or community/empty
+  # before any is staged. Create it as the operator first: Docker would create a
+  # missing bind source as root, and staging could no longer write under it.
+  mkdir -p "$BETA_STATE_DIR/community/empty"
   local community_file="${community_configuration:-$BETA_STATE_DIR/community.env}"
   local config_files=(--env-file "$config" --env-file "$BETA_STATE_DIR/hosts.env")
   [[ ! -f "$community_file" ]] || config_files+=(--env-file "$community_file")
