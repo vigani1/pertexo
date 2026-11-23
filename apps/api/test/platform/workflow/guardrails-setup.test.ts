@@ -3,9 +3,13 @@ import { expect, it } from 'vitest';
 import { prepareNodeValidation } from '../../../src/node-testing/prepare-node-validation.js';
 import { stepSetupIssues } from '../../../src/platform/workflow/step-setup.validation.js';
 
-it.each([false, true])(
-  'requires a Guardrails connection in publication and Test step only with model review=%s',
-  async (modelReview) => {
+it.each([
+  { modelReview: false, connected: false },
+  { modelReview: true, connected: false },
+  { modelReview: true, connected: true },
+])(
+  'validates Guardrails for publication and Test step with model review $modelReview and connection $connected',
+  async ({ modelReview, connected }) => {
     const graph: WorkflowGraph = {
       nodes: [
         {
@@ -19,7 +23,9 @@ it.each([false, true])(
               : [{ kind: 'pii' }],
           },
           inputMappings: { text: { kind: 'literal', value: 'sample' } },
-          connectionRefs: {},
+          connectionRefs: connected
+            ? { model_api_key: '742c59fe-3d20-4c3e-a0d2-0919c6785ad0' }
+            : {},
         },
       ],
       edges: [],
@@ -30,7 +36,7 @@ it.each([false, true])(
       graph,
       nodeId: 'guardrails',
     });
-    if (modelReview) {
+    if (modelReview && !connected) {
       expect(publishIssues).toContainEqual(
         expect.objectContaining({
           path: '$.nodes.guardrails.connectionRefs.model_api_key',
@@ -42,13 +48,14 @@ it.each([false, true])(
           path: '$.connectionRefs.model_api_key',
         }),
       );
-      expect(preview).toHaveProperty(
-        'disclosure.mayCauseExternalSideEffect',
-        true,
-      );
     } else {
       expect(publishIssues).toEqual([]);
       expect(preview.issues).toEqual([]);
     }
+    if (modelReview)
+      expect(preview).toHaveProperty(
+        'disclosure.mayCauseExternalSideEffect',
+        true,
+      );
   },
 );

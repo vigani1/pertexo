@@ -141,7 +141,7 @@ it.each([false, true])(
         config: structured,
         prompt: secret,
         callbacks: {
-          prepare: async () => ({}),
+          prepare: () => Promise.resolve({}),
           sensitiveValues: () => [secret],
         },
       }),
