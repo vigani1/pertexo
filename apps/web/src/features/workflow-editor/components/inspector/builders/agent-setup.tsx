@@ -141,6 +141,14 @@ function AgentToolSetup({
                 slack || callable || next.definition.key === WORKFLOW_CALL.key
                   ? {}
                   : previous;
+              if (
+                next.definition.key !== AGENT_FIND_ROWS.key &&
+                isRecord(config) &&
+                'tableId' in config
+              ) {
+                const { tableId: _readBinding, ...nameBinding } = config;
+                config = nameBinding;
+              }
               if (nextSlack)
                 config = propertyDefaults(
                   definitions.find(
@@ -187,6 +195,7 @@ function AgentToolSetup({
       {!slack && !callable ? (
         <DataTableSetup
           scope={callScope}
+          definitionKey={selected.definition.key}
           config={toolConfig}
           form={{
             ...targetForm,

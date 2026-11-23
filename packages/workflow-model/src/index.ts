@@ -16,6 +16,10 @@ export {
 } from './graph/execution-values.js';
 export { mapWorkflowNodes, workflowNodes } from './graph/nodes.js';
 export {
+  replaceWorkflowDataTableBinding,
+  workflowDataTableBinding,
+} from './graph/data-table-binding.js';
+export {
   WORKFLOW_NOTE_LIMITS,
   workflowNoteColorSchema,
   type WorkflowNote,

@@ -66,8 +66,9 @@ key is selected. All schema changes are atomic and audited: a duplicate, stale
 revision, invalid default or quota failure changes nothing. Close and reopen the
 dialog if another writer changed the table while it was open.
 
-Deleting a table asks you to type its name. Workflows referencing it then fail
-clearly; recreating the same table name is a deliberate retargeting choice.
+Deleting a table asks you to type its name. New Find rows publications keep the
+original table ID. Select a replacement table and republish after deletion.
+Name-bound steps and older pins can resolve a table with the original name.
 
 ## Read, edit and move rows
 
@@ -124,8 +125,9 @@ that text back into Pertexo.
 ## Use tables in workflows
 
 Add a table step and choose a workspace table in Setup. In Inputs, use the normal
-mapping controls for `values` or `query`. Table names are included in workflow
-export/import; table schemas and rows are not. Create the named table in the
+mapping controls for `values` or `query`. New Find rows steps and Agent tools
+keep their table binding through a rename, and Setup and the run inspector show
+the current name. Table names are included in workflow export/import; table schemas and rows are not. Create the named table in the
 receiving workspace before running an imported workflow. Setup binds human field
 aliases to stable column IDs. If an imported binding does not match the receiving
 table (for example, a later-added column has a different ID), explicitly reselect

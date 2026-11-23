@@ -1,6 +1,6 @@
 import {
   DataTableError,
-  type DataTableConfig,
+  type DataTableFindConfig,
   type DataTableCommand,
 } from '@pertexo/node-sdk';
 import {
@@ -21,11 +21,13 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
           errorKind: 'internal',
           possiblyDispatched: false,
         });
-      const { table, columnBindings } = invocation.config as DataTableConfig;
+      const { table, tableId, columnBindings } =
+        invocation.config as DataTableFindConfig;
       const command = {
         ...(invocation.input as object),
         operation,
         table,
+        ...(operation === 'find' && tableId !== undefined ? { tableId } : {}),
       } as DataTableCommand;
       try {
         if (operation !== 'find') await invocation.runtime?.beforeDispatch();

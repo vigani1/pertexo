@@ -162,6 +162,7 @@ it('rebinds renamed stable table IDs by current name while preserving old output
   const { review } = await promote(selection);
   expect(review.workflows[0]?.proposedGraph.nodes[0]?.config).toEqual({
     table: name,
+    tableId: target.id,
     columnBindings: { key: 'key', amount: 'total' },
   });
   expect(

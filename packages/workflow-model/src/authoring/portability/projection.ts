@@ -1,3 +1,8 @@
+import { mapWorkflowNodes } from '../../graph/nodes.js';
+import {
+  replaceWorkflowDataTableBinding,
+  workflowDataTableBinding,
+} from '../../graph/data-table-binding.js';
 import { compareOrdinal } from '../../values/ordering.js';
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
@@ -168,11 +173,24 @@ function replaceConnections(
   };
 }
 
+function portableTableBindings(graph: WorkflowGraph): WorkflowGraph {
+  return mapWorkflowNodes(graph, (node) => {
+    const binding = workflowDataTableBinding(node);
+    if (binding?.find !== true || binding.config.tableId === undefined)
+      return node;
+    const { table, columnBindings } = binding.config;
+    return replaceWorkflowDataTableBinding(node, binding.location, {
+      table,
+      columnBindings,
+    });
+  });
+}
+
 export function projectWorkflowPortableManifest(
   input: WorkflowGraph,
   catalog: WorkflowPortabilityCatalog,
 ): WorkflowPortableManifest {
-  const graph = parseWorkflowGraphDraft(input);
+  const graph = portableTableBindings(parseWorkflowGraphDraft(input));
   const selected = facts(graph, catalog);
   return workflowPortableManifestSchema.parse({
     format: 'pertexo.workflow',
@@ -189,7 +207,7 @@ export function inspectWorkflowPortableManifest(
   catalog: WorkflowPortabilityCatalog,
 ): Readonly<{ graph: WorkflowGraph; issues: readonly PortableIssue[] }> {
   const manifest = workflowPortableManifestSchema.parse(rawManifest);
-  const graph = parseWorkflowGraphDraft(manifest.graph);
+  const graph = portableTableBindings(parseWorkflowGraphDraft(manifest.graph));
   if (
     nodes(graph).some((node) => Object.keys(node.connectionRefs).length !== 0)
   )

@@ -151,6 +151,7 @@ test('publishes an Agent with a Find rows tool and inspects its work', async ({
     await activity
       .getByRole('button', { name: 'Find rows · find_orders', exact: true })
       .click();
+    await expect(detail).toContainText('Workspace table Orders');
     await expect(detail).toContainText('Attempt 1 succeeded');
     await expect(detail).toContainText('shipped');
   } finally {

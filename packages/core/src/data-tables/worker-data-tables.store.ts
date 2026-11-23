@@ -16,6 +16,7 @@ import {
   bindDataTableCommand,
   DataTableError,
   dataTableResultSchema,
+  dataTableIdentity,
   projectBoundDataTableResult,
   resolveDataTableBindings,
   type DataTableResult,
@@ -69,9 +70,11 @@ async function executeFind(
   input: ExecuteTableCommandInput,
 ): Promise<DataTableResult> {
   await assertCapabilityExecution(client, input);
-  const table = await requireTable(client, input.workspaceId, {
-    name: input.command.table,
-  });
+  const table = await requireTable(
+    client,
+    input.workspaceId,
+    dataTableIdentity(input.command),
+  );
   const names = columnNames(table, input);
   const command = bindDataTableCommand(input.command, names);
   if (command.operation !== 'find') throw new Error('Read operation changed');

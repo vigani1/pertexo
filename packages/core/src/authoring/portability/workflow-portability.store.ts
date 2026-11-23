@@ -20,6 +20,7 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../shared/resources/require-workflow-call-targets.js';
+import { projectPortableTableNames } from '../../data-tables/columns/table-references.js';
 import { requireConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
 
 import {
@@ -105,7 +106,7 @@ function exportPortableWorkflow(
       );
     try {
       const manifest = projectWorkflowPortableManifest(
-        graph,
+        await projectPortableTableNames(client, input.workspaceId, graph),
         selectedPolicy(selection),
       );
       const admission = await admitWorkflowAuthoring(

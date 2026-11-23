@@ -51,8 +51,8 @@ export function RemoveDataTable({
       <DialogContent>
         <DialogTitle>Delete {table.name}?</DialogTitle>
         <DialogDescription>
-          This removes every row. Workflows using this table name will fail
-          until you change their setup or deliberately recreate that name.
+          This removes every row. Review and reselect a table in workflows that
+          use it before running them again.
         </DialogDescription>
         <form
           className="mt-5 grid gap-4"

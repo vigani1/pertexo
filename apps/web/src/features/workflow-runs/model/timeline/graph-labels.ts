@@ -1,6 +1,10 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { DescribeStep } from '@/features/catalog/public';
-import { agentToolAllowedWithoutApproval } from '@pertexo/workflow-model';
+import type { DataTableFindConfig } from '@pertexo/node-sdk';
+import {
+  agentToolAllowedWithoutApproval,
+  workflowDataTableBinding,
+} from '@pertexo/workflow-model';
 import {
   branchPorts,
   type BranchPorts,
@@ -13,6 +17,7 @@ export type StepLabel = Readonly<{
   usesConnection?: boolean;
   agentWriteAllowed?: true;
   branchPorts?: BranchPorts;
+  findRowsTable?: Pick<DataTableFindConfig, 'table' | 'tableId'>;
 }>;
 
 type GraphLabel = Readonly<{
@@ -36,9 +41,11 @@ export function graphLabels(
       const kind = describe(node.definition).name;
       const label = node.label?.trim();
       const ports = branchPorts(node);
+      const binding = workflowDataTableBinding(node);
       const connected = {
         ...(ports === undefined ? {} : { branchPorts: ports }),
         definitionKey: node.definition.key,
+        ...(binding?.find === true ? { findRowsTable: binding.config } : {}),
         ...(agentToolAllowedWithoutApproval(node) === undefined
           ? {}
           : { agentWriteAllowed: true as const }),

@@ -119,6 +119,29 @@ export const dataTableConfigSchema = z
   })
   .strict();
 export type DataTableConfig = z.infer<typeof dataTableConfigSchema>;
+const tableId = z.uuid().optional();
+export const dataTableFindConfigSchema = dataTableConfigSchema.extend({
+  tableId,
+});
+export type DataTableFindConfig = z.infer<typeof dataTableFindConfigSchema>;
+
+export function dataTableIdentity({
+  table,
+  tableId,
+}: Pick<DataTableFindConfig, 'table' | 'tableId'>): DataTableIdentity {
+  return tableId === undefined ? { name: table } : { id: tableId };
+}
+
+export type DataTableIdentity = Readonly<{ name: string } | { id: string }>;
+
+export function matchesDataTableIdentity(
+  table: Readonly<{ id: string; name: string }>,
+  identity: DataTableIdentity,
+): boolean {
+  return 'id' in identity
+    ? table.id === identity.id
+    : table.name === identity.name;
+}
 export const dataTableValueStructuralSchema = z.json();
 export const dataTableValuesStructuralSchema = z.record(
   z.string(),
@@ -180,6 +203,7 @@ export const dataTableCommandSchema = z.discriminatedUnion('operation', [
     .object({
       operation: z.literal('find'),
       table: dataTableNameSchema,
+      tableId,
       query: dataTableQuerySchema,
     })
     .strict(),

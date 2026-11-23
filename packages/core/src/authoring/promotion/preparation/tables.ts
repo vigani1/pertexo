@@ -1,9 +1,13 @@
-import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
+import {
+  PROMOTION_LIMITS,
+  workflowDataTableBinding,
+  replaceWorkflowDataTableBinding,
+} from '@pertexo/workflow-model';
 import {
   DataTableError,
-  isDataTableDefinition,
+  dataTableIdentity,
+  matchesDataTableIdentity,
   resolveDataTableBindings,
-  type DataTableConfig,
 } from '@pertexo/node-sdk';
 import type { WorkflowNode } from '@pertexo/workflow-model';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -12,21 +16,34 @@ import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 /** Names locate the destination schema; aliases keep downstream output paths stable. */
 export function rebindPromotionTable(
   node: WorkflowNode,
-  sourceTables: readonly DataTableDefinition[],
-  targetTables: readonly DataTableDefinition[],
+  {
+    sourceNode,
+    sourceTables,
+    targetTables,
+  }: Readonly<{
+    sourceNode: WorkflowNode;
+    sourceTables: readonly DataTableDefinition[];
+    targetTables: readonly DataTableDefinition[];
+  }>,
   report: (
     requirement: Omit<WorkflowPromotionRequirement, 'workflowId'>,
   ) => void,
 ): WorkflowNode {
-  if (!isDataTableDefinition(node.definition)) return node;
-  const config = node.config as DataTableConfig;
-  const source = sourceTables.find((table) => table.name === config.table);
-  const target = targetTables.find((table) => table.name === config.table);
+  const binding = workflowDataTableBinding(sourceNode);
+  if (binding === undefined || (binding.location === 'tool' && !binding.find))
+    return node;
+  const { config, location, find } = binding;
+  const identity = dataTableIdentity(config);
+  const source = sourceTables.find((table) =>
+    matchesDataTableIdentity(table, identity),
+  );
+  const tableName = source?.name ?? config.table;
+  const target = targetTables.find((table) => table.name === tableName);
   const issue = (detail: string) => {
     report({
       nodeId: node.id,
       kind: 'table',
-      name: config.table,
+      name: tableName,
       status: 'incompatible',
       detail,
     });
@@ -52,26 +69,16 @@ export function rebindPromotionTable(
   const bindings = rebindPromotionColumns(source, target, {
     names,
     nodeId: node.id,
-    tableName: config.table,
+    tableName,
     report,
   });
-  if (node.definition.key === 'core.table_upsert') {
-    const from = source.columns.find(
-      (column) => column.name === source.keyColumn,
+  if (
+    node.definition.key === 'core.table_upsert' &&
+    !matchingUpsertKeys(source, target)
+  )
+    issue(
+      'Upsert requires the same unique key column name and type in the target table.',
     );
-    const to = target.columns.find(
-      (column) => column.name === target.keyColumn,
-    );
-    const columnChanged =
-      from?.name !== to?.name ||
-      from?.type !== to?.type ||
-      from === undefined ||
-      to === undefined;
-    if (columnChanged)
-      issue(
-        'Upsert requires the same unique key column name and type in the target table.',
-      );
-  }
   if (
     ['core.table_insert', 'core.table_upsert'].includes(node.definition.key)
   ) {
@@ -90,12 +97,27 @@ export function rebindPromotionTable(
   report({
     nodeId: node.id,
     kind: 'table',
-    name: config.table,
+    name: tableName,
     status: 'ready',
     detail:
       'Matched by table and column names and types. Existing output aliases are retained.',
   });
-  return { ...node, config: { ...node.config, columnBindings: bindings } };
+  return replaceWorkflowDataTableBinding(node, location, {
+    table: target.name,
+    ...(find ? { tableId: target.id } : {}),
+    columnBindings: bindings,
+  });
+}
+
+function matchingUpsertKeys(
+  source: DataTableDefinition,
+  target: DataTableDefinition,
+): boolean {
+  const from = source.columns.find(
+    (column) => column.name === source.keyColumn,
+  );
+  const to = target.columns.find((column) => column.name === target.keyColumn);
+  return from !== undefined && to?.name === from.name && to.type === from.type;
 }
 
 function rebindPromotionColumns(
@@ -110,7 +132,7 @@ function rebindPromotionColumns(
     names: Readonly<Record<string, string>>;
     nodeId: string;
     tableName: string;
-    report: Parameters<typeof rebindPromotionTable>[3];
+    report: Parameters<typeof rebindPromotionTable>[2];
   }>,
 ): Record<string, string> {
   const bindings: Record<string, string> = {};
