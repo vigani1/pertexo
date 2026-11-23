@@ -71,7 +71,7 @@ export function toolFormAt(form: NodeFormApi, index: number): NodeFormApi {
               : update;
           if (change.config === undefined) return change;
           const { tool, ...config } = change.config;
-          tools[index] = isRecord(tool) ? (tool as NodeConfig) : current;
+          tools[index] = isRecord(tool) ? tool : current;
           return {
             ...change,
             config: withConfigValue(config, 'tools', tools),
