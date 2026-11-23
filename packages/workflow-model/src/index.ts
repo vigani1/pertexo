@@ -14,7 +14,7 @@ export {
   workflowExecutionValues,
   valueSourceExecutionIdentity,
 } from './graph/execution-values.js';
-export { workflowNodes } from './graph/nodes.js';
+export { mapWorkflowNodes, workflowNodes } from './graph/nodes.js';
 export {
   WORKFLOW_NOTE_LIMITS,
   workflowNoteColorSchema,

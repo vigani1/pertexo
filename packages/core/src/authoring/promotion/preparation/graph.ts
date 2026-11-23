@@ -2,39 +2,12 @@ import { formatByteSize } from '@pertexo/node-sdk';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
-import {
-  canonicalJson,
-  type WorkflowGraph,
-  type WorkflowNode,
-} from '@pertexo/workflow-model';
+import { canonicalJson, type WorkflowGraph } from '@pertexo/workflow-model';
 
 import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
 
 export function promotionGraphDigest(graph: WorkflowGraph | null): string {
   return createHash('sha256').update(canonicalJson(graph)).digest('hex');
-}
-export function mapPromotionNodes(
-  graph: WorkflowGraph,
-  transform: (node: WorkflowNode) => WorkflowNode,
-): WorkflowGraph {
-  return {
-    ...graph,
-    nodes: graph.nodes.map((original) => {
-      const node = transform(original);
-      return node.structured === undefined
-        ? node
-        : {
-            ...node,
-            structured: {
-              ...node.structured,
-              body: {
-                ...node.structured.body,
-                ...mapPromotionNodes(node.structured.body, transform),
-              },
-            },
-          };
-    }),
-  };
 }
 /** The same review budget covers selected graphs and retained target dependencies. */
 export class PromotionGraphBudget {
