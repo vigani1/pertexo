@@ -106,6 +106,11 @@ export async function prepareInlineInvocation(
       );
   } catch (error) {
     assertNotAborted(input.signal);
+    if (
+      error instanceof WorkflowEngineError &&
+      error.code === 'checkpoint_invalid'
+    )
+      throw error;
     if (!expiry.aborted) failure = options.normalizeFailure(error);
   }
 
