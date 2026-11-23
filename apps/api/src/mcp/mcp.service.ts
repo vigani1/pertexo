@@ -7,13 +7,14 @@ import {
 } from '@pertexo/contracts';
 import {
   McpToolUnavailableError,
+  parseInvocationReference,
   type WorkflowRunDatabase,
 } from '@pertexo/core/runs';
 import type { LiveRunEventSource } from '../workflow-runs/events/stream.js';
 import { waitForMcpResult } from './wait-for-result.js';
 import type { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import type { requestIdentifiers } from '../workspaces/request/caller.js';
-import { invocationRunId, statusArguments, statusToolInput } from './rpc.js';
+import { statusArguments, statusToolInput } from './rpc.js';
 
 export type McpRuntime = Readonly<{
   runs: Pick<
@@ -81,7 +82,7 @@ export class McpService {
           const parsed = statusArguments.safeParse(args);
           if (!parsed.success) throw new McpToolUnavailableError();
           const { invocation } = parsed.data;
-          const runId = invocationRunId(invocation);
+          const runId = parseInvocationReference(invocation);
           if (runId === undefined) throw new McpToolUnavailableError();
           return toolResult(
             await this.runtime.runs.readMcpToolStatus({
