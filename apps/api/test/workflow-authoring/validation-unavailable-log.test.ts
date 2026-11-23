@@ -57,6 +57,23 @@ describe('publish validation that could not run', () => {
     },
   );
 
+  it('projects correction eligibility out of the publish problem', () => {
+    const issue = {
+      code: 'invalid_graph',
+      path: '$.nodes.request.config.url',
+      message: 'URL needs a value.',
+    } as const;
+    const { response } = render(
+      new InvalidWorkflowGraphError([{ ...issue, kind: 'requires_user' }]),
+    );
+
+    expect(response.body).toMatchObject({
+      code: 'workflow.invalid',
+      errors: [issue],
+    });
+    expect(JSON.stringify(response.body)).not.toContain('requires_user');
+  });
+
   it.each(['message', 'path', 'nodeId', 'code'])(
     'keeps what a person wrote in %s out of both the log and the response',
     (field) => {
