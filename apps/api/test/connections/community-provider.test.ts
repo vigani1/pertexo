@@ -44,7 +44,9 @@ it('creates and reads an approved community connection through the HTTP routes',
     const { connections } = nodeDefinitionListResponseSchema.parse(
       catalog.json(),
     );
-    const form = connections.find((entry) => entry.providerKey === providerKey);
+    const form = connections?.find(
+      (entry) => entry.providerKey === providerKey,
+    );
     if (form === undefined)
       throw new Error('Approved connection form is missing');
     const token = 'test-secret-value';
