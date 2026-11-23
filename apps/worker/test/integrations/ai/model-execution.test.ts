@@ -130,3 +130,35 @@ it('checks the enrolled key again before dispatching a repair', async () => {
   expect(fake.calls).toHaveLength(1);
   expect(fake.dispatches()).toBe(1);
 });
+
+it.each(['{"count":7}', '{"count":1e400}'])(
+  'admits the repair for a non-finite number only if the second answer is bounded JSON (%s)',
+  async (repair) => {
+    const answer = '{"count":1e400}';
+    await using fake = await fakeModel([
+      json(chat(answer)),
+      json(chat(repair)),
+    ]);
+    const response = fake.execute({
+      config: {
+        ...structured,
+        outputSchema: { ...schema, properties: { count: { type: 'number' } } },
+      },
+    });
+    if (repair === answer)
+      await expect(response).rejects.toMatchObject({
+        safeErrorCode: 'model.output_schema_invalid',
+      });
+    else
+      await expect(response).resolves.toMatchObject({
+        output: { data: { count: 7 } },
+      });
+    expect(fake.calls).toHaveLength(2);
+    expect(fake.calls[1]?.request).toMatchObject({
+      messages: [
+        { content: expect.stringContaining(JSON.stringify(answer)) as unknown },
+      ],
+    });
+    expect(fake.dispatches()).toBe(1);
+  },
+);

@@ -1,3 +1,4 @@
+import { boundedNodeJsonRecordSchema } from '@pertexo/node-sdk';
 import { MODEL_LIMITS } from './model-settings.js';
 import type { AgentModelContext } from './agent/agent-request.js';
 import {
@@ -31,6 +32,7 @@ const failure = providerFailure(NodeExecutorFailure);
 
 type ModelRuntime = Pick<
   NodeExecutionRuntime,
+  | 'callbacks'
   | 'connections'
   | 'sideEffectClass'
   | 'providerIdempotencyKey'
@@ -70,14 +72,15 @@ export async function runModel(attempt: ModelAttempt) {
       return { text: first.text };
     if (first.kind === 'proposal')
       throw modelFailure('invalid_response', { possiblyDispatched: true });
-    const answer = candidate(first);
-    if (validator?.(answer)) return { data: answer };
-    const repaired = candidate(
+    const answer = admittedCandidate(first, validator);
+    if (answer !== undefined) return { data: answer };
+    const repaired = admittedCandidate(
       await complete({
         answer: first.kind === 'text' ? first.text : first.data,
       }),
+      validator,
     );
-    if (validator?.(repaired)) return { data: repaired };
+    if (repaired !== undefined) return { data: repaired };
     throw modelFailure('output_schema_invalid', {
       possiblyDispatched: true,
     });
@@ -194,6 +197,7 @@ async function withModelAttempt<Result>(
     },
     async (credential) => {
       const usage = trackModelUsage(config.model, runtime.observeModelUsage);
+      const callbackSensitiveValues = runtime.callbacks?.sensitiveValues();
       const complete = (repair?: { answer: unknown }) => {
         const timeoutMillis = deadline - now();
         if (timeoutMillis <= 0)
@@ -217,6 +221,7 @@ async function withModelAttempt<Result>(
               },
           {
             credential,
+            callbackSensitiveValues,
             signal,
             timeoutMillis,
             usage,
@@ -269,6 +274,18 @@ function attemptContext(
     signal,
     timedOut: () => signal.aborted && signal.reason === timeout.reason,
   };
+}
+
+function admittedCandidate(
+  completion: Awaited<ReturnType<ModelClient['complete']>>,
+  validator: ReturnType<typeof compileBoundedObjectSchema>,
+) {
+  const admitted = boundedNodeJsonRecordSchema.safeParse({
+    data: candidate(completion),
+  });
+  if (admitted.success && validator?.(admitted.data.data))
+    return admitted.data.data;
+  return undefined;
 }
 
 function candidate(

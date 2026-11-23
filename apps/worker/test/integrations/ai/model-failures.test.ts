@@ -110,3 +110,42 @@ it('preserves cancellation after the provider receives the request', async () =>
   });
   expect(fake.calls).toHaveLength(1);
 });
+
+it('rejects an API key assembled from Messages text blocks', async () => {
+  const split = API_KEY.indexOf('-');
+  await using fake = await fakeModel([
+    json({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'text', text: API_KEY.slice(0, split) },
+        { type: 'text', text: API_KEY.slice(split) },
+      ],
+    }),
+  ]);
+  await expect(fake.execute({ endpoint: 'anthropic' })).rejects.toMatchObject({
+    safeErrorCode: 'model.credential_echoed',
+  });
+  expect(fake.calls).toHaveLength(1);
+});
+
+it.each([false, true])(
+  'rejects callback credential echoes with repair=%s',
+  async (repair) => {
+    const secret = 'synthetic-callback-secret';
+    const echo = json(chat(JSON.stringify({ count: 1, secret })));
+    await using fake = await fakeModel(
+      repair ? [json(chat('{}')), echo] : [echo],
+    );
+    await expect(
+      fake.execute({
+        config: structured,
+        prompt: secret,
+        callbacks: {
+          prepare: async () => ({}),
+          sensitiveValues: () => [secret],
+        },
+      }),
+    ).rejects.toMatchObject({ safeErrorCode: 'model.credential_echoed' });
+    expect(fake.calls).toHaveLength(repair ? 2 : 1);
+  },
+);

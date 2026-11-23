@@ -36,6 +36,7 @@ export function createModelClient(
       request: ModelRequest,
       context: Readonly<{
         credential: ModelCredential;
+        callbackSensitiveValues: readonly string[] | undefined;
         signal: AbortSignal;
         timeoutMillis: number;
         earlierDispatch: boolean;
@@ -46,6 +47,7 @@ export function createModelClient(
       const {
         credential,
         beforeDispatch,
+        callbackSensitiveValues = [],
         signal,
         timeoutMillis,
         earlierDispatch,
@@ -75,6 +77,10 @@ export function createModelClient(
               possiblyDispatched: dispatched,
             }),
         );
+        const sensitiveValues = [
+          ...auth.sensitiveValues,
+          ...callbackSensitiveValues,
+        ];
         const response = await http.executeStreaming(
           {
             ...auth,
@@ -89,6 +95,7 @@ export function createModelClient(
             signal,
             maxRedirects: 0,
             maxResponseBytes: MODEL_LIMITS.responseBytes,
+            sensitiveValues,
             rejectSensitiveResponse: true,
             beforeDispatch: async () => {
               await beforeDispatch();
@@ -117,6 +124,11 @@ export function createModelClient(
         if (outcome.kind !== 'succeeded')
           throw statusFailure(response.status, outcome);
         const result = adapter.completion(response.body, request);
+        if (
+          result.kind === 'text' &&
+          sensitiveValues.some((value) => result.text.includes(value))
+        )
+          throw modelFailure('credential_echoed', { possiblyDispatched: true });
         if (
           result.kind === 'text' ||
           result.kind === 'structured' ||

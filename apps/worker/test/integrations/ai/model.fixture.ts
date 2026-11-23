@@ -134,6 +134,7 @@ export async function fakeModel(answers: readonly Answer[]) {
       signal = new AbortController().signal,
       denyAddress = false,
       observeModelUsage,
+      callbacks,
     }: Readonly<{
       endpoint?: string;
       config?: Readonly<Record<string, unknown>>;
@@ -141,6 +142,7 @@ export async function fakeModel(answers: readonly Answer[]) {
       deadlineAt?: Date;
       signal?: AbortSignal;
       denyAddress?: boolean;
+      callbacks?: NodeExecutionRuntime['callbacks'];
       observeModelUsage?: NonNullable<
         NodeExecutionRuntime['observeModelUsage']
       >;
@@ -167,6 +169,7 @@ export async function fakeModel(answers: readonly Answer[]) {
             return Promise.resolve();
           },
           connections: connections(endpoint),
+          ...(callbacks === undefined ? {} : { callbacks }),
           ...(observeModelUsage === undefined ? {} : { observeModelUsage }),
         },
       };
