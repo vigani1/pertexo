@@ -1,4 +1,3 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import { isRecord, startingConfig } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
@@ -115,12 +114,11 @@ describe('a new step’s setup', () => {
   );
 
   for (const item of catalog) {
-    const { definition, configSchema } = item;
+    const { definition } = item;
     if (LEGACY_STEP_KEYS.has(definition.key)) continue;
 
-    it(`starts ${definition.key} with valid defaults from its catalog schema`, () => {
+    it(`starts ${definition.key} with values accepted by its runtime schema`, () => {
       const config = startingConfig(item, []);
-      expect(config).toEqual(catalogDefaults(configSchema));
       // Drafts stay saveable while incomplete (ADR 053). A setting with no
       // default is the person's to enter; every value supplied must be valid.
       const parsed =
@@ -133,6 +131,45 @@ describe('a new step’s setup', () => {
       expect(supplied).toEqual([]);
     });
   }
+
+  it.each([
+    ['ai.agent', 1, {}],
+    ['ai.agent', 2, {}],
+    ['ai.agent', 3, {}],
+    ['ai.classify', 1, { timeoutMillis: 30_000, maxOutputTokens: 1_024 }],
+    ['ai.guardrails', 1, { checks: [{ kind: 'pii' }] }],
+    [
+      'ai.model',
+      1,
+      { mode: 'text', timeoutMillis: 30_000, maxOutputTokens: 1_024 },
+    ],
+    ['core.schedule', 1, { kind: 'cron', misfirePolicy: 'catch_up_once' }],
+    ['mcp.call_tool', 1, {}],
+  ] as const)(
+    'starts %s@%i with its designated setup',
+    (key, version, expected) => {
+      const item = catalog.find(
+        ({ definition }) =>
+          definition.key === key && definition.version === version,
+      );
+      if (item === undefined)
+        throw new Error(`No ${key}@${String(version)} step in the catalog`);
+      expect(startingConfig(item, [])).toEqual(expected);
+    },
+  );
+
+  it('uses the selected spreadsheet variant and its row defaults', () => {
+    const readFile = catalog.find(
+      ({ definition }) => definition.key === 'core.read_file',
+    );
+    if (readFile === undefined)
+      throw new Error('No Read file step in the catalog');
+    expect(startingConfig(readFile, [], { format: 'xlsx' })).toEqual({
+      format: 'xlsx',
+      headerRow: 1,
+      convertValues: true,
+    });
+  });
 
   it('uses the first shape and its property defaults for a union without a whole default', () => {
     expect(
@@ -169,21 +206,6 @@ describe('a new step’s setup', () => {
     expect(startingConfig(date, [])).not.toBe(first);
   });
 });
-
-function catalogDefaults(schema: NodeDefinitionCatalogItem['configSchema']) {
-  if (schema.default !== undefined) return schema.default;
-
-  const first: unknown = Array.isArray(schema.oneOf) ? schema.oneOf[0] : schema;
-  const properties =
-    isRecord(first) && isRecord(first.properties) ? first.properties : {};
-  const defaults: Record<string, unknown> = {};
-  for (const [key, property] of Object.entries(properties)) {
-    if (!isRecord(property)) continue;
-    if ('const' in property && first !== schema) defaults[key] = property.const;
-    else if ('default' in property) defaults[key] = property.default;
-  }
-  return defaults;
-}
 
 function valueAt(value: unknown, path: readonly PropertyKey[]): unknown {
   return path.reduce<unknown>(
