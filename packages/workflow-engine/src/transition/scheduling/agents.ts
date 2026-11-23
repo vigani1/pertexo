@@ -9,16 +9,15 @@ import {
 import type { AgentTool } from './agent-scheduler.js';
 import type { AgentContinuation } from '../../control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../control-nodes/resume-agent.js';
-import { readAgentModelReceipt } from '../../control-nodes/agent-model-receipt.js';
+import {
+  readAgentModelReceipt,
+  settleModelReceipt,
+} from '../../control-nodes/agent-model-receipt.js';
 import {
   agentTurnTokenEnvelope,
   reserveAgentInference,
-  settleAgentTurnUsage,
 } from '../../control-nodes/agent-budget.js';
-import {
-  settleAgentModelTurn,
-  settleAgentTool,
-} from '../../control-nodes/settle-agent-work.js';
+import { settleAgentTool } from '../../control-nodes/settle-agent-work.js';
 import { settleAgentCall } from './settle-agent-call.js';
 import { operationError } from '../../input-checks/engine-values.js';
 import type { AgentChild } from '../../invocations/agent-invocation.js';
@@ -258,20 +257,6 @@ function settleAgentChild(
   } else {
     state.continueAgents = true;
   }
-}
-
-function settleModelReceipt(
-  agent: AgentContinuation,
-  receipt: ReturnType<typeof readAgentModelReceipt>,
-  alias: string,
-) {
-  const usage = settleAgentTurnUsage(agent, receipt.usage);
-  if (usage.kind === 'refused') return usage;
-  return settleAgentModelTurn(
-    { ...agent, budget: usage.budget },
-    receipt,
-    alias,
-  );
 }
 
 function admitAgentWork(

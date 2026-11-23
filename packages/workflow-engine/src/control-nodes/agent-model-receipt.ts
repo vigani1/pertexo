@@ -5,7 +5,12 @@ import {
 } from '@pertexo/workflow-model';
 import { isJsonRecord, operationError } from '../input-checks/engine-values.js';
 import { hasExactFields } from '../input-checks/exact-fields.js';
-import type { AgentAttemptReceipt } from './agent-continuation.js';
+import { settleAgentModelTurn } from './settle-agent-work.js';
+import { settleAgentTurnUsage } from './agent-budget.js';
+import type {
+  AgentAttemptReceipt,
+  AgentContinuation,
+} from './agent-continuation.js';
 
 export function readAgentModelReceipt(
   outputs: readonly JsonValue[],
@@ -67,4 +72,18 @@ export function parseStoredAgentTurn(
       admission: { kind: 'accepted', input: admission.input },
     };
   return undefined;
+}
+
+export function settleModelReceipt(
+  agent: AgentContinuation,
+  receipt: ReturnType<typeof readAgentModelReceipt>,
+  alias: string,
+) {
+  const usage = settleAgentTurnUsage(agent, receipt.usage);
+  if (usage.kind === 'refused') return usage;
+  return settleAgentModelTurn(
+    { ...agent, budget: usage.budget },
+    receipt,
+    alias,
+  );
 }
