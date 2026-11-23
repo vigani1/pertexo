@@ -5,7 +5,10 @@ import { registerEditorUser } from '../../support/ordinary-editor-session';
 const ownerNames = {
   product: 'Product owner',
   assistant: 'Assistant author',
+  callable: 'Callable Agent author',
   provider: 'Provider workflow author',
+  model: 'Model workflow author',
+  recovery: 'Recovery workflow author',
   evaluation: 'Evaluation workflow author',
   guardrails: 'Guardrails workflow author',
 } as const;

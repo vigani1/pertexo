@@ -18,6 +18,7 @@ import {
 
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
+test.use({ accountGroup: 'recovery' });
 
 test('a failed run replays on the version that fixes it', async ({ page }) => {
   const workspaceId = await openNewEditorWorkspace(page, 'Fix and replay');

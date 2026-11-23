@@ -18,7 +18,7 @@ import { model, openModelProvider } from './model-provider';
 const alias = 'verify_order';
 
 test.use({
-  accountGroup: 'assistant',
+  accountGroup: 'callable',
   actionTimeout: 10_000,
   viewport: { width: 1280, height: 1280 },
 });
