@@ -140,7 +140,11 @@ function initializeAddedSteps(
   });
 }
 
-type ProposalIssue = { path: string; code: string; message: string };
+interface ProposalIssue {
+  path: string;
+  code: string;
+  message: string;
+}
 
 function rejected(
   issues: readonly ProposalIssue[],

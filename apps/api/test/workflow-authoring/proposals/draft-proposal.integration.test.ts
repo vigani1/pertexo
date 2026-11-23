@@ -102,7 +102,9 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
         sendReply();
       } else {
         const timer = setTimeout(sendReply, reply.waitMillis);
-        response.once('close', () => clearTimeout(timer));
+        response.once('close', () => {
+          clearTimeout(timer);
+        });
       }
 
       function sendReply() {
@@ -452,17 +454,14 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       { name: 'propose_draft', args: { graph: dangling } },
       { name: 'propose_draft', args: { graph: masked } },
     ]);
-    expect(result).toMatchObject({
-      kind: 'inspected',
-      rounds: 1,
-      validation: {
-        issues: expect.arrayContaining([
-          expect.objectContaining({
-            message: expect.stringContaining(settingSentinel),
-          }),
-        ]),
-      },
-    });
+    expect(result).toMatchObject({ kind: 'inspected', rounds: 1 });
+    if (result.kind !== 'inspected')
+      throw new Error('Expected an inspectable draft');
+    expect(
+      result.validation.issues.some(({ message }) =>
+        message.includes(settingSentinel),
+      ),
+    ).toBe(true);
     const bodies = requests.slice(start);
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toContain('dangling_edge');

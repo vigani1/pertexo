@@ -53,15 +53,15 @@ export function proposalCorrectionCases({
       messages: { role: string; content?: string }[];
     };
     const toolResult = messages.findLast(({ role }) => role === 'tool');
-    expect(JSON.parse(toolResult?.content ?? 'null')).toMatchObject({
-      issues: [
-        {
-          path: '$.nodes.request.config.method',
-          code: 'invalid_graph',
-          message: expect.stringMatching(/method/i),
-        },
-      ],
+    const { issues } = JSON.parse(toolResult?.content ?? 'null') as {
+      issues: { path: string; code: string; message: string }[];
+    };
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      path: '$.nodes.request.config.method',
+      code: 'invalid_graph',
     });
+    expect(issues[0]?.message).toMatch(/method/i);
     expect(await usageRows(path)).toEqual([
       expect.objectContaining({
         purpose: 'propose_draft',
