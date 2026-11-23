@@ -50,6 +50,42 @@ function issueMessages(value: unknown): readonly string[] {
 }
 
 describe('connection public contracts', () => {
+  it('round-trips a community provider through the connection wire schemas', () => {
+    const request = connectionCreateRequestSchema.parse({
+      providerKey: 'community.acme.widgets',
+      name: 'Widgets API',
+      credential: { type: 'community_token', token: 'fixture' },
+    });
+    const { providerKey, credential } = request;
+    expect(
+      connectionResponseSchema.parse({
+        ...connection,
+        providerKey,
+        authType: credential.type,
+      }),
+    ).toMatchObject({
+      providerKey: 'community.acme.widgets',
+      authType: 'community_token',
+    });
+  });
+
+  it.each(['community.x', 'Community.a.b', 'community.a.b.c', 'community..b'])(
+    'rejects malformed community provider %s on create and read',
+    (providerKey) => {
+      expect(
+        connectionCreateRequestSchema.safeParse({
+          providerKey,
+          name: 'Widgets API',
+          credential: { type: 'community_token', token: 'fixture' },
+        }).success,
+      ).toBe(false);
+      expect(
+        connectionResponseSchema.safeParse({ ...connection, providerKey })
+          .success,
+      ).toBe(false);
+    },
+  );
+
   it('accepts future connection keys in the wire envelope', () => {
     const request = {
       providerKey: 'future_provider',

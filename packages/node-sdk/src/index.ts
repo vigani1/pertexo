@@ -36,6 +36,7 @@ export {
   type NodeCatalog,
   TERMINATES_RUN_CAPABILITY,
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
+  CONNECTION_PROVIDER_KEY_PATTERN,
   NODE_IDENTITY_KEY_PATTERN,
   definitionIdentitySchema,
   executorManifestFor,

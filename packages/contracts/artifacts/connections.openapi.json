@@ -1997,7 +1997,7 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 64,
-                      "pattern": "^[a-z][a-z0-9_]*$"
+                      "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
                     },
                     "name": {
                       "type": "string",
@@ -3029,7 +3029,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "pattern": "^[a-z][a-z0-9_]*$"
+            "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
           },
           "name": {
             "type": "string",
@@ -3043,7 +3043,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               }
             },
             "required": [
@@ -3079,7 +3079,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               },
               "name": {
                 "type": "string",
@@ -4330,7 +4330,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               }
             },
             "required": [
@@ -4355,7 +4355,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               }
             },
             "required": [
@@ -4386,7 +4386,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               },
               "sideEffectDisclosureAccepted": {
                 "type": "boolean",
@@ -4407,7 +4407,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 64,
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
               },
               "transport": {
                 "type": "string",
@@ -4447,7 +4447,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 64,
-                    "pattern": "^[a-z][a-z0-9_]*$"
+                    "pattern": "^(?:[a-z][a-z0-9_]*|community\\.[a-z0-9]+\\.[a-z0-9]+)$"
                   },
                   "name": {
                     "type": "string",

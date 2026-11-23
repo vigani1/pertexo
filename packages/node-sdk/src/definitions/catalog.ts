@@ -148,6 +148,8 @@ export const NODE_IDENTITY_KEY_PATTERN = identityKey.source;
  * here, and a graph's node references by `workflow-model`'s graph schema.
  */
 export const NODE_IDENTITY_KEY_MAX_CHARACTERS = 64;
+export const CONNECTION_PROVIDER_KEY_PATTERN =
+  /^(?:[a-z][a-z0-9_]*|community\.[a-z0-9]+\.[a-z0-9]+)$/u;
 const identitySchema = z
   .object({
     key: z.string().max(NODE_IDENTITY_KEY_MAX_CHARACTERS).regex(identityKey),
