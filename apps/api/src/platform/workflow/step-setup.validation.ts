@@ -49,7 +49,7 @@ export function stepSetupIssues(
       const definition = knownDefinition(node);
       if (definition === undefined) continue;
       issues.push(
-        ...configIssues(node, definition, path),
+        ...configAndConnectionIssues(node, definition, path),
         ...inputIssues(node, definition, path),
       );
     }
@@ -67,13 +67,22 @@ function knownDefinition(node: WorkflowNode): StepDefinition | undefined {
   }
 }
 
-function configIssues(
+function configAndConnectionIssues(
   node: WorkflowNode,
   definition: StepDefinition,
   path: string,
 ): readonly GraphValidationIssue[] {
   const parsed = definition.configSchema.safeParse(node.config);
-  if (parsed.success) return [];
+  if (parsed.success)
+    return (definition.requiredConnectionsForConfig?.(parsed.data) ?? [])
+      .filter((slot) => node.connectionRefs[slot] === undefined)
+      .map((slot) =>
+        issue(
+          `${path}.connectionRefs.${slot}`,
+          'Choose a connection for this step.',
+          true,
+        ),
+      );
   return parsed.error.issues.map((problem) =>
     issue(
       problemPath(`${path}.config`, problem),

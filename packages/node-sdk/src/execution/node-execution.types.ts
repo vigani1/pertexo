@@ -226,6 +226,10 @@ export interface InlineNodeRequest extends InlineNodeInvocation {
 export interface NodeDefinitionRegistration {
   readonly manifest: NodeManifest;
   readonly configSchema: ZodType;
+  /** Optional manifest slots required by the parsed config. */
+  readonly requiredConnectionsForConfig?: (
+    config: unknown,
+  ) => readonly string[];
   readonly inputSchema: ZodType;
   readonly outputSchema: ZodType;
 }

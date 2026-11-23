@@ -6,6 +6,7 @@ import {
   MODEL_PROVIDER_KEY,
 } from '../connections.definition.js';
 import {
+  type GuardrailsConfig,
   guardrailsConfigSchema,
   guardrailsInputSchema,
   guardrailsOutputSchema,
@@ -30,7 +31,7 @@ const manifest: NodeManifest = Object.freeze({
   integration: { providerKey: MODEL_PROVIDER_KEY, operationKey: 'guardrails' },
   retryClass: 'safe',
   resourceClass: 'io',
-  capabilities: [],
+  capabilities: ['external_http', 'side_effect_disclosure'],
   executor: GUARDRAILS_STEP,
   executorAbi: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   policyReferences: [],
@@ -39,6 +40,10 @@ const manifest: NodeManifest = Object.freeze({
 export const GUARDRAILS_REGISTRATION = Object.freeze({
   manifest,
   configSchema: guardrailsConfigSchema,
+  requiredConnectionsForConfig: (config: unknown) =>
+    (config as GuardrailsConfig).checks.some(({ kind }) => kind === 'model')
+      ? [MODEL_AUTH_TYPE]
+      : [],
   inputSchema: guardrailsInputSchema,
   outputSchema: guardrailsOutputSchema,
 });
