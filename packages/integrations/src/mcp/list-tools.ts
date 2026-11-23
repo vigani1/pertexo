@@ -1,7 +1,5 @@
-import {
-  boundedNodeJsonRecordSchema,
-  type SchemaDocument,
-} from '@pertexo/node-sdk';
+import { mcpToolNameSchema } from '@pertexo/contracts';
+import { boundedNodeJsonRecordSchema } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { compileBoundedObjectSchema } from '../structured-data/object-schema.js';
@@ -9,14 +7,8 @@ import type { openMcpSession } from './client.js';
 import { MCP_LIMITS } from './mcp-limits.js';
 import { McpProtocolError } from './mcp.errors.js';
 
-export const toolNameSchema = z
-  .string()
-  .min(1)
-  .max(MCP_LIMITS.toolNameCharacters)
-  .regex(/^[A-Za-z0-9_.-]+$/u);
-
 const toolSchema = z.object({
-  name: toolNameSchema,
+  name: mcpToolNameSchema,
   title: z.string().optional(),
   description: z.string().optional(),
   inputSchema: boundedNodeJsonRecordSchema,
@@ -58,30 +50,33 @@ export async function listTools(
   throw new McpProtocolError('Too many MCP tool list pages');
 }
 
-export type McpTool = z.output<typeof toolSchema>;
+type McpTool = z.output<typeof toolSchema>;
 
-export function normalizeToolInput(tool: McpTool) {
+export function prepareTool(tool: McpTool) {
   if (tool.execution?.taskSupport === 'required') return undefined;
-  const { $schema: dialect, ...schema } = tool.inputSchema;
+  const input = compileToolSchema(tool.inputSchema);
+  if (input === undefined) return undefined;
+  const output =
+    tool.outputSchema === undefined
+      ? undefined
+      : compileToolSchema(tool.outputSchema);
+  if (tool.outputSchema !== undefined && output === undefined) return undefined;
+  return {
+    inputSchema: boundedNodeJsonRecordSchema.parse(
+      JSON.parse(canonicalJson(input.shape)) as unknown,
+    ),
+    validateInput: input.validate,
+    validateOutput: output?.validate,
+  };
+}
+
+function compileToolSchema(document: McpTool['inputSchema']) {
+  const { $schema: dialect, ...shape } = document;
   if (
     dialect !== undefined &&
     dialect !== 'https://json-schema.org/draft/2020-12/schema'
   )
     return undefined;
-  const validate = compileBoundedObjectSchema(schema);
-  if (validate === undefined) return undefined;
-  return {
-    schema: boundedNodeJsonRecordSchema.parse(
-      JSON.parse(canonicalJson(schema)) as unknown,
-    ),
-    validate,
-  };
-}
-
-export function toolOutputValidator(schema: SchemaDocument) {
-  const { $schema: dialect, ...shape } = schema;
-  return dialect === undefined ||
-    dialect === 'https://json-schema.org/draft/2020-12/schema'
-    ? compileBoundedObjectSchema(shape)
-    : undefined;
+  const validate = compileBoundedObjectSchema(shape);
+  return validate === undefined ? undefined : { shape, validate };
 }

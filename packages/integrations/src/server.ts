@@ -79,6 +79,7 @@ export {
 } from './providers/http-client.js';
 
 export {
+  ProviderCredentialRejectedError,
   ProviderHttpError,
   type ProviderHttpErrorCode,
 } from './providers/http.errors.js';

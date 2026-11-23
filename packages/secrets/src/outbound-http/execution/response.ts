@@ -104,6 +104,9 @@ export async function consumeFinalResponse<Body>(
             sensitiveValues: request.sensitiveValues,
             rejectSensitiveResponse: request.rejectSensitiveResponse,
             deadline,
+            incremental:
+              rawContentType.split(';', 1)[0]?.trim().toLowerCase() ===
+              'text/event-stream',
             redactor,
             ...(charset === undefined ? {} : { charset }),
           }),

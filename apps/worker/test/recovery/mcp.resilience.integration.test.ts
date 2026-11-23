@@ -89,8 +89,21 @@ describeFaults('an MCP tool used by a workflow', () => {
     return stack.api.startRun(workspace, workflow);
   }
 
-  it('tests and discovers a tool without invoking it or sharing the connection with other workspaces', async () => {
-    await using fake = await fakeMcp();
+  it('tests and discovers only eligible tools without invoking them or sharing the connection with other workspaces', async () => {
+    await using fake = await fakeMcp({
+      'tools/list': (response, request) => {
+        reply(response, request, {
+          tools: [
+            { name: 'counter', title: 'Counter', inputSchema: TOOL_INPUT },
+            {
+              name: 'unsupported-output',
+              inputSchema: TOOL_INPUT,
+              outputSchema: { type: 'object', $ref: '#/$defs/foo' },
+            },
+          ],
+        });
+      },
+    });
     const id = await connection(fake.url);
     expect((await lookup(id, otherWorkspace)).status).toBe(404);
     expect(fake.calls).toHaveLength(0);
@@ -118,6 +131,75 @@ describeFaults('an MCP tool used by a workflow', () => {
     const count = fake.calls.length;
     expect((await lookup(id)).status).toBe(409);
     expect(fake.calls).toHaveLength(count);
+  });
+
+  it('answers Slack DMs and users only for a visible connection', async () => {
+    const created = await responseAt(
+      201,
+      stack.api.call(
+        'POST',
+        `/v1/workspaces/${workspace}/connections`,
+        {
+          name: 'Slack local lookup',
+          providerKey: 'slack',
+          credential: {
+            type: 'slack_bot_token',
+            botToken: 'xoxb-123456789-local-lookup',
+          },
+        },
+        headers(),
+      ),
+    );
+    if (!isRecord(created.json) || typeof created.json.id !== 'string')
+      throw new Error('Connection response has no identifier');
+    const id = created.json.id;
+    const lookupSlack = (workspaceId: string) =>
+      stack.api.call(
+        'POST',
+        `/v1/workspaces/${workspaceId}/connections/${id}/lookup`,
+        {
+          providerKey: 'slack',
+          lookup: 'channels',
+          input: { channelIds: ['D0001', 'U0002'] },
+        },
+      );
+    const visible = await responseAt(200, lookupSlack(workspace));
+    expect(visible.json).toEqual({
+      items: ['D0001', 'U0002'].map((value) => ({
+        value,
+        label: value,
+        unavailableReason: 'not_a_channel',
+      })),
+    });
+    const hidden = await responseAt(404, lookupSlack(otherWorkspace));
+    expect(hidden.json).toMatchObject({ code: 'resource.not_found' });
+  });
+
+  it('records an initialization refusal as a rejected credential', async () => {
+    await using fake = await fakeMcp({
+      initialize: (response) => {
+        response.writeHead(401).end();
+      },
+    });
+    const id = await connection(fake.url);
+    const tested = await responseAt(
+      200,
+      stack.api.call(
+        'POST',
+        `/v1/workspaces/${workspace}/connections/${id}/test`,
+        { providerKey: 'mcp' },
+        headers(),
+      ),
+    );
+    expect(tested.json).toMatchObject({
+      connection: { status: 'reauthorization_required' },
+      outcome: {
+        ok: false,
+        httpStatus: 401,
+        errorCode: 'connection.credential_rejected',
+      },
+    });
+    expect(fake.calls.map(({ method }) => method)).toEqual(['initialize']);
   });
 
   it('refuses redirects and excess results and ends a stalled lookup', async () => {

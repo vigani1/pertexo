@@ -38,6 +38,7 @@ function fixture() {
         sealed,
       }),
     ),
+    assertConnectionLookupAccess: vi.fn(() => Promise.resolve()),
     assertConnectionLookupSecretCurrent: vi.fn(() => Promise.resolve()),
   };
   const encryption = {

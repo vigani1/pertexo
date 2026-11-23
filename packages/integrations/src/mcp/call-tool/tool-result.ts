@@ -4,7 +4,7 @@ import {
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { MCP_LIMITS } from '../mcp-limits.js';
-import type { toolOutputValidator } from '../list-tools.js';
+import type { compileBoundedObjectSchema } from '../../structured-data/object-schema.js';
 import { callToolFailure } from './call-tool.errors.js';
 
 const resultSchema = z.object({
@@ -18,7 +18,7 @@ const resultSchema = z.object({
 
 export function toolResult(
   value: SchemaDocument,
-  validate: ReturnType<typeof toolOutputValidator>,
+  validate: ReturnType<typeof compileBoundedObjectSchema>,
 ) {
   if (value.isError === true)
     throw callToolFailure('tool_failed', 'failed', true);

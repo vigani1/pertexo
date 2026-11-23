@@ -42,7 +42,7 @@ export class McpService {
   ) {}
 
   public async dispatch(
-    input: McpRequest,
+    input: Exclude<McpRequest, { method: 'notifications/initialized' }>,
     actor: Actor,
     disconnected: AbortSignal,
   ): Promise<unknown> {
@@ -56,8 +56,6 @@ export class McpService {
         };
       case 'ping':
         return {};
-      case 'notifications/initialized':
-        return undefined;
       case 'tools/list': {
         await this.limits.admit('mcp_list', subject);
         const page = await this.runtime.runs.listMcpTools(

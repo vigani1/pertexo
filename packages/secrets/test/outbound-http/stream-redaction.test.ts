@@ -10,7 +10,10 @@ import {
 
 const encoder = new TextEncoder();
 
-function response(body: AsyncIterable<Uint8Array>): Readonly<{
+function response(
+  body: AsyncIterable<Uint8Array>,
+  contentType = 'text/plain',
+): Readonly<{
   value: SecureHttpTransportResponse;
   close: ReturnType<typeof vi.fn>;
 }> {
@@ -18,7 +21,7 @@ function response(body: AsyncIterable<Uint8Array>): Readonly<{
   return {
     value: Object.freeze({
       status: 200,
-      headers: { 'content-type': 'text/plain' },
+      headers: { 'content-type': contentType },
       body,
       close,
     }),
@@ -54,6 +57,45 @@ describe('secure HTTP streamed-body deadline/error mapping', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  it.each([
+    { secret: 'private-token', parts: ['data: private-', 'token\n\n'] },
+    { secret: 'private-token', parts: ['data: priv\\u0', '061te-token\n\n'] },
+    { secret: 'private-\ntoken', parts: ['data: private-\n', 'token\n\n'] },
+  ])(
+    'rejects a credential split across event stream chunks',
+    async ({ secret, parts }) => {
+      const chunks = parts.map((part) => encoder.encode(part));
+      const fixture = response(
+        (async function* () {
+          for (const chunk of chunks) yield chunk;
+          await Promise.resolve();
+        })(),
+        'text/event-stream',
+      );
+      const emitted: string[] = [];
+      const decoder = new TextDecoder();
+      await expect(
+        clientFor(fixture.value).executeStreaming(
+          {
+            ...request(),
+            sensitiveValues: [secret],
+            rejectSensitiveResponse: true,
+          },
+          async ({ body }) => {
+            for await (const bytes of body) emitted.push(decoder.decode(bytes));
+          },
+        ),
+      ).rejects.toMatchObject({
+        code: SECURE_HTTP_ERROR_CODE.responseSensitive,
+      });
+      expect(emitted).toEqual([]);
+      expect(chunks.every((chunk) => chunk.every((byte) => byte === 0))).toBe(
+        true,
+      );
+      expect(fixture.close).toHaveBeenCalledOnce();
+    },
+  );
 
   it('maps a controlled monotonic deadline reached before a yielded chunk', async () => {
     const fixture = response({

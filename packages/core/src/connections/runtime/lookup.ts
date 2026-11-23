@@ -31,19 +31,7 @@ export async function resolveConnectionLookupSecret(
   input: ResolveConnectionLookupSecretInput,
 ): Promise<ResolvedConnectionSecretRecord> {
   const { workspaceId, actorId, connectionId } = input;
-  const connection = await selectConnection(client, workspaceId, connectionId);
-  if (connection === null)
-    throw new ConnectionNotFoundError('Connection is not visible');
-  if (
-    connection.providerKey !== input.expectedProviderKey ||
-    connection.status !== CONNECTION_STATUS.active
-  )
-    throw new ConnectionUnavailableError(
-      'Connection is not available for lookups',
-      connection.status === CONNECTION_STATUS.revoked
-        ? 'revoked'
-        : 'unavailable',
-    );
+  const connection = await requireLookupConnection(client, input);
   const row = await readSealedSecret(
     client,
     workspaceId,
@@ -69,6 +57,30 @@ export async function resolveConnectionLookupSecret(
     secretVersionId: connection.currentSecretVersionId,
     sealed: row,
   });
+}
+
+export async function requireLookupConnection(
+  client: PoolClient,
+  input: Pick<
+    ResolveConnectionLookupSecretInput,
+    'workspaceId' | 'connectionId' | 'expectedProviderKey'
+  >,
+) {
+  const { workspaceId, connectionId } = input;
+  const connection = await selectConnection(client, workspaceId, connectionId);
+  if (connection === null)
+    throw new ConnectionNotFoundError('Connection is not visible');
+  if (
+    connection.providerKey !== input.expectedProviderKey ||
+    connection.status !== CONNECTION_STATUS.active
+  )
+    throw new ConnectionUnavailableError(
+      'Connection is not available for lookups',
+      connection.status === CONNECTION_STATUS.revoked
+        ? 'revoked'
+        : 'unavailable',
+    );
+  return connection;
 }
 
 export async function assertLookupSecretCurrent(

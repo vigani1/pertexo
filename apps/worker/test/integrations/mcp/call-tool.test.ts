@@ -67,7 +67,7 @@ function execute(
   return (denyAddress ? denied : allowed).execute(request);
 }
 
-it('maps arguments and reads structured content from a POST event stream with a session', async () => {
+it('maps arguments and reads a complete POST event before the provider closes its stream', async () => {
   await using fake = await fakeMcp();
   expect(await execute(fake.url)).toEqual({
     kind: 'succeeded',
@@ -134,15 +134,22 @@ it.each([
     code: 'schema_unsupported',
   },
   {
+    inputSchema: TOOL_INPUT,
+    outputSchema: { type: 'object', $ref: '#/$defs/foo' },
+    code: 'schema_unsupported',
+  },
+  {
     inputSchema: { ...TOOL_INPUT, properties: { count: { type: 'string' } } },
     code: 'schema_changed',
   },
 ])(
   'refuses discovery with $code before calling the tool',
-  async ({ inputSchema, code }) => {
+  async ({ inputSchema, outputSchema, code }) => {
     await using fake = await fakeMcp({
       'tools/list': (response, request) => {
-        reply(response, request, { tools: [{ name: 'counter', inputSchema }] });
+        reply(response, request, {
+          tools: [{ name: 'counter', inputSchema, outputSchema }],
+        });
       },
     });
     await expect(execute(fake.url)).rejects.toMatchObject({

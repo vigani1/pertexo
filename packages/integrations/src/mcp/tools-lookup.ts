@@ -7,7 +7,7 @@ import {
   MCP_TOOLS_LOOKUP,
   mcpCredentialSchema,
 } from './connections.definition.js';
-import { listTools, normalizeToolInput } from './list-tools.js';
+import { listTools, prepareTool } from './list-tools.js';
 
 export const toolsLookup = defineConnectionLookup({
   key: MCP_TOOLS_LOOKUP,
@@ -23,8 +23,8 @@ export const toolsLookup = defineConnectionLookup({
     const tools = await listTools(session);
     return {
       items: [...tools.values()].flatMap((tool) => {
-        const input = normalizeToolInput(tool);
-        if (input === undefined) return [];
+        const prepared = prepareTool(tool);
+        if (prepared === undefined) return [];
         const title =
           tool.title
             ?.trim()
@@ -41,7 +41,7 @@ export const toolsLookup = defineConnectionLookup({
                     CONNECTION_LOOKUP_LIMITS.descriptionCharacters,
                   ),
                 }),
-            attach: input.schema,
+            attach: prepared.inputSchema,
           },
         ];
       }),

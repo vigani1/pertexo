@@ -12,6 +12,7 @@ import {
 } from '../../providers/provider.errors.js';
 import {
   inspectProviderHttpError,
+  ProviderCredentialRejectedError,
   PROVIDER_HTTP_ERROR_CODE,
 } from '../../providers/http.errors.js';
 import { registerProviderExecutor } from '../../providers/provider-executor.js';
@@ -21,13 +22,9 @@ import {
   MCP_PROVIDER_KEY,
   mcpCredentialSchema,
 } from '../connections.definition.js';
-import {
-  listTools,
-  normalizeToolInput,
-  toolOutputValidator,
-} from '../list-tools.js';
+import { listTools, prepareTool } from '../list-tools.js';
 import { MCP_LIMITS } from '../mcp-limits.js';
-import { McpHttpError, McpRpcError } from '../mcp.errors.js';
+import { McpRpcError } from '../mcp.errors.js';
 import { MCP_CALL_TOOL_STEP } from './call-tool.definition.js';
 import { callToolFailure } from './call-tool.errors.js';
 import type { CallToolConfig } from './call-tool.schemas.js';
@@ -120,19 +117,15 @@ async function callTool(
         });
         const tool = (await listTools(session)).get(config.toolName);
         if (tool === undefined) throw callToolFailure('schema_changed');
-        const input = normalizeToolInput(tool);
-        if (input === undefined) throw callToolFailure('schema_unsupported');
+        const prepared = prepareTool(tool);
+        if (prepared === undefined) throw callToolFailure('schema_unsupported');
         if (
-          canonicalJson(input.schema) !== canonicalJson(config.toolInputSchema)
+          canonicalJson(prepared.inputSchema) !==
+          canonicalJson(config.toolInputSchema)
         )
           throw callToolFailure('schema_changed');
-        if (!input.validate(args)) throw callToolFailure('arguments_invalid');
-        const validate =
-          tool.outputSchema === undefined
-            ? undefined
-            : toolOutputValidator(tool.outputSchema);
-        if (tool.outputSchema !== undefined && validate === undefined)
-          throw callToolFailure('schema_unsupported');
+        if (!prepared.validateInput(args))
+          throw callToolFailure('arguments_invalid');
         const result = await session(
           'tools/call',
           { name: tool.name, arguments: args },
@@ -141,7 +134,7 @@ async function callTool(
             dispatched = true;
           },
         );
-        return toolResult(result, validate);
+        return toolResult(result, prepared.validateOutput);
       } catch (error: unknown) {
         throw exchangeFailure(error, signal, dispatched);
       }
@@ -171,8 +164,7 @@ function exchangeFailure(
   if (
     code === PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed ||
     code === PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed ||
-    (error instanceof McpHttpError &&
-      (error.status === 401 || error.status === 403))
+    error instanceof ProviderCredentialRejectedError
   )
     return callToolFailure('credential_rejected');
   if (code === PROVIDER_HTTP_ERROR_CODE.responseTooLarge)

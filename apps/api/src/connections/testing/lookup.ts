@@ -1,8 +1,9 @@
+import { ProviderCredentialRejectedError } from '@pertexo/integrations/server';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import { isApplicationError } from '../../platform/http/application-error.js';
 import type { LookupConnectionOptionsService } from '../lookups/lookup-options.service.js';
-import { SUCCEEDED_TEST } from './outcomes.js';
+import { credentialRejectedOutcome, SUCCEEDED_TEST } from './outcomes.js';
 
 export async function testConnectionLookup(
   lookup: LookupConnectionOptionsService | undefined,
@@ -14,6 +15,8 @@ export async function testConnectionLookup(
     await lookup.execute(input, test);
     return SUCCEEDED_TEST;
   } catch (error: unknown) {
+    if (error instanceof ProviderCredentialRejectedError)
+      return credentialRejectedOutcome(error.status);
     if (!isApplicationError(error) || error.code !== 'provider.unavailable')
       throw error;
     return {
