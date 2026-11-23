@@ -1,5 +1,6 @@
 import { responseSchema } from './shared/response-schema.js';
 import {
+  NODE_CATALOG_COUNT_LIMITS,
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
   NODE_IDENTITY_KEY_PATTERN,
   codeSettingsSchema,
@@ -10,8 +11,7 @@ import { z } from 'zod';
 
 /** How large the step and integration catalog may grow, and how long its names are. */
 export const CATALOG_LIMITS = Object.freeze({
-  definitions: 256,
-  integrations: 128,
+  ...NODE_CATALOG_COUNT_LIMITS,
   requirements: 64,
   capabilities: 64,
   ports: 64,

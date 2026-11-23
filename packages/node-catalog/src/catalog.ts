@@ -1,4 +1,3 @@
-import { CATALOG_LIMITS } from '@pertexo/contracts';
 import {
   INTEGRATION_MODULES,
   type IntegrationModule,
@@ -8,6 +7,7 @@ import {
   createNodeCatalog,
   definitionIdentitySchema,
   executorManifestFor,
+  NODE_CATALOG_COUNT_LIMITS,
   type NodeCatalog,
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
@@ -71,9 +71,10 @@ function registerPlatform(modules: readonly IntegrationModule[]) {
     ),
   );
   if (
-    definitions.length > CATALOG_LIMITS.definitions ||
-    operations.size > CATALOG_LIMITS.integrations ||
-    integrations.connectionFormCatalog.length > CATALOG_LIMITS.integrations
+    definitions.length > NODE_CATALOG_COUNT_LIMITS.definitions ||
+    operations.size > NODE_CATALOG_COUNT_LIMITS.integrations ||
+    integrations.connectionFormCatalog.length >
+      NODE_CATALOG_COUNT_LIMITS.integrations
   )
     throw new IntegrationRegistryError(
       'catalog limit',

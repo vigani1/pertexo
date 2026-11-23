@@ -139,6 +139,11 @@ export interface NodeCatalog {
   readonly policies: readonly PolicyReference[];
 }
 
+export const NODE_CATALOG_COUNT_LIMITS = Object.freeze({
+  definitions: 256,
+  integrations: 128,
+});
+
 export const TERMINATES_RUN_CAPABILITY = 'terminates_run' as const;
 
 const identityKey = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u;

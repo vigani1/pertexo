@@ -34,6 +34,7 @@ export {
   type NodeManifest,
   type ExecutorManifest,
   type NodeCatalog,
+  NODE_CATALOG_COUNT_LIMITS,
   TERMINATES_RUN_CAPABILITY,
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
   CONNECTION_PROVIDER_KEY_PATTERN,
