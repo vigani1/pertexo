@@ -2,7 +2,7 @@ import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import { expect, it } from 'vitest';
-import { ListNodeDefinitionsService } from '../../../src/catalog/index.js';
+import { ListNodeDefinitionsService } from '../../../src/catalog/catalog.service.js';
 import {
   catalogToolResult,
   proposalTools,
@@ -11,14 +11,14 @@ import {
 it('reserves search results for current releases and opens retained details from the draft', () => {
   const { definitions } = platformBrowserNodeDefinitionCatalog();
   const current = definitions.find(
-    ({ definition }) => definition.key === 'http.request',
+    ({ definition }) => definition.key === 'core.wait',
   );
-  if (current === undefined) throw new Error('Missing HTTP step');
+  if (current === undefined) throw new Error('Missing Wait step');
   const retained = Array.from({ length: 12 }, (_, index) => ({
     ...current,
     definition: { ...current.definition, version: index + 2 },
     presentation: {
-      name: 'Old HTTP request',
+      name: 'Old Wait step',
       icon: 'globe',
       group: 'action' as const,
       community: {
