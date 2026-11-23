@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createCoreNodeRegistry } from '../../../src/server.js';
+import { createInlineNodeRegistry } from '@pertexo/node-sdk/server';
+import { CORE_NODE_CATALOG } from '../../../src/index.js';
+import {
+  CORE_NODE_DEFINITION_REGISTRATIONS,
+  CORE_NODE_EXECUTOR_REGISTRATIONS,
+  createCoreNodeRegistry,
+} from '../../../src/server.js';
 const registry = createCoreNodeRegistry();
 const run = (
   key: string,
@@ -73,6 +79,51 @@ describe('bounded list structure operations', () => {
       });
     },
   );
+  it('admits the same Take v2 requests inline and through delivery at the member limit', async () => {
+    const inline = createInlineNodeRegistry({
+      catalog: CORE_NODE_CATALOG,
+      definitions: [],
+      executors: [],
+      core: {
+        definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+        executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+      },
+    });
+    const pin = { key: 'core.take', version: 2 };
+    const request = {
+      definition: pin,
+      executor: pin,
+      config: { count: 0 },
+      input: {
+        items: Array.from({ length: 4998 }, (_, index) => ({ index })),
+      },
+    };
+    const delivery = {
+      signal: new AbortController().signal,
+      connectionRefs: {},
+    };
+    await expect(
+      registry.execute({ ...request, ...delivery }),
+    ).rejects.toMatchObject({
+      code: 'invalid_json',
+    });
+    expect(() => inline.executeInline({ ...request, now: 0 })).toThrow(
+      expect.objectContaining({ code: 'invalid_json' }),
+    );
+
+    const fits = {
+      ...request,
+      input: { items: [0, ...request.input.items.slice(1)] },
+    };
+    const expected = {
+      kind: 'succeeded',
+      output: { items: [], inputCount: 4998, removedCount: 4998 },
+    };
+    await expect(registry.execute({ ...fits, ...delivery })).resolves.toEqual(
+      expected,
+    );
+    expect(inline.executeInline({ ...fits, now: 0 })).toEqual(expected);
+  });
   it('refuses combined overflow, invalid sizes and malformed lists', async () => {
     for (const [key, config, input, code] of [
       ['batch', { size: 0 }, { items: [] }, 'invalid_config'],

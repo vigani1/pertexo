@@ -163,28 +163,10 @@ function pinNodeRegistry(
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
     assertDefinitionExecutorBinding(definition.manifest, request.executor);
-    const bounded = canonicalizeBoundedJson({
-      config: request.config,
-      input: request.input,
-      connectionRefs: request.connectionRefs ?? {},
-    });
-    if (!isJsonObject(bounded))
-      throw new InvalidBoundedJsonError('execution envelope is not an object');
-    const config = parseExecutionValue(
-      definition.configSchema,
-      bounded.config,
-      'config',
+    const { config, input, connectionRefs } = admitExecutionEnvelope(
+      definition,
+      request,
     );
-    const input =
-      request.inputAdmission === 'persisted_agent'
-        ? bounded.input
-        : parseExecutionValue(definition.inputSchema, bounded.input, 'input');
-    let connectionRefs: Readonly<Record<string, string>>;
-    try {
-      connectionRefs = connectionRefsSchema.parse(bounded.connectionRefs);
-    } catch (error) {
-      throw mapSchemaError(error, 'config');
-    }
     const dispatchAware =
       executor.manifest.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
     if (dispatchAware && request.runtime === undefined)
@@ -268,25 +250,10 @@ function bindInlineExecution(
         throw new NodeRegistryCompatibilityError(
           'definition has no inline executor',
         );
-      const bounded = canonicalizeBoundedJson({
-        config: request.config,
-        input: request.input,
-      });
-      if (!isJsonObject(bounded))
-        throw new InvalidBoundedJsonError(
-          'execution envelope is not an object',
-        );
+      const { config, input } = admitExecutionEnvelope(definition, request);
       const invocation = Object.freeze({
-        config: canonicalizeBoundedJson(
-          parseExecutionValue(
-            definition.configSchema,
-            bounded.config,
-            'config',
-          ),
-        ),
-        input: canonicalizeBoundedJson(
-          parseExecutionValue(definition.inputSchema, bounded.input, 'input'),
-        ),
+        config: canonicalizeBoundedJson(config),
+        input: canonicalizeBoundedJson(input),
         now: request.now,
       });
       const result = kernel(invocation);
@@ -299,4 +266,36 @@ function bindInlineExecution(
       return { kind: 'failed', failure };
     },
   });
+}
+
+function admitExecutionEnvelope(
+  definition: PinnedNodeDefinition,
+  request: Pick<
+    NodeExecutionRequest,
+    'config' | 'input' | 'connectionRefs' | 'inputAdmission'
+  >,
+) {
+  const bounded = canonicalizeBoundedJson({
+    config: request.config,
+    input: request.input,
+    connectionRefs: request.connectionRefs ?? {},
+  });
+  if (!isJsonObject(bounded))
+    throw new InvalidBoundedJsonError('execution envelope is not an object');
+  const config = parseExecutionValue(
+    definition.configSchema,
+    bounded.config,
+    'config',
+  );
+  const input =
+    request.inputAdmission === 'persisted_agent'
+      ? bounded.input
+      : parseExecutionValue(definition.inputSchema, bounded.input, 'input');
+  let connectionRefs: Readonly<Record<string, string>>;
+  try {
+    connectionRefs = connectionRefsSchema.parse(bounded.connectionRefs);
+  } catch (error) {
+    throw mapSchemaError(error, 'config');
+  }
+  return { config, input, connectionRefs };
 }
