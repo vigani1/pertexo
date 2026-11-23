@@ -75,7 +75,11 @@ describe('draft test suites', () => {
     const writes: { key: string | null; body: unknown }[] = [];
     mockServer.use(
       http.get(root, () =>
-        HttpResponse.json({ current, items: accepted ? [summary] : [] }),
+        HttpResponse.json({
+          current,
+          latestSavedCaseSuite: accepted ? summary : null,
+          items: accepted ? [summary] : [],
+        }),
       ),
       http.get(`${root}/prepare`, () =>
         HttpResponse.json({
@@ -163,7 +167,21 @@ describe('draft test suites', () => {
       http.get(root, () =>
         HttpResponse.json({
           current: { ...current, signature: 'b'.repeat(64) },
-          items: [{ ...summary, status: 'failed', passed: 0, failed: 1 }],
+          latestSavedCaseSuite: {
+            ...summary,
+            status: 'failed',
+            passed: 0,
+            failed: 1,
+          },
+          items: Array.from({ length: 20 }, (_, index) => ({
+            ...summary,
+            suiteId: `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`,
+            createdAt: '2026-10-18T10:00:00.000Z',
+            evaluation: {
+              tableId: '33333333-3333-4333-8333-333333333333',
+              versionId: null,
+            },
+          })),
         }),
       ),
     );

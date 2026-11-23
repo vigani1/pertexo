@@ -10,7 +10,11 @@ import {
 import { registerProviderExecutor } from '../providers/provider-executor.js';
 import type { IntegrationExecutorDependencies } from '../providers/integration-module.js';
 import { readJsonPointer } from '../http/read-json-pointer.js';
-import { pathInputName, type CommunityAction } from './manifest.schemas.js';
+import {
+  COMMUNITY_JSON_HEADER,
+  pathInputName,
+  type CommunityAction,
+} from './manifest.schemas.js';
 
 type RecipeInputs = Readonly<Record<string, string | number | boolean>>;
 
@@ -61,7 +65,9 @@ export function createRecipeExecutor(
             url: url.href,
             method: action.method,
             headers:
-              body === undefined ? {} : { 'content-type': 'application/json' },
+              body === undefined
+                ? {}
+                : { [COMMUNITY_JSON_HEADER]: 'application/json' },
             timeoutMillis: HTTP_REQUEST_LIMITS.defaultTimeoutMillis,
             maxRedirects: 0,
             maxResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,

@@ -11,7 +11,10 @@ import type {
   WorkflowTestSuiteStartInput,
 } from './workflow-test-suite.types.js';
 import { readSuiteCurrent } from './read-current.js';
-import { listSuites } from './test-suites.repository.js';
+import {
+  listSuites,
+  readLatestSavedCaseSuite,
+} from './test-suites.repository.js';
 import { readCaseReport, readSuite } from './read-suite.js';
 import { prepareTestSuite, startTestSuite } from './start.js';
 
@@ -38,6 +41,7 @@ export function createWorkflowTestSuiteStore(
     list: (input: WorkflowActor) =>
       withTestRead(pool, input, async (client) => ({
         current: await readSuiteCurrent(client, input),
+        latestSavedCaseSuite: await readLatestSavedCaseSuite(client, input),
         items: await listSuites(client, input),
       })),
     get: (input: WorkflowTestSuiteInput) =>

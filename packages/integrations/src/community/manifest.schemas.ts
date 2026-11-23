@@ -6,13 +6,17 @@ import {
   hostReleaseCompatibility,
   PERTEXO_HOST_RELEASE,
 } from '@pertexo/node-sdk/server';
-import { httpHeadersCredentialSchema } from '@pertexo/contracts';
+import {
+  httpHeadersCredentialSchema,
+  isSupportedHttpFieldValue,
+} from '@pertexo/contracts';
 import { z } from 'zod';
 import { decodeCommunityJson } from './decode-json.js';
 import { CommunityManifestError } from './manifest.errors.js';
 import { COMMUNITY_MANIFEST_LIMITS as limits } from './manifest-limits.js';
 
 export const COMMUNITY_FORMAT_VERSION = 1;
+export const COMMUNITY_JSON_HEADER = 'content-type';
 
 const text = z.string().min(1).max(limits.stringCharacters);
 // oxlint-disable-next-line eslint/no-control-regex -- Presentation is printable plain text.
@@ -154,6 +158,23 @@ export function decodeCommunityManifest(bytes: Uint8Array): CommunityManifest {
   return release;
 }
 
+export function communityCredentialFieldSchema(
+  auth: CommunityConnection['auth'],
+  key: string,
+) {
+  if (auth.kind === 'basic' && key === auth.username)
+    return text.refine(
+      (value) => !value.includes(':'),
+      'Basic username cannot contain a colon',
+    );
+  if (auth.kind !== 'basic' && key === auth.field)
+    return text.refine(
+      isSupportedHttpFieldValue,
+      'Invalid HTTP credential header value',
+    );
+  return text;
+}
+
 export function communityProviderKey(
   release: Pick<CommunityManifest, 'publisher' | 'integration'>,
 ): string {
@@ -182,6 +203,15 @@ function validateConnection({
       throw new CommunityManifestError(
         `connection.fields.${key}.default: secret defaults are forbidden`,
       );
+    if (field.default !== undefined) {
+      const checked = communityCredentialFieldSchema(recipe, key).safeParse(
+        field.default,
+      );
+      if (!checked.success)
+        throw new CommunityManifestError(
+          `connection.fields.${key}.default: ${z.prettifyError(checked.error)}`,
+        );
+    }
   }
 
   const requiredSecrets =
@@ -223,6 +253,15 @@ function validateOperation(
     throw new CommunityManifestError(
       `${path}.body: action ${action.key} has an incompatible method, effect or body`,
     );
+  if (
+    action.connection !== undefined &&
+    action.body !== undefined &&
+    credential?.auth.kind === 'named_header' &&
+    credential.auth.name.toLowerCase() === COMMUNITY_JSON_HEADER
+  )
+    throw new CommunityManifestError(
+      `connection.auth.name: credential header conflicts with ${path}.body`,
+    );
   validatePath(action.path, action.input, `${path}.path`);
   for (const field of ['query', 'body'] as const) {
     for (const [key, { input }] of Object.entries(action[field] ?? {}))
@@ -231,16 +270,27 @@ function validateOperation(
           `${path}.${field}[${JSON.stringify(key)}].input: action ${action.key} references missing input ${input}`,
         );
   }
-  if (action.projection !== 'body') {
-    for (const [output, pointer] of Object.entries(action.projection))
-      if (
-        !Object.hasOwn(action.output, output) ||
-        !/^(?:\/(?:[^~/]|~[01])*)*$/u.test(pointer)
-      )
-        throw new CommunityManifestError(
-          `${path}.projection.${output}: action ${action.key} has an invalid output projection for ${output}`,
-        );
-  }
+  validateProjection(action, path);
+}
+
+function validateProjection(
+  { key, output, projection }: CommunityAction,
+  path: string,
+) {
+  if (projection === 'body') return;
+  for (const [name, field] of Object.entries(output))
+    if (field.required && !Object.hasOwn(projection, name))
+      throw new CommunityManifestError(
+        `${path}.projection.${name}: action ${key} must project required output ${name}`,
+      );
+  for (const [name, pointer] of Object.entries(projection))
+    if (
+      !Object.hasOwn(output, name) ||
+      !/^(?:\/(?:[^~/]|~[01])*)*$/u.test(pointer)
+    )
+      throw new CommunityManifestError(
+        `${path}.projection.${name}: action ${key} has an invalid output projection for ${name}`,
+      );
 }
 
 function validatePath(

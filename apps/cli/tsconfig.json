@@ -22,6 +22,9 @@
     },
     {
       "path": "../../packages/node-sdk/tsconfig.json"
+    },
+    {
+      "path": "../../packages/secrets/tsconfig.json"
     }
   ]
 }

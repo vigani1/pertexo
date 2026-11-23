@@ -18,6 +18,17 @@ it('scaffolds a release and checks its exact bytes and example without API setti
     expect(await readFile(path.join(cwd, 'README.md'), 'utf8')).toContain(
       'integration check',
     );
+    const fixtureFile = path.join(cwd, 'conformance.json');
+    const [example] = JSON.parse(await readFile(fixtureFile, 'utf8')) as [
+      {
+        request: { headers: { 'x-api-key': string } };
+        response: { body: { title: string } };
+        output: { title: string };
+      },
+    ];
+    example.response.body.title = example.request.headers['x-api-key'];
+    example.output.title = '[Redacted]';
+    await writeFile(fixtureFile, JSON.stringify([example]));
     const checked = await run('check');
     expect(JSON.parse(checked.stdout)).toEqual({
       file: 'integration.json',

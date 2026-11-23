@@ -518,6 +518,7 @@ export { WORKFLOW_INPUT_CASE_LIMITS } from './authoring/test-suites/input-case-l
 export { workflowTestStepChoices } from './authoring/test-suites/steps.js';
 export {
   workflowTestExpectationsSchema,
+  testAssertionSchema,
   DEFAULT_TEST_EXPECTATIONS,
   WORKFLOW_TEST_LIMITS,
   type WorkflowTestExpectations,

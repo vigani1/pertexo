@@ -11,7 +11,7 @@ import {
 import { tablesQuery } from '@/features/data-tables/public';
 import {
   expectationDraft,
-  expectationRequest,
+  evaluationExpectationRequest,
 } from '@/features/workflows/public';
 import { CaseExpectations } from '@/features/workflows/workflows-views.public';
 import { QueryView } from '@/components/patterns/states/query-view';
@@ -61,7 +61,7 @@ export function EvaluationSetup({
     }
     let expected;
     try {
-      expected = expectationRequest(expectations);
+      expected = evaluationExpectationRequest(expectations);
     } catch {
       setError('Enter valid JSON for each fixed expected value.');
       return;
@@ -71,9 +71,6 @@ export function EvaluationSetup({
       ...(version === undefined ? {} : { versionId: version.id }),
       columns,
       expectations: expected,
-      expectedColumns: expectations.assertions.map(
-        ({ expectedColumn }) => expectedColumn ?? null,
-      ),
     });
     if (!evaluation.success) {
       setError(

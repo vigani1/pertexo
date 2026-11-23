@@ -97,6 +97,17 @@ it('creates and manually tests an approved community connection through the HTTP
     );
     if (form === undefined)
       throw new Error('Approved connection form is missing');
+    const invalid = await application.inject({
+      method: 'POST',
+      url: connectionUrl,
+      headers: authenticatedHeaders,
+      payload: {
+        providerKey,
+        name: 'Invalid widgets',
+        credential: { type: form.authType, token: 'invalid\r\nvalue' },
+      },
+    });
+    expect(invalid.statusCode, invalid.payload).toBe(400);
     const token = 'test-secret-value';
     const created = await application.inject({
       method: 'POST',

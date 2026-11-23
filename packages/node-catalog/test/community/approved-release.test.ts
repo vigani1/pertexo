@@ -89,6 +89,52 @@ function load(
   );
 }
 
+it('refuses a release that omits a required output projection', async () => {
+  const approved = await prepare({
+    ...release,
+    actions: release.actions.map((action) => ({ ...action, projection: {} })),
+  });
+  await expect(load(approved)).rejects.toThrow(
+    'actions[0].projection.temperature',
+  );
+});
+
+it('refuses a credential header that collides with the JSON body header', async () => {
+  const approved = await prepare({
+    ...release,
+    connection: {
+      ...release.connection,
+      auth: { kind: 'named_header', field: 'token', name: 'Content-Type' },
+    },
+    actions: release.actions.map((action) => ({
+      ...action,
+      method: 'POST',
+      sideEffect: 'unsafe',
+      body: { city: { input: 'city' } },
+    })),
+  });
+  await expect(load(approved)).rejects.toThrow(
+    'connection.auth.name: credential header conflicts with actions[0].body',
+  );
+});
+
+it('refuses a Basic username default that contains the credential delimiter', async () => {
+  const approved = await prepare({
+    ...release,
+    connection: {
+      ...release.connection,
+      fields: {
+        ...release.connection.fields,
+        username: { label: 'Username', kind: 'text', default: 'name:password' },
+      },
+      auth: { kind: 'basic', username: 'username', password: 'token' },
+    },
+  });
+  await expect(load(approved)).rejects.toThrow(
+    'connection.fields.username.default',
+  );
+});
+
 it('refuses an edit to the approved file even when it is still valid JSON', async () => {
   const approved = await prepare();
   await writeFile(path.join(root, file), JSON.stringify(release) + '\n');

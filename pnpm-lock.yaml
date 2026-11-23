@@ -233,6 +233,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../../packages/node-sdk
+      '@pertexo/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       zod:
         specifier: 4.6.7
         version: 4.6.7

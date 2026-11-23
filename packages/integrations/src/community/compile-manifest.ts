@@ -9,6 +9,7 @@ import { communityContractDigest } from './contract-digest.js';
 import {
   COMMUNITY_FORMAT_VERSION,
   communityProviderKey,
+  communityCredentialFieldSchema,
   type CommunityAction,
   type CommunityConnection,
   type CommunityManifest,
@@ -64,7 +65,7 @@ function compileConnection(
   const { fields, auth, test } = connection;
   const credentialFields = Object.entries(fields).map(
     ([key, { label, kind, default: initial }]) => {
-      const field = z.string().min(1).max(limits.stringCharacters);
+      const field = communityCredentialFieldSchema(auth, key);
       return [
         key,
         (initial === undefined ? field : field.default(initial)).meta({

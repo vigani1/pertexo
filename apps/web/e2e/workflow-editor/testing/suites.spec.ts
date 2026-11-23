@@ -49,7 +49,11 @@ for (const width of [1280, 375])
     await page.route(root, async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
-          json: { current, items: accepted ? [summary] : [] },
+          json: {
+            current,
+            latestSavedCaseSuite: accepted ? summary : null,
+            items: accepted ? [summary] : [],
+          },
         });
         return;
       }
