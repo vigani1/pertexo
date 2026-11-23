@@ -132,13 +132,7 @@ export async function readInlineAttemptInput(
     ),
     ...successes.map(({ attemptId, output }) => [attemptId, output] as const),
   ]);
-  const projectedMerge =
-    merge === undefined ? undefined : projectMergeInput(merge, outputs);
-  if (projectedMerge?.kind === 'missing_output')
-    throw new WorkflowEngineError(
-      'checkpoint_invalid',
-      'settled Merge output is missing',
-    );
+  const coordinatorInput = projectInlineMergeInput(merge, outputs);
   const prepared = prepareNodeAttemptInput(
     {
       executable: input.executable,
@@ -167,10 +161,24 @@ export async function readInlineAttemptInput(
       ...(options.expressionEvaluator === undefined
         ? {}
         : { expressionEvaluator: options.expressionEvaluator }),
-      coordinatorInput: projectedMerge?.input,
+      coordinatorInput,
     },
     prepared,
   );
+}
+
+function projectInlineMergeInput(
+  merge: ReturnType<typeof selectMergeInput>,
+  outputs: ReadonlyMap<string, JsonValue>,
+) {
+  if (merge === undefined) return undefined;
+  const projected = projectMergeInput(merge, outputs);
+  if (projected.kind === 'missing_output')
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      'settled Merge output is missing',
+    );
+  return projected.input;
 }
 
 function agentFailureSourceId(

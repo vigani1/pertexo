@@ -49,14 +49,12 @@ export async function prepareInlineInvocation(
       options.deadlineAt !== undefined &&
       (occurredAt >= options.deadlineAt ||
         (expiry.aborted && deadlineRemaining <= remaining));
+    if (deadline) return { occurredAt, elapsedAt, kind: 'deadline' as const };
+    const budgetExpired = expiry.aborted || elapsedAt >= stopAt;
     return {
       occurredAt,
       elapsedAt,
-      kind: deadline
-        ? ('deadline' as const)
-        : expiry.aborted || elapsedAt >= stopAt
-          ? ('budget' as const)
-          : ('active' as const),
+      kind: budgetExpired ? ('budget' as const) : ('active' as const),
     };
   };
   let mapped: JsonValue | undefined;
