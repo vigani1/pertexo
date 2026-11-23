@@ -57,6 +57,7 @@ export async function prepareInlineInvocation(
       kind: budgetExpired ? ('budget' as const) : ('active' as const),
     };
   };
+  let completed: ReturnType<typeof readExpiry> | undefined;
   let mapped: JsonValue | undefined;
   let outputAdmitted = true;
   let result: ReturnType<InlineNodeRegistry['executeInline']> | undefined;
@@ -72,36 +73,35 @@ export async function prepareInlineInvocation(
     assertNotAborted(input.signal);
     const preparedAt = readExpiry();
     if (preparedAt.kind === 'budget') return { kind: 'budget' as const };
-    if (preparedAt.kind === 'deadline')
-      return {
-        kind: 'deadline' as const,
-        occurredAt: new Date(preparedAt.occurredAt).toISOString(),
-      };
-    try {
-      result = options.registry.executeInline({
-        definition: node.definition,
-        executor: node.executor,
-        config: node.config,
-        input: mapped,
-        now: startedAt,
-      });
-    } catch (error) {
-      if (isNodeExecutorFailure(error)) throw error;
-      throw new WorkflowEngineError(
-        'attempt_invalid',
-        'node execution failed',
-        { cause: error },
-      );
+    if (preparedAt.kind === 'deadline') {
+      completed = preparedAt;
+    } else {
+      try {
+        result = options.registry.executeInline({
+          definition: node.definition,
+          executor: node.executor,
+          config: node.config,
+          input: mapped,
+          now: startedAt,
+        });
+      } catch (error) {
+        if (isNodeExecutorFailure(error)) throw error;
+        throw new WorkflowEngineError(
+          'attempt_invalid',
+          'node execution failed',
+          { cause: error },
+        );
+      }
+      if (result.kind === 'succeeded')
+        outputAdmitted = options.canStore?.(result.output) ?? true;
+      else
+        failure = options.normalizeFailure(
+          new NodeExecutorFailure({
+            ...result.failure,
+            possiblyDispatched: false,
+          }),
+        );
     }
-    if (result.kind === 'succeeded')
-      outputAdmitted = options.canStore?.(result.output) ?? true;
-    else
-      failure = options.normalizeFailure(
-        new NodeExecutorFailure({
-          ...result.failure,
-          possiblyDispatched: false,
-        }),
-      );
   } catch (error) {
     assertNotAborted(input.signal);
     if (
@@ -113,7 +113,7 @@ export async function prepareInlineInvocation(
   }
 
   assertNotAborted(input.signal);
-  const completed = readExpiry();
+  completed ??= readExpiry();
   if (completed.kind === 'budget') return { kind: 'budget' as const };
   return {
     kind: 'prepared' as const,
