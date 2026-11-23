@@ -1,10 +1,10 @@
+import {
+  testConfiguredConnection,
+  CONNECTION_TEST_MAXIMUM_REDIRECTS,
+  CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
+} from './test-configured-connection.js';
 import type { LookupConnectionOptionsService } from '../lookups/lookup-options.service.js';
 import { testConnectionLookup } from './lookup.js';
-import { hasCredentialType } from '../credential-type.js';
-import { testHttpConnection } from './http.js';
-import { requestInputError } from '../../platform/http/request-input.js';
-import { testDestination } from './test-destination.js';
-import { testPostgresConnection } from './postgres.js';
 import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
@@ -43,20 +43,12 @@ import {
 import type { connectionTestRequestSchema as requestSchema } from '../connection-request.js';
 import type { ConnectionTestResponse } from '../connection-request.js';
 import { decodeCredential } from './credentials.js';
-import { secureErrorOutcome, SUCCEEDED_TEST } from './outcomes.js';
+import { secureErrorOutcome } from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
-import {
-  CONNECTION_TEST_TIMEOUT_MILLIS,
-  postgresCredentialSchema,
-  smtpCredentialSchema,
-} from '@pertexo/contracts';
-
-const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
-const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
+import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
 
 type ParsedConnectionTestRequest = ReturnType<typeof requestSchema.parse>;
-type DecodedConnectionCredential = ReturnType<typeof decodeCredential>;
 
 export type TestConnectionCommand = ConnectionCommandInput &
   Readonly<{
@@ -250,13 +242,28 @@ export class TestConnectionService {
               requestSignal,
             );
             requestSignal.throwIfAborted();
-            outcome = await this.testProvider(destination, {
-              request,
-              ...decodeCredential(plaintext, definition),
-              input,
-              signal: requestSignal,
-              beforeDispatch,
-            });
+            outcome = await testConfiguredConnection(
+              {
+                ...(this.smtpPolicy === undefined
+                  ? {}
+                  : { smtpPolicy: this.smtpPolicy }),
+                ...(this.emailClient === undefined
+                  ? {}
+                  : { emailClient: this.emailClient }),
+                ...(this.slackClient === undefined
+                  ? {}
+                  : { slackClient: this.slackClient }),
+                httpClient: this.httpClient,
+              },
+              destination,
+              {
+                request,
+                ...decodeCredential(plaintext, definition),
+                input,
+                signal: requestSignal,
+                beforeDispatch,
+              },
+            );
           }
         } catch (error: unknown) {
           if (!(
@@ -307,88 +314,6 @@ export class TestConnectionService {
       timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
       maxRedirects: CONNECTION_TEST_MAXIMUM_REDIRECTS,
       maxResponseBytes: CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
-    });
-  }
-
-  private async testProvider(
-    destination: FailureNotificationDestinationResponse | undefined,
-    {
-      request,
-      credential,
-      recipe,
-      auth,
-      input,
-      signal,
-      beforeDispatch,
-    }: Readonly<{
-      request: ParsedConnectionTestRequest;
-      credential: DecodedConnectionCredential['credential'];
-      recipe: DecodedConnectionCredential['recipe'];
-      auth: DecodedConnectionCredential['auth'];
-      input: TestConnectionCommand;
-      signal: AbortSignal;
-      beforeDispatch: () => Promise<void>;
-    }>,
-  ): Promise<ConnectionTestOutcome> {
-    if (
-      recipe.kind === 'postgres' &&
-      hasCredentialType(credential, postgresCredentialSchema)
-    )
-      return testPostgresConnection(
-        credential,
-        this.smtpPolicy?.allowedPrivateNetworks ?? [],
-        {
-          signal,
-          beforeDispatch,
-        },
-      );
-    if (
-      recipe.kind === 'smtp' &&
-      hasCredentialType(credential, smtpCredentialSchema)
-    ) {
-      smtp.assertSmtpTestProfile(request, destination);
-      return smtp.testSmtpConnection(credential, this.smtpPolicy, {
-        command: input,
-        destination,
-        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
-        signal,
-        beforeDispatch,
-      });
-    }
-    if (
-      recipe.kind === 'http' &&
-      recipe.requiresConsent === true &&
-      !('sideEffectDisclosureAccepted' in request)
-    )
-      throw requestInputError(['transport'], recipe.consentMessage);
-    if (destination !== undefined)
-      return testDestination(
-        { email: this.emailClient, slack: this.slackClient },
-        destination,
-        credential,
-        { command: input, signal, beforeDispatch },
-      );
-    if (
-      recipe.kind === 'signing' &&
-      credential.type === 'hmac_key' &&
-      'providerKey' in request &&
-      request.providerKey === 'signing'
-    ) {
-      await beforeDispatch();
-      return SUCCEEDED_TEST;
-    }
-    if (recipe.kind !== 'http') throw new ConnectionSecretEncryptionError();
-    return testHttpConnection(this.httpClient, {
-      request,
-      credential,
-      recipe,
-      auth,
-      command: input,
-      timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
-      maxRedirects: CONNECTION_TEST_MAXIMUM_REDIRECTS,
-      maxResponseBytes: CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
-      signal,
-      beforeDispatch,
     });
   }
 }

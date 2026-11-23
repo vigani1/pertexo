@@ -121,3 +121,5 @@ export {
   isCommunityOrigin,
 } from './community/manifest.schemas.js';
 export { COMMUNITY_MANIFEST_LIMITS } from './community/manifest-limits.js';
+
+export { readJsonPointer } from './http/read-json-pointer.js';
