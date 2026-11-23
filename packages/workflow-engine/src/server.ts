@@ -85,3 +85,7 @@ export {
   isAgentWorkInvocationKey,
 } from './invocations/agent-invocation.js';
 export type { AgentModelRates } from './control-nodes/agent-continuation.js';
+export {
+  projectMergeInput,
+  selectMergeInput,
+} from './control-nodes/merge-input.js';
