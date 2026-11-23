@@ -1,6 +1,8 @@
-import { HTTP_REQUEST_CREDENTIAL_PURPOSE } from './credentials.js';
 import {
   type NodeVerifiedByteSource,
+  type NodeConnectionRuntime,
+  type ResolvedNodeConnection,
+  type ResolvedHttpCredential,
   type NodeExecutionInvocation,
   FileInputFailure,
   type NodeExecutorFailure,
@@ -11,7 +13,6 @@ import { HTTP_SIDE_EFFECT_CLASS } from '../../outcome-policy.js';
 import { OAuth2TokenFailure } from '../../../oauth2/oauth2.errors.js';
 
 import { errorNameIs, safeInstanceOf } from '@pertexo/node-sdk/server';
-import { HTTP_REQUEST_CONNECTION_SLOT } from '../request.definition.js';
 import type {
   HttpRequestConfig,
   HttpRequestInput,
@@ -22,7 +23,6 @@ import { readRequestBody } from '../read-body.js';
 import { failedConfiguration } from '../request.errors.js';
 import { HttpRequestExecutorError } from '../request.errors.js';
 import { releaseHttpMaterial } from './body.js';
-import { fillPlaceholders } from './request-input.js';
 import { HttpOAuth2Failure } from './oauth2-renewal.errors.js';
 
 export type RequestContext = ReturnType<typeof prepareInvocation>;
@@ -38,22 +38,45 @@ export type RequestMaterial = PreparedBody &
     resolved: Awaited<ReturnType<typeof resolveRequestConnection>>;
     dispatch: DispatchState;
     // Opened by withProviderCredential when the connection carries header credentials.
-    credentialHeaders?: Readonly<Record<string, string>> | undefined;
+    credential?: RequestCredentialMaterial;
   }>;
 
+export type ResolvedRequestCredential =
+  ResolvedNodeConnection | ResolvedHttpCredential;
+
+export type RequestCredentialMaterial = Readonly<{
+  headers: Readonly<Record<string, string>>;
+  sensitiveValues?: readonly string[];
+}>;
+
+export interface RequestConnectionBinding {
+  readonly slot: string;
+  readonly providerKey: string;
+  resolve(
+    connections: NodeConnectionRuntime,
+    input: Readonly<{ connectionId: string; signal: AbortSignal }>,
+  ): Promise<ResolvedRequestCredential>;
+  withHeaders<T>(
+    resolved: ResolvedRequestCredential,
+    connectionId: string,
+    run: (material: RequestCredentialMaterial) => Promise<T>,
+  ): Promise<T>;
+}
+
 export function prepareInvocation(
-  invocation: NodeExecutionInvocation<unknown, unknown>,
+  invocation: Pick<
+    NodeExecutionInvocation<unknown, unknown>,
+    'runtime' | 'signal' | 'connectionRefs'
+  >,
+  config: HttpRequestConfig,
+  input: HttpRequestInput,
+  binding: RequestConnectionBinding | undefined,
 ) {
-  // The registry has already parsed both against the definition's schemas.
-  const { config, input } = fillPlaceholders(
-    invocation.config as HttpRequestConfig,
-    invocation.input as HttpRequestInput,
-  );
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;
-  // The connection is optional: a public API needs no auth headers.
-  const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
+  const connectionId =
+    binding === undefined ? undefined : invocation.connectionRefs[binding.slot];
   // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
   // effect: their failures retry and can follow a failure link instead of
   // leaving the outcome unknown.
@@ -63,13 +86,11 @@ export function prepareInvocation(
     runtime.sideEffectClass === 'unsafe' ||
     (repeatable && runtime.sideEffectClass === 'safe');
   const invalidDispatchRuntime =
-    (connectionId !== undefined &&
-      (connections?.assertCurrent === undefined ||
-        connections.resolveHttpCredential === undefined)) ||
+    (connectionId !== undefined && connections?.assertCurrent === undefined) ||
     !expectedClass ||
     runtime.providerIdempotencyKey !== undefined ||
     Object.keys(invocation.connectionRefs).some(
-      (slot) => slot !== HTTP_REQUEST_CONNECTION_SLOT,
+      (slot) => slot !== binding?.slot,
     );
   if (invalidDispatchRuntime) throw failedConfiguration();
   const sideEffect = repeatable
@@ -81,6 +102,7 @@ export function prepareInvocation(
     runtime,
     connections,
     connectionId,
+    binding,
     repeatable,
     sideEffect,
     invocation,
@@ -130,17 +152,18 @@ export async function resolveRequestConnection(
   context: RequestContext,
   body: PreparedBody['body'],
   dispatch: DispatchState,
-) {
-  const { connections, connectionId, invocation, repeatable } = context;
+): Promise<ResolvedRequestCredential | undefined> {
+  const { binding, connections, connectionId, invocation, repeatable } =
+    context;
   if (
+    binding === undefined ||
     connectionId === undefined ||
-    connections?.resolveHttpCredential === undefined
+    connections === undefined
   )
     return undefined;
   try {
-    return await connections.resolveHttpCredential({
+    return await binding.resolve(connections, {
       connectionId,
-      purpose: HTTP_REQUEST_CREDENTIAL_PURPOSE,
       signal: invocation.signal,
     });
   } catch (error: unknown) {

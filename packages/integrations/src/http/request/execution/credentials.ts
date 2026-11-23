@@ -1,6 +1,7 @@
 import { httpHeadersCredentialSchema } from '@pertexo/contracts';
 import {
   withProviderCredential,
+  type ResolvedNodeConnection,
   type ResolvedHttpCredential,
 } from '@pertexo/node-sdk/server';
 import {
@@ -11,11 +12,11 @@ import {
 export const HTTP_REQUEST_CREDENTIAL_PURPOSE = 'http.request.execute';
 
 export async function withHttpCredentialHeaders<T>(
-  resolved: ResolvedHttpCredential | undefined,
+  resolved: ResolvedNodeConnection | ResolvedHttpCredential | undefined,
   connectionId: string | undefined,
   run: (headers?: Readonly<Record<string, string>>) => Promise<T>,
 ): Promise<T> {
-  if (resolved === undefined || resolved.authType === 'oauth2') return run();
+  if (resolved === undefined || 'accessToken' in resolved) return run();
   return withProviderCredential(
     resolved,
     {
