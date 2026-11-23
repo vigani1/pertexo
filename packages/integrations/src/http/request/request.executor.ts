@@ -1,278 +1,80 @@
-import { markingDispatchOnce } from '../../providers/provider-dispatch-fence.js';
-import { executePagination } from './pagination/execute.js';
 import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
-  NodeExecutorFailure,
-  type ResolvedHttpCredential,
 } from '@pertexo/node-sdk/server';
-import {
-  classifySecureHttpError,
-  classifySecureHttpResponse,
-} from '../outcome-policy.js';
-
-import { PROVIDER_HTTP_ERROR_CODE } from '../../providers/http.errors.js';
-import { inspectProviderHttpError } from '../../providers/http.errors.js';
-import { errorNameIs, safeInstanceOf } from '@pertexo/node-sdk/server';
-import { HTTP_REQUEST_EXECUTOR } from './request.definition.js';
-import {
-  httpRequestOutputSchema,
-  type HttpRequestOutput,
-} from './request.schemas.js';
-import {
-  createProviderBeforeDispatch,
-  createUnauthenticatedBeforeDispatch,
-} from '../../providers/provider-dispatch-fence.js';
-import { serviceResponseFacts } from './execution/service-response.js';
-import { OAuth2TokenFailure } from '../../oauth2/oauth2.errors.js';
-import { HttpOAuth2Failure } from './execution/oauth2-renewal.errors.js';
-
-import {
-  failedConfiguration,
-  HttpRequestExecutorError,
-} from './request.errors.js';
 import type { ProviderHttpClient } from '../../providers/http-client.js';
 import {
   registerProviderExecutor,
   type ExecutorTelemetry,
 } from '../../providers/provider-executor.js';
-import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
-import { requestHeaders } from './execution/request-input.js';
 import {
-  type RequestContext,
-  type RequestMaterial,
-  credentialFailure,
-  prepareInvocation,
-  prepareRequestBody,
-  resolveRequestConnection,
-} from './execution/invocation.js';
+  HTTP_REQUEST_CONNECTION_SLOT,
+  HTTP_REQUEST_EXECUTOR,
+} from './request.definition.js';
+import { failedConfiguration } from './request.errors.js';
+import type {
+  HttpRequestConfig,
+  HttpRequestInput,
+  HttpRequestOutput,
+} from './request.schemas.js';
+import { executeHttpRequest } from './lifecycle.js';
 import {
-  credentialSensitiveValues,
+  HTTP_REQUEST_CREDENTIAL_PURPOSE,
   withHttpCredentialHeaders,
 } from './execution/credentials.js';
-import { requestClient } from './execution/request-client.js';
+import {
+  prepareInvocation,
+  type RequestConnectionBinding,
+} from './execution/invocation.js';
+import { fillPlaceholders } from './execution/request-input.js';
+
 export type HttpRequestExecutorDependencies = Readonly<{
   httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
   telemetry?: ExecutorTelemetry<HttpRequestOutput>;
 }>;
 
-async function executeHttpRequest(
-  dependencies: HttpRequestExecutorDependencies,
+const httpConnection: RequestConnectionBinding = {
+  slot: HTTP_REQUEST_CONNECTION_SLOT,
+  providerKey: 'http',
+  resolve(connections, input) {
+    if (connections.resolveHttpCredential === undefined)
+      throw failedConfiguration();
+    return connections.resolveHttpCredential({
+      ...input,
+      purpose: HTTP_REQUEST_CREDENTIAL_PURPOSE,
+    });
+  },
+  withHeaders(resolved, connectionId, run) {
+    if ('accessToken' in resolved) {
+      if (
+        resolved.connectionId !== connectionId ||
+        resolved.providerKey !== 'http'
+      )
+        throw failedConfiguration();
+      return run({
+        headers: { authorization: `Bearer ${resolved.accessToken}` },
+      });
+    }
+    return withHttpCredentialHeaders(resolved, connectionId, (headers) =>
+      run({ headers: headers ?? {} }),
+    );
+  },
+};
+
+function prepareHttpRequest(
   invocation: NodeExecutionInvocation<unknown, unknown>,
-): Promise<HttpRequestOutput> {
-  const context = prepareInvocation(invocation);
-  const { runtime, repeatable } = context;
-  const dispatch = {
-    possiblyDispatched: runtime.providerDispatchUnresolved ?? false,
-  };
-  const prepared = await prepareRequestBody(context);
-  const resolved = await resolveRequestConnection(
-    context,
-    prepared.body,
-    dispatch,
+) {
+  // The registry has already parsed both against the definition's schemas.
+  const { config, input } = fillPlaceholders(
+    invocation.config as HttpRequestConfig,
+    invocation.input as HttpRequestInput,
   );
-  const run = (credentialHeaders?: Readonly<Record<string, string>>) =>
-    executeWithMaterial(dependencies, context, {
-      ...prepared,
-      resolved,
-      dispatch,
-      credentialHeaders,
-    });
-  try {
-    return await withHttpCredentialHeaders(resolved, context.connectionId, run);
-  } finally {
-    await releaseHttpMaterial(prepared.body, {
-      repeatable,
-      possiblyDispatched: dispatch.possiblyDispatched,
-    });
-  }
-}
-
-async function executeWithMaterial(
-  dependencies: HttpRequestExecutorDependencies,
-  context: RequestContext,
-  material: RequestMaterial,
-): Promise<HttpRequestOutput> {
-  const {
-    config,
-    runtime,
-    connections,
-    connectionId,
-    repeatable,
-    sideEffect,
-    invocation,
-  } = context;
-  const { body, resolved, dispatch } = material;
-  const { credential, headers } = prepareHeaders(context, material);
-  const sensitiveValues = [
-    ...credentialSensitiveValues(credential.headers),
-    ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
-  ];
-  // A paged request and a renewed one dispatch more than once, as one attempt.
-  const dispatchRuntime =
-    config.pagination === undefined && resolved?.authType !== 'oauth2'
-      ? runtime
-      : markingDispatchOnce(runtime);
-  let response;
-  try {
-    const beforeDispatch =
-      resolved === undefined ||
-      connectionId === undefined ||
-      connections?.assertCurrent === undefined
-        ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
-        : createProviderBeforeDispatch({
-            assertCurrent: connections.assertCurrent,
-            connectionId,
-            expectedProviderKey: 'http',
-            expectedAuthType: resolved.authType,
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-            runtime: dispatchRuntime,
-          });
-    const request = {
-      url: config.url,
-      method: config.method,
-      headers,
-      ...(body === undefined ? {} : { body }),
-      timeoutMillis: config.timeoutMillis,
-      maxRedirects: config.maxRedirects,
-      maxResponseBytes: config.maxResponseBytes,
-      sensitiveValues,
-      signal: invocation.signal,
-      beforeDispatch: async () => {
-        await beforeDispatch();
-        dispatch.possiblyDispatched = true;
-      },
-    };
-    const client = requestClient(
-      dependencies.httpClient,
-      {
-        connections,
-        connectionId,
-        signal: invocation.signal,
-        onCredentialError: (error) => credentialFailure(error, context),
-      },
-      resolved,
-    );
-    if (config.pagination !== undefined)
-      return httpRequestOutputSchema.parse(
-        await executePagination({
-          client,
-          request,
-          pagination: config.pagination,
-          ...(runtime.artifacts === undefined
-            ? {}
-            : { artifacts: runtime.artifacts }),
-          inlineBytes: config.inlineResponseBytes,
-          ...(runtime.deadlineAt === undefined
-            ? {}
-            : { deadlineAt: runtime.deadlineAt }),
-          checkResponse: (status, responseHeaders) => {
-            const decision = classifySecureHttpResponse(status, sideEffect, {
-              providerKeyPresent: false,
-              headers: responseHeaders,
-            });
-            if (decision.kind !== 'succeeded')
-              throw new HttpRequestExecutorError(decision, {
-                possiblyDispatched: false,
-                serviceResponse: serviceResponseFacts(
-                  dependencies.httpClient.redactText,
-                  config,
-                  { status },
-                  request.sensitiveValues,
-                ),
-              });
-          },
-        }),
-      );
-    response = await client.executeStreaming(request, (stream) =>
-      consumeResponseBody(runtime.artifacts, {
-        inlineLimit: config.inlineResponseBytes,
-        maxBytes: config.maxResponseBytes,
-        response: stream,
-        repeatable,
-      }),
-    );
-  } catch (error: unknown) {
-    rethrowHttpError(error, context);
-  }
-
-  const decision = classifySecureHttpResponse(response.status, sideEffect, {
-    providerKeyPresent: false,
-    headers: response.headers,
-  });
-  // Like n8n's "Never error": the service answered, and the person asked
-  // to branch on its answer rather than fail.
   if (
-    decision.kind !== 'succeeded' &&
-    !((config.returnErrorResponses ?? false) && response.status >= 300)
+    invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT] !== undefined &&
+    invocation.runtime?.connections?.resolveHttpCredential === undefined
   )
-    throw new HttpRequestExecutorError(decision, {
-      possiblyDispatched: !repeatable,
-      serviceResponse: serviceResponseFacts(
-        dependencies.httpClient.redactText,
-        config,
-        response,
-        sensitiveValues,
-      ),
-    });
-  return httpRequestOutputSchema.parse({
-    status: response.status,
-    headers: response.headers,
-    body: response.body,
-    finalOrigin: response.finalUrl,
-    redirectCount: response.redirectCount,
-  });
-}
-
-function rethrowHttpError(error: unknown, context: RequestContext): never {
-  const { config, invocation, runtime, repeatable, sideEffect } = context;
-  if (safeInstanceOf(error, OAuth2TokenFailure))
-    throw credentialFailure(error, context);
-  if (
-    safeInstanceOf(error, HttpRequestExecutorError) ||
-    safeInstanceOf(error, HttpOAuth2Failure) ||
-    (config.pagination !== undefined &&
-      safeInstanceOf(error, NodeExecutorFailure))
-  )
-    throw error;
-  if (
-    config.pagination !== undefined &&
-    (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-  )
-    throw new HttpRequestExecutorError(
-      { kind: 'canceled', errorKind: 'canceled' },
-      { possiblyDispatched: false },
-    );
-  const secureError = inspectProviderHttpError(error);
-  if (secureError === undefined)
-    throw new HttpRequestExecutorError(
-      repeatable
-        ? Object.freeze({ kind: 'failed', errorKind: 'internal' })
-        : Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
-      { possiblyDispatched: !repeatable },
-    );
-  if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
-    throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-      { possiblyDispatched: true, responseCode: secureError.code },
-    );
-  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed)
-    throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-      { possiblyDispatched: false },
-    );
-  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch)
     throw failedConfiguration();
-  throw new HttpRequestExecutorError(
-    classifySecureHttpError(secureError.error, sideEffect, {
-      providerKeyPresent: false,
-    }),
-    {
-      possiblyDispatched: !repeatable && secureError.possiblyDispatched,
-      responseCode: secureError.code,
-    },
-  );
+  return prepareInvocation(invocation, config, input, httpConnection);
 }
 
 export function createHttpRequestExecutorRegistration(
@@ -281,50 +83,10 @@ export function createHttpRequestExecutorRegistration(
   return registerProviderExecutor(
     HTTP_REQUEST_EXECUTOR,
     dependencies.telemetry,
-    (invocation) => executeHttpRequest(dependencies, invocation),
+    (invocation) =>
+      executeHttpRequest(
+        dependencies.httpClient,
+        prepareHttpRequest(invocation),
+      ),
   );
-}
-
-/** The headers a request carries for its connection; header credentials were opened by withProviderCredential. */
-function requestCredential(
-  resolved: ResolvedHttpCredential | undefined,
-  credentialHeaders: Readonly<Record<string, string>> | undefined,
-): Readonly<{ headers: Readonly<Record<string, string>> }> {
-  if (resolved?.authType === 'oauth2')
-    return {
-      headers: Object.freeze({
-        authorization: `Bearer ${resolved.accessToken}`,
-      }),
-    };
-  return { headers: credentialHeaders ?? Object.freeze({}) };
-}
-
-function prepareHeaders(context: RequestContext, material: RequestMaterial) {
-  const { config, input, runtime, connectionId } = context;
-  const { resolved, multipartContentType, credentialHeaders } = material;
-  const credentialBindingMismatch =
-    resolved !== undefined &&
-    (resolved.connectionId !== connectionId || resolved.providerKey !== 'http');
-  if (credentialBindingMismatch) throw failedConfiguration();
-  const credential = requestCredential(resolved, credentialHeaders);
-  let headers: Readonly<Record<string, string>>;
-  try {
-    headers = requestHeaders(
-      input,
-      config.headers,
-      credential.headers,
-      multipartContentType,
-    );
-  } catch (error) {
-    if (
-      multipartContentType !== undefined &&
-      (runtime.providerDispatchUnresolved ?? false)
-    )
-      throw new HttpRequestExecutorError(
-        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-        { possiblyDispatched: true },
-      );
-    throw error;
-  }
-  return { credential, headers };
 }
