@@ -1,4 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
+import { readPublishedStepLabel } from '../../shared/run-records/graph-step.repository.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
@@ -183,7 +184,11 @@ async function readSourceFailure(
         ? parsed.data
         : {
             ...parsed.data,
-            nodeLabel: selectedSource.agentLabel ?? parsed.data.nodeId,
+            nodeLabel: await readPublishedStepLabel(client, {
+              workspaceId: input.lease.workspaceId,
+              workflowVersionId: input.lease.workflowVersionId,
+              nodeId: parsed.data.nodeId,
+            }),
           };
   }
 
