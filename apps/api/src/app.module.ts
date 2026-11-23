@@ -1,6 +1,6 @@
 import { ProposeDraftService } from './workflow-authoring/proposals/propose-draft.service.js';
 import { ExplanationService } from './workflow-authoring/explanations/explanation.service.js';
-import { AssistantModule } from './workflow-authoring/explanations/assistant.module.js';
+import { AssistantModule } from './workflow-authoring/assistant.module.js';
 import { McpModule } from './mcp/mcp.module.js';
 import 'reflect-metadata';
 import { ARTIFACT_OBJECT_MAX_BYTES } from '@pertexo/contracts';
