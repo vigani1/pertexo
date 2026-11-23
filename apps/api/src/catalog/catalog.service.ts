@@ -22,7 +22,7 @@ export class ListNodeDefinitionsService {
     return {
       items: this.catalog.definitions,
       codeSettings: this.codeSettings,
-      connections: connectionFormCatalog,
+      connections: connectionFormCatalog(),
     };
   }
 }

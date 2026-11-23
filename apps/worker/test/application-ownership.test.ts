@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { emptyCallbackStore } from './support/callback-store.js';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,6 +37,32 @@ function runtime(close: () => Promise<void>): DatabaseRuntime {
 }
 
 describe('worker application construction ownership', () => {
+  it('refuses an unverified package before starting the worker runtime', async () => {
+    const configWithApproval = parseWorkerConfig({
+      ...workerEnvironment,
+      COMMUNITY_INTEGRATION_ROOT: path.resolve(import.meta.dirname, '..'),
+      COMMUNITY_INTEGRATION_APPROVALS: JSON.stringify([
+        {
+          file: '../unapproved.json',
+          origin: 'https://example.com',
+          providerKey: 'community.example.test',
+          sha256: '0'.repeat(64),
+          version: '1.0.0',
+        },
+      ]),
+    });
+    const databaseRuntime = vi.fn();
+    const applicationContext = vi.fn();
+    await expect(
+      createWorkerApplication(configWithApproval, dependencies, {
+        databaseRuntime,
+        applicationContext,
+      }),
+    ).rejects.toThrow('package path contains an invalid segment');
+    expect(databaseRuntime).not.toHaveBeenCalled();
+    expect(applicationContext).not.toHaveBeenCalled();
+  });
+
   it('does not acquire a later owner when the first database runtime fails', async () => {
     const failure = new Error('worker database runtime failed');
     const applicationContext = vi.fn();

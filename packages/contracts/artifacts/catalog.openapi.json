@@ -734,6 +734,26 @@
                         "trigger",
                         "action"
                       ]
+                    },
+                    "community": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "publisher": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "origin": {
+                          "type": "string",
+                          "format": "uri"
+                        }
+                      },
+                      "required": [
+                        "publisher",
+                        "origin"
+                      ],
+                      "additionalProperties": true
                     }
                   },
                   "required": [

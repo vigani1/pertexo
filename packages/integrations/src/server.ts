@@ -113,3 +113,11 @@ export {
   MODEL_AUTH_TYPE,
   MODEL_PROVIDER_KEY,
 } from './ai/connections.definition.js';
+
+export { compileCommunityManifest } from './community/compile-manifest.js';
+export {
+  decodeCommunityManifest,
+  communityProviderKey,
+  isCommunityOrigin,
+} from './community/manifest.schemas.js';
+export { COMMUNITY_MANIFEST_LIMITS } from './community/manifest-limits.js';

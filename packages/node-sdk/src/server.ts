@@ -6,6 +6,7 @@ export {
 } from './execution/registry.js';
 export {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+  hostReleaseCompatibility,
   PERTEXO_HOST_RELEASE,
 } from './execution/executor-binding.js';
 

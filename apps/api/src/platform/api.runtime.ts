@@ -1,3 +1,4 @@
+import { loadPlatformRegistry } from '@pertexo/node-catalog/server';
 import type { StructuredLogger } from '@pertexo/observability/server';
 import { createApiCallbackRuntime } from './webhooks/callback-runtime.module.js';
 import {
@@ -35,6 +36,7 @@ export async function acquireApiRuntimes(
 ): Promise<ApiRuntimeSet> {
   const runtimes: ApiRuntimeResources = {};
   try {
+    await loadPlatformRegistry(config.communityIntegrations);
     const databaseRuntime = (runtimes.databaseRuntime = createDatabaseRuntime(
       config.database,
       { role: 'api' },

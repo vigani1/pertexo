@@ -16,4 +16,4 @@ export {
   findConnectionDefinition,
   findConnectionLookup,
   isRegisteredProvider,
-} from './integration-modules.js';
+} from './catalog.js';

@@ -37,6 +37,12 @@ an output projection and a side-effect class. Format v1 selects dispatch-aware
 executor ABI 2 in the host. A package cannot choose an executor, ABI, policy
 handler or import path.
 
+The `hostRelease` range is a strict object with string fields `min` and
+`below`. Both are SemVer cores `X.Y.Z` without leading zeroes, prerelease or
+build metadata. The minimum must precede the upper bound. A release is
+compatible when its host version is at least `min` and strictly below
+`below`, comparing major, minor and patch numerically.
+
 Reserve `community.` for community provider, definition, executor and slot
 keys and `community_` for community auth keys. Derive the provider key as
 `community.<publisher>.<integration>` from validated lowercase alphanumeric

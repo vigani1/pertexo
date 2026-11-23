@@ -1,5 +1,4 @@
 import type { IntegrationPresentation } from '@pertexo/integrations/server';
-import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import {
   approvalOutputSchema,
@@ -9,7 +8,7 @@ import {
   formSubmissionSchema,
 } from '@pertexo/workflow-model';
 
-import { PLATFORM_NODE_CATALOG } from './catalog.js';
+import { platformRegistry } from './catalog.js';
 
 const agentBrowserInputSchema = generateSchemaDocument(agentMappedInputSchema);
 const agentBrowserOutputSchema = generateSchemaDocument(agentFinalOutputSchema);
@@ -63,14 +62,13 @@ function compareDefinitionIdentity(
 
 /** Every definition in the served catalog, without executor or policy details. */
 export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBrowserCatalog {
-  const definitions = [...PLATFORM_NODE_CATALOG.definitions]
+  const { catalog, integrations } = platformRegistry();
+  const definitions = [...catalog.definitions]
     .sort((left, right) =>
       compareDefinitionIdentity(left.definition, right.definition),
     )
     .map((projection) => {
-      const presentation = INTEGRATION_MODULE_REGISTRY.presentationFor(
-        projection.definition,
-      );
+      const presentation = integrations.presentationFor(projection.definition);
       return Object.freeze({
         definition: Object.freeze({ ...projection.definition }),
         family: projection.family,

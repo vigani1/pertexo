@@ -16,7 +16,7 @@ import {
 import type { ArtifactStoreConfig } from '@pertexo/artifact-store/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
-import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
+import { createWorkerExecutionRegistry } from '../../providers/node-registry.js';
 import { createQueueTraceRunner } from '@pertexo/observability/server';
 import {
   createQueueConsumer,
@@ -31,18 +31,12 @@ import {
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine/server';
 import type { SecureHttpAddressPolicy } from '@pertexo/secrets/server';
-import { createNodeProviderHttpClient } from '../../providers/http-client.js';
 import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
 } from '../execution/engine.js';
-import {
-  createEmailProviderTelemetry,
-  createHttpProviderTelemetry,
-  createSlackProviderTelemetry,
-} from '../../providers/telemetry.js';
 import {
   createProductionPreviewTelemetry,
   type PreviewTelemetry,
@@ -107,6 +101,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
+  registry?: NodeExecutionRegistry;
   redisUrl: string;
   workerId: string;
 }>;
@@ -145,16 +140,7 @@ const productionFactories: NodeAttemptRuntimeFactories = {
   previewHandler: createPreviewAttemptHandler,
   previewTelemetry: createProductionPreviewTelemetry,
   reader: createWorkflowExecutionReader,
-  registry: (httpRequest, smtpPolicy) =>
-    createPlatformNodeRegistry(
-      {
-        httpClient: createNodeProviderHttpClient(httpRequest),
-        httpRequestTelemetry: createHttpProviderTelemetry(),
-        slackSendMessageTelemetry: createSlackProviderTelemetry(),
-        emailSendNotificationTelemetry: createEmailProviderTelemetry(),
-      },
-      smtpPolicy,
-    ),
+  registry: createWorkerExecutionRegistry,
   runFailures: createRunFailureStore,
   runStore: createNodeAttemptRunStore,
 };
@@ -179,7 +165,9 @@ async function createProductionNodeAttemptRuntime(
     catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     expressionEvaluator,
   });
-  const registry = factories.registry(options.httpRequest, options.smtpPolicy);
+  const registry =
+    options.registry ??
+    factories.registry(options.httpRequest, options.smtpPolicy);
   const runStore = factories.runStore(
     options.database,
     options.databaseRuntime,

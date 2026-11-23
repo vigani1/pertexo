@@ -1,3 +1,7 @@
+import {
+  parseCommunityApprovalSet,
+  type CommunityApprovalSet,
+} from '@pertexo/node-catalog/server';
 import type { createSmtpClient } from '@pertexo/secrets/server';
 import {
   StartupSettingError,
@@ -50,6 +54,7 @@ type AgentModelRates = z.output<typeof agentModelRatesSchema>;
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     publicWebOrigin?: string;
+    communityIntegrations?: CommunityApprovalSet;
     agentModelRates?: AgentModelRates;
     callbacks?: CallbackKeyConfig;
     artifactStore: ArtifactStoreConfig;
@@ -148,8 +153,13 @@ export function parseWorkerConfig(
       raw.HTTP_ALLOWED_PRIVATE_NETWORKS,
     );
     const agentModelRates = parseAgentModelRates(raw.AGENT_MODEL_RATES);
+    const communityIntegrations = parseCommunityApprovalSet(
+      raw.COMMUNITY_INTEGRATION_ROOT,
+      raw.COMMUNITY_INTEGRATION_APPROVALS,
+    );
     return Object.freeze({
       ...result.data,
+      ...(communityIntegrations === undefined ? {} : { communityIntegrations }),
       ...(agentModelRates === undefined ? {} : { agentModelRates }),
       ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
       ...(callbacks === undefined ? {} : { callbacks }),

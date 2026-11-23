@@ -1,13 +1,12 @@
 import { generateSchemaDocument } from '@pertexo/node-sdk';
 import { compareOrdinal, isRecord } from '@pertexo/workflow-model';
-import {
-  INTEGRATION_MODULES,
-  type ConnectionDefinition,
-  type ConnectionLookup,
-  type IntegrationExecutorDependencies,
-  type IntegrationModule,
-  type IntegrationPollFetcher,
-  type IntegrationPresentation,
+import type {
+  ConnectionDefinition,
+  ConnectionLookup,
+  IntegrationExecutorDependencies,
+  IntegrationModule,
+  IntegrationPollFetcher,
+  IntegrationPresentation,
 } from '@pertexo/integrations/server';
 import { IntegrationRegistryError } from './node-catalog.errors.js';
 
@@ -59,6 +58,13 @@ export function registerIntegrationModules(
           identity,
           Object.freeze({
             ...module.presentation,
+            ...(module.presentation.community === undefined
+              ? {}
+              : {
+                  community: Object.freeze({
+                    ...module.presentation.community,
+                  }),
+                }),
             name:
               registration.manifest.display?.name ?? module.presentation.name,
             ...presentation,
@@ -102,17 +108,6 @@ export function registerIntegrationModules(
       presentations.get(`${key}@${String(version)}`),
   };
 }
-
-export const INTEGRATION_MODULE_REGISTRY =
-  registerIntegrationModules(INTEGRATION_MODULES);
-
-export const {
-  connectionFormCatalog,
-  connectionLookup: findConnectionLookup,
-  findConnectionDefinition,
-  findConnectionSlot,
-  isRegisteredProvider,
-} = INTEGRATION_MODULE_REGISTRY;
 
 type RegisteredConnection = ConnectionDefinition &
   Readonly<{
