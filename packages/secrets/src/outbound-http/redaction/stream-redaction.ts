@@ -18,6 +18,7 @@ import {
 const CHUNKS_PER_YIELD = 4_096;
 
 const BODY_CHUNK_BYTES = 65_536;
+const UTF16_BOM_BYTES = 2;
 
 export async function* boundedRedactedBody(
   body: AsyncIterable<Uint8Array>,
@@ -54,7 +55,7 @@ export async function* boundedRedactedBody(
     // Charset detection needs both bytes of a possible UTF-16 BOM.
     const raw = boundedSourceChunks(body, limit, signal, {
       incremental,
-      minimumFirstChunkBytes: 2,
+      minimumFirstChunkBytes: UTF16_BOM_BYTES,
     });
     const decoded = decodedResponseChunks(raw, charset);
     for await (const chunk of boundedSourceChunks(decoded, limit, signal, {
