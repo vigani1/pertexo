@@ -35,7 +35,7 @@ export function configuredAgentTool(
 export function agentDraftTools(config: NodeConfig): readonly NodeConfig[] {
   if (Array.isArray(config.tools))
     return config.tools.filter(isRecord) as readonly NodeConfig[];
-  return isRecord(config.tool) ? [config.tool as NodeConfig] : [];
+  return isRecord(config.tool) ? [config.tool] : [];
 }
 
 export function hasSlackAgentTool(tools: readonly NodeConfig[]): boolean {
