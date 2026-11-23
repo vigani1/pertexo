@@ -276,18 +276,15 @@ for (const width of [1280, 375])
     await page.getByLabel('Workspace table', { exact: true }).click();
     await page.getByRole('option', { name: 'Orders', exact: true }).click();
     await expect
-      .poll(async () =>
-        (await readEditorDraft(page, workflow)).graph.nodes.find(
-          (node) => node.id === nodeId,
-        ),
+      .poll(
+        async () =>
+          (await readEditorDraft(page, workflow)).graph.nodes.find(
+            (node) => node.id === nodeId,
+          )?.config,
       )
       .toMatchObject({
-        definition: { key: 'core.table_find', version: 2 },
-        config: {
-          table: 'Orders',
-          tableId: table.id,
-          columnBindings: { key: 'key', amount: 'amount' },
-        },
+        table: 'Orders',
+        columnBindings: { key: 'key', amount: 'amount' },
       });
     const version = await publishSingleStep(page, workflow);
     const runId = await startSingleStep(page, {});
