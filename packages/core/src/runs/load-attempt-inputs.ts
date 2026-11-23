@@ -194,24 +194,7 @@ export async function loadAttemptInputs(
     checkpoint,
     runDeadlineAt: inputs.deadlineAt,
   });
-  if (inputs.sourceFailure !== undefined) {
-    const source = checkpoint.invocations.find(
-      ({ invocationKey }) =>
-        invocationKey === inputs.sourceFailure?.invocationKey,
-    );
-    const handler = checkpoint.invocations.find(
-      ({ invocationKey }) => invocationKey === input.lease.invocationKey,
-    );
-    const sourceFailureStateInvalid =
-      source?.status !== 'failed' ||
-      source.failureHandling?.disposition !== 'pending' ||
-      (source.agentWork?.parentInvocationKey ?? source.invocationKey) !==
-        input.sourceFailure?.invocationKey ||
-      source.attemptNumber !== inputs.sourceFailure.attemptNumber ||
-      handler?.status !== 'running' ||
-      handler.attemptNumber !== input.lease.attemptNumber;
-    if (sourceFailureStateInvalid) throw new NodeAttemptStateCorruptError();
-  }
+  verifySourceFailure(checkpoint, input, inputs.sourceFailure);
   const join = await coordinatorInput(store, input, checkpoint);
   const innermost = innermostLoop(
     checkpoint,
@@ -244,4 +227,28 @@ export async function loadAttemptInputs(
     ...(structuredCollection === undefined ? {} : { structuredCollection }),
     ...(loopResultsTooLarge ? { loopResultsTooLarge: true as const } : {}),
   });
+}
+
+function verifySourceFailure(
+  checkpoint: WorkflowCheckpoint,
+  input: LoadInputsInput,
+  failure: NodeAttemptStoredInputs['sourceFailure'],
+): void {
+  if (failure === undefined) return;
+
+  const source = checkpoint.invocations.find(
+    ({ invocationKey }) => invocationKey === failure.invocationKey,
+  );
+  const handler = checkpoint.invocations.find(
+    ({ invocationKey }) => invocationKey === input.lease.invocationKey,
+  );
+  const sourceFailureStateInvalid =
+    source?.status !== 'failed' ||
+    source.failureHandling?.disposition !== 'pending' ||
+    (source.agentWork?.parentInvocationKey ?? source.invocationKey) !==
+      input.sourceFailure?.invocationKey ||
+    source.attemptNumber !== failure.attemptNumber ||
+    handler?.status !== 'running' ||
+    handler.attemptNumber !== input.lease.attemptNumber;
+  if (sourceFailureStateInvalid) throw new NodeAttemptStateCorruptError();
 }

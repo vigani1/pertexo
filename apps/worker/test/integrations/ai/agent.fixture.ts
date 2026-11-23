@@ -156,11 +156,7 @@ export async function publishAgent(
     shape === undefined ? graph : shapes[shape](graph),
     table,
   );
-  const publishedAgent =
-    shape === 'for-each'
-      ? published.version.graphJson.nodes[1]?.structured?.body.nodes[0]
-      : published.version.graphJson.nodes[1];
-  expect(publishedAgent?.config).toEqual({
+  expect(agentConfigIn(published.version.graphJson)).toEqual({
     ...graph.nodes[1]?.config,
     tool: {
       ...tool,
@@ -168,6 +164,19 @@ export async function publishAgent(
     },
   });
   return published.version.workflowId;
+}
+
+function agentConfigIn(
+  graph: WorkflowGraph,
+): WorkflowGraph['nodes'][number]['config'] | undefined {
+  for (const node of graph.nodes) {
+    if (node.definition.key === AGENT_STEP.key) return node.config;
+    if (node.structured !== undefined) {
+      const nested = agentConfigIn(node.structured.body);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
 }
 
 function addAgentFailureHandler(graph: WorkflowGraph): WorkflowGraph {
@@ -192,7 +201,7 @@ function addAgentFailureHandler(graph: WorkflowGraph): WorkflowGraph {
 
 function loopOverAgent(graph: WorkflowGraph): WorkflowGraph {
   const agent = graph.nodes.find(({ id }) => id === 'agent');
-  const loopGraph = forEachGraph(1);
+  const loopGraph: WorkflowGraph = forEachGraph(1);
   const [manual, loop, finish] = loopGraph.nodes;
   if (
     agent === undefined ||
