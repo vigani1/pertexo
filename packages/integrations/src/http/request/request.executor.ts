@@ -1,6 +1,6 @@
-import {
-  type NodeExecutionInvocation,
-  type NodeExecutorRegistration,
+import type {
+  NodeExecutionInvocation,
+  NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 import type { ProviderHttpClient } from '../../providers/http-client.js';
 import {
@@ -74,7 +74,7 @@ function prepareHttpRequest(
     invocation.runtime?.connections?.resolveHttpCredential === undefined
   )
     throw failedConfiguration();
-  return prepareInvocation(invocation, config, input, httpConnection);
+  return prepareInvocation(invocation, { config, input }, httpConnection);
 }
 
 export function createHttpRequestExecutorRegistration(

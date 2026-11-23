@@ -171,13 +171,11 @@ function compileOperation(
       outputSchema,
     },
     createExecutor: (dependencies) =>
-      createRecipeExecutor(
-        dependencies,
-        executor,
+      createRecipeExecutor(dependencies, executor, {
         origin,
         action,
-        credential?.binding,
-      ),
+        binding: credential?.binding,
+      }),
   };
 }
 

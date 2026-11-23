@@ -25,11 +25,15 @@ import {
   failedConfiguration,
   HttpRequestExecutorError,
 } from './request.errors.js';
-import type { ProviderHttpClient } from '../../providers/http-client.js';
+import type {
+  ProviderHttpClient,
+  ProviderHttpRequest,
+} from '../../providers/http-client.js';
 import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
 import { requestHeaders } from './execution/request-input.js';
 import {
   type RequestContext,
+  type ResolvedRequestCredential,
   type RequestMaterial,
   type RequestCredentialMaterial,
   credentialFailure,
@@ -92,7 +96,6 @@ async function executeWithMaterial(
     runtime,
     connections,
     connectionId,
-    binding,
     approvedOrigin,
     repeatable,
     sideEffect,
@@ -107,28 +110,9 @@ async function executeWithMaterial(
     ...(material.credential?.sensitiveValues ?? []),
     ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
   ];
-  // A paged request and a renewed one dispatch more than once, as one attempt.
-  const dispatchRuntime =
-    config.pagination === undefined && oauth2 === undefined
-      ? runtime
-      : markingDispatchOnce(runtime);
   let response;
   try {
-    const beforeDispatch =
-      binding === undefined ||
-      resolved === undefined ||
-      connectionId === undefined ||
-      connections?.assertCurrent === undefined
-        ? createUnauthenticatedBeforeDispatch(dispatchRuntime)
-        : createProviderBeforeDispatch({
-            assertCurrent: connections.assertCurrent,
-            connectionId,
-            expectedProviderKey: binding.providerKey,
-            expectedAuthType: resolved.authType,
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-            runtime: dispatchRuntime,
-          });
+    const beforeDispatch = requestDispatchFence(context, resolved);
     const request = {
       url: config.url,
       method: config.method,
@@ -156,36 +140,10 @@ async function executeWithMaterial(
       oauth2,
     );
     if (config.pagination !== undefined)
-      return httpRequestOutputSchema.parse(
-        await executePagination({
-          client,
-          request,
-          pagination: config.pagination,
-          ...(runtime.artifacts === undefined
-            ? {}
-            : { artifacts: runtime.artifacts }),
-          inlineBytes: config.inlineResponseBytes,
-          ...(runtime.deadlineAt === undefined
-            ? {}
-            : { deadlineAt: runtime.deadlineAt }),
-          checkResponse: (status, responseHeaders) => {
-            const decision = classifySecureHttpResponse(status, sideEffect, {
-              providerKeyPresent: false,
-              headers: responseHeaders,
-            });
-            if (decision.kind !== 'succeeded')
-              throw new HttpRequestExecutorError(decision, {
-                possiblyDispatched: false,
-                serviceResponse: serviceResponseFacts(
-                  httpClient.redactText,
-                  config,
-                  { status },
-                  request.sensitiveValues,
-                ),
-              });
-          },
-        }),
-      );
+      return await executeRequestPages(context, config.pagination, request, {
+        executeStreaming: client.executeStreaming.bind(client),
+        redactText: httpClient.redactText,
+      });
     response = await client.executeStreaming(request, (stream) =>
       consumeResponseBody(runtime.artifacts, {
         inlineLimit: config.inlineResponseBytes,
@@ -226,6 +184,75 @@ async function executeWithMaterial(
     finalOrigin: response.finalUrl,
     redirectCount: response.redirectCount,
   });
+}
+
+function requestDispatchFence(
+  context: RequestContext,
+  resolved: ResolvedRequestCredential | undefined,
+): () => Promise<void> {
+  const { binding, config, connectionId, connections, runtime, invocation } =
+    context;
+  // A paged request and a renewed one dispatch more than once, as one attempt.
+  const dispatchRuntime =
+    config.pagination !== undefined ||
+    (resolved !== undefined && 'accessToken' in resolved)
+      ? markingDispatchOnce(runtime)
+      : runtime;
+  if (
+    binding === undefined ||
+    resolved === undefined ||
+    connectionId === undefined ||
+    connections?.assertCurrent === undefined
+  )
+    return createUnauthenticatedBeforeDispatch(dispatchRuntime);
+  return createProviderBeforeDispatch({
+    assertCurrent: connections.assertCurrent,
+    connectionId,
+    expectedProviderKey: binding.providerKey,
+    expectedAuthType: resolved.authType,
+    secretVersionId: resolved.secretVersionId,
+    signal: invocation.signal,
+    runtime: dispatchRuntime,
+  });
+}
+
+async function executeRequestPages(
+  { config, runtime, sideEffect }: RequestContext,
+  pagination: NonNullable<RequestContext['config']['pagination']>,
+  request: ProviderHttpRequest &
+    Required<Pick<ProviderHttpRequest, 'sensitiveValues'>>,
+  client: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>,
+) {
+  return httpRequestOutputSchema.parse(
+    await executePagination({
+      client,
+      request,
+      pagination,
+      ...(runtime.artifacts === undefined
+        ? {}
+        : { artifacts: runtime.artifacts }),
+      inlineBytes: config.inlineResponseBytes,
+      ...(runtime.deadlineAt === undefined
+        ? {}
+        : { deadlineAt: runtime.deadlineAt }),
+      checkResponse: (status, headers) => {
+        const decision = classifySecureHttpResponse(status, sideEffect, {
+          providerKeyPresent: false,
+          headers,
+        });
+        if (decision.kind !== 'succeeded')
+          throw new HttpRequestExecutorError(decision, {
+            possiblyDispatched: false,
+            serviceResponse: serviceResponseFacts(
+              client.redactText,
+              config,
+              { status },
+              request.sensitiveValues,
+            ),
+          });
+      },
+    }),
+  );
 }
 
 function rethrowHttpError(error: unknown, context: RequestContext): never {

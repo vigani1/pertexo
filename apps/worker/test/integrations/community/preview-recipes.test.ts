@@ -41,8 +41,11 @@ function setup(mode: ProviderMode) {
       url: request.url.href,
       key: request.headers['x-widget-key'],
     });
+    let status = 200;
+    if (mode === 'redirect') status = 302;
+    if (mode === 'error') status = 400;
     return Promise.resolve({
-      status: mode === 'redirect' ? 302 : mode === 'error' ? 400 : 200,
+      status,
       headers:
         mode === 'redirect'
           ? { location: 'https://second.example.test/receiver' }
@@ -53,7 +56,7 @@ function setup(mode: ProviderMode) {
           JSON.stringify({ result: { echo: token } }),
         );
       })(),
-      close() {},
+      close: () => undefined,
     });
   };
   const httpClient = provideHttpClient(

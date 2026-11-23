@@ -1,4 +1,4 @@
-import { type ExecutorIdentity } from '@pertexo/node-sdk';
+import type { ExecutorIdentity } from '@pertexo/node-sdk';
 import { NodeInputValidationError } from '@pertexo/node-sdk/server';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { executeHttpRequest } from '../http/request/lifecycle.js';
@@ -17,9 +17,15 @@ type RecipeInputs = Readonly<Record<string, string | number | boolean>>;
 export function createRecipeExecutor(
   { httpClient }: IntegrationExecutorDependencies,
   executor: ExecutorIdentity,
-  origin: string,
-  action: CommunityAction,
-  binding: RequestConnectionBinding | undefined,
+  {
+    origin,
+    action,
+    binding,
+  }: Readonly<{
+    origin: string;
+    action: CommunityAction;
+    binding: RequestConnectionBinding | undefined;
+  }>,
 ) {
   return registerProviderExecutor(executor, undefined, async (invocation) => {
     const values = invocation.input as RecipeInputs;
@@ -51,16 +57,18 @@ export function createRecipeExecutor(
       prepareInvocation(
         invocation,
         {
-          url: url.href,
-          method: action.method,
-          headers:
-            body === undefined ? {} : { 'content-type': 'application/json' },
-          timeoutMillis: HTTP_REQUEST_LIMITS.defaultTimeoutMillis,
-          maxRedirects: 0,
-          maxResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
-          inlineResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
+          config: {
+            url: url.href,
+            method: action.method,
+            headers:
+              body === undefined ? {} : { 'content-type': 'application/json' },
+            timeoutMillis: HTTP_REQUEST_LIMITS.defaultTimeoutMillis,
+            maxRedirects: 0,
+            maxResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
+            inlineResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
+          },
+          input: body === undefined ? {} : { body },
         },
-        body === undefined ? {} : { body },
         binding,
         origin,
       ),

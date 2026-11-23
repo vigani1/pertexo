@@ -195,7 +195,6 @@ export class TestConnectionService {
         return toTestResponse(started.result, this.redirectUri());
       const requestSignal = encryptionSignal(input);
 
-      let plaintext: Uint8Array | undefined;
       try {
         requestSignal.throwIfAborted();
         await reauthorizeConnectionSecretAccess(input, this.authorization);
@@ -208,97 +207,11 @@ export class TestConnectionService {
             ...common,
             secretVersionId: resolved.secretVersionId,
           });
-        const open = () =>
-          this.encryption.open(
-            resolved.sealed,
-            {
-              workspaceId: input.routeWorkspaceId,
-              connectionId: input.connectionId,
-              secretVersionId: resolved.secretVersionId,
-            },
-            requestSignal,
-          );
-        let outcome: ConnectionTestOutcome;
-        try {
-          // The token service opens its own client secret when it needs it.
-          const definition = findConnectionDefinition(
-            resolved.connection.authType,
-            resolved.connection.providerKey,
-          );
-          if (definition === undefined)
-            throw new ConnectionSecretEncryptionError();
-          if (definition.test.kind === 'lookup') {
-            outcome = await testConnectionLookup(
-              this.lookup,
-              {
-                ...input,
-                signal: requestSignal,
-                request: {
-                  providerKey: expectedProviderKey,
-                  lookup: definition.test.key,
-                },
-              },
-              { resolved, beforeDispatch },
-            );
-          } else if (definition.test.kind === 'oauth2') {
-            outcome = await this.testOAuth2(input, request, {
-              method: definition.test.method,
-              connection: resolved.connection,
-              signal: requestSignal,
-              beforeDispatch,
-            });
-          } else if (
-            definition.test.kind === 'http' &&
-            definition.test.approvedOrigin !== undefined
-          ) {
-            outcome = await testCommunityConnection(
-              this.communityHttpClient,
-              definition,
-              {
-                providerKey: expectedProviderKey,
-                connectionId: input.connectionId,
-                secretVersionId: resolved.secretVersionId,
-                signal: requestSignal,
-                open,
-                beforeDispatch,
-              },
-            );
-          } else {
-            plaintext = await open();
-            requestSignal.throwIfAborted();
-            outcome = await testConfiguredConnection(
-              {
-                ...(this.smtpPolicy === undefined
-                  ? {}
-                  : { smtpPolicy: this.smtpPolicy }),
-                ...(this.emailClient === undefined
-                  ? {}
-                  : { emailClient: this.emailClient }),
-                ...(this.slackClient === undefined
-                  ? {}
-                  : { slackClient: this.slackClient }),
-                httpClient: this.httpClient,
-              },
-              destination,
-              {
-                request,
-                ...decodeCredential(plaintext, definition),
-                input,
-                signal: requestSignal,
-                beforeDispatch,
-              },
-            );
-          }
-        } catch (error: unknown) {
-          if (!(
-            error instanceof SecureHttpError ||
-            error instanceof ProviderHttpError
-          ))
-            throw error;
-          if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
-            throw error;
-          outcome = secureErrorOutcome(error);
-        }
+        const outcome = await this.testResolvedConnection(input, destination, {
+          resolved,
+          requestSignal,
+          beforeDispatch,
+        });
         return toTestResponse(
           await this.persistence.completeConnectionTest({
             ...common,
@@ -314,10 +227,116 @@ export class TestConnectionService {
           // Abandonment is cleanup and cannot replace the command failure.
         }
         throw error;
-      } finally {
-        plaintext?.fill(0);
       }
     });
+  }
+
+  private async testResolvedConnection(
+    input: TestConnectionCommand,
+    destination: FailureNotificationDestinationResponse | undefined,
+    {
+      resolved,
+      requestSignal,
+      beforeDispatch,
+    }: Readonly<{
+      resolved: Awaited<
+        ReturnType<ConnectionTestPersistence['resolveConnectionTestSecret']>
+      >;
+      requestSignal: AbortSignal;
+      beforeDispatch(): Promise<void>;
+    }>,
+  ): Promise<ConnectionTestOutcome> {
+    const { request } = input;
+    const open = () =>
+      this.encryption.open(
+        resolved.sealed,
+        {
+          workspaceId: input.routeWorkspaceId,
+          connectionId: input.connectionId,
+          secretVersionId: resolved.secretVersionId,
+        },
+        requestSignal,
+      );
+    let plaintext: Uint8Array | undefined;
+    try {
+      // The token service opens its own client secret when it needs it.
+      const definition = findConnectionDefinition(
+        resolved.connection.authType,
+        resolved.connection.providerKey,
+      );
+      if (definition === undefined) throw new ConnectionSecretEncryptionError();
+      if (definition.test.kind === 'lookup') {
+        return await testConnectionLookup(
+          this.lookup,
+          {
+            ...input,
+            signal: requestSignal,
+            request: {
+              providerKey: resolved.connection.providerKey,
+              lookup: definition.test.key,
+            },
+          },
+          { resolved, beforeDispatch },
+        );
+      } else if (definition.test.kind === 'oauth2') {
+        return await this.testOAuth2(input, request, {
+          method: definition.test.method,
+          connection: resolved.connection,
+          signal: requestSignal,
+          beforeDispatch,
+        });
+      } else if (
+        definition.test.kind === 'http' &&
+        definition.test.approvedOrigin !== undefined
+      ) {
+        return await testCommunityConnection(
+          this.communityHttpClient,
+          definition,
+          {
+            providerKey: resolved.connection.providerKey,
+            connectionId: input.connectionId,
+            secretVersionId: resolved.secretVersionId,
+            signal: requestSignal,
+            open,
+            beforeDispatch,
+          },
+        );
+      }
+      plaintext = await open();
+      requestSignal.throwIfAborted();
+      return await testConfiguredConnection(
+        {
+          ...(this.smtpPolicy === undefined
+            ? {}
+            : { smtpPolicy: this.smtpPolicy }),
+          ...(this.emailClient === undefined
+            ? {}
+            : { emailClient: this.emailClient }),
+          ...(this.slackClient === undefined
+            ? {}
+            : { slackClient: this.slackClient }),
+          httpClient: this.httpClient,
+        },
+        destination,
+        {
+          request,
+          ...decodeCredential(plaintext, definition),
+          input,
+          signal: requestSignal,
+          beforeDispatch,
+        },
+      );
+    } catch (error: unknown) {
+      if (!(
+        error instanceof SecureHttpError || error instanceof ProviderHttpError
+      ))
+        throw error;
+      if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+        throw error;
+      return secureErrorOutcome(error);
+    } finally {
+      plaintext?.fill(0);
+    }
   }
 
   private testOAuth2(
