@@ -51,6 +51,7 @@ export interface InlineAdvanceOptions {
       invocationKeys: readonly string[];
       attemptIds: readonly string[];
       failureEntryKey?: string;
+      agentFailureSourceNodeId?: string;
       forEachUpstreams?: ReturnType<typeof deriveForEachUpstreams>;
       iterationPath: readonly IterationScopePart[];
     }>,
@@ -68,6 +69,7 @@ export interface InlineAdvanceOptions {
         value: JsonValue;
       }>[];
       sourceFailure?: JsonValue;
+      agentFailureSourceLabel?: string;
       loopResultsTooLarge?: true;
     }>
   >;

@@ -62,6 +62,7 @@ export async function publishAgent(
       | 'linear-sets'
       | 'sibling-set'
       | 'failure-handler'
+      | 'inline-failure-handler'
       | 'for-each'
       | undefined;
     expectedTableId?: string | undefined;
@@ -149,7 +150,10 @@ export async function publishAgent(
   const shapes = {
     'linear-sets': surroundAgentWithSets,
     'sibling-set': addAgentSiblingSet,
-    'failure-handler': addAgentFailureHandler,
+    'failure-handler': (graph: WorkflowGraph) =>
+      addAgentFailureHandler(graph, 'queued'),
+    'inline-failure-handler': (graph: WorkflowGraph) =>
+      addAgentFailureHandler(graph, 'inline'),
     'for-each': loopOverAgent,
   };
   const published = await publishAgentFixtureGraph(
@@ -180,16 +184,32 @@ function agentConfigIn(
   return undefined;
 }
 
-function addAgentFailureHandler(graph: WorkflowGraph): WorkflowGraph {
+function addAgentFailureHandler(
+  graph: WorkflowGraph,
+  mode: 'queued' | 'inline',
+): WorkflowGraph {
+  const handler = node(
+    'handler',
+    mode === 'inline' ? 'core.set' : 'core.terminate',
+    {
+      result: { kind: 'node_failure', nodeId: 'agent', path: '$' },
+    },
+  );
   return {
     settings: graph.settings,
     nodes: [
       ...graph.nodes.map((step) =>
         step.id === 'agent' ? { ...step, label: agentFailureLabel } : step,
       ),
-      node('handler', 'core.terminate', {
-        result: { kind: 'node_failure', nodeId: 'agent', path: '$' },
-      }),
+      mode === 'queued'
+        ? handler
+        : {
+            ...handler,
+            definition: {
+              ...handler.definition,
+              version: CORE_INLINE_DEFINITION_VERSION,
+            },
+          },
     ],
     edges: [
       ...graph.edges,

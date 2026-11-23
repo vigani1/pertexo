@@ -5,7 +5,10 @@ import type {
   IterationScopePart,
 } from '../workflow-execution.js';
 import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import {
+  isAgentDefinition,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import { mapPreparedAttemptInput } from '../attempt/execute.js';
 import { prepareNodeAttemptInput } from '../attempt/prepare-attempt-input.js';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
@@ -96,6 +99,14 @@ export async function readInlineAttemptInput(
   const route = executableFailureRoutes(input.executable).find(
     ({ entryNodeId }) => entryNodeId === nodeId,
   );
+  const failureSource =
+    route === undefined
+      ? undefined
+      : context.graph.nodes.find(({ id }) => id === route.sourceNodeId);
+  const agentFailureSourceNodeId =
+    failureSource !== undefined && isAgentDefinition(failureSource.definition)
+      ? failureSource.id
+      : undefined;
   const localFailure = state.failureValues.find(
     ({ entryInvocationKey }) => entryInvocationKey === invocationKey,
   )?.value;
@@ -111,6 +122,9 @@ export async function readInlineAttemptInput(
     ...(route === undefined || localFailure !== undefined
       ? {}
       : { failureEntryKey: invocationKey }),
+    ...(agentFailureSourceNodeId === undefined
+      ? {}
+      : { agentFailureSourceNodeId }),
   });
   if (persisted.loopResultsTooLarge)
     throw new NodeExecutorFailure({
@@ -126,25 +140,28 @@ export async function readInlineAttemptInput(
     ...successes.map(({ attemptId, output }) => [attemptId, output] as const),
   ]);
   const coordinatorInput = mergeInput(join, outputs);
-  const prepared = prepareNodeAttemptInput({
-    executable: input.executable,
-    workflowVersionId: input.workflowVersionId,
-    nodeId,
-    invocationKey,
-    branchPath,
-    iterationPath,
-    runInput: persisted.runInput,
-    ...(persisted.variables === undefined
-      ? {}
-      : { variables: persisted.variables }),
-    completedNodeOutputs: [
-      ...persisted.outputs,
-      ...local.filter(({ invocationKey: key }) => upstreamKeys.includes(key)),
-    ],
-    sourceFailure: localFailure ?? persisted.sourceFailure,
-    ...structuredInputProof(loop, scope, outputs),
-    signal,
-  });
+  const prepared = prepareNodeAttemptInput(
+    {
+      executable: input.executable,
+      workflowVersionId: input.workflowVersionId,
+      nodeId,
+      invocationKey,
+      branchPath,
+      iterationPath,
+      runInput: persisted.runInput,
+      ...(persisted.variables === undefined
+        ? {}
+        : { variables: persisted.variables }),
+      completedNodeOutputs: [
+        ...persisted.outputs,
+        ...local.filter(({ invocationKey: key }) => upstreamKeys.includes(key)),
+      ],
+      sourceFailure: localFailure ?? persisted.sourceFailure,
+      ...structuredInputProof(loop, scope, outputs),
+      signal,
+    },
+    persisted.agentFailureSourceLabel,
+  );
   return mapPreparedAttemptInput(
     {
       signal,
