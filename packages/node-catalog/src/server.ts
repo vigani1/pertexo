@@ -106,7 +106,7 @@ export function createPlatformInlineRegistry(): InlineNodeRegistry {
   });
 }
 
-/** Check the author's exact bytes against the same registry used at startup. */
+/** CLI-only. Check the author's exact bytes against the same registry used at startup. */
 export async function loadAuthorCommunityRelease(root: string, file: string) {
   const release = await loadAuthorCommunityModule(root, file);
   installPlatformIntegrations([release.module]);

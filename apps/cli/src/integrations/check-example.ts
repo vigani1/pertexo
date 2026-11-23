@@ -1,11 +1,14 @@
-import { ReadableStream } from 'node:stream/web';
 import { isDeepStrictEqual } from 'node:util';
-import type {
-  ConnectionDefinition,
-  ProviderHttpClient,
-  ProviderHttpBodyConsumer,
-  ProviderHttpRequest,
+import {
+  createProviderHttpClient,
+  type ConnectionDefinition,
 } from '@pertexo/integrations/server';
+import {
+  SECURE_HTTP_PROVIDER_SECURITY,
+  SecureHttpClient,
+  type SecureHttpTransport,
+  type SecureHttpTransportRequest,
+} from '@pertexo/secrets/server';
 import {
   createPlatformNodeRegistry,
   type loadAuthorCommunityRelease,
@@ -40,7 +43,7 @@ export async function checkExample(
   const connection = module.connections?.find(({ slot }) =>
     manifest.connectionRequirements.includes(slot.key),
   );
-  const provider = fixtureProvider(metadata.origin, example, signal);
+  const provider = fixtureProvider(metadata.origin, example);
   const registry = createPlatformNodeRegistry({
     httpClient: provider.client,
     fixedEndpointHttpClient: provider.client,
@@ -150,66 +153,44 @@ function fixtureConnection(
   };
 }
 
-function fixtureProvider(
-  origin: string,
-  example: ConformanceExample,
-  signal: AbortSignal,
-) {
+function fixtureProvider(origin: string, example: ConformanceExample) {
   let requested = false;
   let mismatch: string | undefined;
-  const client: ProviderHttpClient = {
-    execute() {
-      throw new Error('Unexpected fixed-endpoint request.');
-    },
-    async executeStreaming<Body>(
-      request: ProviderHttpRequest,
-      consume: ProviderHttpBodyConsumer<Body>,
-    ) {
+  const transport: SecureHttpTransport = {
+    dispatch(request) {
       if (requested) {
         mismatch = '.request: the operation sent more than one request.';
         throw new Error(mismatch);
       }
-      const url = new URL(request.url);
-      if (
-        url.origin !== origin ||
-        request.maxRedirects !== 0 ||
-        request.publicOnly !== true
-      ) {
-        mismatch =
-          '.request: the operation must use the approved origin without redirects.';
+      if (request.url.origin !== origin) {
+        mismatch = '.request: the operation must use the approved origin.';
         throw new Error(mismatch);
       }
-      await request.beforeDispatch();
       requested = true;
-      mismatch = compareRequest(example.request, request, url);
+      mismatch = compareRequest(example.request, request);
       const { status, body } = example.response;
-      const response = {
+      return Promise.resolve({
         status,
         headers:
           body === undefined ? {} : { 'content-type': 'application/json' },
-        bodyEncoding: 'utf8' as const,
-        finalUrl: url.href,
-        redirectCount: 0,
-      };
-      const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          if (body !== undefined)
-            controller.enqueue(Buffer.from(JSON.stringify(body)));
-          controller.close();
-        },
+        body: (async function* () {
+          await Promise.resolve();
+          if (body !== undefined) yield Buffer.from(JSON.stringify(body));
+        })(),
+        close: () => undefined,
       });
-      return {
-        ...response,
-        body: await consume({ ...response, body: stream, signal }),
-      };
-    },
-    redactText(value, sensitiveValues) {
-      return sensitiveValues.reduce(
-        (text, sensitive) => text.replaceAll(sensitive, '[redacted]'),
-        value,
-      );
     },
   };
+  const client = createProviderHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: () =>
+          Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
+      },
+      transport,
+    ),
+    SECURE_HTTP_PROVIDER_SECURITY,
+  );
   return {
     client,
     dispatched: () => requested,
@@ -221,12 +202,11 @@ function fixtureProvider(
 
 function compareRequest(
   expected: ConformanceExample['request'],
-  request: ProviderHttpRequest,
-  url: URL,
+  request: SecureHttpTransportRequest,
 ) {
   if (expected.method !== request.method)
     return '.request.method: does not match the generated request.';
-  if (expected.path !== url.pathname + url.search)
+  if (expected.path !== request.url.pathname + request.url.search)
     return '.request.path: does not match the generated path and query.';
   if (!isDeepStrictEqual(expected.headers, { ...request.headers }))
     return '.request.headers: do not match the generated headers.';

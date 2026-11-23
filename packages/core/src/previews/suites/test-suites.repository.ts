@@ -1,6 +1,6 @@
 import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import type { WorkflowTestSuiteSummary } from '@pertexo/contracts';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
@@ -96,22 +96,28 @@ function visibleSuite(input: WorkflowActor) {
     sql`${suite.expiresAt}>clock_timestamp()`,
   );
 }
-async function listSuiteRows(client: PoolClient, input: WorkflowActor) {
+async function listSuiteRows(
+  client: PoolClient,
+  input: WorkflowActor,
+  selection: 'history' | 'latest_saved_case',
+) {
   const db = drizzle(client);
+  const order = [desc(suite.createdAt), desc(suite.id)];
+  const historyOrder = desc(
+    sql`(${suite.startedBy}=${input.actorId} and ${suite.status}='running')`,
+  );
   // Counts depend on this bounded relation, so no other suite is aggregated.
   const history = db.$with('suite').as(
     db
       .select(historyFields)
       .from(suite)
-      .where(visibleSuite(input))
-      .orderBy(
-        desc(
-          sql`(${suite.startedBy}=${input.actorId} and ${suite.status}='running')`,
-        ),
-        desc(suite.createdAt),
-        desc(suite.id),
+      .where(
+        selection === 'history'
+          ? visibleSuite(input)
+          : and(visibleSuite(input), isNull(suite.evaluationTableId)),
       )
-      .limit(SUITE_HISTORY_ROWS),
+      .orderBy(...(selection === 'history' ? [historyOrder, ...order] : order))
+      .limit(selection === 'history' ? SUITE_HISTORY_ROWS : 1),
   );
   const counts = suiteCounts(db, history);
   return db
@@ -167,7 +173,15 @@ export async function listSuites(
   client: PoolClient,
   input: WorkflowActor,
 ): Promise<readonly WorkflowTestSuiteSummary[]> {
-  return (await listSuiteRows(client, input)).map(summary);
+  return (await listSuiteRows(client, input, 'history')).map(summary);
+}
+
+export async function readLatestSavedCaseSuite(
+  client: PoolClient,
+  input: WorkflowActor,
+) {
+  const [row] = await listSuiteRows(client, input, 'latest_saved_case');
+  return row === undefined ? null : summary(row);
 }
 export async function readSuiteRow(
   client: PoolClient,

@@ -4,6 +4,7 @@ import {
   WORKFLOW_TEST_LIMITS,
   isStorageText,
   workflowTestExpectationsSchema,
+  testAssertionSchema,
 } from '@pertexo/workflow-model';
 import {
   DATA_TABLE_LIMITS,
@@ -82,19 +83,31 @@ export const workflowTableEvaluationSchema = z
         const count = Object.keys(columns).length;
         return count > 0 && count <= DATA_TABLE_LIMITS.maxColumns;
       }),
-    expectations: workflowTestExpectationsSchema,
-    expectedColumns: z
-      .array(dataTableIdentifierSchema.nullable())
-      .max(WORKFLOW_TEST_LIMITS.assertions)
-      .optional(),
+    expectations: z
+      .strictObject({
+        outcome: workflowTestExpectationsSchema.shape.outcome,
+      })
+      .extend({
+        assertions: z
+          .array(
+            testAssertionSchema.extend({
+              expected: z.discriminatedUnion('kind', [
+                z.strictObject({
+                  kind: z.literal('literal'),
+                  value: testAssertionSchema.shape.expected,
+                }),
+                z.strictObject({
+                  kind: z.literal('column'),
+                  columnId: dataTableIdentifierSchema,
+                }),
+              ]),
+            }),
+          )
+          .max(WORKFLOW_TEST_LIMITS.assertions)
+          .default([]),
+      }),
   })
-  .strict()
-  .refine(
-    ({ expectedColumns, expectations }) =>
-      expectedColumns === undefined ||
-      expectedColumns.length === expectations.assertions.length,
-    'Choose a literal or column for each value check.',
-  );
+  .strict();
 export const workflowTestSuiteStartRequestSchema = z.union([
   savedCaseSuite,
   savedCaseSuite
@@ -153,6 +166,7 @@ export const workflowTestSuiteListSchema = responseSchema(
   z
     .object({
       current: workflowTestSuiteCurrentSchema,
+      latestSavedCaseSuite: workflowTestSuiteSummarySchema.nullable(),
       items: z
         .array(workflowTestSuiteSummarySchema)
         .max(TEST_SUITES_BOUNDS.workflowTestSuiteListPageItems),

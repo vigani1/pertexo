@@ -195,6 +195,7 @@ function mountTriggerInput(failSample: boolean | 'first' = false) {
           samples: [],
           cases: [],
         },
+        latestSavedCaseSuite: null,
         items: [],
       }),
     ),

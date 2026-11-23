@@ -10,7 +10,13 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
+import {
+  DEFAULT_TEST_EXPECTATIONS,
+  WORKFLOW_TEST_SUITE_MAX_CASES,
+  workflowTestExpectationsSchema,
+  type JsonValue,
+} from '@pertexo/workflow-model';
+import { decodeStoredValue } from '../../shared/stored-values.js';
 
 export async function readDraftRevision(
   client: PoolClient,
@@ -86,11 +92,11 @@ export async function readVariablesRevision(
   return variables[0]?.revision ?? null;
 }
 
-export function readSuiteCasePayloads(
+export async function readSuiteCasePayloads(
   client: PoolClient,
   input: WorkflowActor,
 ) {
-  return drizzle(client)
+  const rows = await drizzle(client)
     .select({
       id: workflowInputCases.id,
       revision: workflowInputCases.revision,
@@ -120,4 +126,14 @@ export function readSuiteCasePayloads(
     .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
     .limit(WORKFLOW_TEST_SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
+  return rows.map(({ input, expectations, ...identity }) => ({
+    ...identity,
+    input: decodeStoredValue(() => JSON.parse(input) as JsonValue),
+    expectations:
+      expectations === null
+        ? DEFAULT_TEST_EXPECTATIONS
+        : decodeStoredValue(() =>
+            workflowTestExpectationsSchema.parse(JSON.parse(expectations)),
+          ),
+  }));
 }

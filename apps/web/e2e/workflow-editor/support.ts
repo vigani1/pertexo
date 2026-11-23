@@ -118,7 +118,6 @@ export async function installEditorRoutes(
   }> = {},
 ) {
   await installPresenceRoutes(page);
-
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/test-suites`,
     (route) =>
@@ -131,6 +130,7 @@ export async function installEditorRoutes(
             samples: [],
             cases: [],
           },
+          latestSavedCaseSuite: null,
           items: [],
         },
       }),

@@ -22,5 +22,6 @@ export {
 } from './data/portability/start-example.mutations';
 export {
   expectationDraft,
+  evaluationExpectationRequest,
   expectationRequest,
 } from './model/input-cases/expectations';

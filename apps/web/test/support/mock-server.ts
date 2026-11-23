@@ -55,6 +55,7 @@ export const mockServer = setupServer(
           samples: [],
           cases: [],
         },
+        latestSavedCaseSuite: null,
         items: [],
       }),
   ),

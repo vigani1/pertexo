@@ -57,7 +57,6 @@ describe('node-testing public contracts', () => {
         tableId: preview.id,
         versionId: preview.workflowId,
         columns: { category: 'category' },
-        expectedColumns: ['expected_port_2'],
         expectations: {
           outcome: 'succeeds',
           assertions: [
@@ -65,7 +64,13 @@ describe('node-testing public contracts', () => {
               source: { kind: 'step', nodeId: 'route' },
               path: '$.selectedPort',
               operator: 'equals',
-              expected: null,
+              expected: { kind: 'column', columnId: 'expected_port_2' },
+            },
+            {
+              source: { kind: 'final' },
+              path: '$.kind',
+              operator: 'equals',
+              expected: { kind: 'literal', value: 'routed' },
             },
           ],
         },
@@ -77,6 +82,15 @@ describe('node-testing public contracts', () => {
       success: true,
       data: request,
     });
+    expect(
+      workflowTestSuiteStartRequestSchema.safeParse({
+        ...request,
+        evaluation: {
+          ...request.evaluation,
+          expectedColumns: ['expected_port_2', null],
+        },
+      }).success,
+    ).toBe(false);
   });
 
   // The browser preflight accepts exactly the depth the server's canonical

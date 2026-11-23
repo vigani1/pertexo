@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { snapshotTableCases } from '../../../src/previews/suites/evaluation/snapshot-table-cases.js';
 import { expect, it } from 'vitest';
 import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 import { createDataTablesStore } from '../../../src/data-tables/index.js';
 import {
+  apiPool,
   enforceTestRetention,
   otherActorId,
   otherWorkspaceId,
@@ -20,6 +23,82 @@ import {
 } from './progress.fixture.js';
 
 export function registerTableEvaluationCases() {
+  it('keeps the latest failed saved-case suite visible behind a full page of evaluations', async () => {
+    const f = await fixture(1);
+    const tables = createDataTablesStore(config());
+    try {
+      const saved = await database.workflowTestSuites.start(await command(f));
+      const detail = await database.workflowTestSuites.get({
+        ...f.scope,
+        ...saved,
+      });
+      await complete(runId(detail, 0), { amount: 0 });
+      await due(saved.suiteId);
+      await scanner.scan(25);
+
+      const { evaluation } = await evaluationTable(tables, f, 1);
+      for (let index = 0; index < 20; index++) {
+        const { expectedCases: _saved, ...metadata } = (await command(f))
+          .request;
+        const accepted = await database.workflowTestSuites.start({
+          ...f.scope,
+          idempotencyKey: randomUUID(),
+          request: { ...metadata, evaluation },
+        });
+        const detail = await database.workflowTestSuites.get({
+          ...f.scope,
+          ...accepted,
+        });
+        await complete(runId(detail, 0), { amount: 1 });
+        await due(accepted.suiteId);
+        await scanner.scan(25);
+      }
+      const list = await database.workflowTestSuites.list(f.scope);
+      expect(list.items).toHaveLength(20);
+      expect(
+        list.items.every(
+          (item) => item.evaluation?.tableId === evaluation.tableId,
+        ),
+      ).toBe(true);
+      expect(list.latestSavedCaseSuite).toMatchObject({
+        suiteId: saved.suiteId,
+        signature: list.current.signature,
+        status: 'failed',
+      });
+    } finally {
+      await tables.close();
+    }
+  });
+
+  it('resolves table cases into typed inputs and expectations for suite admission', async () => {
+    const f = await fixture(0);
+    const tables = createDataTablesStore(config());
+    try {
+      const { evaluation } = await evaluationTable(tables, f, 1);
+      const cases = await withTenantScopedClient(apiPool, f.scope, (client) =>
+        snapshotTableCases(client, 'owner', f.scope.workspaceId, evaluation),
+      );
+      expect(cases).toMatchObject([
+        {
+          input: { amount: 1 },
+          expectations: {
+            outcome: 'succeeds',
+            assertions: [
+              {
+                source: { kind: 'final' },
+                path: '$.amount',
+                operator: 'equals',
+                expected: 1,
+              },
+            ],
+          },
+        },
+      ]);
+    } finally {
+      await tables.close();
+    }
+  });
+
   it('freezes version, table inputs and expectations and scores only completed cases', async () => {
     const f = await fixture(0);
     const tables = createDataTablesStore(config());
@@ -50,6 +129,27 @@ export function registerTableEvaluationCases() {
             filters: [{ column: 'amount', operator: 'greater_than', value: 0 }],
           },
         },
+      });
+      expect(
+        JSON.parse(
+          (
+            await query<{ expectations: string }>(
+              'select expectations from app.workflow_test_suite_cases where suite_id=$1 order by ordinal',
+              [accepted.suiteId],
+            )
+          )[0]?.expectations ?? '',
+        ),
+      ).toEqual({
+        outcome: 'succeeds',
+        assertions: [
+          {
+            source: { kind: 'final' },
+            path: '$.amount',
+            operator: 'equals',
+            expected: (JSON.parse(frozen[0]?.input ?? '') as { amount: number })
+              .amount,
+          },
+        ],
       });
       const first = await database.workflowTestSuites.get(scope);
       expect(first.evaluation).toEqual({
@@ -305,7 +405,6 @@ async function evaluationTable(
       tableId: table.id,
       versionId: f.versionId,
       columns: { amount: amount.id },
-      expectedColumns: [expected.id],
       expectations: {
         outcome: 'succeeds' as const,
         assertions: [
@@ -313,7 +412,7 @@ async function evaluationTable(
             source: { kind: 'final' as const },
             path: '$.amount',
             operator: 'equals' as const,
-            expected: null,
+            expected: { kind: 'column' as const, columnId: expected.id },
           },
         ],
       },

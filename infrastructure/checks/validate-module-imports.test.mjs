@@ -23,6 +23,33 @@ test('accepts acyclic imports and resolves JavaScript specifiers to TypeScript',
   );
 });
 
+test('reserves the community author loader for the CLI', () => {
+  const named =
+    "import { loadAuthorCommunityRelease as load } from '@pertexo/node-catalog/server';";
+  assert.deepEqual(
+    validateModuleImports({ 'apps/cli/src/check.ts': named }),
+    [],
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/api/src/start.ts':
+        "import { loadPlatformRegistry } from '@pertexo/node-catalog/server';",
+    }),
+    [],
+  );
+  for (const file of ['apps/api/src/start.ts', 'apps/worker/src/start.ts'])
+    for (const declaration of [
+      named,
+      "import * as catalog from '@pertexo/node-catalog/server'; catalog['loadAuthorCommunityRelease']('.', 'release.json');",
+      "const { loadAuthorCommunityRelease: load } = await import('@pertexo/node-catalog/server');",
+      "export { loadAuthorCommunityRelease as load } from '@pertexo/node-catalog/server';",
+    ])
+      assert.match(
+        validateModuleImports({ [file]: declaration }).join('\n'),
+        /loadAuthorCommunityRelease is CLI-only/u,
+      );
+});
+
 test('rejects direct runtime import/re-export cycles', () => {
   assert.match(
     validateModuleImports(

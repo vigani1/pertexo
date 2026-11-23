@@ -2,7 +2,6 @@ import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 import type { WorkflowTestSuiteStartRequest } from '@pertexo/contracts';
 import {
-  canonicalJson,
   snapshotBoundedJson,
   WORKFLOW_INPUT_CASE_LIMITS,
   WORKFLOW_TEST_SUITE_MAX_CASES,
@@ -39,8 +38,14 @@ export async function snapshotTableCases(
   const fields = Object.entries(evaluation.columns).map(
     ([field, id]) => [field, columnName(id)] as const,
   );
-  const expected = evaluation.expectedColumns?.map((id) =>
-    id === null ? null : columnName(id),
+  const assertions = evaluation.expectations.assertions.map(
+    ({ expected, ...assertion }) => ({
+      ...assertion,
+      expected:
+        expected.kind === 'column'
+          ? { ...expected, name: columnName(expected.columnId) }
+          : expected,
+    }),
   );
   const page = await findRows(client, workspaceId, table, {
     filters: [],
@@ -50,27 +55,17 @@ export async function snapshotTableCases(
   if (page.hasMore) throw new WorkflowTestError('evaluation_case_limit');
   if (page.rows.length === 0) throw new WorkflowTestError('evaluation_empty');
   return page.rows.map((row) => {
-    const expectations =
-      expected === undefined
-        ? evaluation.expectations
-        : {
-            ...evaluation.expectations,
-            assertions: evaluation.expectations.assertions.map(
-              (assertion, index) => {
-                const column = expected[index];
-                return column === null || column === undefined
-                  ? assertion
-                  : {
-                      ...assertion,
-                      expected: row.values[column] ?? null,
-                    };
-              },
-            ),
-          };
-    if (
-      expected !== undefined &&
-      !workflowTestExpectationsSchema.safeParse(expectations).success
-    )
+    const expectations = workflowTestExpectationsSchema.safeParse({
+      outcome: evaluation.expectations.outcome,
+      assertions: assertions.map(({ expected, ...assertion }) => ({
+        ...assertion,
+        expected:
+          expected.kind === 'column'
+            ? (row.values[expected.name] ?? null)
+            : expected.value,
+      })),
+    });
+    if (!expectations.success)
       throw new WorkflowTestError('evaluation_expectation_invalid');
     const input = Object.fromEntries(
       fields.map(([field, name]) => [field, row.values[name] ?? null]),
@@ -89,8 +84,8 @@ export async function snapshotTableCases(
       id: row.id,
       revision: row.revision,
       name: row.id,
-      input: canonicalJson(admitted.snapshot),
-      expectations: canonicalJson(expectations),
+      input: admitted.snapshot,
+      expectations: expectations.data,
     };
   });
 }

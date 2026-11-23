@@ -51,15 +51,8 @@ function LatestSuite({
   suites,
   savedDraftCurrent,
 }: Readonly<{ suites: WorkflowSuiteList; savedDraftCurrent: boolean }>) {
-  const latest = suites.items.reduce<(typeof suites.items)[number] | undefined>(
-    (best, item) =>
-      item.evaluation === undefined &&
-      (best === undefined || item.createdAt > best.createdAt)
-        ? item
-        : best,
-    undefined,
-  );
-  if (latest === undefined)
+  const latest = suites.latestSavedCaseSuite;
+  if (latest === null)
     return <Notice>No suite has been run. You can still publish.</Notice>;
   const outdated =
     !savedDraftCurrent || latest.signature !== suites.current.signature;

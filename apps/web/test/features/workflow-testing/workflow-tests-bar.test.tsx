@@ -66,6 +66,7 @@ function mount({
           samples: [],
           cases: [],
         },
+        latestSavedCaseSuite: suites[0] ?? null,
         items: suites,
       }),
     ),

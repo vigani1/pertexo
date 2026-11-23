@@ -11,6 +11,21 @@ export interface CaseExpectationDraft {
   }[];
 }
 export function expectationRequest(draft: CaseExpectationDraft) {
+  return mapExpectations(draft, (item) => JSON.parse(item.expected) as unknown);
+}
+
+export function evaluationExpectationRequest(draft: CaseExpectationDraft) {
+  return mapExpectations(draft, (item) =>
+    item.expectedColumn === undefined
+      ? { kind: 'literal', value: JSON.parse(item.expected) as unknown }
+      : { kind: 'column', columnId: item.expectedColumn },
+  );
+}
+
+function mapExpectations<T>(
+  draft: CaseExpectationDraft,
+  expected: (item: CaseExpectationDraft['assertions'][number]) => T,
+) {
   return {
     outcome: draft.outcome,
     assertions: draft.assertions.map((item) => ({
@@ -20,13 +35,11 @@ export function expectationRequest(draft: CaseExpectationDraft) {
           : { kind: 'step' as const, nodeId: item.source },
       path: item.path,
       operator: item.operator,
-      expected:
-        item.expectedColumn === undefined
-          ? (JSON.parse(item.expected) as unknown)
-          : null,
+      expected: expected(item),
     })),
   };
 }
+
 export function expectationDraft(
   value: WorkflowTestExpectations | undefined,
 ): CaseExpectationDraft {

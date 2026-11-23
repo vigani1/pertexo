@@ -1,6 +1,4 @@
 import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
-import { decodeStoredValue } from '../../shared/stored-values.js';
-import { workflowTestExpectationsSchema } from '@pertexo/workflow-model';
 import { databaseSchema } from '@pertexo/database/schema';
 import {
   parseWorkspaceId,
@@ -9,10 +7,7 @@ import {
 } from '@pertexo/database/primitives';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import type { Role } from '@pertexo/policy';
-import {
-  canonicalJson,
-  DEFAULT_TEST_EXPECTATIONS,
-} from '@pertexo/workflow-model';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
@@ -110,15 +105,8 @@ export async function startTestSuite(
   if (evaluation === undefined && cases.length !== current.cases.length)
     throw new WorkflowTestError('cases_changed');
   for (const entry of cases) {
-    const expectations = decodeStoredValue(() =>
-      workflowTestExpectationsSchema.parse(
-        entry.expectations === null
-          ? DEFAULT_TEST_EXPECTATIONS
-          : JSON.parse(entry.expectations),
-      ),
-    );
     if (
-      expectations.assertions.some(
+      entry.expectations.assertions.some(
         (assertion) =>
           assertion.source.kind === 'step' &&
           !Object.hasOwn(
@@ -131,7 +119,7 @@ export async function startTestSuite(
     await lockArtifactReferences(
       client,
       input.workspaceId,
-      decodeStoredValue((): unknown => JSON.parse(entry.input)),
+      entry.input,
       input.actorId,
     );
   }
@@ -176,9 +164,8 @@ export async function startTestSuite(
     caseId: entry.id,
     caseRevision: entry.revision,
     name: entry.name,
-    input: entry.input,
-    expectations:
-      entry.expectations ?? canonicalJson(DEFAULT_TEST_EXPECTATIONS),
+    input: canonicalJson(entry.input),
+    expectations: canonicalJson(entry.expectations),
   }));
   await insertSuiteCases(client, manifest);
   const entry = await readSuiteCase(

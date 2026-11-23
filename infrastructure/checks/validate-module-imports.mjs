@@ -259,6 +259,44 @@ function sourceViolations(file, specifier) {
 
 const isSource = (file) => /^(?:apps|packages)\/[^/]+\/src\//u.test(file);
 
+const authorLoader = 'loadAuthorCommunityRelease';
+
+function reachesCatalogServer(file, specifier) {
+  return (
+    specifier === '@pertexo/node-catalog/server' ||
+    (specifier.startsWith('.') &&
+      /^packages\/node-catalog\/src\/server(?:\.[jt]s)?$/u.test(
+        path.posix.normalize(
+          path.posix.join(path.posix.dirname(file), specifier),
+        ),
+      ))
+  );
+}
+
+function exposesAuthorLoader(statement) {
+  if (ts.isImportEqualsDeclaration(statement)) return true;
+  if (ts.isExportDeclaration(statement)) {
+    const clause = statement.exportClause;
+    return (
+      clause === undefined ||
+      ts.isNamespaceExport(clause) ||
+      clause.elements.some(
+        ({ propertyName, name }) =>
+          (propertyName ?? name).text === authorLoader,
+      )
+    );
+  }
+  const bindings = statement.importClause?.namedBindings;
+  return (
+    bindings !== undefined &&
+    (ts.isNamespaceImport(bindings) ||
+      bindings.elements.some(
+        ({ propertyName, name }) =>
+          (propertyName ?? name).text === authorLoader,
+      ))
+  );
+}
+
 /** Static local runtime imports only; deferred imports do not create startup cycles. */
 export function validateModuleImports(sources) {
   const errors = [];
@@ -353,12 +391,22 @@ export function validateModuleImports(sources) {
       if (areaViolation !== undefined) errors.push(`${file}: ${areaViolation}`);
       if (runtime && target !== undefined) dependencies.push(target);
     };
+    const checkAuthorLoader = (specifier) => {
+      if (
+        !file.startsWith('apps/cli/') &&
+        reachesCatalogServer(file, specifier)
+      )
+        errors.push(
+          `${file}: ${authorLoader} is CLI-only; import other catalog exports by name`,
+        );
+    };
     for (const statement of source.statements) {
       if (
         ts.isImportEqualsDeclaration(statement) &&
         ts.isExternalModuleReference(statement.moduleReference) &&
         ts.isStringLiteralLike(statement.moduleReference.expression)
       ) {
+        checkAuthorLoader(statement.moduleReference.expression.text);
         inspectSpecifier(
           statement.moduleReference.expression.text,
           !statement.isTypeOnly,
@@ -372,6 +420,7 @@ export function validateModuleImports(sources) {
         continue;
       const specifier = statement.moduleSpecifier;
       if (!specifier || !ts.isStringLiteral(specifier)) continue;
+      if (exposesAuthorLoader(statement)) checkAuthorLoader(specifier.text);
       inspectSpecifier(specifier.text, loadsModule(statement));
     }
     const inspectDeferredImport = (node) => {
@@ -388,8 +437,15 @@ export function validateModuleImports(sources) {
         (argument.text.startsWith('.') ||
           argument.text.startsWith('@/') ||
           argument.text.startsWith('@pertexo/'))
-      )
+      ) {
+        if (
+          !ts.isImportTypeNode(node) ||
+          node.qualifier === undefined ||
+          node.qualifier.getText(source).split('.')[0] === authorLoader
+        )
+          checkAuthorLoader(argument.text);
         inspectSpecifier(argument.text, false);
+      }
       ts.forEachChild(node, inspectDeferredImport);
     };
     inspectDeferredImport(source);
