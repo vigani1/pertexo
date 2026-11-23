@@ -48,6 +48,7 @@ const requestSchema = z
       .optional(),
     timeoutMillis: z.number(),
     maxRedirects: z.number(),
+    publicOnly: z.literal(true).optional(),
     maxResponseBytes: z.number(),
     sensitiveValues: z.array(z.string()).optional(),
     rejectSensitiveResponse: z.boolean().default(false),
@@ -94,11 +95,12 @@ export type ParsedSecureHttpRequest = Required<
     | 'signal'
     | 'navigation'
     | 'privateResponseHeader'
+    | 'publicOnly'
   >
 > &
   Pick<
     SecureHttpRequest,
-    'body' | 'signal' | 'navigation' | 'privateResponseHeader'
+    'body' | 'signal' | 'navigation' | 'privateResponseHeader' | 'publicOnly'
   > &
   Readonly<{
     headers: Readonly<Record<string, string>>;
@@ -214,6 +216,9 @@ export function parseRequest(
           }),
       timeoutMillis: parsed.timeoutMillis,
       maxRedirects: parsed.maxRedirects,
+      ...(parsed.publicOnly === undefined
+        ? {}
+        : { publicOnly: parsed.publicOnly }),
       maxResponseBytes: parsed.maxResponseBytes,
       sensitiveValues: parseSensitiveValues(parsed.sensitiveValues ?? []),
       rejectSensitiveResponse: parsed.rejectSensitiveResponse,

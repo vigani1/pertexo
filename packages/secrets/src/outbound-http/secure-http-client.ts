@@ -146,6 +146,7 @@ export class SecureHttpClient {
         requestState.url,
         resolutionFailureContext,
         executionSignal,
+        parsed.publicOnly,
       );
       if (!markerCommitted) {
         try {
@@ -212,6 +213,7 @@ export class SecureHttpClient {
     url: URL,
     failureContext: DispatchFailureContext,
     signal: AbortSignal,
+    publicOnly?: true,
   ): Promise<ResolvedAddress> {
     const hostname = normalizeUrlHostname(url.hostname);
     let addresses: readonly ResolvedAddress[];
@@ -240,7 +242,7 @@ export class SecureHttpClient {
         ambiguous: false,
       });
     const validated: ResolvedAddress[] = [];
-    const policy = this.addressPolicy;
+    const policy = publicOnly === true ? undefined : this.addressPolicy;
     try {
       for (const candidate of addresses) {
         const permitted =

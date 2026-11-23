@@ -50,6 +50,7 @@ export function identityRuntime(role: Role = 'owner'): ApiIdentityRuntime {
 
 function connectionRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
+  communityHttpClient?: ConnectionDependencies['communityHttpClient'],
 ) {
   let stored: ConnectionRecord | null = null;
   let createReplayIdentity:
@@ -197,6 +198,7 @@ function connectionRuntime(
   const runtime: ApiConnectionRuntime = Object.freeze({
     dependencies: {
       applicationSecret: 'fixture-application-secret',
+      ...(communityHttpClient === undefined ? {} : { communityHttpClient }),
       authorization,
       sharingPersistence: { readConnectionSharing, replaceConnectionSharing },
       encryption,
@@ -353,9 +355,15 @@ export const applicationFixture: {
   application: Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
 } = { application: undefined };
 
-export async function start(role: Role = 'owner') {
+export async function start(
+  role: Role = 'owner',
+  communityHttpClient?: ConnectionDependencies['communityHttpClient'],
+) {
   const identity = identityRuntime(role);
-  const connection = connectionRuntime(identity.dependencies.authorization);
+  const connection = connectionRuntime(
+    identity.dependencies.authorization,
+    communityHttpClient,
+  );
   applicationFixture.application = await createTestApiApplication(config, {
     database,
     identityRuntime: identity,

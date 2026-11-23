@@ -24,16 +24,21 @@ export async function withHttpCredentialHeaders<T>(
       providerKey: 'http',
       authTypes: ['http_headers'],
       schema: httpHeadersCredentialSchema,
-      refuse: (reason) =>
-        reason === 'configuration'
-          ? failedConfiguration()
-          : new HttpRequestExecutorError(
-              Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-              { possiblyDispatched: false },
-            ),
+      refuse: refuseHttpCredential,
     },
     (credential) => run(credential.headers),
   );
+}
+
+export function refuseHttpCredential(
+  reason: 'configuration' | 'authentication',
+) {
+  return reason === 'configuration'
+    ? failedConfiguration()
+    : new HttpRequestExecutorError(
+        { kind: 'failed', errorKind: 'authentication' },
+        { possiblyDispatched: false },
+      );
 }
 
 /** A service can echo a token without its scheme, so both forms are secret. */

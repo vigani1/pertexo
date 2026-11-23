@@ -122,6 +122,7 @@ export async function createApiConnectionRuntime(
         authorization: identityRuntime.dependencies.authorization,
         encryption: encryptionRuntime.encryption,
         httpClient: connectionTestClient,
+        communityHttpClient: httpClient,
         lookup: {
           persistence: database,
           encryption: encryptionRuntime.encryption,

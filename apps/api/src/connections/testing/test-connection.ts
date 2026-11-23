@@ -3,6 +3,7 @@ import {
   CONNECTION_TEST_MAXIMUM_REDIRECTS,
   CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
 } from './test-configured-connection.js';
+import { testCommunityConnection } from './community.js';
 import type { LookupConnectionOptionsService } from '../lookups/lookup-options.service.js';
 import { testConnectionLookup } from './lookup.js';
 import * as smtp from './smtp.js';
@@ -22,6 +23,7 @@ import {
   reauthorizeConnectionSecretAccess,
 } from '../authorization.js';
 import type {
+  ConnectionDependencies,
   ConnectionEmailClient,
   ConnectionHttpClient,
   ConnectionOAuth2Dependencies,
@@ -62,6 +64,7 @@ export class TestConnectionService {
   private readonly smtpPolicy: smtp.SmtpTestPolicy | undefined;
   private readonly encryption: ConnectionSecretEncryptionPort;
   private readonly httpClient: ConnectionHttpClient;
+  private readonly communityHttpClient: ConnectionDependencies['communityHttpClient'];
   private readonly applicationSecret: string;
   private readonly telemetry: ConnectionTelemetry;
   private readonly slackClient?:
@@ -74,6 +77,7 @@ export class TestConnectionService {
     {
       encryption,
       httpClient,
+      communityHttpClient,
       applicationSecret,
       telemetry = NOOP_CONNECTION_TELEMETRY,
       slackClient,
@@ -84,6 +88,7 @@ export class TestConnectionService {
     }: Readonly<{
       encryption: ConnectionSecretEncryptionPort;
       httpClient: ConnectionHttpClient;
+      communityHttpClient?: ConnectionDependencies['communityHttpClient'];
       applicationSecret: string;
       telemetry?: ConnectionTelemetry | undefined;
       slackClient?:
@@ -98,6 +103,7 @@ export class TestConnectionService {
     this.lookup = lookup;
     this.encryption = encryption;
     this.httpClient = httpClient;
+    this.communityHttpClient = communityHttpClient;
     this.applicationSecret = applicationSecret;
     this.telemetry = telemetry;
     this.slackClient = slackClient;
@@ -202,6 +208,16 @@ export class TestConnectionService {
             ...common,
             secretVersionId: resolved.secretVersionId,
           });
+        const open = () =>
+          this.encryption.open(
+            resolved.sealed,
+            {
+              workspaceId: input.routeWorkspaceId,
+              connectionId: input.connectionId,
+              secretVersionId: resolved.secretVersionId,
+            },
+            requestSignal,
+          );
         let outcome: ConnectionTestOutcome;
         try {
           // The token service opens its own client secret when it needs it.
@@ -231,16 +247,24 @@ export class TestConnectionService {
               signal: requestSignal,
               beforeDispatch,
             });
-          } else {
-            plaintext = await this.encryption.open(
-              resolved.sealed,
+          } else if (
+            definition.test.kind === 'http' &&
+            definition.test.approvedOrigin !== undefined
+          ) {
+            outcome = await testCommunityConnection(
+              this.communityHttpClient,
+              definition,
               {
-                workspaceId: input.routeWorkspaceId,
+                providerKey: expectedProviderKey,
                 connectionId: input.connectionId,
                 secretVersionId: resolved.secretVersionId,
+                signal: requestSignal,
+                open,
+                beforeDispatch,
               },
-              requestSignal,
             );
+          } else {
+            plaintext = await open();
             requestSignal.throwIfAborted();
             outcome = await testConfiguredConnection(
               {

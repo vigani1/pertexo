@@ -192,6 +192,7 @@ export class ConnectionsModule {
           {
             encryption: dependencies.encryption,
             httpClient: dependencies.httpClient,
+            communityHttpClient: dependencies.communityHttpClient,
             applicationSecret: dependencies.applicationSecret,
             telemetry: telemetry,
             slackClient: dependencies.slackClient,

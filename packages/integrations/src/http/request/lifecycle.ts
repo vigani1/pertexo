@@ -42,6 +42,9 @@ import { requestClient } from './execution/request-client.js';
 export async function executeHttpRequest(
   httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>,
   context: RequestContext,
+  withTestCredential?: (
+    run: (credential: RequestCredentialMaterial) => Promise<HttpRequestOutput>,
+  ) => Promise<HttpRequestOutput>,
 ): Promise<HttpRequestOutput> {
   const { runtime, repeatable } = context;
   const dispatch = {
@@ -59,14 +62,18 @@ export async function executeHttpRequest(
       resolved,
       dispatch,
       ...(credential === undefined ? {} : { credential }),
+      credentialTest: withTestCredential !== undefined,
     });
   try {
     const { binding, connectionId } = context;
-    return await (binding === undefined ||
-    connectionId === undefined ||
-    resolved === undefined
-      ? run()
-      : binding.withHeaders(resolved, connectionId, run));
+    if (withTestCredential !== undefined) return await withTestCredential(run);
+    if (
+      binding === undefined ||
+      connectionId === undefined ||
+      resolved === undefined
+    )
+      return await run();
+    return await binding.withHeaders(resolved, connectionId, run);
   } finally {
     await releaseHttpMaterial(prepared.body, {
       repeatable,
@@ -86,11 +93,12 @@ async function executeWithMaterial(
     connections,
     connectionId,
     binding,
+    approvedOrigin,
     repeatable,
     sideEffect,
     invocation,
   } = context;
-  const { body, resolved, dispatch } = material;
+  const { body, resolved, dispatch, credentialTest } = material;
   const headers = prepareHeaders(context, material);
   const oauth2 =
     resolved !== undefined && 'accessToken' in resolved ? resolved : undefined;
@@ -128,6 +136,7 @@ async function executeWithMaterial(
       ...(body === undefined ? {} : { body }),
       timeoutMillis: config.timeoutMillis,
       maxRedirects: config.maxRedirects,
+      ...(approvedOrigin === undefined ? {} : { publicOnly: true as const }),
       maxResponseBytes: config.maxResponseBytes,
       sensitiveValues,
       signal: invocation.signal,
@@ -186,6 +195,8 @@ async function executeWithMaterial(
       }),
     );
   } catch (error: unknown) {
+    if (credentialTest && inspectProviderHttpError(error) !== undefined)
+      throw error;
     rethrowHttpError(error, context);
   }
 

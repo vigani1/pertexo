@@ -4,6 +4,7 @@ import {
   type ResolvedNodeConnection,
   type ResolvedHttpCredential,
   type NodeExecutionInvocation,
+  type NodeExecutionRuntime,
   FileInputFailure,
   type NodeExecutorFailure,
   ProviderCredentialInvalidError,
@@ -39,6 +40,7 @@ export type RequestMaterial = PreparedBody &
     dispatch: DispatchState;
     // Opened by withProviderCredential when the connection carries header credentials.
     credential?: RequestCredentialMaterial;
+    credentialTest: boolean;
   }>;
 
 export type ResolvedRequestCredential =
@@ -63,15 +65,36 @@ export interface RequestConnectionBinding {
   ): Promise<T>;
 }
 
+type HttpInvocation = Pick<
+  NodeExecutionInvocation<unknown, unknown>,
+  'signal' | 'connectionRefs'
+> &
+  Readonly<{
+    runtime?: Pick<
+      NodeExecutionRuntime,
+      | 'sideEffectClass'
+      | 'connections'
+      | 'providerIdempotencyKey'
+      | 'providerDispatchUnresolved'
+      | 'artifacts'
+      | 'callbacks'
+      | 'deadlineAt'
+      | 'beforeDispatch'
+    >;
+  }>;
+
 export function prepareInvocation(
-  invocation: Pick<
-    NodeExecutionInvocation<unknown, unknown>,
-    'runtime' | 'signal' | 'connectionRefs'
-  >,
+  invocation: HttpInvocation,
   config: HttpRequestConfig,
   input: HttpRequestInput,
   binding: RequestConnectionBinding | undefined,
+  approvedOrigin?: string,
 ) {
+  if (
+    approvedOrigin !== undefined &&
+    (new URL(config.url).origin !== approvedOrigin || config.maxRedirects !== 0)
+  )
+    throw failedConfiguration();
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;
@@ -82,10 +105,16 @@ export function prepareInvocation(
   // leaving the outcome unknown.
   const repeatable = config.method === 'GET' || config.method === 'HEAD';
   // An attempt planned before classes came from the method still says unsafe.
+  const sideEffect = repeatable
+    ? HTTP_SIDE_EFFECT_CLASS.safe
+    : HTTP_SIDE_EFFECT_CLASS.unsafe;
   const expectedClass =
-    runtime.sideEffectClass === 'unsafe' ||
-    (repeatable && runtime.sideEffectClass === 'safe');
+    runtime.sideEffectClass === sideEffect ||
+    (approvedOrigin === undefined && runtime.sideEffectClass === 'unsafe');
   const invalidDispatchRuntime =
+    (approvedOrigin !== undefined &&
+      binding !== undefined &&
+      connectionId === undefined) ||
     (connectionId !== undefined && connections?.assertCurrent === undefined) ||
     !expectedClass ||
     runtime.providerIdempotencyKey !== undefined ||
@@ -93,9 +122,6 @@ export function prepareInvocation(
       (slot) => slot !== binding?.slot,
     );
   if (invalidDispatchRuntime) throw failedConfiguration();
-  const sideEffect = repeatable
-    ? HTTP_SIDE_EFFECT_CLASS.safe
-    : HTTP_SIDE_EFFECT_CLASS.unsafe;
   return {
     config,
     input,
@@ -103,6 +129,7 @@ export function prepareInvocation(
     connections,
     connectionId,
     binding,
+    approvedOrigin,
     repeatable,
     sideEffect,
     invocation,

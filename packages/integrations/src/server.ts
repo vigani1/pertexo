@@ -123,3 +123,4 @@ export {
 export { COMMUNITY_MANIFEST_LIMITS } from './community/manifest-limits.js';
 
 export { readJsonPointer } from './http/read-json-pointer.js';
+export { executeCommunityConnectionTest } from './community/test-connection.js';
