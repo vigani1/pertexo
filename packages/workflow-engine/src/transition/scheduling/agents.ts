@@ -25,10 +25,10 @@ import type { AgentChild } from '../../invocations/agent-invocation.js';
 import type { InvocationState } from '../../workflow-execution.js';
 import { invocationIdentity } from '../status.js';
 import {
-  finishAgentInvocation,
   openAgentApproval,
   resumeAgentApproval,
 } from './agent-approval.js';
+import { finishAgentInvocation } from './settle-agent-invocation.js';
 import {
   isTerminalNodeStatus,
   transitionEvent,
