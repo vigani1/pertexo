@@ -173,7 +173,7 @@ test('allows discovery in integrations and consumption by the catalog registry',
   );
   assert.deepEqual(
     findIntegrationDispatch(
-      'packages/node-catalog/src/integration-modules.ts',
+      'packages/node-catalog/src/catalog.ts',
       "import { INTEGRATION_MODULES } from '@pertexo/integrations/server';",
       keys,
     ),

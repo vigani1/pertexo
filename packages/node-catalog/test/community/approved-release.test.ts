@@ -29,7 +29,7 @@ const release = {
     icon: 'globe',
   },
   connection: {
-    fields: { token: { label: 'Token', secret: true } },
+    fields: { token: { label: 'Token', kind: 'secret' } },
     auth: { kind: 'bearer', field: 'token' },
     test: { method: 'GET', path: '/account' },
   },

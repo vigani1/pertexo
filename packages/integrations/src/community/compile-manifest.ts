@@ -64,13 +64,13 @@ function compileConnection(
 ): ConnectionDefinition {
   const { fields, auth, test } = connection;
   const credentialFields = Object.entries(fields).map(
-    ([key, { label, secret, default: initial }]) => {
+    ([key, { label, kind, default: initial }]) => {
       const field = z.string().min(1).max(limits.stringCharacters);
       return [
         key,
         (initial === undefined ? field : field.default(initial)).meta({
           title: label,
-          secret,
+          secret: kind === 'secret',
         }),
       ] as const;
     },
@@ -81,9 +81,9 @@ function compileConnection(
     auth,
     test,
     fields: Object.fromEntries(
-      Object.entries(fields).map(([key, { secret, default: initial }]) => [
+      Object.entries(fields).map(([key, { kind, default: initial }]) => [
         key,
-        initial === undefined ? { secret } : { secret, default: initial },
+        initial === undefined ? { kind } : { kind, default: initial },
       ]),
     ),
   };
