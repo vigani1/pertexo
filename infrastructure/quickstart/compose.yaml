@@ -61,7 +61,7 @@ services:
   # all three. Production gives them a public name instead.
   proxy:
     <<: *service
-    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
+    image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
     ports:
       - 127.0.0.1:${QUICKSTART_PORT:-8484}:${QUICKSTART_PORT:-8484}
     environment:
@@ -225,7 +225,7 @@ services:
     stop_grace_period: 1m
   redis:
     <<: *service
-    image: redis:8.10.2-alpine@sha256:9f8d2d789b9a1d1e3f283f979aa9cbf393373806472e1ccd460e2f9c869b833b
+    image: redis:8.10.3-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     entrypoint:
       [
         sh,
@@ -251,7 +251,7 @@ services:
       retries: 12
   storage:
     <<: *service
-    image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
+    image: rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a
     entrypoint: *load-secrets
     command: [/entrypoint.sh, /data]
     environment:
