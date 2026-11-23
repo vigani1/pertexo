@@ -290,6 +290,10 @@ describe.runIf(fixture.enabled)(
             promotedChild.publishedVersionId ?? '',
             actorId,
           );
+          expect(
+            destination?.graphJson.nodes.find((step) => step.id === 'http')
+              ?.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT],
+          ).toBe(targetConnection);
           expectPromotedTableBindings(destination?.graphJson, targetTableId);
           capabilities = await createWorkerNodeRuntimeCapabilities({
             database: workerConfig,
