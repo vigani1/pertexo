@@ -72,8 +72,9 @@ it('creates and manually tests an approved community connection through the HTTP
             headers: {},
             body: (async function* () {
               await Promise.resolve();
+              yield new Uint8Array();
             })(),
-            close() {},
+            close: () => undefined,
           });
         },
       },

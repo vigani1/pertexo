@@ -47,10 +47,9 @@ function recipeAuth(
   credential: ParsedConnectionCredential,
 ) {
   // The manifest checks the references and the connection schema parses each field.
-  const fields = credential as Readonly<Record<string, string>>;
   if (auth.kind === 'basic') {
-    const username = fields[auth.username]!;
-    const password = fields[auth.password]!;
+    const username = credential[auth.username] as string;
+    const password = credential[auth.password] as string;
     const bytes = Buffer.from(`${username}:${password}`);
     try {
       const encoded = bytes.toString('base64');
@@ -62,7 +61,7 @@ function recipeAuth(
       bytes.fill(0);
     }
   }
-  const value = fields[auth.field]!;
+  const value = credential[auth.field] as string;
   const headers =
     auth.kind === 'bearer'
       ? { authorization: `Bearer ${value}` }

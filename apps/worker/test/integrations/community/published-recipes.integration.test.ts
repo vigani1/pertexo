@@ -77,7 +77,7 @@ const dispatch: SecureHttpTransport['dispatch'] = async (request) => {
         JSON.stringify({ result: { echo: token } }),
       );
     })(),
-    close() {},
+    close: () => undefined,
   };
 };
 
@@ -95,7 +95,7 @@ describe.skipIf(!fixture.enabled)('published community recipes', () => {
     await approveRecipes();
     await fixture.setup();
     await startWorkers();
-  }, 60_000);
+  });
   afterAll(async () => {
     try {
       for (const close of owners.reverse()) await close();
@@ -202,7 +202,7 @@ async function startWorkers() {
       runtimeCapabilities: { connections },
     },
   );
-  owners.push(attempts.close);
+  owners.push(() => attempts.close());
   const dispatcher = new OutboxDispatcher(
     createOutboxDispatcherDatabase(maintenanceDatabase),
     createQueueProducer({ redisUrl: fixture.redisUrl }),

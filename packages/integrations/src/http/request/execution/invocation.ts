@@ -85,8 +85,10 @@ type HttpInvocation = Pick<
 
 export function prepareInvocation(
   invocation: HttpInvocation,
-  config: HttpRequestConfig,
-  input: HttpRequestInput,
+  {
+    config,
+    input,
+  }: Readonly<{ config: HttpRequestConfig; input: HttpRequestInput }>,
   binding: RequestConnectionBinding | undefined,
   approvedOrigin?: string,
 ) {
