@@ -10,6 +10,7 @@ import { expect, publishNext, runReaches } from './steps';
 
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
+test.use({ accountGroup: 'recovery' });
 
 test('a failed HTTP step shows its status, response and URL, without the secrets', async ({
   page,

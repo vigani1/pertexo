@@ -22,7 +22,7 @@ import {
 } from '../../support/authoring/single-step';
 
 test.use({
-  accountGroup: 'provider',
+  accountGroup: 'model',
   actionTimeout: 10_000,
   viewport: { width: 1280, height: 960 },
 });
