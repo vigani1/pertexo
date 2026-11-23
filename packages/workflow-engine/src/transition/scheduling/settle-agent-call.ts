@@ -2,7 +2,7 @@ import type { AgentContinuation } from '../../control-nodes/agent-continuation.j
 import { settleAgentTool } from '../../control-nodes/settle-agent-work.js';
 import type { InvocationState } from '../../workflow-execution.js';
 import type { MutableWorkflowTransition } from '../transition-state.js';
-import { finishAgentInvocation } from './agent-approval.js';
+import { finishAgentInvocation } from './settle-agent-invocation.js';
 
 export function settleAgentCall(
   state: MutableWorkflowTransition,
