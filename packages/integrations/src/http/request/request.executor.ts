@@ -83,7 +83,7 @@ export function createHttpRequestExecutorRegistration(
   return registerProviderExecutor(
     HTTP_REQUEST_EXECUTOR,
     dependencies.telemetry,
-    (invocation) =>
+    async (invocation) =>
       executeHttpRequest(
         dependencies.httpClient,
         prepareHttpRequest(invocation),
