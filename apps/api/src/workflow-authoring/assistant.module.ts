@@ -1,11 +1,11 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
-import { WORKSPACE_AUTHORIZATION } from '../../workspaces/tokens.js';
-import { ExplanationController } from './explanation.controller.js';
-import { ExplanationService } from './explanation.service.js';
+import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
+import { ExplanationController } from './explanations/explanation.controller.js';
+import { ExplanationService } from './explanations/explanation.service.js';
 
-import { DraftProposalController } from '../proposals/draft-proposal.controller.js';
-import { ProposeDraftService } from '../proposals/propose-draft.service.js';
+import { DraftProposalController } from './proposals/draft-proposal.controller.js';
+import { ProposeDraftService } from './proposals/propose-draft.service.js';
 
 @Module({})
 // oxlint-disable-next-line typescript/no-extraneous-class
