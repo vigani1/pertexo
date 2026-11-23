@@ -7,10 +7,10 @@ import { use, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import {
+  connectionDefinitionForSlot,
   describeConnectionRequirement,
   useConnectionDefinitions,
 } from '@/features/catalog/public';
-import { isConnectionChoice } from '@/features/connections/public';
 import { AddConnectionSheet } from '@/features/connections/connections-views.public';
 import {
   fitsRequirement,
@@ -50,9 +50,7 @@ export function ConnectionSlot({
   const id = `connection-${form.nodeId}-${requirement}`;
   const definitions = useConnectionDefinitions();
   const label = describeConnectionRequirement(requirement, definitions);
-  const provider = definitions.find(
-    (entry) => entry.authType === requirement,
-  )?.providerKey;
+  const definition = connectionDefinitionForSlot(requirement, definitions);
   const matching = usableConnections(
     connections,
     requirement,
@@ -81,7 +79,7 @@ export function ConnectionSlot({
     );
   }
 
-  const canAdd = addScope !== null && provider !== undefined && form.editable;
+  const canAdd = addScope !== null && definition !== undefined && form.editable;
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -139,9 +137,7 @@ export function ConnectionSlot({
           <AddConnectionSheet
             scope={addScope.scope}
             workspaceName={addScope.workspaceName}
-            request={
-              adding && isConnectionChoice(provider) ? provider : undefined
-            }
+            request={adding ? definition : undefined}
             onCreated={(connection) => {
               setCreated(connection);
               // A new OAuth2 connection is only selected once someone has connected it.

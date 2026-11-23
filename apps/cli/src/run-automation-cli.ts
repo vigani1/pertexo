@@ -1,4 +1,7 @@
-import { parseAutomationArguments } from './commands/automation-arguments.js';
+import {
+  parseAutomationArguments,
+  parseIntegrationArguments,
+} from './commands/automation-arguments.js';
 import {
   parseAutomationHttpConfig,
   readAutomationEnvironment,
@@ -15,6 +18,7 @@ import { readFileSync } from 'node:fs';
 
 const HELP = `Pertexo CLI, over the HTTP API
 Set PERTEXO_API_URL and PERTEXO_API_TOKEN in your environment. --workspace defaults to the token's.
+  integration init|check  (offline, from the author folder)
   whoami
   workflows list [--limit N --after CURSOR]
   workflows get|draft --workflow UUID
@@ -45,6 +49,19 @@ export async function runAutomationCli(
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
+    const integration = parseIntegrationArguments(args);
+    if (integration !== undefined) {
+      const result =
+        integration === 'init'
+          ? await import('./integrations/init-integration.js').then(
+              ({ initIntegration }) => initIntegration(),
+            )
+          : await import('./integrations/check-integration.js').then(
+              ({ checkIntegration }) => checkIntegration(shutdown.signal),
+            );
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+      return;
+    }
     const command = parseAutomationArguments(
       args,
       tokenWorkspaceId(environment.PERTEXO_API_TOKEN),

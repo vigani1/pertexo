@@ -136,17 +136,20 @@ export function decodeCommunityManifest(bytes: Uint8Array): CommunityManifest {
   if (compatibility !== 'compatible') {
     const { min, below } = release.hostRelease;
     throw new CommunityManifestError(
-      `${key}@${release.version} has ${compatibility} host range [${min}, ${below}) for host ${PERTEXO_HOST_RELEASE}`,
+      `hostRelease: ${key}@${release.version} has ${compatibility} host range [${min}, ${below}) for host ${PERTEXO_HOST_RELEASE}`,
     );
   }
 
   if (release.connection !== undefined) validateConnection(release.connection);
   const operations = new Set<string>();
-  for (const action of release.actions) {
+  for (const [index, action] of release.actions.entries()) {
+    const path = `actions[${String(index)}]`;
     if (operations.has(action.key))
-      throw new CommunityManifestError(`duplicate action ${action.key}`);
+      throw new CommunityManifestError(
+        `${path}.key: duplicate action ${action.key}`,
+      );
     operations.add(action.key);
-    validateOperation(action, release.connection);
+    validateOperation(action, path, release.connection);
   }
   return release;
 }
@@ -154,9 +157,14 @@ export function decodeCommunityManifest(bytes: Uint8Array): CommunityManifest {
 export function communityProviderKey(
   release: Pick<CommunityManifest, 'publisher' | 'integration'>,
 ): string {
-  return providerKey.parse(
+  const key = providerKey.safeParse(
     `community.${release.publisher}.${release.integration}`,
   );
+  if (!key.success)
+    throw new CommunityManifestError(
+      'publisher and integration: invalid combined provider key',
+    );
+  return key.data;
 }
 
 function validateConnection({
@@ -164,13 +172,15 @@ function validateConnection({
   fields,
   test,
 }: CommunityConnection) {
-  validatePath(test.path, {});
+  validatePath(test.path, {}, 'connection.test.path');
   for (const [key, field] of Object.entries(fields)) {
     if (key === 'type')
-      throw new CommunityManifestError('type is a reserved credential field');
+      throw new CommunityManifestError(
+        'connection.fields.type: type is a reserved credential field',
+      );
     if (field.kind === 'secret' && field.default !== undefined)
       throw new CommunityManifestError(
-        `secret default for credential field ${key}`,
+        `connection.fields.${key}.default: secret defaults are forbidden`,
       );
   }
 
@@ -178,11 +188,11 @@ function validateConnection({
     recipe.kind === 'basic' ? [recipe.password] : [recipe.field];
   if (recipe.kind === 'basic' && !Object.hasOwn(fields, recipe.username))
     throw new CommunityManifestError(
-      'Basic auth references a missing username field',
+      'connection.auth.username: Basic auth references a missing username field',
     );
   if (requiredSecrets.some((key) => fields[key]?.kind !== 'secret'))
     throw new CommunityManifestError(
-      'auth references a missing or non-secret credential field',
+      `connection.auth.${recipe.kind === 'basic' ? 'password' : 'field'}: auth references a missing or non-secret credential field`,
     );
   if (
     recipe.kind === 'named_header' &&
@@ -191,35 +201,36 @@ function validateConnection({
       .shape.headers.safeParse({ [recipe.name]: 'value' }).success
   )
     throw new CommunityManifestError(
-      'auth uses an invalid credential header name',
+      'connection.auth.name: auth uses an invalid credential header name',
     );
 }
 
 function validateOperation(
   action: CommunityAction,
+  path: string,
   credential?: CommunityConnection,
 ) {
   if (action.connection !== undefined && credential === undefined)
     throw new CommunityManifestError(
-      `action ${action.key} references a missing connection slot`,
+      `${path}.connection: action ${action.key} references a missing connection slot`,
     );
   const safe = action.method === 'GET' || action.method === 'HEAD';
-  if (
-    safe !== (action.sideEffect === 'safe') ||
-    (safe && action.body !== undefined)
-  )
+  if (safe !== (action.sideEffect === 'safe'))
     throw new CommunityManifestError(
-      `action ${action.key} has an incompatible method, effect or body`,
+      `${path}.sideEffect: action ${action.key} has an incompatible method, effect or body`,
     );
-  validatePath(action.path, action.input);
-  for (const { input } of [
-    ...Object.values(action.query ?? {}),
-    ...Object.values(action.body ?? {}),
-  ])
-    if (!Object.hasOwn(action.input, input))
-      throw new CommunityManifestError(
-        `action ${action.key} references missing input ${input}`,
-      );
+  if (safe && action.body !== undefined)
+    throw new CommunityManifestError(
+      `${path}.body: action ${action.key} has an incompatible method, effect or body`,
+    );
+  validatePath(action.path, action.input, `${path}.path`);
+  for (const field of ['query', 'body'] as const) {
+    for (const [key, { input }] of Object.entries(action[field] ?? {}))
+      if (!Object.hasOwn(action.input, input))
+        throw new CommunityManifestError(
+          `${path}.${field}[${JSON.stringify(key)}].input: action ${action.key} references missing input ${input}`,
+        );
+  }
   if (action.projection !== 'body') {
     for (const [output, pointer] of Object.entries(action.projection))
       if (
@@ -227,7 +238,7 @@ function validateOperation(
         !/^(?:\/(?:[^~/]|~[01])*)*$/u.test(pointer)
       )
         throw new CommunityManifestError(
-          `action ${action.key} has an invalid output projection for ${output}`,
+          `${path}.projection.${output}: action ${action.key} has an invalid output projection for ${output}`,
         );
   }
 }
@@ -235,9 +246,12 @@ function validateOperation(
 function validatePath(
   path: string,
   input: Readonly<Record<string, CommunitySchemaField>>,
+  fieldPath: string,
 ) {
   if (!path.startsWith('/') || path.startsWith('//'))
-    throw new CommunityManifestError('path must be origin-relative');
+    throw new CommunityManifestError(
+      `${fieldPath}: path must be origin-relative`,
+    );
   for (const segment of path.slice(1).split('/')) {
     const reference = pathInputName(segment);
     if (reference !== undefined) {
@@ -246,14 +260,16 @@ function validatePath(
         input[reference]?.required !== true
       )
         throw new CommunityManifestError(
-          `path references missing or optional input ${reference}`,
+          `${fieldPath}: path references missing or optional input ${reference}`,
         );
     } else if (
       !/^[a-zA-Z0-9._~-]*$/u.test(segment) ||
       segment === '.' ||
       segment === '..'
     ) {
-      throw new CommunityManifestError('path contains an invalid segment');
+      throw new CommunityManifestError(
+        `${fieldPath}: path contains an invalid segment`,
+      );
     }
   }
 }

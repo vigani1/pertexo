@@ -224,6 +224,12 @@ importers:
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@pertexo/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
+      '@pertexo/node-catalog':
+        specifier: workspace:*
+        version: link:../../packages/node-catalog
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../../packages/node-sdk

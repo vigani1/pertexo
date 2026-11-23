@@ -16,7 +16,10 @@ import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
 import { installPlatformIntegrations, platformRegistry } from './catalog.js';
 import type { CommunityApprovalSet } from './community/approvals.js';
-import { loadCommunityModules } from './community/load-community-modules.js';
+import {
+  loadCommunityModules,
+  loadAuthorCommunityModule,
+} from './community/load-community-modules.js';
 
 export {
   communityApprovalDigest,
@@ -80,4 +83,11 @@ export function createPlatformInlineRegistry(): InlineNodeRegistry {
       executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
     },
   });
+}
+
+/** Check the author's exact bytes against the same registry used at startup. */
+export async function loadAuthorCommunityRelease(root: string, file: string) {
+  const release = await loadAuthorCommunityModule(root, file);
+  installPlatformIntegrations([release.module]);
+  return release;
 }

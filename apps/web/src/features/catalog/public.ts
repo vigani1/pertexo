@@ -6,6 +6,7 @@ export {
 export {
   catalogStepDescriptions,
   describeConnectionRequirement,
+  connectionDefinitionForSlot,
   describeRetryBehaviour,
   describeStep,
   familyWord,

@@ -167,6 +167,19 @@ function parseFlags(args: string[]) {
     );
   }
 }
+export function parseIntegrationArguments(args: readonly string[]) {
+  const [group, action] = args;
+  if (group !== 'integration' || args.includes('--help')) return undefined;
+  if (
+    args.length === COMMAND_WORDS &&
+    (action === 'init' || action === 'check')
+  )
+    return action;
+  return invalidArgument(
+    'Run pertexo integration init or check from the author folder without options.',
+  );
+}
+
 /** The token names its workspace, so `--workspace` defaults to it; run.ts refuses a mismatch. */
 export function parseAutomationArguments(
   args: string[],

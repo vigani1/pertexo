@@ -32,6 +32,7 @@ export function AddStepItem({
 }: Readonly<{ choice: StepChoice; onAdd: (choice: StepChoice) => void }>) {
   const { definition, step } = choice;
   const needsConnection = requiredConnections(definition).length > 0;
+  const community = definition.presentation?.community;
   return (
     <button
       type="button"
@@ -55,7 +56,14 @@ export function AddStepItem({
       }}
     >
       <StepTile step={step} size="sm" />
-      <StepRowText name={step.name} description={step.description} />
+      <StepRowText name={step.name} description={step.description}>
+        {community === undefined ? null : (
+          <span className="block break-all text-caption text-subtle-foreground">
+            <span className="block">Community · {community.publisher}</span>
+            <span className="block">{community.origin}</span>
+          </span>
+        )}
+      </StepRowText>
       {needsConnection ? (
         <PlugIcon
           aria-label="Needs a connection"
