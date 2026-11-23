@@ -7,7 +7,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { workflowGraphStepSql } from '../queries/execution/graph-step.repository.js';
+import { workflowGraphStepSql } from '../../shared/run-records/graph-step.repository.js';
 import {
   workflowFailureClassificationSchema,
   type WorkflowErrorInput,

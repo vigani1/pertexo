@@ -1,7 +1,7 @@
 import { nodeRuns, workflowVersions } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { and, eq, sql } from 'drizzle-orm';
-import { workflowGraphStepSql } from './execution/graph-step.repository.js';
+import { workflowGraphStepSql } from '../../shared/run-records/graph-step.repository.js';
 import type { WorkflowRunReadRecord } from '../commands/workflow-run-records.repository.js';
 
 const EXPLANATION_RECENT_STEPS = 20;
