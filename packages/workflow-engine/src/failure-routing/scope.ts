@@ -1,3 +1,4 @@
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type {
   BranchSelection,
   InvocationState,
@@ -55,4 +56,41 @@ export function isCompletedFailureHandler(
         }),
       )?.status === 'succeeded',
   );
+}
+
+/** An Agent child owns the attempt, while its parent owns the graph edge. */
+export function routedFailuresByGraphInvocation(
+  invocations: Iterable<InvocationState>,
+): ReadonlyMap<string, NonNullable<InvocationState['failureHandling']>> {
+  const failures = new Map<
+    string,
+    NonNullable<InvocationState['failureHandling']>
+  >();
+  for (const invocation of invocations) {
+    if (invocation.failureHandling === undefined) continue;
+    const key =
+      invocation.agentWork?.parentInvocationKey ?? invocation.invocationKey;
+    if (failures.has(key))
+      throw new WorkflowEngineError(
+        'checkpoint_invalid',
+        'graph invocation has multiple routed failures',
+      );
+    failures.set(key, invocation.failureHandling);
+  }
+  return failures;
+}
+
+export function graphInvocationsWithRoutedFailures(
+  invocations: readonly InvocationState[],
+): readonly InvocationState[] {
+  const failures = routedFailuresByGraphInvocation(invocations);
+  return invocations.flatMap((invocation) => {
+    if (invocation.agentWork !== undefined) return [];
+    const failureHandling = failures.get(invocation.invocationKey);
+    return [
+      failureHandling === undefined
+        ? invocation
+        : { ...invocation, failureHandling },
+    ];
+  });
 }

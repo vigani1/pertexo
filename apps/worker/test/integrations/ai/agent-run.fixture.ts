@@ -16,6 +16,7 @@ import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
 
 import { sealAndZero } from '../../support/attempts/http-node-attempt/encryption.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
+import { edge, node } from '../../runs/calls/calls.fixture.js';
 import { API_KEY } from './model.fixture.js';
 import { catalog, executableCatalog } from './agent-registry.fixture.js';
 import {
@@ -25,6 +26,7 @@ import {
   publishAgent,
   publishAgentFixtureGraph,
   slackBotToken,
+  slackChannel,
 } from './agent.fixture.js';
 
 export async function startAgentRun(
@@ -44,6 +46,7 @@ export async function publishAgentRun(
         child: WorkflowGraph;
         approval?: boolean;
         timeoutMillis?: number;
+        childSlackText?: string;
       },
   {
     shape,
@@ -151,9 +154,20 @@ export async function publishAgentRun(
           tableName,
         ),
       };
-    else if (typeof write === 'object')
-      tool = await publishCallableTool(authoring, tableName, write);
-    else tool = write;
+    else if (typeof write === 'object') {
+      const { childSlackText, child, ...settings } = write;
+      tool = await publishCallableTool(authoring, tableName, {
+        ...settings,
+        child:
+          childSlackText === undefined
+            ? child
+            : withChildSlackWrite(
+                child,
+                childSlackText,
+                await createSlackConnection(connections, encryption, tableName),
+              ),
+      });
+    } else tool = write;
     return await publishAgent(authoring, connectionId, tableName, {
       write: tool,
       shape,
@@ -239,5 +253,28 @@ async function publishCallableTool(
       workflowVersionId: version.id,
       executableChecksum: version.checksum,
     },
+  };
+}
+
+function withChildSlackWrite(
+  child: WorkflowGraph,
+  text: string,
+  connectionId: string,
+): WorkflowGraph {
+  return {
+    ...child,
+    nodes: [
+      ...child.nodes,
+      {
+        ...node('send', 'slack.send_message'),
+        config: { timeoutMillis: 10_000 },
+        inputMappings: {
+          channelId: { kind: 'literal', value: slackChannel },
+          text: { kind: 'literal', value: text },
+        },
+        connectionRefs: { slack_bot_token: connectionId },
+      },
+    ],
+    edges: [edge('manual', 'send'), edge('send', 'finish')],
   };
 }

@@ -110,8 +110,8 @@ export function resolveAttemptFailures(
       status:
         decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
       reasonCode: failure.safeErrorCode,
-      ...(decision.kind === 'failed' && invocation.agentWork === undefined
-        ? routableFailure(node, failure)
+      ...(decision.kind === 'failed'
+        ? routableFailure(input.nodes.get(invocation.nodeId), failure)
         : {}),
       coordinatorDerived: true,
     };
@@ -135,10 +135,11 @@ function failureNode(
 }
 
 function routableFailure(
-  node: WorkflowExecutableNode,
+  node: WorkflowExecutableNode | undefined,
   failure: AttemptFailureObservation,
 ) {
-  return !node.disabled &&
+  return node !== undefined &&
+    !node.disabled &&
     isWorkflowFailureSource(node.definition, node.config) &&
     isRoutableExecutorFailure(failure)
     ? {

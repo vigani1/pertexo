@@ -176,7 +176,7 @@ async function readSourceFailure(
       !parsed?.success ||
       parsed.data.attemptNumber !== selectedSource.currentAttemptNumber ||
       parsed.data.nodeId !== input.sourceFailure.nodeId ||
-      parsed.data.invocationKey !== input.sourceFailure.invocationKey;
+      parsed.data.invocationKey !== selectedSource.invocationKey;
     if (invalidSourceFailure) throw new NodeAttemptStateCorruptError();
     sourceFailure = parsed.data;
   }

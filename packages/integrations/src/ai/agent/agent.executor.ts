@@ -5,8 +5,6 @@ import { registerProviderExecutor } from '../../providers/provider-executor.js';
 import type { ModelClient } from '../model-client.js';
 import { runAgentTurn } from '../run-model.js';
 import type { agentTurnInputSchema } from './agent.definition.js';
-import { slackSendMessageInputSchema } from '../../slack/send-message/send-message.schemas.js';
-import { modelFailure } from '../model/model.errors.js';
 
 export function createAgentExecutor(
   client: ModelClient,
@@ -18,7 +16,7 @@ export function createAgentExecutor(
     const { prompt, input, history, toolSchema } = invocation.input as z.output<
       typeof agentTurnInputSchema
     >;
-    const result = await runAgentTurn(
+    return runAgentTurn(
       {
         client,
         invocation,
@@ -45,15 +43,5 @@ export function createAgentExecutor(
         history,
       },
     );
-    if (
-      'proposal' in result &&
-      'channelId' in tool.config &&
-      !slackSendMessageInputSchema.safeParse({
-        ...result.proposal.arguments,
-        channelId: tool.config.channelId,
-      }).success
-    )
-      throw modelFailure('invalid_response', { possiblyDispatched: true });
-    return result;
   });
 }

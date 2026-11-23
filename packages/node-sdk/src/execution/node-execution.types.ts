@@ -253,6 +253,8 @@ export interface NodeExecutionRequest {
   readonly executor: ExecutorIdentity;
   readonly config: unknown;
   readonly input: unknown;
+  /** The coordinator admitted this exact payload before recording the Agent proposal. */
+  readonly inputAdmission?: 'persisted_agent';
   readonly connectionRefs?: Readonly<Record<string, string>>;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;

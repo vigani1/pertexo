@@ -31,7 +31,10 @@ import {
   isNodeExecutorFailure,
 } from './admission.js';
 import { resolveMappedNodeInput } from './mapping.js';
-import { resolveAgentAttemptInput } from './agent-input.js';
+import {
+  resolveAgentAttemptInput,
+  withAgentProposalAdmission,
+} from './agent-input.js';
 
 export async function executeNodeAttempt(
   input: ExecuteNodeAttemptInput,
@@ -50,17 +53,14 @@ export async function executeNodeAttempt(
   const { node } = prepared;
   const callbacks = await resolveAttemptCallbacks(input, node);
   const mapped = await mapPreparedAttemptInput(input, prepared, callbacks);
-  const executionInput =
-    input.agent === undefined
-      ? mapped
-      : resolveAgentAttemptInput(input, mapped);
+  const executionInput = resolveAgentAttemptInput(input, mapped);
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
   // Guardrails can inspect sensitive text. Its attempt keeps only reason counts.
   if (!isGuardrailsDefinition(node.definition))
     await input.onInputResolved?.(
       input.agent?.identity.work.kind === 'model_turn'
         ? mapped
-        : executionInput,
+        : executionInput.value,
     );
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
@@ -69,7 +69,10 @@ export async function executeNodeAttempt(
       definition: node.definition,
       executor: node.executor,
       config: node.config,
-      input: executionInput,
+      input: executionInput.value,
+      ...(executionInput.admitted === true
+        ? { inputAdmission: 'persisted_agent' }
+        : {}),
       connectionRefs: node.connectionRefs,
       signal: input.signal,
       ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
@@ -90,7 +93,14 @@ export async function executeNodeAttempt(
     invocationKey: input.invocationKey,
     nodeId: node.id,
     kind: result.kind,
-    output: result.output,
+    output:
+      input.admitAgentToolInput === undefined
+        ? result.output
+        : withAgentProposalAdmission(
+            input,
+            result.output,
+            input.admitAgentToolInput,
+          ),
   };
 }
 

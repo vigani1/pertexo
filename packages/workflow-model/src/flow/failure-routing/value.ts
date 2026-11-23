@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+export const MODEL_FAILURE_KINDS = {
+  address_denied: 'configuration',
+  credential_rejected: 'authentication',
+  model_unavailable: 'provider',
+  output_truncated: 'provider',
+  output_refused: 'provider',
+  provider_timeout: 'timeout',
+  rate_limited: 'rate_limit',
+  output_schema_invalid: 'provider',
+  invalid_response: 'provider',
+  request_too_large: 'configuration',
+  response_too_large: 'provider',
+  credential_echoed: 'provider',
+  retry_after_exceeded: 'rate_limit',
+} as const;
+
 // The writer's fixed codes per kind: a provider failure (ADR 073), or the
 // step's own definite failure — its input or setup, a table refusal, a file it
 // can't read, or an error in its code (2026-10-19 amendment). Cancellation,
@@ -86,7 +102,13 @@ export function isRoutableExecutorFailure(
   return routableKinds.some(
     (kind) =>
       value.errorKind === kind &&
-      (routableCodes[kind] as readonly string[]).includes(value.safeErrorCode),
+      ((routableCodes[kind] as readonly string[]).includes(
+        value.safeErrorCode,
+      ) ||
+        Object.entries(MODEL_FAILURE_KINDS).some(
+          ([code, errorKind]) =>
+            kind === errorKind && value.safeErrorCode === `model.${code}`,
+        )),
   );
 }
 export const workflowFailureClassificationSchema = z

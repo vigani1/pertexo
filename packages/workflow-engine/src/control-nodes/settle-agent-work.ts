@@ -58,13 +58,6 @@ export function settleAgentModelTurn(
   };
 }
 
-export function settleAgentReadTool(
-  agent: AgentContinuation,
-  output: AgentAttemptReceipt,
-): AgentWorkDecision {
-  return settleAgentTool(agent, { output });
-}
-
 export function settleAgentTool(
   agent: AgentContinuation,
   result:

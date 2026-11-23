@@ -1,26 +1,8 @@
-import {
-  NodeExecutorFailure,
-  type NodeExecutorErrorKind,
-} from '@pertexo/node-sdk/server';
+import { MODEL_FAILURE_KINDS } from '@pertexo/workflow-model';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
-const modelErrors = {
-  address_denied: 'configuration',
-  credential_rejected: 'authentication',
-  model_unavailable: 'provider',
-  output_truncated: 'provider',
-  output_refused: 'provider',
-  provider_timeout: 'timeout',
-  rate_limited: 'rate_limit',
-  output_schema_invalid: 'provider',
-  invalid_response: 'provider',
-  request_too_large: 'configuration',
-  response_too_large: 'provider',
-  credential_echoed: 'provider',
-  retry_after_exceeded: 'rate_limit',
-} as const satisfies Record<string, NodeExecutorErrorKind>;
-
-type ModelError = keyof typeof modelErrors;
-export const MODEL_FAILURE_CODES = Object.keys(modelErrors).map(
+type ModelError = keyof typeof MODEL_FAILURE_KINDS;
+export const MODEL_FAILURE_CODES = Object.keys(MODEL_FAILURE_KINDS).map(
   (code) => `model.${code}`,
 );
 
@@ -35,7 +17,7 @@ export function modelFailure(
   return new NodeExecutorFailure({
     kind: 'failed',
     ...options,
-    errorKind: modelErrors[code],
+    errorKind: MODEL_FAILURE_KINDS[code],
     safeErrorCode: `model.${code}`,
   });
 }

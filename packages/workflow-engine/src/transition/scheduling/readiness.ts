@@ -1,3 +1,4 @@
+import { graphInvocationsWithRoutedFailures } from '../../failure-routing/scope.js';
 import { invocationKey } from '../../invocations/invocation-identity.js';
 import { WorkflowEngineError } from '../../workflow-engine.errors.js';
 import {
@@ -85,9 +86,9 @@ function indexInvocations(input: DeriveReadyNodesInput): SchedulerIndexes {
       ),
   );
   const invocationByNode = new Map<string, InvocationState>();
-  for (const invocation of input.invocations.filter((candidate) =>
-    matchesSchedulerScope(candidate, input),
-  )) {
+  for (const invocation of graphInvocationsWithRoutedFailures(
+    input.invocations,
+  ).filter((candidate) => matchesSchedulerScope(candidate, input))) {
     const existing = invocationByNode.get(invocation.nodeId);
     const isRoot =
       invocation.invocationKey ===

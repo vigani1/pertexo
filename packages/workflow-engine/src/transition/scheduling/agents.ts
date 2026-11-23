@@ -17,17 +17,14 @@ import {
 } from '../../control-nodes/agent-budget.js';
 import {
   settleAgentModelTurn,
-  settleAgentReadTool,
+  settleAgentTool,
 } from '../../control-nodes/settle-agent-work.js';
 import { settleAgentCall } from './settle-agent-call.js';
 import { operationError } from '../../input-checks/engine-values.js';
 import type { AgentChild } from '../../invocations/agent-invocation.js';
 import type { InvocationState } from '../../workflow-execution.js';
 import { invocationIdentity } from '../status.js';
-import {
-  openAgentApproval,
-  resumeAgentApproval,
-} from './agent-approval.js';
+import { openAgentApproval, resumeAgentApproval } from './agent-approval.js';
 import { finishAgentInvocation } from './settle-agent-invocation.js';
 import {
   isTerminalNodeStatus,
@@ -200,7 +197,7 @@ function settleAgentChild(
     : undefined;
   const decision =
     receipt === undefined
-      ? settleAgentReadTool(agent, child.output)
+      ? settleAgentTool(agent, { output: child.output })
       : settleModelReceipt(agent, receipt, tool.alias);
   if (decision.kind === 'refused') {
     finishAgentInvocation(state, parent, occurredAt, {
@@ -209,18 +206,22 @@ function settleAgentChild(
     });
     return;
   }
-  if (receipt?.kind === 'proposal' && tool.policy.effect === 'write') {
-    if (!validToolArguments(tool, receipt.call.arguments)) {
+  if (
+    receipt?.kind === 'proposal' &&
+    decision.agent.phase.kind === 'proposed_call'
+  ) {
+    if (
+      receipt.admission?.kind === 'refused' ||
+      (receipt.admission === undefined &&
+        !validLegacyToolArguments(tool, receipt.call.arguments))
+    ) {
       finishAgentInvocation(state, parent, occurredAt, {
         status: 'failed',
         reasonCode: 'agent.tool_arguments',
       });
       return;
     }
-    if (
-      tool.approval !== undefined &&
-      decision.agent.phase.kind === 'proposed_call'
-    ) {
+    if (tool.approval !== undefined) {
       openAgentApproval(
         state,
         child,
@@ -360,15 +361,18 @@ function admitChild(
   });
 }
 
-function validToolArguments(tool: AgentTool, args: AgentToolCall['arguments']) {
+function validLegacyToolArguments(
+  tool: AgentTool,
+  args: AgentToolCall['arguments'],
+) {
   if (tool.callable !== undefined)
     return validateCallableValue(tool.callable.input, args) === undefined;
-  if (
-    Object.keys(args).some((field) => !tool.policy.inputFields.includes(field))
-  )
-    return false;
   return (
-    !('table' in tool.node.config) ||
-    dataTableValuesSchema.safeParse(args.values).success
+    Object.keys(args).every((field) =>
+      tool.policy.inputFields.includes(field),
+    ) &&
+    (!('table' in tool.node.config) ||
+      tool.policy.effect === 'read' ||
+      dataTableValuesSchema.safeParse(args.values).success)
   );
 }

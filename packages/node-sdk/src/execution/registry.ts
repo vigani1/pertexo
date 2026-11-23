@@ -86,6 +86,12 @@ function parseExecutionValue(
   }
 }
 
+export function admitNodeExecutionInput(schema: ZodType, value: unknown) {
+  return canonicalizeBoundedJson(
+    parseExecutionValue(schema, canonicalizeBoundedJson(value), 'input'),
+  );
+}
+
 function parseExecutionOutput(schema: ZodType, value: unknown) {
   try {
     return canonicalizeBoundedJson(
@@ -169,11 +175,10 @@ function pinNodeRegistry(
       bounded.config,
       'config',
     );
-    const input = parseExecutionValue(
-      definition.inputSchema,
-      bounded.input,
-      'input',
-    );
+    const input =
+      request.inputAdmission === 'persisted_agent'
+        ? bounded.input
+        : parseExecutionValue(definition.inputSchema, bounded.input, 'input');
     let connectionRefs: Readonly<Record<string, string>>;
     try {
       connectionRefs = connectionRefsSchema.parse(bounded.connectionRefs);

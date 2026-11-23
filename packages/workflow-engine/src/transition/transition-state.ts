@@ -309,6 +309,7 @@ export function scopedLoopSinkInvocation(
   ];
   const matches = [...invocations].filter(
     (candidate) =>
+      candidate.agentWork === undefined &&
       candidate.nodeId === loop.bodySinkNodeId &&
       sameIterationPath(candidate.iterationPath, iterationPath) &&
       branchPathHasPrefix(candidate.branchPath, loop.branchPath),

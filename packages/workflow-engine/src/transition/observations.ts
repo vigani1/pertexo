@@ -1,3 +1,4 @@
+import { settleAgentChildFailure } from './scheduling/settle-agent-invocation.js';
 import { selectFailureHandler } from '../failure-routing/selection.js';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
@@ -348,8 +349,14 @@ function applyTerminalObservation(
         reasonCode: observation.reasonCode,
       }),
     );
-  if (observation.status === 'failed' && observation.failure !== undefined)
+  if (completed.agentWork !== undefined) {
+    settleAgentChildFailure(state, completed, observation, occurredAt);
+  } else if (
+    observation.status === 'failed' &&
+    observation.failure !== undefined
+  ) {
     selectFailureHandler(state, completed, observation.failure, occurredAt);
+  }
 }
 
 function applyReadyObservation(

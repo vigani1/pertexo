@@ -6,7 +6,11 @@ import type {
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
 import { invocationKey } from '../invocations/invocation-identity.js';
-import { isSelectedFailureScope, isCompletedFailureHandler } from './scope.js';
+import {
+  isSelectedFailureScope,
+  isCompletedFailureHandler,
+  routedFailuresByGraphInvocation,
+} from './scope.js';
 
 function expectedInvocationKey(
   source: InvocationState,
@@ -50,6 +54,9 @@ export function assertFailureCheckpoint(
       invocation,
     ]),
   );
+  const routedFailures = routedFailuresByGraphInvocation(
+    checkpoint.invocations,
+  );
   for (const invocation of checkpoint.invocations) {
     if (invocation.failureHandling !== undefined) {
       assertSelectedFailure(invocation, invocation.failureHandling, {
@@ -65,7 +72,7 @@ export function assertFailureCheckpoint(
         { ...invocation, nodeId: ownerNodeId },
         checkpoint.workflowVersionId,
       );
-      if (byKey.get(ownerKey)?.failureHandling !== undefined)
+      if (routedFailures.has(ownerKey))
         operationError(
           'workflow_identity_invalid',
           'selected handler cannot contain skipped steps',
@@ -76,7 +83,7 @@ export function assertFailureCheckpoint(
         { ...invocation, nodeId: ownerNodeId },
         checkpoint.workflowVersionId,
       );
-      if (byKey.get(ownerKey)?.failureHandling === undefined)
+      if (!routedFailures.has(ownerKey))
         operationError(
           'workflow_identity_invalid',
           'active handler has no selected source failure',
