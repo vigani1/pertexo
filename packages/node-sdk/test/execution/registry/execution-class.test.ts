@@ -184,6 +184,21 @@ describe('versioned execution class registration', () => {
     ).toThrow(/input does not match its versioned schema/u);
   });
 
+  it('validates inline input even when a caller supplies a delivery admission marker', () => {
+    const registry = createInlineNodeRegistry(options());
+    const request = {
+      definition: inlineManifest.definition,
+      executor: inlineManifest.executor,
+      config: {},
+      input: 'unexpected',
+      now: 123,
+      inputAdmission: 'persisted_agent',
+    };
+    expect(() => registry.executeInline(request)).toThrow(
+      /input does not match its versioned schema/u,
+    );
+  });
+
   it('refuses inline results outside the bounded output envelope', () => {
     const registered = options();
     const registry = createInlineNodeRegistry({
