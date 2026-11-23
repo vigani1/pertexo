@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { advanceRun } from '@pertexo/core/runs';
+import { createDataTablesStore } from '@pertexo/core/data-tables';
+import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import {
@@ -20,8 +22,12 @@ import {
   testNodeAttemptRuntime,
 } from '../../support/runtime-factories.js';
 import { chat, fakeModel, json } from './model.fixture.js';
-import { agentRegistry, executableCatalog } from './agent-registry.fixture.js';
-import { alias, config, model } from './agent.fixture.js';
+import {
+  agentRegistry,
+  catalog,
+  executableCatalog,
+} from './agent-registry.fixture.js';
+import { actor, alias, config, model } from './agent.fixture.js';
 
 import {
   publishAgentRun,
@@ -37,30 +43,31 @@ const query = {
 beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
 
-it('runs a bounded Find rows attempt between inline Sets and preserves output and event order', async () => {
-  const answers = [
-    json({
-      usage: { prompt_tokens: 45, completion_tokens: 8 },
-      choices: [
-        {
-          finish_reason: 'tool_calls',
-          message: {
-            tool_calls: [
-              {
-                id: 'selected-order',
-                type: 'function',
-                function: { name: alias, arguments: JSON.stringify({ query }) },
-              },
-            ],
-          },
+const answers = [
+  json({
+    usage: { prompt_tokens: 45, completion_tokens: 8 },
+    choices: [
+      {
+        finish_reason: 'tool_calls',
+        message: {
+          tool_calls: [
+            {
+              id: 'selected-order',
+              type: 'function',
+              function: { name: alias, arguments: JSON.stringify({ query }) },
+            },
+          ],
         },
-      ],
-    }),
-    json({
-      ...chat(result.text),
-      usage: { prompt_tokens: 80, completion_tokens: 7 },
-    }),
-  ];
+      },
+    ],
+  }),
+  json({
+    ...chat(result.text),
+    usage: { prompt_tokens: 80, completion_tokens: 7 },
+  }),
+];
+
+it('preserves a published Find rows tool through a table rename and inline execution', async () => {
   await using provider = await fakeModel([...answers, ...answers]);
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
   const workflowId = await publishAgentRun(
@@ -70,6 +77,11 @@ it('runs a bounded Find rows attempt between inline Sets and preserves output an
     'linear-sets',
   );
   const queued = await runFindRows(workflowId, encryption, false);
+  const table = await agentTable(workflowId);
+  await fixture.ownerQuery(
+    'update app.workspace_data_tables set name=$2, revision=revision+1 where id=$1',
+    [table.id, 'Renamed Agent Orders'],
+  );
   const inline = await runFindRows(workflowId, encryption, true);
   expect(inline).toEqual(queued);
   expect(provider.calls).toHaveLength(4);
@@ -99,6 +111,89 @@ it('runs a bounded Find rows attempt between inline Sets and preserves output an
     });
   }
 });
+
+it('still executes an existing name-bound Find rows pin', async () => {
+  await using provider = await fakeModel(answers);
+  const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
+  const publishedId = await publishAgentRun(
+    provider.baseUrl,
+    encryption,
+    undefined,
+    'linear-sets',
+  );
+  // Insert the original name-bound draft in the pre-ID published shape.
+  const [draft] = await fixture.ownerQuery<{ graph_json: unknown }>(
+    'select graph_json from app.workflow_drafts where workflow_id=$1',
+    [publishedId],
+  );
+  expect(draft).toBeDefined();
+  const workflowId = randomUUID();
+  const workflowVersionId = randomUUID();
+  await insertCompiledWorkflow(fixture.ownerQuery, {
+    ...actor,
+    graph: draft?.graph_json,
+    identity: { workflowId, workflowVersionId },
+    name: 'Legacy Agent pin',
+    catalog,
+  });
+  await fixture.ownerQuery(
+    'update app.workflows set published_version_id=$2 where id=$1',
+    [workflowId, workflowVersionId],
+  );
+  await runFindRows(workflowId, encryption, false);
+  expect(provider.calls).toHaveLength(2);
+});
+
+it('reports a deleted Find rows table even when another table takes its name', async () => {
+  await using provider = await fakeModel([]);
+  const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
+  const workflowId = await publishAgentRun(provider.baseUrl, encryption);
+  const table = await agentTable(workflowId);
+  const tables = createDataTablesStore(config(fixture.apiUrl));
+  try {
+    await tables.remove({
+      ...actor,
+      idempotencyKey: randomUUID(),
+      tableId: table.id,
+      expectedRevision: table.revision,
+    });
+    await tables.create({
+      ...actor,
+      idempotencyKey: randomUUID(),
+      name: table.name,
+      columns: [
+        { name: 'key', type: 'text', required: true },
+        { name: 'amount', type: 'number', required: true },
+      ],
+      keyColumn: 'key',
+    });
+    await expect(startPublishedAgentRun(workflowId)).rejects.toMatchObject({
+      code: 'invalid_values',
+      message: expect.stringContaining(
+        `Table ${table.name} is unavailable.`,
+      ) as unknown,
+    });
+  } finally {
+    await tables.close();
+  }
+});
+
+async function agentTable(workflowId: string) {
+  const [table] = await fixture.ownerQuery<{
+    id: string;
+    name: string;
+    revision: number;
+  }>(
+    `select t.id, t.name, t.revision
+     from app.workflow_drafts d
+     cross join lateral json_array_elements(d.graph_json->'nodes') as node
+     join app.workspace_data_tables t on t.name=node->'config'->'tool'->'config'->>'table'
+     where d.workflow_id=$1 and node->>'id'='agent' and t.workspace_id=d.workspace_id`,
+    [workflowId],
+  );
+  if (table === undefined) throw new Error('Agent table fixture is missing');
+  return table;
+}
 
 async function runFindRows(
   workflowId: string,

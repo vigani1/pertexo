@@ -2,10 +2,11 @@ import type { DataTablesResponse } from '@pertexo/contracts';
 import { decodeStoredValue } from '../shared/stored-values.js';
 import { StoredTableDefinitionError } from './data-table.errors.js';
 import type { PoolClient } from 'pg';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   DATA_TABLE_LIMITS,
+  type DataTableIdentity,
   dataTableColumnsSchema,
   isDataTableKeyColumn,
 } from '@pertexo/node-sdk';
@@ -64,7 +65,7 @@ export async function listTables(client: PoolClient, workspaceId: string) {
 export async function findTable(
   client: PoolClient,
   workspaceId: string,
-  identity: { id: string } | { name: string },
+  identity: DataTableIdentity,
   lock: boolean,
 ): Promise<DataTableDefinition | undefined> {
   let query = drizzle(client)
@@ -123,19 +124,27 @@ export async function readQuotas(
 }
 
 /** Referenced definitions stay fixed through admission or promotion. */
-export async function readTablesByNames(
+export async function readTablesByIdentity(
   db: Pick<NodePgDatabase, 'select'>,
   workspaceId: string,
-  names: readonly string[],
+  identities: readonly DataTableIdentity[],
 ): Promise<DataTableDefinition[]> {
-  if (names.length === 0) return [];
+  if (identities.length === 0) return [];
+  const names = new Set<string>();
+  const ids = new Set<string>();
+  for (const identity of identities)
+    if ('id' in identity) ids.add(identity.id);
+    else names.add(identity.name);
   return db
     .select(tableFields)
     .from(tables)
     .where(
       and(
         eq(tables.workspaceId, workspaceId),
-        inArray(tables.name, [...new Set(names)]),
+        or(
+          ids.size === 0 ? undefined : inArray(tables.id, [...ids]),
+          names.size === 0 ? undefined : inArray(tables.name, [...names]),
+        ),
       ),
     )
     .orderBy(tables.id)

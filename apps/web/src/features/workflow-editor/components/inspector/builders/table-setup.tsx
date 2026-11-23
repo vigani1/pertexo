@@ -2,7 +2,12 @@ import { useRef, type ReactNode } from 'react';
 import { TableColumnNames } from '../data-tables/column-names';
 import { Button } from '@/components/ui/button';
 import { reviewTableBindings } from '../../../model/inspector/table-bindings';
-import type { DataTableBindings } from '@pertexo/node-sdk';
+import {
+  dataTableIdentity,
+  matchesDataTableIdentity,
+  type DataTableBindings,
+} from '@pertexo/node-sdk';
+import { AGENT_FIND_ROWS } from '@pertexo/workflow-model';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { tablesQuery } from '@/features/data-tables/public';
@@ -13,43 +18,55 @@ import { ChoiceSelect } from '../fields/choice-select';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 export function DataTableSetup({
   scope,
+  definitionKey,
   config,
   form,
   children,
 }: Readonly<{
   scope: WorkspaceApiScope;
+  definitionKey: string;
   config: Readonly<Record<string, unknown>>;
   form: NodeFormApi;
   children?: ReactNode;
 }>) {
   const query = useQuery(tablesQuery(scope));
   const reviewButton = useRef<HTMLButtonElement>(null);
-  const selected = typeof config.table === 'string' ? config.table : '';
+  const name = typeof config.table === 'string' ? config.table : '';
+  const tableId =
+    typeof config.tableId === 'string' ? config.tableId : undefined;
+  const identity = dataTableIdentity({ table: name, tableId });
   const tables = query.data?.tables ?? [];
-  const table = tables.find((table) => table.name === selected);
+  const table = tables.find((table) =>
+    matchesDataTableIdentity(table, identity),
+  );
   const bindings = config.columnBindings as DataTableBindings | undefined;
-  const missing =
-    selected !== '' && !tables.some((table) => table.name === selected);
+  const missing = name !== '' && table === undefined;
   return (
     <div className="grid gap-3">
       <Label htmlFor={`table-${form.nodeId}`}>Workspace table</Label>
       <ChoiceSelect
-        value={selected}
+        value={table?.id ?? (missing ? 'missing' : '')}
         choices={[
           { value: '', label: 'Choose a table' },
           ...(missing
-            ? [{ value: selected, label: `${selected} (unavailable)` }]
+            ? [{ value: 'missing', label: `${name} (unavailable)` }]
             : []),
-          ...tables.map((table) => ({ value: table.name, label: table.name })),
+          ...tables.map((table) => ({ value: table.id, label: table.name })),
         ]}
         disabled={!form.editable || query.isPending}
         onChange={(value) => {
-          const target = tables.find((table) => table.name === value);
+          if (value === 'missing') return;
+          const target = tables.find((table) => table.id === value);
+          const { tableId: _oldId, ...other } = config;
           form.commit(
             {
               config: {
-                ...config,
-                table: value ?? '',
+                ...other,
+                table: target?.name ?? '',
+                ...(definitionKey === AGENT_FIND_ROWS.key &&
+                target !== undefined
+                  ? { tableId: target.id }
+                  : {}),
                 columnBindings: reviewTableBindings(target?.columns ?? [], {}),
               },
             },

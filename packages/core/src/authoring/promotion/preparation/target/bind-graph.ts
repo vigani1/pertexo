@@ -1,5 +1,6 @@
 import {
   mapWorkflowNodes,
+  workflowNodes,
   PROMOTION_LIMITS,
   EMPTY_WORKFLOW_GRAPH,
   WorkflowPortabilityError,
@@ -64,10 +65,21 @@ export async function prepareTargetGraph(
       catalogs: context.catalogs,
       report,
     });
+    const sourceNodes = new Map(
+      [...workflowNodes(source.graph)].map((node) => [node.id, node]),
+    );
     graph = mapWorkflowNodes(graph, (node) =>
-      rebindPromotionTable(node, sources.tables, tables, (requirement) => {
-        report({ workflowId: source.workflowId, ...requirement });
-      }),
+      rebindPromotionTable(
+        node,
+        {
+          sourceNode: sourceNodes.get(node.id) ?? node,
+          sourceTables: sources.tables,
+          targetTables: tables,
+        },
+        (requirement) => {
+          report({ workflowId: source.workflowId, ...requirement });
+        },
+      ),
     );
     graph = await rebindPromotionCalls(client, sourceWorkspaceId, {
       targetWorkspaceId: input.workspaceId,

@@ -46,6 +46,7 @@ export async function publishAgent(
   {
     write,
     shape,
+    expectedTableId,
   }: Readonly<{
     write?:
       | 'approval'
@@ -54,6 +55,7 @@ export async function publishAgent(
       | AgentCallable
       | undefined;
     shape?: 'linear-sets' | 'sibling-set' | undefined;
+    expectedTableId?: string | undefined;
   }>,
 ) {
   const expiry = PENDING_TASK_LIMITS.minimumExpirySeconds;
@@ -84,6 +86,13 @@ export async function publishAgent(
     toolConfig = { target: { ...callable.target }, input: callable.input };
   else if (slack !== undefined)
     toolConfig = { channelId: slackChannel, timeoutMillis: 10_000 };
+  const tool = {
+    alias,
+    description,
+    definition,
+    config: toolConfig,
+    ...toolPermission(write, approval, expiry),
+  };
   const graph: WorkflowGraph = {
     settings: { maxRunDurationMs: 90_000 },
     callable: {
@@ -106,13 +115,7 @@ export async function publishAgent(
           {
             model,
             ...(timeoutMillis === undefined ? {} : { timeoutMillis }),
-            tool: {
-              alias,
-              description,
-              definition,
-              config: toolConfig,
-              ...toolPermission(write, approval, expiry),
-            },
+            tool,
           },
         ),
         connectionRefs: {
@@ -140,10 +143,21 @@ export async function publishAgent(
     shape === undefined ? graph : shapes[shape](graph),
     table,
   );
-  expect(published.version.graphJson.nodes[1]?.config).toEqual(
-    graph.nodes[1]?.config,
-  );
+  expect(published.version.graphJson.nodes[1]?.config).toEqual({
+    ...graph.nodes[1]?.config,
+    tool: {
+      ...tool,
+      config: expectedPublishedToolConfig(toolConfig, expectedTableId),
+    },
+  });
   return published.version.workflowId;
+}
+
+function expectedPublishedToolConfig(
+  config: WorkflowGraph['nodes'][number]['config'],
+  tableId: string | undefined,
+) {
+  return tableId === undefined ? config : { ...config, tableId };
 }
 
 function surroundAgentWithSets(graph: WorkflowGraph): WorkflowGraph {

@@ -108,7 +108,14 @@ export function SetupControls({
       />
     );
   if (isDataTableDefinition(node.definition))
-    return <DataTableSetup scope={callScope} config={config} form={form} />;
+    return (
+      <DataTableSetup
+        scope={callScope}
+        definitionKey={formKey}
+        config={config}
+        form={form}
+      />
+    );
   if (node.definition.key === 'core.code')
     return (
       <Suspense fallback={<SkeletonLines label="Loading code editor" />}>

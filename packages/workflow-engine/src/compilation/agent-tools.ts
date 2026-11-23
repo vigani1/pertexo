@@ -1,6 +1,6 @@
 import type {
   NodeManifest,
-  DataTableConfig,
+  DataTableFindConfig,
   NodeCatalog,
 } from '@pertexo/node-sdk';
 import {
@@ -117,9 +117,14 @@ function attemptConfig(
   return { timeoutMillis: config.timeoutMillis };
 }
 
-function pinTableSetup({ table, columnBindings }: DataTableConfig) {
+function pinTableSetup({
+  table,
+  tableId,
+  columnBindings,
+}: DataTableFindConfig) {
   return {
     table,
+    ...(tableId === undefined ? {} : { tableId }),
     ...(columnBindings === undefined
       ? {}
       : { columnBindings: Object.freeze(columnBindings) }),

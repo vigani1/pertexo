@@ -9,7 +9,10 @@ import type {
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeStep, type DescribeStep } from '@/features/catalog/public';
-import { AGENT_SEND_SLACK_MESSAGE } from '@pertexo/workflow-model';
+import {
+  AGENT_FIND_ROWS,
+  AGENT_SEND_SLACK_MESSAGE,
+} from '@pertexo/workflow-model';
 import {
   describeNodeStatus,
   type NodeStatus,
@@ -152,6 +155,10 @@ function rowFor(
       ? label
       : {
           agentWork,
+          ...(agentWork.definition.key === AGENT_FIND_ROWS.key &&
+          label.findRowsTable !== undefined
+            ? { findRowsTable: label.findRowsTable }
+            : {}),
           definitionKey: agentWork.definition.key,
           label:
             agentWork.work.kind === 'model_turn'
