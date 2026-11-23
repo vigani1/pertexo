@@ -53,7 +53,7 @@ const schemaField = z.strictObject({
 });
 const credentialField = z.strictObject({
   label: title,
-  secret: z.boolean(),
+  kind: z.enum(['text', 'secret']),
   default: text.optional(),
 });
 const boundedFields = <T extends z.ZodType>(schema: T) =>
@@ -168,7 +168,7 @@ function validateConnection({
   for (const [key, field] of Object.entries(fields)) {
     if (key === 'type')
       throw new CommunityManifestError('type is a reserved credential field');
-    if (field.secret && field.default !== undefined)
+    if (field.kind === 'secret' && field.default !== undefined)
       throw new CommunityManifestError(
         `secret default for credential field ${key}`,
       );
@@ -180,7 +180,7 @@ function validateConnection({
     throw new CommunityManifestError(
       'Basic auth references a missing username field',
     );
-  if (requiredSecrets.some((key) => fields[key]?.secret !== true))
+  if (requiredSecrets.some((key) => fields[key]?.kind !== 'secret'))
     throw new CommunityManifestError(
       'auth references a missing or non-secret credential field',
     );
