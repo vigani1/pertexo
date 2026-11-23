@@ -111,12 +111,7 @@ export function prepareResponseRedactor(
         remaining: Buffer.alloc(0),
         covered: 0,
       };
-    const identity: DecodedBodyView = {
-      bytes: source,
-      sourceStart: (position) => position,
-      sourceEnd: (position) => position,
-      sourceBoundary: (position) => position,
-    };
+    const identity = rawBodyView(source);
     const views: DecodedBodyView[] = [identity];
     try {
       let previous: DecodedBodyView = identity;
@@ -131,23 +126,12 @@ export function prepareResponseRedactor(
         const decoded = decode(parent, 'percent');
         if (decoded !== undefined) views.push(originalOffsets(parent, decoded));
       }
-      // Every decoding layer needs its own unfinished escape and credential suffix.
-      // Map that suffix back to raw bytes rather than multiplying by 6^depth.
-      let end = source.length;
-      if (!final)
-        for (const view of views)
-          end = Math.min(
-            end,
-            view.sourceStart(Math.max(0, view.bytes.length - maximum - 11)),
-          );
-      // Literal line breaks survive every escape-decoding layer. When no
-      // pattern contains one, no future chunk can complete a match across it.
-      if (incremental && lineBreaksSeparatePatterns)
-        end = Math.max(
-          end,
-          source.lastIndexOf(CR) + 1,
-          source.lastIndexOf(LF) + 1,
-        );
+      const end = final
+        ? source.length
+        : redactionBoundary(source, views, maximum, {
+            incremental,
+            lineBreaksSeparatePatterns,
+          });
       const matches: Match[] = [];
       for (const view of views) find(view, matches);
       if (rejectSensitiveResponse && matches.length > 0)
@@ -194,6 +178,45 @@ export function prepareResponseRedactor(
   };
 }
 export type ResponseRedactor = ReturnType<typeof prepareResponseRedactor>;
+
+function rawBodyView(bytes: Buffer): DecodedBodyView {
+  return {
+    bytes,
+    sourceStart: (position) => position,
+    sourceEnd: (position) => position,
+    sourceBoundary: (position) => position,
+  };
+}
+
+function redactionBoundary(
+  source: Buffer,
+  views: readonly DecodedBodyView[],
+  maximum: number,
+  {
+    incremental,
+    lineBreaksSeparatePatterns,
+  }: Readonly<{
+    incremental: boolean;
+    lineBreaksSeparatePatterns: boolean;
+  }>,
+): number {
+  // Each decoding layer needs its own unfinished escape and credential suffix.
+  let end = source.length;
+  for (const view of views)
+    end = Math.min(
+      end,
+      view.sourceStart(Math.max(0, view.bytes.length - maximum - 11)),
+    );
+  // Literal line breaks survive escape decoding and can end the overlap
+  // early when no credential representation spans them.
+  if (incremental && lineBreaksSeparatePatterns)
+    return Math.max(
+      end,
+      source.lastIndexOf(CR) + 1,
+      source.lastIndexOf(LF) + 1,
+    );
+  return end;
+}
 
 function originalOffsets(
   parent: DecodedBodyView,
