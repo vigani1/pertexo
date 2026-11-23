@@ -85,7 +85,6 @@ const config = (url: string) =>
   parseDatabaseConfig({ connectionString: fixture.databaseUrl(url), max: 4 });
 const actor = { actorId: fixture.actorId, workspaceId: fixture.workspaceId };
 const connectionId = randomUUID();
-let rotateCredential: (() => Promise<void>) | undefined;
 let rotateBeforeDispatch = false;
 const commandKey = () =>
   createHash('sha256').update(randomUUID()).digest('hex');
@@ -155,7 +154,7 @@ async function startWorkers() {
   const database = config(fixture.workerUrl);
   const maintenanceDatabase = config(fixture.dispatcherUrl);
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
-  rotateCredential = await storeCredential(encryption);
+  const rotateCredential = await storeCredential(encryption);
   const connectionStore = createWorkerConnectionResolutionStore(database);
   owners.push(connectionStore.close);
   const connections = createProviderConnectionRuntimeFactory(
@@ -172,7 +171,7 @@ async function startWorkers() {
         resolve: async () => {
           if (rotateBeforeDispatch) {
             rotateBeforeDispatch = false;
-            await rotateCredential?.();
+            await rotateCredential();
           }
           return [{ address: '93.184.216.34', family: 4 }];
         },
@@ -228,7 +227,7 @@ async function startWorkers() {
 }
 
 async function storeCredential(encryption: ConnectionEnvelopeEncryption) {
-  const { authType } = recipeForm();
+  const authType = recipeForm().authType as SecretConnectionAuthType;
   const store = createConnectionStore(config(fixture.apiUrl));
   owners.push(store.close);
   const original = randomUUID();
@@ -245,7 +244,7 @@ async function storeCredential(encryption: ConnectionEnvelopeEncryption) {
     connectionId,
     secretVersionId: original,
     providerKey,
-    authType: authType as SecretConnectionAuthType,
+    authType,
     name: 'Widgets production fixture',
     sealed: await seal(token, original),
     idempotencyKey: randomUUID(),
@@ -259,6 +258,7 @@ async function storeCredential(encryption: ConnectionEnvelopeEncryption) {
       secretVersionId,
       expectedCurrentSecretVersionId: original,
       expectedProviderKey: providerKey,
+      expectedAuthType: authType,
       sealed: await seal('rotated-widget-credential', secretVersionId),
       idempotencyKey: randomUUID(),
       requestHash: commandKey(),
