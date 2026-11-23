@@ -80,7 +80,11 @@ test('selects human field aliases for later-added opaque column IDs', async ({
   expect(remote.graph.nodes).toContainEqual(
     expect.objectContaining({
       id: 'target',
-      config: { table: 'Orders', columnBindings: { currency: 'col_opaque' } },
+      config: {
+        table: 'Orders',
+        tableId: '10000000-0000-4000-8000-000000000001',
+        columnBindings: { currency: 'col_opaque' },
+      },
     }),
   );
 });
