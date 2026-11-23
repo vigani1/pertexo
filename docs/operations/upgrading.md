@@ -275,8 +275,10 @@ newest one works, unless a changelog entry says otherwise. Read every entry you'
 Every merged commit publishes multi-architecture images tagged with the full commit. A release
 is a commit with a green CI run, a `vX.Y.Z` tag and a changelog entry. The release workflow adds
 `vX.Y.Z` and `stable` to images that already exist, rebuilding nothing, and publishes the notes.
-To release: add the `## vX.Y.Z - YYYY-MM-DD` entry on `main` with an `### Upgrading` section, wait
-for its CI, then tag that commit and push the tag.
+To release, bump `PERTEXO_HOST_RELEASE` in `packages/node-sdk/src/execution/executor-binding.ts`
+on `main` and add the matching `## vX.Y.Z - YYYY-MM-DD` entry with an `### Upgrading`
+section. Wait for CI, then tag that commit and push the tag. The release workflow checks
+the tag against the version embedded in the host.
 
 Between releases you can deploy any commit with images (`deploy.sh <full-commit>`). Those are
 tested less: nothing promises a commit's tests passed unless you check its CI run.

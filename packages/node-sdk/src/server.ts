@@ -4,7 +4,10 @@ export {
   type NodeRegistry,
   type InlineNodeRegistry,
 } from './execution/registry.js';
-export { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from './execution/executor-binding.js';
+export {
+  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+  PERTEXO_HOST_RELEASE,
+} from './execution/executor-binding.js';
 
 export {
   type JsonValue,
