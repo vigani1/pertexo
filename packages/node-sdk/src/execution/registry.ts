@@ -250,7 +250,10 @@ function bindInlineExecution(
         throw new NodeRegistryCompatibilityError(
           'definition has no inline executor',
         );
-      const { config, input } = admitExecutionEnvelope(definition, request);
+      const { config, input } = admitExecutionEnvelope(definition, {
+        config: request.config,
+        input: request.input,
+      });
       const invocation = Object.freeze({
         config: canonicalizeBoundedJson(config),
         input: canonicalizeBoundedJson(input),
