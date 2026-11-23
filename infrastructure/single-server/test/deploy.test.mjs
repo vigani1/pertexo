@@ -117,6 +117,12 @@ with open(os.environ['FIXTURE_LOG'],'a') as log:
  resolved=next((args[i+1].split(':/run/resolved.json:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/resolved.json:ro')),None)
  memory=json.loads(Path(resolved).read_text()).get('services',{}).get('worker',{}).get('environment',{}).get('CODE_RUNNER_MEMORY_MB') if resolved else None
  log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION'),'memory':memory})+'\\n')
+if '--community' in args:
+ action=args[args.index('--community')+1]
+ if action=='stage':
+  if os.environ.get('FIXTURE_COMMUNITY_INVALID')=='true': sys.exit(1)
+  (Path(os.environ['PERTEXO_BETA_ROOT'])/'state'/'community.next.env').write_text('COMMUNITY_GENERATION=fixture\\n')
+ sys.exit(0)
 if 'infrastructure/single-server/storage/preflight.mjs' in args or ('infrastructure/single-server/storage/prepare.mjs' in args and os.environ.get('FIXTURE_REAL_PREPARATION')):
  config=next(args[i+1].split(':/run/pertexo.env:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/pertexo.env:ro'))
  environment={'PATH':os.environ['PATH']}
@@ -962,6 +968,66 @@ test('retry after failed migration retains the completed recovery point', (t) =>
         c.args.includes('infrastructure/single-server/backup/prepare.mjs'),
       ),
     false,
+  );
+});
+
+function communityRelease(f) {
+  const storage = join(
+    f.directory,
+    'releases',
+    newCommit,
+    'infrastructure/single-server/storage',
+  );
+  mkdirSync(storage, { recursive: true });
+  writeFileSync(join(storage, 'community-generation.mjs'), '');
+}
+
+test('rejected community preflight leaves the serving deployment running', (t) => {
+  const f = fixture(t);
+  communityRelease(f);
+  assert.equal(f.run({ FIXTURE_COMMUNITY_INVALID: 'true' }).status, 1);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8'),
+    oldCommit + '\n',
+  );
+  assert.equal(
+    f.commands().some(({ args }) => args.includes('stop')),
+    false,
+  );
+});
+
+test('stops admission and drains workers before enabling a community generation', (t) => {
+  const f = fixture(t);
+  communityRelease(f);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  const commands = f.commands().map(({ args }) => args);
+  const stage = commands.findIndex(
+    (args) => args.includes('--community') && args.includes('stage'),
+  );
+  const admission = commands.findIndex(
+    (args) => args.includes('stop') && args.includes('api'),
+  );
+  const drain = commands.findIndex(
+    (args) => args.includes('stop') && args.includes('worker'),
+  );
+  const activation = commands.findIndex(
+    (args) => args.includes('--community') && args.includes('activate'),
+  );
+  const start = commands.findIndex(
+    (args) => args.includes('up') && args.includes('api'),
+  );
+  assert.ok(
+    stage >= 0 &&
+      stage < admission &&
+      admission < drain &&
+      drain < activation &&
+      activation < start,
+  );
+  assert.ok(commands[start].includes(join(f.state, 'community.next.env')));
+  assert.equal(
+    readFileSync(join(f.state, 'community.env'), 'utf8'),
+    'COMMUNITY_GENERATION=fixture\n',
   );
 });
 

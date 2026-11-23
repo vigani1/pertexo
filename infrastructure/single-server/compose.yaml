@@ -43,6 +43,17 @@ x-environment: &environment
   CALLBACK_TOKEN_KEY: ${CALLBACK_TOKEN_KEY:?}
   CALLBACK_TOKEN_KEY_VERSION: ${CALLBACK_TOKEN_KEY_VERSION:?}
   CALLBACK_TOKEN_PREVIOUS_KEYS: ${CALLBACK_TOKEN_PREVIOUS_KEYS:-[]}
+x-community-environment: &community-environment
+  COMMUNITY_INTEGRATION_ROOT: /opt/pertexo/community
+  COMMUNITY_INTEGRATION_APPROVALS: ${COMMUNITY_GENERATION_APPROVALS:-[]}
+  COMMUNITY_INTEGRATION_SET_DIGEST: ${COMMUNITY_GENERATION:-}
+
+x-community-generation: &community-generation
+  type: bind
+  source: ${BETA_STATE_DIR}/community/${COMMUNITY_GENERATION:-empty}
+  target: /opt/pertexo/community
+  read_only: true
+
 services:
   proxy:
     <<: *service
@@ -79,7 +90,7 @@ services:
     command: [node, apps/api/dist/main.js]
     env_file: ['${BETA_STATE_DIR}/api.env']
     environment:
-      <<: [*environment, *code-settings, *jemalloc]
+      <<: [*environment, *code-settings, *jemalloc, *community-environment]
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
       SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
       AUTOMATION_TOKENS_ENABLED: ${AUTOMATION_TOKENS_ENABLED:-false}
@@ -91,6 +102,7 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
       SESSION_COOKIE_SECURE: 'true'
       TRUST_PROXY_CIDRS: 172.30.42.0/24
+    volumes: [*community-generation]
     depends_on:
       migration: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -166,12 +178,13 @@ services:
       # before the kernel kills it mid-step.
       WORKER_MAX_RSS_BYTES: ${WORKER_MAX_RSS_BYTES:?}
       ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
-      <<: [*environment, *code-settings, *jemalloc]
+      <<: [*environment, *code-settings, *jemalloc, *community-environment]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
       SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
     volumes:
+      - *community-generation
       - code-socket:/run/pertexo-code
       - type: volume
         target: /var/lib/pertexo/artifact-scratch

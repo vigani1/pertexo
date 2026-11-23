@@ -284,6 +284,7 @@ async function installRepository(
     await mustExec(
       `set -e
 mv tree/packages/database/migrations pending-upgrade
+mv tree/infrastructure/single-server/storage/community-generation.mjs pending-community
 legacy_container=$(docker create "$DRILL_LEGACY_RUNTIME_IMAGE")
 trap 'docker rm "$legacy_container" >/dev/null' EXIT
 docker cp "$legacy_container:/workspace/packages/database/migrations" tree/packages/database/migrations`,
@@ -298,7 +299,10 @@ docker cp "$legacy_container:/workspace/packages/database/migrations" tree/packa
   const broken = await commit('broken');
   if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
     await mustExec(
-      'rm -rf tree/packages/database/migrations && mv pending-upgrade tree/packages/database/migrations',
+      `set -e
+rm -rf tree/packages/database/migrations
+mv pending-upgrade tree/packages/database/migrations
+mv pending-community tree/infrastructure/single-server/storage/community-generation.mjs`,
     );
 
   await write('compose.yaml', compose);

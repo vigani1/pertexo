@@ -55,7 +55,10 @@ select_release() {
   fi
 }
 compose() {
-  docker compose --project-name pertexo-beta --env-file "$config" --env-file "$BETA_STATE_DIR/hosts.env" \
+  local community_file="${community_configuration:-$BETA_STATE_DIR/community.env}"
+  local config_files=(--env-file "$config" --env-file "$BETA_STATE_DIR/hosts.env")
+  [[ ! -f "$community_file" ]] || config_files+=(--env-file "$community_file")
+  docker compose --project-name pertexo-beta "${config_files[@]}" \
     -f "$release/infrastructure/single-server/compose.yaml" "$@"
 }
 
@@ -182,6 +185,17 @@ preflight_settings() {
   [[ $missing == false ]]
 }
 
+community_release() {
+  local source="$beta_root/community-releases"
+  mkdir -p "$source"
+  docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
+    -v "$config:/run/pertexo.env:ro" -v "$BETA_STATE_DIR:/prepared" \
+    -v "$source:/community-source:ro" \
+    -v "$release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
+    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env \
+    infrastructure/single-server/storage/prepare.mjs --community "$1" /prepared "$SERVICE_VERSION"
+}
+
 prepare_release() {
   commit=$1
   repository="$beta_root/repository"
@@ -207,6 +221,9 @@ prepare_release() {
     [[ $(docker image inspect --format '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$reference") == "$host_architecture $commit" ]] || { echo "Image architecture/revision mismatch: this server needs $host_architecture images of $commit" >&2; exit 1; }
   done
   validate_application_configuration
+  if [[ -f "$release/infrastructure/single-server/storage/community-generation.mjs" ]]; then
+    community_release stage
+  fi
   select_encryption_release
   # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.
   prepare_configuration "$BETA_STATE_DIR" "$encryption_version"

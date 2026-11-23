@@ -87,6 +87,7 @@ describe('API runtime acquisition', () => {
       approvals: [
         {
           file: '../unapproved.json',
+          current: true,
           origin: 'https://example.com',
           providerKey: 'community.example.test',
           sha256: '0'.repeat(64),

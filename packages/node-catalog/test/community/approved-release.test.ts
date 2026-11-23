@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PERTEXO_HOST_RELEASE } from '@pertexo/node-sdk/server';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   connectionFormCatalog,
   findConnectionDefinition,
@@ -11,6 +11,7 @@ import {
   resolvePlatformNodeDefinition,
 } from '../../src/index.js';
 import {
+  communityApprovalDigest,
   createPlatformNodeRegistry,
   loadPlatformRegistry,
   parseCommunityApprovalSet,
@@ -80,7 +81,9 @@ async function prepare(value: unknown = release) {
   return approval(body);
 }
 
-function load(...approvals: readonly ReturnType<typeof approval>[]) {
+function load(
+  ...approvals: readonly (ReturnType<typeof approval> & { current?: boolean })[]
+) {
   return loadPlatformRegistry(
     parseCommunityApprovalSet(root, JSON.stringify(approvals)),
   );
@@ -197,6 +200,124 @@ it('refuses a set whose operation count would overflow catalog discovery', async
     });
   }
   await expect(load(...approvals)).rejects.toThrow('catalog limit');
+});
+
+it('verifies the selected approval set independently of order and file paths', async () => {
+  const approved = await prepare();
+  const versions = [
+    { ...approved, current: true },
+    { ...approved, file: 'archive.json', version: '0.9.0', current: false },
+  ];
+  const digest = communityApprovalDigest(versions);
+  expect(
+    parseCommunityApprovalSet(
+      root,
+      JSON.stringify(versions.toReversed()),
+      digest,
+    ),
+  ).toBeDefined();
+  expect(() =>
+    parseCommunityApprovalSet(
+      root,
+      JSON.stringify(
+        versions.map((version) => ({
+          ...version,
+          current: !version.current,
+        })),
+      ),
+      digest,
+    ),
+  ).toThrow('approved set digest does not match');
+});
+
+it('rejects two current releases for the same provider', async () => {
+  const original = await prepare();
+  const second = JSON.stringify({ ...release, version: '2.0.0' });
+  await writeFile(path.join(root, 'second.json'), second);
+  await expect(
+    load(
+      { ...original, current: true },
+      {
+        ...approval(second),
+        file: 'second.json',
+        version: '2.0.0',
+        current: true,
+      },
+    ),
+  ).rejects.toThrow('multiple current releases');
+});
+
+it('merges unchanged contracts into the current presentation and retains an old changed pin', async () => {
+  vi.resetModules();
+  const { loadPlatformRegistry } = await import('../../src/server.js');
+  const {
+    platformBrowserNodeDefinitionCatalog,
+    resolvePlatformNodeDefinition,
+    connectionFormCatalog,
+  } = await import('../../src/index.js');
+  const old = {
+    ...release,
+    actions: [
+      ...release.actions,
+      {
+        ...release.actions[0],
+        key: 'alerts',
+        name: 'Old alerts',
+        path: '/alerts/{city}',
+      },
+    ],
+  };
+  const current = {
+    ...old,
+    version: '2.0.0',
+    actions: [
+      { ...old.actions[0], name: 'Current forecast' },
+      { ...old.actions[1], name: 'Current alerts', path: '/v2/alerts/{city}' },
+    ],
+  };
+  const oldApproval = await prepare(old);
+  const body = JSON.stringify(current);
+  await writeFile(path.join(root, 'current.json'), body);
+  await loadPlatformRegistry(
+    parseCommunityApprovalSet(
+      root,
+      JSON.stringify([
+        { ...oldApproval, current: false },
+        {
+          ...approval(body),
+          file: 'current.json',
+          version: current.version,
+          current: true,
+        },
+      ]),
+    ),
+  );
+  const definitions = platformBrowserNodeDefinitionCatalog().definitions.filter(
+    (definition) => definition.integration?.providerKey === providerKey,
+  );
+  expect(definitions).toHaveLength(3);
+  for (const definition of definitions) {
+    expect(
+      resolvePlatformNodeDefinition(definition.definition).manifest,
+    ).toMatchObject({
+      definition: definition.definition,
+    });
+  }
+  const currentForecast = definitions.find(
+    ({ display }) => display?.name === 'Current forecast',
+  );
+  expect(currentForecast?.presentation?.community?.version).toBe('2.0.0');
+  expect(currentForecast?.presentation?.community?.retained).toBeUndefined();
+  const oldAlerts = definitions.find(
+    ({ display }) => display?.name === 'Old alerts',
+  );
+  expect(oldAlerts?.presentation?.community).toMatchObject({
+    version: '1.0.0',
+    retained: true,
+  });
+  expect(
+    connectionFormCatalog().filter((item) => item.providerKey === providerKey),
+  ).toHaveLength(1);
 });
 
 it('loads the approved package into discovery, portability, credential validation and execution', async () => {

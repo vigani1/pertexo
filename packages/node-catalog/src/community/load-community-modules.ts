@@ -9,18 +9,22 @@ import {
   decodeCommunityManifest,
   type IntegrationModule,
 } from '@pertexo/integrations/server';
-import type { CommunityApprovalSet } from './approvals.js';
+import { mergeCommunityReleases } from './merge-community-releases.js';
+import type { CommunityApproval, CommunityApprovalSet } from './approvals.js';
 import { CommunityApprovalError } from './approval.errors.js';
 
-export async function loadCommunityModules({
-  root,
-  approvals,
-}: CommunityApprovalSet): Promise<readonly IntegrationModule[]> {
+export async function loadCommunityModules(
+  { root, approvals }: CommunityApprovalSet,
+  onVerifiedFile?: (
+    approval: CommunityApproval,
+    bytes: Uint8Array,
+  ) => Promise<void>,
+): Promise<readonly IntegrationModule[]> {
   if (!path.isAbsolute(root) || (await realpath(root)) !== root)
     throw new CommunityApprovalError(
       'package root must be absolute and contain no symlinks',
     );
-  const modules: IntegrationModule[] = [];
+  const releases = [];
   for (const approval of approvals) {
     const identity = `${approval.providerKey}@${approval.version}`;
     try {
@@ -39,14 +43,15 @@ export async function loadCommunityModules({
         throw new CommunityApprovalError(
           'manifest identity, release or origin does not match approval',
         );
-      modules.push(compileCommunityManifest(manifest));
+      releases.push({ approval, module: compileCommunityManifest(manifest) });
+      await onVerifiedFile?.(approval, bytes);
     } catch (cause) {
       const detail =
         cause instanceof Error ? cause.message : 'package could not be read';
       throw new CommunityApprovalError(`${identity}: ${detail}`, { cause });
     }
   }
-  return modules;
+  return mergeCommunityReleases(releases);
 }
 
 async function readPackage(root: string, file: string): Promise<Uint8Array> {

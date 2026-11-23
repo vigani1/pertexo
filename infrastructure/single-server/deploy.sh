@@ -32,6 +32,9 @@ if [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" && 
   exit 1
 fi
 # Keep the runner alive until the worker has finished its in-flight Code work.
+if [[ -f "$release/infrastructure/single-server/storage/community-generation.mjs" ]]; then
+  compose stop api proxy
+fi
 compose stop worker
 compose stop "${writer_services[@]}"
 # Existing volumes skip initdb scripts. Grant before migrations can remove policies.
@@ -67,11 +70,16 @@ fi
 if ! verify_encryption; then
   echo 'Encryption verification failed: serving remains stopped; correct the configured keys' >&2; exit 1
 fi
+if [[ -f "$release/infrastructure/single-server/storage/community-generation.mjs" ]]; then
+  community_release activate
+  community_configuration="$BETA_STATE_DIR/community.next.env"
+fi
 if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" || ! wait_for_app; then
   explain_unreachable_app
   compose stop worker
   compose stop "${runtime_services[@]}"
-  if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
+  if [[ $no_migration == true && -n "$previous" && ( "$previous" != "$commit" || -n ${community_configuration:-} ) ]]; then
+    unset community_configuration
     select_release "$previous"
     validate_rollback_configuration
     verify_encryption
@@ -89,6 +97,10 @@ if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" 
 fi
 if [[ -n "$previous" && "$previous" != "$commit" ]]; then
   printf '%s\n' "$previous" > "$BETA_STATE_DIR/previous"
+fi
+if [[ -n ${community_configuration:-} ]]; then
+  mv "$community_configuration" "$BETA_STATE_DIR/community.env"
+  unset community_configuration
 fi
 printf '%s\n' "$commit" > "$BETA_STATE_DIR/current.next"
 mv "$BETA_STATE_DIR/current.next" "$BETA_STATE_DIR/current"

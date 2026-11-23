@@ -5,6 +5,24 @@ import { requireCompatibleRelease } from '../encryption/require-compatible-relea
 import { validateApplicationConfiguration } from './preflight.mjs';
 import { serviceMemoryLimits } from './service-memory.mjs';
 
+if (process.argv[2] === '--community') {
+  const { prepareCommunityGeneration, auditCommunityActivation } =
+    await import('./community-generation.mjs');
+  const [, , , action, directory, deployment] = process.argv;
+  if (action === 'stage') {
+    await prepareCommunityGeneration(
+      directory,
+      deployment,
+      process.env.COMMUNITY_INTEGRATION_APPROVALS,
+    );
+  } else if (action === 'activate') {
+    await auditCommunityActivation(directory, deployment);
+  } else {
+    throw new Error('Unknown community deployment operation');
+  }
+  process.exit(0);
+}
+
 // Use the application boundaries; configuration errors must fail before stopping a release.
 const environments = applicationEnvironments(process.env);
 const environment = {

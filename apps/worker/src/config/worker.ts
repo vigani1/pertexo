@@ -156,6 +156,7 @@ export function parseWorkerConfig(
     const communityIntegrations = parseCommunityApprovalSet(
       raw.COMMUNITY_INTEGRATION_ROOT,
       raw.COMMUNITY_INTEGRATION_APPROVALS,
+      raw.COMMUNITY_INTEGRATION_SET_DIGEST,
     );
     return Object.freeze({
       ...result.data,

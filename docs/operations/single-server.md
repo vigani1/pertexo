@@ -846,3 +846,44 @@ Prune reads both encrypted and legacy recovery catalogues through the same
 project-owned upstream transport and private read-only config as backup helpers.
 A failed listing, decryption, reference read or invalid release defers removal;
 the helper and private operation config are cleaned up on exit.
+
+## Community integration releases
+
+Put each reviewed JSON release under `community-releases/` in the deployment
+root. In `.env.production`, set `COMMUNITY_INTEGRATION_APPROVALS` to a
+single-quoted JSON array. The default is empty. List the relative file, full
+provider key, exact release version, SHA-256 of the reviewed bytes, and exact
+HTTPS origin. For example:
+
+```dotenv
+COMMUNITY_INTEGRATION_APPROVALS='[{"file":"example/weather.json","providerKey":"community.example.weather","version":"1.0.0","sha256":"<replace with the actual SHA-256>","origin":"https://weather.example.com","current":true}]'
+```
+
+Set `current: true` on the release authors should see in the picker and
+`current: false` on retained releases. A single approval with `current`
+omitted is current. A provider may have no current release while existing
+workflows continue to use retained releases.
+
+Deploy the selected server release again after changing the approvals.
+Preflight verifies the files and registry before the current deployment
+stops. Deploy stops API admission, drains the worker with the Code runner
+still available, and starts the API and worker with the same verified,
+read-only package generation. The preflight and activation records are in
+`state/community-deployment.log`.
+
+Keep the approval list in private deployment configuration history, recording
+each addition and removal. Keep retained releases until their dependent
+workflows have been republished or their runs have finished. An unchanged
+operation contract keeps its pin and uses the current release's wording,
+so a presentation-only update needs no graph edit. A changed operation
+needs a step replacement and republish. Removing an approval makes any pin
+provided only by that release unavailable, including for queued work.
+Existing credentials can still be listed and revoked.
+
+Back up the approval list and the exact approved JSON files alongside each
+workflow recovery point. Preserve the deployment log with the configuration
+history. Preflight uses its activation records to reject reuse of a package
+version with different bytes, even after removal. To roll back or restore workflow data, copy back the reviewed files
+and restore their approvals before running `deploy.sh`. Use the original
+checksums. A different release with changed operation contracts cannot
+restore the old pins.
