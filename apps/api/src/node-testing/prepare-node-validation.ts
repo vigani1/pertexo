@@ -205,6 +205,11 @@ function validateNodeSetup(
       });
   const requiredSlots = new Set(definition.manifest.connectionRequirements);
   const optionalSlots = new Set(definition.manifest.optionalConnections);
+  if (parsedConfig.success)
+    for (const slot of definition.requiredConnectionsForConfig?.(
+      parsedConfig.data,
+    ) ?? [])
+      optionalSlots.delete(slot);
   for (const slot of [...requiredSlots].sort()) {
     const reference = node.connectionRefs[slot];
     if (reference === undefined && optionalSlots.has(slot)) continue;
