@@ -88,6 +88,7 @@ export function registerIntegrationModules(
     modules.flatMap((module) => module.executorSummaryCodes ?? []),
   );
   return {
+    ...registerConnections(modules),
     connectionLookup: (provider: string, key: string) =>
       lookups.get(`${provider}:${key}`),
     acceptsExecutorSummary: (code: string) => executorSummaryCodes.has(code),
@@ -105,65 +106,96 @@ export function registerIntegrationModules(
 export const INTEGRATION_MODULE_REGISTRY =
   registerIntegrationModules(INTEGRATION_MODULES);
 
+export const {
+  connectionFormCatalog,
+  connectionLookup: findConnectionLookup,
+  findConnectionDefinition,
+  findConnectionSlot,
+  isRegisteredProvider,
+} = INTEGRATION_MODULE_REGISTRY;
+
 type RegisteredConnection = ConnectionDefinition &
   Readonly<{
     providerKey: string;
     icon: string;
   }>;
 
-const connections = new Map<string, RegisteredConnection>();
-const primarySlots = new Map<string, RegisteredConnection>();
+function registerConnections(modules: readonly IntegrationModule[]) {
+  const connections = new Map<string, RegisteredConnection>();
+  const primarySlots = new Map<string, RegisteredConnection>();
+  const providers = new Set<string>();
 
-for (const module of INTEGRATION_MODULES) {
-  for (const connection of module.connections) {
-    if (connections.has(connection.authType))
-      throw new IntegrationRegistryError('connection', connection.authType);
-    const registered = Object.freeze({
-      ...connection,
-      providerKey: module.key,
-      icon: module.presentation.icon,
-    });
-    connections.set(connection.authType, registered);
-    if (connection.slot.primary) {
-      if (primarySlots.has(connection.slot.key))
-        throw new IntegrationRegistryError('slot', connection.slot.key);
-      primarySlots.set(connection.slot.key, registered);
+  for (const module of modules) {
+    for (const connection of module.connections ?? []) {
+      if (connections.has(connection.authType))
+        throw new IntegrationRegistryError('connection', connection.authType);
+      const registered = Object.freeze({
+        ...connection,
+        providerKey: module.key,
+        icon: module.presentation.icon,
+      });
+      connections.set(connection.authType, registered);
+      providers.add(module.key);
+      if (connection.slot.primary) {
+        if (primarySlots.has(connection.slot.key))
+          throw new IntegrationRegistryError('slot', connection.slot.key);
+        primarySlots.set(connection.slot.key, registered);
+      }
     }
+  }
+
+  const forms = [...connections.values()].map((entry) => {
+    const primary = primarySlots.get(entry.slot.key);
+    if (primary?.providerKey !== entry.providerKey)
+      throw new IntegrationRegistryError('slot reference', entry.slot.key);
+    return connectionForm(entry);
+  });
+
+  return {
+    connectionFormCatalog: Object.freeze(forms),
+    isRegisteredProvider: (providerKey: string) => providers.has(providerKey),
+    findConnectionDefinition,
+    findConnectionSlot,
+  };
+
+  function findConnectionDefinition(authType: string, providerKey?: string) {
+    const connection = connections.get(authType);
+    return providerKey === undefined || connection?.providerKey === providerKey
+      ? connection
+      : undefined;
+  }
+
+  function findConnectionSlot(key: string) {
+    const primary = primarySlots.get(key);
+    if (primary === undefined) return undefined;
+    return {
+      providerKey: primary.providerKey,
+      authType: primary.authType,
+      acceptedAuthTypes: [...connections.values()]
+        .filter(({ slot }) => slot.key === key)
+        .map(({ authType }) => authType),
+    };
   }
 }
 
-export const findConnectionLookup =
-  INTEGRATION_MODULE_REGISTRY.connectionLookup;
-
-export function isRegisteredProvider(providerKey: string) {
-  return INTEGRATION_MODULES.some(
-    (module) => module.key === providerKey && module.connections.length > 0,
-  );
-}
-
-export function findConnectionDefinition(
-  authType: string,
-  providerKey?: string,
-) {
-  const connection = connections.get(authType);
-  return providerKey === undefined || connection?.providerKey === providerKey
-    ? connection
-    : undefined;
-}
-
-export function findConnectionSlot(key: string) {
-  const primary = primarySlots.get(key);
-  if (primary === undefined) return undefined;
-  return {
-    providerKey: primary.providerKey,
-    authType: primary.authType,
-    acceptedAuthTypes: [...connections.values()]
-      .filter(
-        ({ slot, providerKey }) =>
-          slot.key === key && providerKey === primary.providerKey,
-      )
-      .map(({ authType }) => authType),
-  };
+function connectionForm(entry: RegisteredConnection) {
+  const fields = generateSchemaDocument(entry.fields);
+  if (containsSecretDefault(fields))
+    throw new IntegrationRegistryError('secret default', entry.authType);
+  return Object.freeze({
+    providerKey: entry.providerKey,
+    authType: entry.authType,
+    presentation: entry.presentation,
+    ...(entry.presets === undefined ? {} : { presets: entry.presets }),
+    icon: entry.icon,
+    fields,
+    slot: entry.slot.key,
+    test: entry.test.kind,
+    testInput: connectionTestInput(entry.test),
+    ...(entry.test.automatic === true
+      ? { testAutomatically: true as const }
+      : {}),
+  });
 }
 
 function containsSecretDefault(value: unknown): boolean {
@@ -175,31 +207,6 @@ function containsSecretDefault(value: unknown): boolean {
   }
   return Array.isArray(value) && value.some(containsSecretDefault);
 }
-
-export const connectionFormCatalog = Object.freeze(
-  [...connections.values()].map((entry) => {
-    const fields = generateSchemaDocument(entry.fields);
-    if (containsSecretDefault(fields))
-      throw new IntegrationRegistryError('secret default', entry.authType);
-    const primary = primarySlots.get(entry.slot.key);
-    if (primary?.providerKey !== entry.providerKey)
-      throw new IntegrationRegistryError('slot reference', entry.slot.key);
-    return Object.freeze({
-      providerKey: entry.providerKey,
-      authType: entry.authType,
-      presentation: entry.presentation,
-      ...(entry.presets === undefined ? {} : { presets: entry.presets }),
-      icon: entry.icon,
-      fields,
-      slot: entry.slot.key,
-      test: entry.test.kind,
-      testInput: connectionTestInput(entry.test),
-      ...(entry.test.automatic === true
-        ? { testAutomatically: true as const }
-        : {}),
-    });
-  }),
-);
 
 function connectionTestInput(test: ConnectionDefinition['test']) {
   if (
