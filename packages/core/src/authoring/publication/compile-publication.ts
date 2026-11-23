@@ -32,6 +32,7 @@ type PublicationInspection =
       kind: 'refused';
       validation: Extract<GraphValidationResult, { ok: false }>;
       error: InvalidWorkflowGraphError | WorkflowEngineError;
+      issueSource: 'graph' | 'resources';
     }>;
 
 /** Inspect the saved graph against current resources before producing an immutable publication. */
@@ -58,7 +59,9 @@ export async function compilePublicationGraph(
       kind: 'refused',
       validation,
       error: new InvalidWorkflowGraphError(validation.issues),
+      issueSource: 'graph',
     };
+  let issueSource: 'graph' | 'resources' = 'graph';
   try {
     const graph = parseWorkflowGraphForPublish(
       graphJson,
@@ -67,6 +70,7 @@ export async function compilePublicationGraph(
     const settingsIssues = stepSettingsIssues(graph, variant.portableCatalog);
     if (settingsIssues.length > 0)
       throw new InvalidWorkflowGraphError(settingsIssues);
+    issueSource = 'resources';
     const tableIssues = await dataTableReferenceIssues(
       client,
       input.workspaceId,
@@ -90,9 +94,11 @@ export async function compilePublicationGraph(
       input.actorId,
     );
     // Injected compilers return unknown executable JSON, so this is its boundary.
+    issueSource = 'graph';
     const executable = executableSchema.parse(
       variant.executableCompiler(graph),
     );
+    issueSource = 'resources';
     const versionId = generatePersistedId();
     const { calls } = await validatePublicationCalls(
       client,
@@ -137,6 +143,7 @@ export async function compilePublicationGraph(
     return {
       kind: 'refused',
       error: graphError ?? error,
+      issueSource,
       validation: { ...validation, ok: false, issues },
     };
   }

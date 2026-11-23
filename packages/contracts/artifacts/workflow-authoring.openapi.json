@@ -12746,6 +12746,11 @@
                     "additionalProperties": true
                   }
                 ]
+              },
+              "rounds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
               }
             },
             "required": [
@@ -12869,6 +12874,11 @@
                     "additionalProperties": true
                   }
                 ]
+              },
+              "rounds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
               }
             },
             "required": [
@@ -15063,6 +15073,11 @@
                     "additionalProperties": true
                   }
                 ]
+              },
+              "rounds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
               }
             },
             "required": [

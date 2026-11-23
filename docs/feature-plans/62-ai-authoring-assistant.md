@@ -49,13 +49,18 @@ An operator sets provider limits, address policy and retention expectations.
   human's action, the normal expected revision and server-side revalidation.
   Stale saves fail and can be regenerated against the new draft. Publication
   retains its own validation and review. Unresolved human-supplied settings
-  appear as issues. No new persisted proposal format, patch language or ADR.
+  appear as issues. Feed correctable issues from graph checks back to the
+  model as tool data while retaining the tool history and the original
+  masked draft. The assistant has at most two correction rounds within the
+  same request limits. Report the rounds used with the final proposal.
+  No new persisted proposal format, patch language or ADR.
 - The assistant may return an explanation or an inspected proposal. It has
   no tool for saving, publishing, running, provisioning credentials or
   calling workflow tools. No shared chat history in this delivery.
 
-- Each finished explanation records bounded model usage as `assistant.model`
-  against its run. It follows the same retention window as preview usage.
+- Record bounded model usage once per explanation or proposal as
+  `assistant.model` against its run or workflow, summing all proposal rounds.
+  It follows the same retention window as preview usage.
 
 ## Codebase structure
 

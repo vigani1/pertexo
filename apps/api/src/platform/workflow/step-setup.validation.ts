@@ -16,6 +16,9 @@ import type { z } from 'zod';
 
 type StepDefinition = ReturnType<typeof resolvePlatformNodeDefinition>;
 type Problem = z.core.$ZodIssue;
+
+// The proposal service uses this marker internally. Issue responses omit it.
+export const setupRequiresUser = Symbol('setupRequiresUser');
 type FieldSchema = Readonly<{
   properties?: Readonly<Record<string, Readonly<{ title?: string }>>>;
 }>;
@@ -79,6 +82,7 @@ function configIssues(
         schema: definition.manifest.configSchema,
         whole: 'This step’s setup isn’t finished.',
       }),
+      missingValue(problem, node.config),
     ),
   );
 }
@@ -116,13 +120,29 @@ function inputIssues(
           schema: definition.manifest.inputSchema,
           whole: 'This step needs its inputs set.',
         }),
+        missingValue(problem, literals),
       ),
     ];
   });
 }
 
-function issue(path: string, message: string): GraphValidationIssue {
-  return { code: 'invalid_graph', path, message };
+function issue(path: string, message: string, missing: boolean) {
+  return {
+    code: 'invalid_graph' as const,
+    path,
+    message,
+    [setupRequiresUser]: missing,
+  };
+}
+
+function missingValue(
+  problem: Problem,
+  given: Readonly<Record<string, unknown>>,
+) {
+  const [field] = problem.path;
+  return field === undefined
+    ? Object.keys(given).length === 0
+    : given[String(field)] === undefined;
 }
 
 function problemPath(prefix: string, problem: Problem): string {
@@ -155,6 +175,6 @@ function describeProblem(
     problem.code === 'invalid_type' && problem.expected === 'boolean';
   if (wantsBoolean) return `${label} needs a true or false value.`;
   // A schema's words for a missing value are about types, not what to do.
-  if (given[name] === undefined) return `${label} needs a value.`;
+  if (missingValue(problem, given)) return `${label} needs a value.`;
   return `${label}: ${problem.message}`;
 }
