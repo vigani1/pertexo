@@ -52,14 +52,14 @@ export async function* boundedRedactedBody(
   };
   try {
     // Charset detection needs both bytes of a possible UTF-16 BOM.
-    const raw = boundedSourceChunks(body, limit, signal, incremental, 2);
-    const decoded = decodedResponseChunks(raw, charset);
-    for await (const chunk of boundedSourceChunks(
-      decoded,
-      limit,
-      signal,
+    const raw = boundedSourceChunks(body, limit, signal, {
       incremental,
-    )) {
+      minimumFirstChunkBytes: 2,
+    });
+    const decoded = decodedResponseChunks(raw, charset);
+    for await (const chunk of boundedSourceChunks(decoded, limit, signal, {
+      incremental,
+    })) {
       if (signal.aborted)
         throw abortFailure(signal, {
           possiblyDispatched: true,
@@ -137,8 +137,13 @@ async function* boundedSourceChunks(
   body: AsyncIterable<Uint8Array>,
   limit: number,
   signal: AbortSignal,
-  incremental: boolean,
-  minimumFirstChunkBytes = 1,
+  {
+    incremental,
+    minimumFirstChunkBytes = 1,
+  }: Readonly<{
+    incremental: boolean;
+    minimumFirstChunkBytes?: number;
+  }>,
 ): AsyncGenerator<Uint8Array> {
   const buffer = Buffer.alloc(BODY_CHUNK_BYTES);
   let length = 0;
