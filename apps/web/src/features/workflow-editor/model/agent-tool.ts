@@ -57,9 +57,10 @@ export function toolFormAt(form: NodeFormApi, index: number): NodeFormApi {
   return {
     ...form,
     nodeId: `${form.nodeId}-tool-${String(index)}`,
-    reportScratch: (field, scratch) =>
-      form.reportScratch(`tool:${String(index)}:${field}`, scratch),
-    commit: (update, key) =>
+    reportScratch: (field, scratch) => {
+      form.reportScratch(`tool:${String(index)}:${field}`, scratch);
+    },
+    commit: (update, key) => {
       form.commit(
         (node) => {
           const tools = [...agentDraftTools(node.config)];
@@ -87,6 +88,7 @@ export function toolFormAt(form: NodeFormApi, index: number): NodeFormApi {
           };
         },
         `tool:${String(index)}:${key}`,
-      ),
+      );
+    },
   };
 }

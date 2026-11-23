@@ -151,7 +151,9 @@ function AgentToolList({
                   size="sm"
                   variant={indexInList === index ? 'default' : 'outline'}
                   aria-pressed={indexInList === index}
-                  onClick={() => select(indexInList)}
+                  onClick={() => {
+                    select(indexInList);
+                  }}
                 >
                   {label}
                 </Button>
@@ -350,12 +352,9 @@ function AgentToolSetup({
 
 function agentToolSchemas(schema: unknown): readonly unknown[] {
   const properties = isRecord(schema) ? schema.properties : undefined;
-  const many = isRecord(properties) ? properties.tools : undefined;
-  const tool = isRecord(many)
-    ? many.items
-    : isRecord(properties)
-      ? properties.tool
-      : undefined;
+  if (!isRecord(properties)) return [];
+  const many = properties.tools;
+  const tool = isRecord(many) ? many.items : properties.tool;
   return isRecord(tool) && Array.isArray(tool.anyOf)
     ? (tool.anyOf as unknown[])
     : [];
