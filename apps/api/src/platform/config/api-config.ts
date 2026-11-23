@@ -1,3 +1,7 @@
+import {
+  parseCommunityApprovalSet,
+  type CommunityApprovalSet,
+} from '@pertexo/node-catalog/server';
 import { agentModelRatesSchema } from '@pertexo/workflow-model';
 import {
   ApiConfigurationError,
@@ -167,6 +171,7 @@ export type ApiConfig = Readonly<{
   /** Requests held at once; past it the API answers 503 server.busy. */
   inFlightRequestLimit: number;
   codeSettings: CodeSettings;
+  communityIntegrations?: CommunityApprovalSet;
   agentModelRates?: z.output<typeof agentModelRatesSchema>;
   artifacts?: ArtifactStoreConfig;
   connections?:
@@ -242,6 +247,10 @@ export function parseApiConfig(
           'configure model identifiers with input and output rates in nano-dollars per token.',
           () => agentModelRatesSchema.parse(JSON.parse(rates) as unknown),
         );
+  const communityIntegrations = parseCommunityApprovalSet(
+    environment.COMMUNITY_INTEGRATION_ROOT,
+    environment.COMMUNITY_INTEGRATION_APPROVALS,
+  );
   return Object.freeze({
     ...(agentModelRates === undefined ? {} : { agentModelRates }),
     smtpAllowPlaintext: parseConfigurationSection(
@@ -268,6 +277,7 @@ export function parseApiConfig(
     webhookEndpointBurstLimit: limits.WEBHOOK_ENDPOINT_BURST_LIMIT,
     inFlightRequestLimit: limits.API_IN_FLIGHT_REQUEST_LIMIT,
     codeSettings: parseCodeSettings(environment),
+    ...(communityIntegrations === undefined ? {} : { communityIntegrations }),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),

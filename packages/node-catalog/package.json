@@ -25,6 +25,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/contracts": "workspace:*",
     "@pertexo/integrations": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",

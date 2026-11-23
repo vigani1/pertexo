@@ -77,6 +77,16 @@ export const nodeDefinitionCatalogItemSchema = z
         name: z.string().min(1).max(CATALOG_LIMITS.nameCharacters),
         icon: identityKey,
         group: z.enum(['trigger', 'action']),
+        community: z
+          .strictObject({
+            publisher: z
+              .string()
+              .min(1)
+              .max(CATALOG_LIMITS.identityKeyCharacters),
+            origin: z.url(),
+          })
+          .readonly()
+          .optional(),
       })
       .strict()
       .readonly()

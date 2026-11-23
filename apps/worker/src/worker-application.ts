@@ -1,3 +1,4 @@
+import { loadPlatformRegistry } from '@pertexo/node-catalog/server';
 import {
   createProviderConnectionRuntime,
   type ProviderConnectionRuntime,
@@ -70,6 +71,7 @@ export async function createWorkerApplication(
   let providerConnectionRuntime: ProviderConnectionRuntime | undefined;
   let application: INestApplicationContext;
   try {
+    await loadPlatformRegistry(config.communityIntegrations);
     await verifyWorkerEncryption(
       config,
       factories.encryptionKeysRepository,

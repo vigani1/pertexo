@@ -86,7 +86,7 @@ describe('integration registry parity', () => {
           ).toMatchObject({
             slot: { key: slot.slot },
           });
-          expect(connectionFormCatalog).toContainEqual(
+          expect(connectionFormCatalog()).toContainEqual(
             expect.objectContaining({
               providerKey: slot.providerKey,
               authType,

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { acquireApiRuntimes } from '../../src/platform/api.runtime.js';
@@ -78,6 +79,28 @@ describe('API runtime acquisition', () => {
     created.identity.mockResolvedValue(closes());
     created.workflow.mockResolvedValue(closes());
     created.connection.mockResolvedValue(closes());
+  });
+
+  it('refuses an unverified package before opening database connections', async () => {
+    const communityIntegrations = {
+      root: path.resolve(import.meta.dirname, '../..'),
+      approvals: [
+        {
+          file: '../unapproved.json',
+          origin: 'https://example.com',
+          providerKey: 'community.example.test',
+          sha256: '0'.repeat(64),
+          version: '1.0.0',
+        },
+      ],
+    };
+    await expect(
+      acquireApiRuntimes(
+        { ...config, communityIntegrations },
+        { logger: silentLogger },
+      ),
+    ).rejects.toThrow('package path contains an invalid segment');
+    expect(created.databaseRuntime).not.toHaveBeenCalled();
   });
 
   it('closes already-created runtimes when a later one fails', async () => {

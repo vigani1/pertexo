@@ -26,11 +26,16 @@ export class IntegrationRegistryError extends Error {
       | 'connection'
       | 'slot'
       | 'slot reference'
-      | 'secret default',
+      | 'secret default'
+      | 'process registry'
+      | 'catalog limit',
     key: string,
   ) {
     super(
-      kind === 'slot reference' || kind === 'secret default'
+      kind === 'slot reference' ||
+        kind === 'secret default' ||
+        kind === 'process registry' ||
+        kind === 'catalog limit'
         ? `Invalid integration ${kind}: ${key}`
         : `Duplicate integration ${kind} key: ${key}`,
     );

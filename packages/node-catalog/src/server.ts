@@ -14,8 +14,22 @@ import {
 } from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
-import { PLATFORM_NODE_CATALOG } from './catalog.js';
-import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
+import { installPlatformIntegrations, platformRegistry } from './catalog.js';
+import type { CommunityApprovalSet } from './community/approvals.js';
+import { loadCommunityModules } from './community/load-community-modules.js';
+
+export {
+  parseCommunityApprovalSet,
+  type CommunityApprovalSet,
+} from './community/approvals.js';
+
+export async function loadPlatformRegistry(
+  approved?: CommunityApprovalSet,
+): Promise<void> {
+  installPlatformIntegrations(
+    approved === undefined ? undefined : await loadCommunityModules(approved),
+  );
+}
 
 export type PlatformNodeRegistryDependencies = IntegrationExecutorDependencies;
 
@@ -23,27 +37,29 @@ export type PlatformNodeRegistryDependencies = IntegrationExecutorDependencies;
 export function createPlatformNodeRegistry(
   dependencies: PlatformNodeRegistryDependencies,
 ): NodeRegistry {
+  const { catalog, integrations } = platformRegistry();
   return createNodeRegistry({
-    catalog: PLATFORM_NODE_CATALOG,
-    definitions: INTEGRATION_MODULE_REGISTRY.registrations,
+    catalog,
+    definitions: integrations.registrations,
     core: {
       definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
       executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
     },
-    executors: INTEGRATION_MODULE_REGISTRY.createExecutors(dependencies),
+    executors: integrations.createExecutors(dependencies),
   });
 }
 
 /** Whether an integration declares this code safe for persisted summaries. */
-export const isIntegrationExecutorSummaryCode =
-  INTEGRATION_MODULE_REGISTRY.acceptsExecutorSummary;
+export function isIntegrationExecutorSummaryCode(code: string): boolean {
+  return platformRegistry().integrations.acceptsExecutorSummary(code);
+}
 
 /** Resolve the polling adapter for a pinned trigger definition. */
 export function resolvePlatformPollFetcher(definition: {
   key: string;
   version: number;
 }) {
-  const fetchPoll = INTEGRATION_MODULE_REGISTRY.pollFetcherFor(definition);
+  const fetchPoll = platformRegistry().integrations.pollFetcherFor(definition);
   if (fetchPoll === undefined)
     throw new PlatformNodeDefinitionUnavailableError();
   return fetchPoll;

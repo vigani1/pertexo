@@ -14,18 +14,39 @@ import {
 const catalog = 'packages/node-catalog/src/';
 const discovery = 'packages/integrations/src/modules.ts';
 const catalogRegistry = `${catalog}integration-modules.ts`;
+const catalogComposition = `${catalog}catalog.ts`;
+const catalogApproval = `${catalog}community/approvals.ts`;
+const catalogLoader = `${catalog}community/load-community-modules.ts`;
+const communityImports = new Map([
+  [
+    catalogApproval,
+    new Set(['COMMUNITY_MANIFEST_LIMITS', 'isCommunityOrigin']),
+  ],
+  [
+    catalogLoader,
+    new Set([
+      'COMMUNITY_MANIFEST_LIMITS',
+      'decodeCommunityManifest',
+      'compileCommunityManifest',
+      'communityProviderKey',
+    ]),
+  ],
+]);
 const worker = 'apps/worker/src/';
 const web = 'apps/web/src/features/';
 const contracts = 'packages/contracts/src/schemas/connections/';
 const dispatchFiles = [
   'packages/integrations/src/server.ts',
   catalogRegistry,
+  catalogApproval,
+  catalogLoader,
   ...['catalog', 'browser-catalog', 'portable-definition-policy', 'server'].map(
     (name) => `${catalog}${name}.ts`,
   ),
   ...[
     'providers/connections',
     'providers/node-registry',
+    'transport/providers/node-attempts',
     'attempts/delivery/executor-failure',
     'triggers/fetch-poll',
     'triggers/fetch-http-poll',
@@ -160,9 +181,9 @@ function registrationImport(file, node) {
     const name = (binding.propertyName ?? binding.name).text;
     if (binding.isTypeOnly || protocolImports.has(name)) return false;
     if (
-      file === catalogRegistry &&
       source.text === '@pertexo/integrations/server' &&
-      name === 'INTEGRATION_MODULES'
+      ((file === catalogComposition && name === 'INTEGRATION_MODULES') ||
+        communityImports.get(file)?.has(name) === true)
     )
       return false;
     return (

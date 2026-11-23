@@ -2,21 +2,17 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { WorkflowNode } from '@pertexo/workflow-model';
 
-import {
-  PLATFORM_NODE_CATALOG,
-  resolvePlatformNodeDefinition,
-} from './catalog.js';
+import { platformRegistry, resolvePlatformNodeDefinition } from './catalog.js';
 import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 import { PortableConnectionSlotPolicyError } from './node-catalog.errors.js';
 
-import { findConnectionSlot } from './integration-modules.js';
-
 /** Registered config/credential policy, without invoking an executor or secret store. */
 export function platformPortableDefinitionPolicy() {
-  const definitions = PLATFORM_NODE_CATALOG.definitions.map((manifest) => {
+  const { catalog, integrations } = platformRegistry();
+  const definitions = catalog.definitions.map((manifest) => {
     const registration = resolvePlatformNodeDefinition(manifest.definition);
     const slots = manifest.connectionRequirements.map((slot) => {
-      const policy = findConnectionSlot(slot);
+      const policy = integrations.findConnectionSlot(slot);
       if (policy === undefined) throw new PortableConnectionSlotPolicyError();
       return Object.freeze({
         slot,
@@ -46,7 +42,7 @@ export function platformPortableDefinitionPolicy() {
     });
   });
   const registrations = new Map(
-    PLATFORM_NODE_CATALOG.definitions.map((manifest) => [
+    catalog.definitions.map((manifest) => [
       `${manifest.definition.key}@${String(manifest.definition.version)}`,
       resolvePlatformNodeDefinition(manifest.definition),
     ]),

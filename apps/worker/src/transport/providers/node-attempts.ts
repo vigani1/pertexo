@@ -1,9 +1,7 @@
 import type { Provider } from '@nestjs/common';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 
-import { createNodeProviderHttpClient } from '../../providers/http-client.js';
-
-import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
+import { createWorkerExecutionRegistry } from '../../providers/node-registry.js';
 import type { QueueConsumerObserver } from '@pertexo/queue/server';
 
 import type { WorkerConfig } from '../../config/worker.js';
@@ -61,15 +59,13 @@ export function nodeAttemptRuntimeProvider(
         dependencies.databaseRuntime,
       );
       let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
+      let registry: ReturnType<typeof createWorkerExecutionRegistry>;
       try {
-        previewInvoker = factories.createPreviewInvoker({
-          registry: createPlatformNodeRegistry(
-            {
-              httpClient: createNodeProviderHttpClient(config.httpRequest),
-            },
-            config.smtpPolicy,
-          ),
-        });
+        registry = createWorkerExecutionRegistry(
+          config.httpRequest,
+          config.smtpPolicy,
+        );
+        previewInvoker = factories.createPreviewInvoker({ registry });
       } catch (error: unknown) {
         return closePreviewStoreAfterFailure(previewRunStore, error);
       }
@@ -77,6 +73,7 @@ export function nodeAttemptRuntimeProvider(
       // createNodeAttemptRuntime closes them on every later failure and close.
       return composeNodeAttemptRuntime(config, observer, {
         dependencies,
+        registry,
         preview: { invoker: previewInvoker, runStore: previewRunStore },
         factories: factories,
       });
@@ -90,9 +87,11 @@ async function composeNodeAttemptRuntime(
   {
     dependencies: { databaseRuntime, providerConnectionRuntime },
     preview,
+    registry,
     factories,
   }: Readonly<{
     dependencies: TransportModuleDependencies;
+    registry: ReturnType<typeof createWorkerExecutionRegistry>;
     preview: Readonly<{
       invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       runStore: ReturnType<typeof createPreviewAttemptRunStore>;
@@ -110,10 +109,7 @@ async function composeNodeAttemptRuntime(
     database: config.database,
     ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
-    httpRequest: config.httpRequest,
-    ...(config.smtpPolicy === undefined
-      ? {}
-      : { smtpPolicy: config.smtpPolicy }),
+    registry,
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,
     preview: { invoker: preview.invoker, runStore: preview.runStore },

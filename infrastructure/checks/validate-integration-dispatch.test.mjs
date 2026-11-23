@@ -40,6 +40,16 @@ for (const [name, file, text] of [
     "import { EXAMPLE_MODULE } from '@pertexo/integrations/server';",
   ],
   [
+    'built-in discovery from the community package loader',
+    'packages/node-catalog/src/community/load-community-modules.ts',
+    "import { INTEGRATION_MODULES } from '@pertexo/integrations/server';",
+  ],
+  [
+    'a provider registration inside preview composition',
+    'apps/worker/src/transport/providers/node-attempts.ts',
+    "import { EXAMPLE_MODULE } from '@pertexo/integrations/server';",
+  ],
+  [
     'a second executor registration list with a renamed import',
     'packages/node-catalog/src/server.ts',
     "import { EXAMPLE_MODULE as module } from '@pertexo/integrations/server';\nconst executors = [module.steps[0]];",
