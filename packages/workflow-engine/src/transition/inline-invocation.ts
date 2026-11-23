@@ -42,6 +42,23 @@ export async function prepareInlineInvocation(
     Math.ceil(Math.min(remaining, deadlineRemaining)),
   );
   const signal = AbortSignal.any([input.signal, expiry]);
+  const readExpiry = () => {
+    const occurredAt = options.now();
+    const elapsedAt = options.monotonicNow();
+    const deadline =
+      options.deadlineAt !== undefined &&
+      (occurredAt >= options.deadlineAt ||
+        (expiry.aborted && deadlineRemaining <= remaining));
+    return {
+      occurredAt,
+      elapsedAt,
+      kind: deadline
+        ? ('deadline' as const)
+        : expiry.aborted || elapsedAt >= stopAt
+          ? ('budget' as const)
+          : ('active' as const),
+    };
+  };
   let mapped: JsonValue | undefined;
   let outputAdmitted = true;
   let result: ReturnType<InlineNodeRegistry['executeInline']> | undefined;
@@ -54,7 +71,14 @@ export async function prepareInlineInvocation(
       options,
       signal,
     });
-    assertNotAborted(signal);
+    assertNotAborted(input.signal);
+    const preparedAt = readExpiry();
+    if (preparedAt.kind === 'budget') return { kind: 'budget' as const };
+    if (preparedAt.kind === 'deadline')
+      return {
+        kind: 'deadline' as const,
+        occurredAt: new Date(preparedAt.occurredAt).toISOString(),
+      };
     try {
       result = options.registry.executeInline({
         definition: node.definition,
@@ -86,21 +110,15 @@ export async function prepareInlineInvocation(
   }
 
   assertNotAborted(input.signal);
-  const completedAt = options.now();
-  const completed = options.monotonicNow();
-  const timedOut =
-    options.deadlineAt !== undefined &&
-    (completedAt >= options.deadlineAt ||
-      (expiry.aborted && deadlineRemaining <= remaining));
-  if (!timedOut && (expiry.aborted || completed >= stopAt))
-    return { kind: 'budget' as const };
+  const completed = readExpiry();
+  if (completed.kind === 'budget') return { kind: 'budget' as const };
   return {
     kind: 'prepared' as const,
     startedAt: new Date(startedAt).toISOString(),
-    occurredAt: new Date(completedAt).toISOString(),
-    durationMillis: completed - started,
+    occurredAt: new Date(completed.occurredAt).toISOString(),
+    durationMillis: completed.elapsedAt - started,
     mapped,
-    timedOut,
+    timedOut: completed.kind === 'deadline',
     outputAdmitted,
     result,
     failure,

@@ -506,6 +506,37 @@ describe('bounded coordinator inline advances', () => {
     );
   }
 
+  it('delivers the attempt without entering the kernel when preparation exhausts the budget', async () => {
+    let elapsed = 0;
+    let entered = false;
+    const fixture = await start(
+      1,
+      (invocation) => {
+        entered = true;
+        return add(invocation);
+      },
+      {
+        monotonicNow: () => elapsed,
+        readValues: async () => {
+          await Promise.resolve();
+          elapsed = 51;
+          return { runInput: { value: 10 }, outputs: [], attemptOutputs: [] };
+        },
+      },
+    );
+    const plan = await advanceWorkflow({
+      ...fixture.base,
+      checkpoint: fixture.checkpoint,
+      observations: fixture.observations,
+      inline: fixture.inline,
+    });
+    expect(plan.inlineAttempts).toBeUndefined();
+    expect(plan.attempts).toMatchObject([
+      { nodeId: 'step-1', attemptNumber: 1 },
+    ]);
+    expect(entered).toBe(false);
+  });
+
   it('settles a run deadline crossed by a synchronous kernel as a timeout', async () => {
     let now = Date.parse(occurredAt);
     const fixture = await start(
