@@ -670,9 +670,6 @@ importers:
 
   packages/node-catalog:
     dependencies:
-      '@pertexo/contracts':
-        specifier: workspace:*
-        version: link:../contracts
       '@pertexo/integrations':
         specifier: workspace:*
         version: link:../integrations

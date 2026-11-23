@@ -20,9 +20,6 @@
   "exclude": ["dist", "test"],
   "references": [
     {
-      "path": "../contracts/tsconfig.json"
-    },
-    {
       "path": "../integrations/tsconfig.json"
     },
     {
