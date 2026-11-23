@@ -19,15 +19,19 @@ import type { CommunityApprovalSet } from './community/approvals.js';
 import { loadCommunityModules } from './community/load-community-modules.js';
 
 export {
+  communityApprovalDigest,
   parseCommunityApprovalSet,
   type CommunityApprovalSet,
 } from './community/approvals.js';
 
 export async function loadPlatformRegistry(
   approved?: CommunityApprovalSet,
+  onVerifiedFile?: Parameters<typeof loadCommunityModules>[1],
 ): Promise<void> {
   installPlatformIntegrations(
-    approved === undefined ? undefined : await loadCommunityModules(approved),
+    approved === undefined
+      ? undefined
+      : await loadCommunityModules(approved, onVerifiedFile),
   );
 }
 

@@ -747,6 +747,13 @@
                         "origin": {
                           "type": "string",
                           "format": "uri"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "retained": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [

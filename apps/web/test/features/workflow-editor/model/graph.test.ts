@@ -255,6 +255,42 @@ describe('add-step choices', () => {
     expect(groupStepChoices([definition], 'slack')[0]?.choices).toHaveLength(1);
     expect(groupStepChoices([definition], 'channel post')).toEqual([]);
   });
+  it('offers current community operations while keeping retained pins in the graph', () => {
+    const current = {
+      ...definition,
+      definition: { key: 'community.current', version: 1 },
+      presentation: {
+        name: 'Current forecast',
+        group: 'action',
+        icon: 'globe',
+        community: {
+          publisher: 'weather',
+          origin: 'https://weather.example.com',
+        },
+      },
+    } satisfies NodeDefinitionCatalogItem;
+    const retained = {
+      ...current,
+      definition: { key: 'community.retained', version: 1 },
+      presentation: {
+        ...current.presentation,
+        name: 'Old forecast',
+        community: { ...current.presentation.community, retained: true },
+      },
+    } satisfies NodeDefinitionCatalogItem;
+
+    expect(placeableDefinitions([retained, current])).toEqual([current]);
+    const graph = {
+      ...branchingGraph(),
+      nodes: [node('old', { definition: retained.definition }), node('next')],
+      edges: [edge('link', 'old', 'next')],
+    };
+    expect(
+      projectWorkflowGraph(graph, [retained, current]).edges[0]?.data
+        ?.sourceLabel,
+    ).toBe('Old forecast');
+  });
+
   it('offers one entry per step type, at its highest version', () => {
     const version = (value: number) =>
       ({

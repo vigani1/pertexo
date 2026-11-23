@@ -84,6 +84,8 @@ export const nodeDefinitionCatalogItemSchema = z
               .min(1)
               .max(CATALOG_LIMITS.identityKeyCharacters),
             origin: z.url(),
+            version: z.string().optional(),
+            retained: z.literal(true).optional(),
           })
           .readonly()
           .optional(),

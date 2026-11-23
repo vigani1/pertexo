@@ -250,6 +250,7 @@ export function parseApiConfig(
   const communityIntegrations = parseCommunityApprovalSet(
     environment.COMMUNITY_INTEGRATION_ROOT,
     environment.COMMUNITY_INTEGRATION_APPROVALS,
+    environment.COMMUNITY_INTEGRATION_SET_DIGEST,
   );
   return Object.freeze({
     ...(agentModelRates === undefined ? {} : { agentModelRates }),

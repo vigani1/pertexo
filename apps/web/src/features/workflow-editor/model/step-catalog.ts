@@ -101,6 +101,7 @@ export function placeableDefinitions(
 ): readonly NodeDefinitionCatalogItem[] {
   const chosen = new Map<string, NodeDefinitionCatalogItem>();
   for (const candidate of definitions) {
+    if (candidate.presentation?.community?.retained) continue;
     const key = candidate.definition.key;
     const current = chosen.get(key);
     if (
