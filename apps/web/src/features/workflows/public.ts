@@ -23,5 +23,4 @@ export {
 export {
   expectationDraft,
   evaluationExpectationRequest,
-  expectationRequest,
 } from './model/input-cases/expectations';
