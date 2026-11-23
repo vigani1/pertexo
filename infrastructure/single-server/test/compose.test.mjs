@@ -270,6 +270,48 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
     );
     const runner = config.services['code-runner'];
     const limits = codeContainerLimits(api.codeSettings);
+    if (mode === 'kms' && transport === 'resend') {
+      const quickstart = JSON.parse(
+        execFileSync(
+          'docker',
+          [
+            'compose',
+            '--env-file',
+            '/dev/null',
+            '-f',
+            'infrastructure/quickstart/compose.yaml',
+            'config',
+            '--format',
+            'json',
+          ],
+          { encoding: 'utf8' },
+        ),
+      );
+      for (const service of ['api', 'worker']) {
+        assert.equal(
+          quickstart.services[service].environment.LD_PRELOAD,
+          config.services[service].environment.LD_PRELOAD,
+        );
+      }
+      for (const service of ['api', 'worker', 'code-runner']) {
+        for (const setting of [
+          'CODE_RUNNER_MEMORY_MB',
+          'CODE_RUNNER_CONCURRENCY',
+        ]) {
+          assert.equal(
+            quickstart.services[service].environment[setting],
+            config.services[service].environment[setting],
+          );
+        }
+      }
+      const quickstartRunner = quickstart.services['code-runner'];
+      for (const limit of ['mem_limit', 'memswap_limit', 'cpus', 'pids_limit'])
+        assert.equal(quickstartRunner[limit], runner[limit]);
+      assert.equal(
+        quickstartRunner.environment.NODE_OPTIONS,
+        runner.environment.NODE_OPTIONS,
+      );
+    }
     assert.equal(runner.network_mode, 'none');
     assert.equal(runner.networks, undefined);
     assert.equal(runner.ipc, 'none');

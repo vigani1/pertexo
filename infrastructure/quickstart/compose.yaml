@@ -19,11 +19,13 @@ x-load-secrets:
     'set -a; . /quickstart/secrets.env; set +a; exec "$$@"',
     --,
   ]
+x-jemalloc: &jemalloc
+  LD_PRELOAD: libjemalloc.so.2
 x-code-settings: &code-settings
   CODE_STEPS_ENABLED: 'true'
-  CODE_RUNNER_MEMORY_MB: '128'
+  CODE_RUNNER_MEMORY_MB: '64'
   CODE_RUNNER_MAX_SECONDS: '30'
-  CODE_RUNNER_CONCURRENCY: '2'
+  CODE_RUNNER_CONCURRENCY: '1'
   CODE_RUNNER_PACKAGES: '[]'
   CODE_RUNNER_PYTHON_PACKAGES: '[]'
 x-environment: &environment
@@ -86,7 +88,7 @@ services:
     entrypoint: *load-secrets
     command: [node, apps/api/dist/main.js]
     environment:
-      <<: [*environment, *code-settings]
+      <<: [*environment, *code-settings, *jemalloc]
       PORT: '13000'
       AUTH_MAIL_MODE: local
     volumes: [secrets:/quickstart:ro]
@@ -119,7 +121,7 @@ services:
         apps/worker/dist/main.js',
       ]
     environment:
-      <<: [*environment, *code-settings]
+      <<: [*environment, *code-settings, *jemalloc]
       NODE_OPTIONS: '--max-old-space-size=384'
       ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
       CODE_RUNNER_SOCKET: /run/pertexo-code/runner.sock
@@ -159,15 +161,15 @@ services:
     cap_drop: [ALL]
     cap_add: [SETUID, SETGID, KILL]
     oom_score_adj: -1000
-    mem_limit: 2912m
-    memswap_limit: 2912m
+    mem_limit: 1872m
+    memswap_limit: 1872m
     cpus: '2'
-    pids_limit: 48
+    pids_limit: 32
     stop_grace_period: 10s
     environment:
       <<: *code-settings
       NODE_ENV: production
-      NODE_OPTIONS: '--max-old-space-size=80'
+      NODE_OPTIONS: '--max-old-space-size=72'
     volumes: [code-socket:/run/pertexo-code]
     healthcheck:
       test: [CMD-SHELL, 'test -f /tmp/pertexo-code-runner-ready && kill -0 1']
