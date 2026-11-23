@@ -141,7 +141,7 @@ export async function bindPublicationTables(
   const byName = new Map(found.map((table) => [table.name, table.id]));
   const pins = new Map(
     refs.flatMap(({ node, binding }) => {
-      if (!binding.find || binding.config.tableId !== undefined) return [];
+      if (!binding.idBound || binding.config.tableId !== undefined) return [];
       const tableId = byName.get(binding.config.table);
       return tableId === undefined
         ? []

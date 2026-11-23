@@ -1,6 +1,7 @@
 import { AgentSetup } from '../builders/agent-setup';
 import {
   AGENT_STEP,
+  AGENT_STEP_V2,
   CLASSIFY_STEP,
   readSchemaUnion,
 } from '@pertexo/workflow-model';
@@ -67,7 +68,6 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
     >
   >
 > = {
-  [AGENT_STEP.key]: AgentSetup,
   'core.wait': WaitSetup,
   'core.respond_webhook': WebhookResponseSetup,
   'core.read_file': ReadFileSetup,
@@ -111,7 +111,7 @@ export function SetupControls({
     return (
       <DataTableSetup
         scope={callScope}
-        definitionKey={formKey}
+        definition={node.definition}
         config={config}
         form={form}
       />
@@ -124,6 +124,19 @@ export function SetupControls({
     );
   if (node.definition.key === 'core.webhook')
     return <WebhookTriggerSetup node={node} graph={graph} form={form} />;
+  if (formKey === AGENT_STEP.key)
+    return (
+      <AgentSetup
+        schema={configSchema}
+        config={config}
+        form={form}
+        agentVersion={
+          node.definition.version === AGENT_STEP_V2.version
+            ? AGENT_STEP_V2.version
+            : AGENT_STEP.version
+        }
+      />
+    );
   const SimpleSetup = SIMPLE_SETUP_RENDERERS[formKey];
   if (SimpleSetup !== undefined)
     return (

@@ -259,11 +259,11 @@ historical snapshots refuse replay rather than substitute current values. See
 
 A **data table** is a workspace-owned, bounded dataset with typed columns and
 stable column identities and an optional single unique key. Its ID identifies
-the table through a rename. New Find rows publications bind by ID. Legacy Find
-rows pins, write steps and portable workflow files reference the name. A **data
-row** has its own ID and revision; interactive edits compare that revision to
-avoid lost updates. Table data is shared with active workspace members and is
-not secret storage.
+the table through a rename. Find rows v2 publications bind by ID. Find rows v1
+pins, write steps and portable workflow files reference the name. A **data row**
+has its own ID and revision; interactive edits compare that revision to avoid
+lost updates. Table data is shared with active workspace members and is not
+secret storage.
 
 A **table write receipt** records a workflow mutation and its bounded result in
 the same transaction as the row change. The identity is the run/node invocation,

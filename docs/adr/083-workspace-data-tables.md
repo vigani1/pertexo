@@ -26,8 +26,8 @@ new identity. Reads are safe; writes are idempotent effects requiring draft-test
 consent.
 
 Editors manage data; active members can read it. Owners/admins can raise bounded
-quotas. New Find rows publications bind the stable table ID. Legacy Find rows
-pins and table writes resolve names. Portable workflow files use names and carry
+quotas. Find rows v2 publications bind the stable table ID. Find rows v1 pins
+and table writes resolve names. Portable workflow files use names and carry
 no table IDs or row data. Table deletion is explicit and makes missing-table
 references fail clearly. Use existing worker capabilities, roles and services.
 

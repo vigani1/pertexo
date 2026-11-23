@@ -36,12 +36,33 @@ it('preserves the published catalog and every legacy browser projection byte for
   );
 });
 
+it('advertises table IDs only for the new Find rows and Agent versions', () => {
+  const definition = (key: string, version: number) =>
+    PLATFORM_NODE_CATALOG.definitions.find(
+      (entry) =>
+        entry.definition.key === key && entry.definition.version === version,
+    )?.configSchema;
+  expect(definition('core.table_find', 1)?.properties).not.toHaveProperty(
+    'tableId',
+  );
+  expect(definition('core.table_find', 2)?.properties).toHaveProperty(
+    'tableId',
+  );
+  const legacy = JSON.stringify(definition('ai.agent', 1));
+  const current = JSON.stringify(definition('ai.agent', 2));
+  expect(legacy).not.toContain('"tableId"');
+  expect(current).toContain('"tableId"');
+});
+
 it('declares Find rows as the only Agent read tool and Insert row and Slack as write tools', () => {
   const tools = (effect: 'read' | 'write') =>
     PLATFORM_NODE_CATALOG.definitions
       .filter(({ agentTool }) => agentTool?.effect === effect)
       .map(({ definition }) => definition);
-  expect(tools('read')).toEqual([{ key: 'core.table_find', version: 1 }]);
+  expect(tools('read')).toEqual([
+    { key: 'core.table_find', version: 1 },
+    { key: 'core.table_find', version: 2 },
+  ]);
   expect(tools('write')).toEqual([
     { key: 'core.table_insert', version: 1 },
     { key: 'slack.send_message', version: 1 },

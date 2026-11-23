@@ -17,6 +17,7 @@ import {
   AGENT_SLACK_CONNECTION_SLOT,
   isPollingTriggerDefinition,
   isGuardrailsDefinition,
+  isRecord,
 } from '@pertexo/workflow-model';
 import {
   databasePollingGuidance,
@@ -34,7 +35,6 @@ import type { GraphLevel } from '../../../model/graph/scopes';
 import { readScheduleSchema } from '../../../model/inspector/schedule-draft';
 import { ConfigJsonEditor } from '../fields/config-json-editor';
 import { ConnectionSlot } from '../fields/connection-slot';
-import { configuredAgentTool } from '../../../model/agent-tool';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import type { WorkflowNode } from './setup-controls';
 import { SetupControls } from './setup-controls';
@@ -97,8 +97,9 @@ function CatalogSetupTab({
   const showJson = onlyJson || jsonMode;
   const agent = node.definition.key === AGENT_STEP.key;
   const sendsSlack =
-    configuredAgentTool(node.config).definition.key ===
-    AGENT_SEND_SLACK_MESSAGE.key;
+    isRecord(node.config.tool) &&
+    isRecord(node.config.tool.definition) &&
+    node.config.tool.definition.key === AGENT_SEND_SLACK_MESSAGE.key;
   const slots = (definition?.connectionRequirements ?? []).filter(
     (slot) =>
       !isGuardrailsDefinition(node.definition) &&

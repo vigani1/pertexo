@@ -5,9 +5,11 @@ import type {
 } from '@pertexo/node-sdk';
 import {
   AGENT_LIMITS,
+  AGENT_STEP_V2,
   type AgentConfig,
   AGENT_SLACK_CONNECTION_SLOT,
-  agentConfigSchema,
+  agentConfigV1Schema,
+  agentConfigV2Schema,
   callableObjectInputSchema,
   isAgentDefinition,
 } from '@pertexo/workflow-model';
@@ -23,7 +25,11 @@ export function pinAgentTool(
   catalog: NodeCatalog,
 ) {
   if (!isAgentDefinition(node.definition)) return undefined;
-  const parsed = agentConfigSchema.safeParse(node.config);
+  const schema =
+    node.definition.version === AGENT_STEP_V2.version
+      ? agentConfigV2Schema
+      : agentConfigV1Schema;
+  const parsed = schema.safeParse(node.config);
   if (!parsed.success) fail('Agent tool settings are invalid');
   const {
     tool,
@@ -57,6 +63,7 @@ export function pinAgentTool(
     fail('Agent tool must have a supported effect policy and setup');
   const executor = executorManifest(catalog, manifest.executor);
   return Object.freeze({
+    agentDefinition: node.definition,
     alias: tool.alias,
     model,
     timeoutMillis,

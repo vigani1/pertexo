@@ -9,14 +9,33 @@ export const DATA_TABLE_OPERATIONS = [
   'upsert',
   'delete',
 ] as const;
+export const FIND_ROWS_V1 = Object.freeze({
+  key: 'core.table_find',
+  version: 1,
+});
+export const FIND_ROWS_V2 = Object.freeze({
+  key: FIND_ROWS_V1.key,
+  version: 2,
+});
+
+export function isIdBoundFindRows(
+  definition: Readonly<{ key: string; version: number }>,
+): boolean {
+  return (
+    definition.key === FIND_ROWS_V2.key &&
+    definition.version === FIND_ROWS_V2.version
+  );
+}
+
 export function isDataTableDefinition(
   definition: Readonly<{ key: string; version: number }>,
 ): boolean {
   return (
-    definition.version === 1 &&
-    DATA_TABLE_OPERATIONS.some(
-      (operation) => definition.key === `core.table_${operation}`,
-    )
+    isIdBoundFindRows(definition) ||
+    (definition.version === 1 &&
+      DATA_TABLE_OPERATIONS.some(
+        (operation) => definition.key === `core.table_${operation}`,
+      ))
   );
 }
 
@@ -120,6 +139,7 @@ export const dataTableConfigSchema = z
   .strict();
 export type DataTableConfig = z.infer<typeof dataTableConfigSchema>;
 const tableId = z.uuid().optional();
+// Portable drafts carry the table name. Publication binds it to a local ID.
 export const dataTableFindConfigSchema = dataTableConfigSchema.extend({
   tableId,
 });

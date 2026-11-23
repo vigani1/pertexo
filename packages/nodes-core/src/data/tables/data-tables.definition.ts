@@ -4,6 +4,7 @@ import {
   dataTableConfigSchema,
   dataTableFindConfigSchema,
   DATA_TABLE_OPERATIONS,
+  FIND_ROWS_V2,
   dataTableQuerySchema,
   dataTableValuesSchema,
   dataTableResultSchema,
@@ -56,42 +57,48 @@ const DATA_TABLE_INPUT_SCHEMAS = {
   upsert: z.object({ values: dataTableValuesSchema }).strict(),
   delete: z.object({ query }).strict(),
 };
-export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
-  DATA_TABLE_OPERATIONS.map((operation) => {
-    const definition = Object.freeze({
-      key: `core.table_${operation}`,
-      version: 1,
-    });
-    const inputSchema = DATA_TABLE_INPUT_SCHEMAS[operation];
-    const configSchema =
-      operation === 'find' ? dataTableFindConfigSchema : dataTableConfigSchema;
-    const manifest: NodeManifest = Object.freeze({
-      definition,
-      family: operation === 'find' ? 'transform' : 'action',
-      display: Object.freeze(tableDisplay[operation]),
-      configVersion: 1,
-      configSchema: generateSchemaDocument(configSchema),
-      inputSchema: generateSchemaDocument(inputSchema),
-      outputSchema: generateSchemaDocument(dataTableResultSchema),
-      ports: Object.freeze({
-        inputs: Object.freeze(['in']),
-        outputs: Object.freeze(['out']),
-      }),
-      credentialRequirements: Object.freeze([]),
-      connectionRequirements: Object.freeze([]),
-      retryClass: operation === 'find' ? 'safe' : 'idempotent-with-key',
-      ...(operation === 'find' ? { agentTool: FIND_ROWS_AGENT_TOOL } : {}),
-      ...(operation === 'insert' ? { agentTool: INSERT_ROW_AGENT_TOOL } : {}),
-      resourceClass: 'io',
-      capabilities: Object.freeze([]),
-      executor: definition,
-      executorAbi: operation === 'find' ? 1 : 2,
-      policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
-    });
-    return {
-      manifest,
-      configSchema,
-      inputSchema,
-      outputSchema: dataTableResultSchema,
-    };
+export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] = [
+  ...DATA_TABLE_OPERATIONS.map((operation) => registerTable(operation, 1)),
+  registerTable('find', FIND_ROWS_V2.version),
+];
+
+function registerTable(
+  operation: (typeof DATA_TABLE_OPERATIONS)[number],
+  version: number,
+): NodeDefinitionRegistration {
+  const definition = Object.freeze({ key: `core.table_${operation}`, version });
+  const inputSchema = DATA_TABLE_INPUT_SCHEMAS[operation];
+  const configSchema =
+    version === FIND_ROWS_V2.version
+      ? dataTableFindConfigSchema
+      : dataTableConfigSchema;
+  const manifest: NodeManifest = Object.freeze({
+    definition,
+    family: operation === 'find' ? 'transform' : 'action',
+    display: Object.freeze(tableDisplay[operation]),
+    configVersion: 1,
+    configSchema: generateSchemaDocument(configSchema),
+    inputSchema: generateSchemaDocument(inputSchema),
+    outputSchema: generateSchemaDocument(dataTableResultSchema),
+    ports: Object.freeze({
+      inputs: Object.freeze(['in']),
+      outputs: Object.freeze(['out']),
+    }),
+    credentialRequirements: Object.freeze([]),
+    connectionRequirements: Object.freeze([]),
+    retryClass: operation === 'find' ? 'safe' : 'idempotent-with-key',
+    ...(operation === 'find' ? { agentTool: FIND_ROWS_AGENT_TOOL } : {}),
+    ...(operation === 'insert' ? { agentTool: INSERT_ROW_AGENT_TOOL } : {}),
+    resourceClass: 'io',
+    capabilities: Object.freeze([]),
+    executor: definition,
+    executorAbi: operation === 'find' ? 1 : 2,
+    policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   });
+  return {
+    manifest,
+    configSchema,
+    inputSchema,
+    outputSchema: dataTableResultSchema,
+  };
+}

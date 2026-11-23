@@ -1,5 +1,5 @@
 import type { AgentConfig } from '@pertexo/workflow-model';
-import { AGENT_STEP, AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
+import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 import type { z } from 'zod';
 import { registerProviderExecutor } from '../../providers/provider-executor.js';
 import type { ModelClient } from '../model-client.js';
@@ -10,9 +10,10 @@ import { modelFailure } from '../model/model.errors.js';
 
 export function createAgentExecutor(
   client: ModelClient,
+  definition: Readonly<{ key: string; version: number }>,
   now: () => number = Date.now,
 ) {
-  return registerProviderExecutor(AGENT_STEP, undefined, async (invocation) => {
+  return registerProviderExecutor(definition, undefined, async (invocation) => {
     const { model, tool } = invocation.config as AgentConfig;
     const { prompt, input, history, toolSchema } = invocation.input as z.output<
       typeof agentTurnInputSchema

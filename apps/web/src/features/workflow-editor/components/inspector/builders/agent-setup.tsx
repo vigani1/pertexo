@@ -28,7 +28,7 @@ import { useInspectorSession } from '../use-session';
 import { DataTableSetup } from './table-setup';
 import { ChoiceSelect } from '../fields/choice-select';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { AGENT_TOOLS, configuredAgentTool } from '../../../model/agent-tool';
+import { agentTools, configuredAgentTool } from '../../../model/agent-tool';
 import { AgentCallableSetup } from './agent-callable-setup';
 import { AgentApprovalSetup } from './agent-approval-setup';
 
@@ -41,10 +41,12 @@ export function AgentSetup({
   schema,
   config,
   form,
+  agentVersion,
 }: Readonly<{
   schema: unknown;
   config: NodeConfig;
   form: NodeFormApi;
+  agentVersion: 1 | 2;
 }>) {
   const deadline =
     typeof config.timeoutMillis === 'number'
@@ -62,7 +64,12 @@ export function AgentSetup({
         form={form}
         jsonOnlySettings={false}
       />
-      <AgentToolSetup schema={schema} config={config} form={form} />
+      <AgentToolSetup
+        schema={schema}
+        config={config}
+        form={form}
+        agentVersion={agentVersion}
+      />
       <p className="text-sm text-muted-foreground">
         The mapped task and input, tool schemas and bounded tool results enter
         the model request.
@@ -92,13 +99,16 @@ function AgentToolSetup({
   schema,
   config,
   form,
+  agentVersion,
 }: Readonly<{
   schema: unknown;
   config: NodeConfig;
   form: NodeFormApi;
+  agentVersion: 1 | 2;
 }>) {
   const { callScope, definitions } = useInspectorSession();
-  const selected = configuredAgentTool(config);
+  const tools = agentTools(agentVersion);
+  const selected = configuredAgentTool(config, tools);
   const slack = selected.definition.key === AGENT_SEND_SLACK_MESSAGE.key;
   const callable = selected.definition.key === WORKFLOW_CALL.key;
   const tool = isRecord(config.tool) ? (config.tool as NodeConfig) : {};
@@ -114,13 +124,13 @@ function AgentToolSetup({
         <FieldLabel htmlFor={toolId}>Agent tool</FieldLabel>
         <ChoiceSelect
           value={selected.definition.key}
-          choices={AGENT_TOOLS.map(({ definition, label }) => ({
+          choices={tools.map(({ definition, label }) => ({
             value: definition.key,
             label,
           }))}
           disabled={!form.editable}
           onChange={(value) => {
-            const next = AGENT_TOOLS.find(
+            const next = tools.find(
               ({ definition }) => definition.key === value,
             );
             if (next === undefined || next === selected) return;
@@ -195,7 +205,7 @@ function AgentToolSetup({
       {!slack && !callable ? (
         <DataTableSetup
           scope={callScope}
-          definitionKey={selected.definition.key}
+          definition={selected.definition}
           config={toolConfig}
           form={{
             ...targetForm,

@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { reviewTableBindings } from '../../../model/inspector/table-bindings';
 import {
   dataTableIdentity,
+  isIdBoundFindRows,
   matchesDataTableIdentity,
   type DataTableBindings,
 } from '@pertexo/node-sdk';
-import { AGENT_FIND_ROWS } from '@pertexo/workflow-model';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { tablesQuery } from '@/features/data-tables/public';
@@ -18,13 +18,13 @@ import { ChoiceSelect } from '../fields/choice-select';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 export function DataTableSetup({
   scope,
-  definitionKey,
+  definition,
   config,
   form,
   children,
 }: Readonly<{
   scope: WorkspaceApiScope;
-  definitionKey: string;
+  definition: Readonly<{ key: string; version: number }>;
   config: Readonly<Record<string, unknown>>;
   form: NodeFormApi;
   children?: ReactNode;
@@ -33,7 +33,9 @@ export function DataTableSetup({
   const reviewButton = useRef<HTMLButtonElement>(null);
   const name = typeof config.table === 'string' ? config.table : '';
   const tableId =
-    typeof config.tableId === 'string' ? config.tableId : undefined;
+    isIdBoundFindRows(definition) && typeof config.tableId === 'string'
+      ? config.tableId
+      : undefined;
   const identity = dataTableIdentity({ table: name, tableId });
   const tables = query.data?.tables ?? [];
   const table = tables.find((table) =>
@@ -63,8 +65,7 @@ export function DataTableSetup({
               config: {
                 ...other,
                 table: target?.name ?? '',
-                ...(definitionKey === AGENT_FIND_ROWS.key &&
-                target !== undefined
+                ...(isIdBoundFindRows(definition) && target !== undefined
                   ? { tableId: target.id }
                   : {}),
                 columnBindings: reviewTableBindings(target?.columns ?? [], {}),

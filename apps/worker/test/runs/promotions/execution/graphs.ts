@@ -1,3 +1,5 @@
+import { expect } from 'vitest';
+import { FIND_ROWS_V2 } from '@pertexo/node-sdk';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '@pertexo/integrations';
 
 import type { WorkflowGraph } from '@pertexo/workflow-model';
@@ -6,7 +8,15 @@ import { controlledActionUrl } from '../../../support/editor-browser/controlled-
 
 import { node, edge } from '../../calls/calls.fixture.js';
 
-export function createPromotionChildGraph(sourceConnection: string) {
+const tableConfig = {
+  table: 'Orders',
+  columnBindings: { key: 'key', amount: 'amount' },
+};
+
+export function createPromotionChildGraph(
+  sourceConnection: string,
+  sourceTableId: string,
+) {
   const resultType = {
     type: 'object' as const,
     properties: [
@@ -33,16 +43,18 @@ export function createPromotionChildGraph(sourceConnection: string) {
       node('manual', 'core.manual'),
       {
         ...node('find', 'core.table_find'),
-        config: {
-          table: 'Orders',
-          columnBindings: { key: 'key', amount: 'amount' },
-        },
+        config: tableConfig,
         inputMappings: {
           query: {
             kind: 'literal',
             value: { filters: [], limit: 1, offset: 0 },
           },
         },
+      },
+      {
+        ...node('find-by-id', FIND_ROWS_V2.key),
+        definition: FIND_ROWS_V2,
+        config: { ...tableConfig, tableId: sourceTableId },
       },
       {
         ...node('http', 'http.request'),
@@ -74,7 +86,7 @@ export function createPromotionChildGraph(sourceConnection: string) {
           rate: { kind: 'workspace_variable', name: 'RATE' },
           amount: {
             kind: 'node_output',
-            nodeId: 'find',
+            nodeId: 'find-by-id',
             path: '$.rows[0].values.amount',
           },
         },
@@ -84,10 +96,26 @@ export function createPromotionChildGraph(sourceConnection: string) {
     edges: [
       edge('manual', 'http'),
       edge('http', 'find'),
-      edge('find', 'set'),
+      edge('find', 'find-by-id'),
+      edge('find-by-id', 'set'),
       edge('set', 'finish'),
     ],
   };
 
   return { resultType, child };
+}
+
+export function expectPromotedTableBindings(
+  graph: WorkflowGraph | undefined,
+  targetTableId: string,
+) {
+  expect(graph?.nodes.find((step) => step.id === 'find')?.config).toEqual(
+    tableConfig,
+  );
+  expect(graph?.nodes.find((step) => step.id === 'find-by-id')?.config).toEqual(
+    {
+      ...tableConfig,
+      tableId: targetTableId,
+    },
+  );
 }

@@ -1,3 +1,4 @@
+import { FIND_ROWS_V2 } from '@pertexo/node-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import type { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
@@ -8,6 +9,7 @@ import {
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_STEP,
+  AGENT_STEP_V2,
   CORE_INLINE_DEFINITION_VERSION,
   PENDING_TASK_LIMITS,
   WORKFLOW_CALL,
@@ -66,8 +68,10 @@ export async function publishAgent(
   const callable =
     typeof write === 'object' && 'target' in write ? write : undefined;
   const approval = write === 'approval' || callable?.approval === true;
+  const [agentDefinition, findRowsDefinition] =
+    readToolIdentities(expectedTableId);
   let definition: WorkflowGraph['nodes'][number]['definition'] =
-    AGENT_FIND_ROWS;
+    findRowsDefinition;
   let description = 'Look up one workspace order';
   if (slack !== undefined) {
     definition = AGENT_SEND_SLACK_MESSAGE;
@@ -118,6 +122,7 @@ export async function publishAgent(
             tool,
           },
         ),
+        definition: agentDefinition,
         connectionRefs: {
           model_api_key: connectionId,
           ...(slack === undefined
@@ -151,6 +156,12 @@ export async function publishAgent(
     },
   });
   return published.version.workflowId;
+}
+
+function readToolIdentities(tableId: string | undefined) {
+  return tableId === undefined
+    ? ([AGENT_STEP, AGENT_FIND_ROWS] as const)
+    : ([AGENT_STEP_V2, FIND_ROWS_V2] as const);
 }
 
 function expectedPublishedToolConfig(

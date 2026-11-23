@@ -1,5 +1,5 @@
 import { CLASSIFY_REGISTRATION } from './classify/classify.definition.js';
-import { AGENT_REGISTRATION } from './agent/agent.definition.js';
+import { AGENT_REGISTRATIONS } from './agent/agent.definition.js';
 import { createAgentExecutor } from './agent/agent.executor.js';
 import { createClassifyExecutor } from './classify/classify.executor.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
@@ -22,11 +22,16 @@ export const AI_MODULE = {
   lookups: [modelEndpointLookup],
   executorSummaryCodes: MODEL_FAILURE_CODES,
   steps: [
-    {
-      registration: AGENT_REGISTRATION,
-      createExecutor: ({ httpClient }) =>
-        createAgentExecutor(createModelClient(httpClient)),
-    },
+    ...AGENT_REGISTRATIONS.map(
+      (registration): IntegrationModule['steps'][number] => ({
+        registration,
+        createExecutor: ({ httpClient }) =>
+          createAgentExecutor(
+            createModelClient(httpClient),
+            registration.manifest.executor,
+          ),
+      }),
+    ),
     {
       registration: CLASSIFY_REGISTRATION,
       createExecutor: ({ httpClient }) =>

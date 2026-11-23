@@ -1,5 +1,6 @@
 import {
   DataTableError,
+  FIND_ROWS_V2,
   type DataTableFindConfig,
   type DataTableCommand,
 } from '@pertexo/node-sdk';
@@ -9,9 +10,19 @@ import {
 } from '@pertexo/node-sdk/server';
 import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
 import { DATA_TABLE_OPERATIONS } from '@pertexo/node-sdk';
-export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
-  DATA_TABLE_OPERATIONS.map((operation) => ({
-    executor: { key: `core.table_${operation}`, version: 1 },
+export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] = [
+  ...DATA_TABLE_OPERATIONS.map((operation) =>
+    registerTableExecutor(operation, 1),
+  ),
+  registerTableExecutor('find', FIND_ROWS_V2.version),
+];
+
+function registerTableExecutor(
+  operation: (typeof DATA_TABLE_OPERATIONS)[number],
+  version: number,
+): NodeExecutorRegistration {
+  return {
+    executor: { key: `core.table_${operation}`, version },
     execute: async (invocation) => {
       const runtime = invocation.runtime?.dataTables;
       // A wiring gap of ours, not a table the user got wrong.
@@ -27,7 +38,9 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
         ...(invocation.input as object),
         operation,
         table,
-        ...(operation === 'find' && tableId !== undefined ? { tableId } : {}),
+        ...(version === FIND_ROWS_V2.version && tableId !== undefined
+          ? { tableId }
+          : {}),
       } as DataTableCommand;
       try {
         if (operation !== 'find') await invocation.runtime?.beforeDispatch();
@@ -53,4 +66,5 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
         });
       }
     },
-  }));
+  };
+}
