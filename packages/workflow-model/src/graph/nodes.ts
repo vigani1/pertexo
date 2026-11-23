@@ -16,3 +16,29 @@ export function* workflowNodes(graph: WorkflowGraph) {
     }
   }
 }
+
+export function mapWorkflowNodes(
+  graph: WorkflowGraph,
+  transform: (
+    node: WorkflowGraph['nodes'][number],
+  ) => WorkflowGraph['nodes'][number],
+): WorkflowGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((original) => {
+      const node = transform(original);
+      return node.structured === undefined
+        ? node
+        : {
+            ...node,
+            structured: {
+              ...node.structured,
+              body: {
+                ...node.structured.body,
+                ...mapWorkflowNodes(node.structured.body, transform),
+              },
+            },
+          };
+    }),
+  };
+}
