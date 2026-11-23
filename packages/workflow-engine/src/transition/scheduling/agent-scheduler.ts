@@ -1,7 +1,7 @@
 import type { JsonValue } from '@pertexo/workflow-model';
-import type { pinAgentTool } from '../../compilation/agent-tools.js';
+import type { pinAgentTools } from '../../compilation/agent-tools.js';
 import {
-  executableAgentTool,
+  executableAgentTools,
   executionNodes,
 } from '../../compilation/verified-executable.js';
 import type { CompiledWorkflowExecutable } from '../../compilation/workflow-executable.js';
@@ -11,9 +11,9 @@ import type { AgentModelRates } from '../../control-nodes/agent-continuation.js'
 import { isJsonRecord } from '../../input-checks/engine-values.js';
 import type { PendingTaskOutcome } from '../../workflow-execution.js';
 
-export type AgentTool = NonNullable<ReturnType<typeof pinAgentTool>>;
+export type AgentTool = ReturnType<typeof pinAgentTools>[number];
 export type AgentScheduler = Readonly<{
-  tools: ReadonlyMap<string, AgentTool>;
+  tools: ReadonlyMap<string, readonly AgentTool[]>;
   rates: (model: string) => AgentModelRates | undefined;
   outputs: readonly JsonValue[];
   decisions: ReadonlyMap<string, PendingTaskOutcome['status']>;
@@ -31,8 +31,8 @@ export function agentSchedulerFor({
 }>): AgentScheduler | undefined {
   const tools = new Map(
     executionNodes(executable).flatMap(({ id }) => {
-      const tool = executableAgentTool(executable, id);
-      return tool === undefined ? [] : [[id, tool] as const];
+      const tools = executableAgentTools(executable, id);
+      return tools.length === 0 ? [] : [[id, tools] as const];
     }),
   );
   return tools.size === 0

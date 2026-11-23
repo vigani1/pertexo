@@ -3,6 +3,7 @@ import { invocationKey } from './invocation-identity.js';
 
 export type AgentChild = Readonly<{
   turn: number;
+  toolAlias?: string;
   work:
     | Readonly<{ kind: 'model_turn' }>
     | Readonly<{ kind: 'tool_call'; ordinal: number }>;
@@ -45,6 +46,15 @@ export function isAgentModelTurnInvocationKey(key: string): boolean {
   );
 }
 
+export function agentToolAliasFromInvocationKey(
+  key: string,
+): string | undefined {
+  if (!isAgentWorkInvocationKey(key)) return undefined;
+  const [, component] = key.split('|');
+  const parts = component?.split(encodeURIComponent(':')) ?? [];
+  return parts[3] === 'tool' && parts.length === 6 ? parts[5] : undefined;
+}
+
 /** A NUL in the encoded node component cannot originate in a graph node ID. */
 export function agentChildInvocationKey(
   workflowVersionId: string,
@@ -54,7 +64,7 @@ export function agentChildInvocationKey(
   const work =
     child.work.kind === 'model_turn'
       ? modelTurn
-      : `tool:${String(child.work.ordinal)}`;
+      : `tool:${String(child.work.ordinal)}${child.toolAlias === undefined ? '' : `:${child.toolAlias}`}`;
   return invocationKey({
     workflowVersionId,
     nodeId: `${agentChildNodePrefix(parentInvocationKey)}${String(child.turn)}:${work}`,

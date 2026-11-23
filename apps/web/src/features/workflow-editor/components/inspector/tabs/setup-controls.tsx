@@ -2,6 +2,7 @@ import { AgentSetup } from '../builders/agent-setup';
 import {
   AGENT_STEP,
   AGENT_STEP_V2,
+  AGENT_STEP_V3,
   CLASSIFY_STEP,
   readSchemaUnion,
 } from '@pertexo/workflow-model';
@@ -131,9 +132,11 @@ export function SetupControls({
         config={config}
         form={form}
         agentVersion={
-          node.definition.version === AGENT_STEP_V2.version
-            ? AGENT_STEP_V2.version
-            : AGENT_STEP.version
+          node.definition.version === AGENT_STEP_V3.version
+            ? AGENT_STEP_V3.version
+            : node.definition.version === AGENT_STEP_V2.version
+              ? AGENT_STEP_V2.version
+              : AGENT_STEP.version
         }
       />
     );

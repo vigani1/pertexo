@@ -17,7 +17,7 @@ export {
 export { mapWorkflowNodes, workflowNodes } from './graph/nodes.js';
 export {
   replaceWorkflowDataTableBinding,
-  workflowDataTableBinding,
+  workflowDataTableBindings,
 } from './graph/data-table-binding.js';
 export {
   WORKFLOW_NOTE_LIMITS,
@@ -69,7 +69,7 @@ export {
 export type { WorkflowCallPin } from './flow/callable/dependencies.js';
 export {
   summarizeWorkflowCalls,
-  agentCallSetup,
+  agentCallSetups,
   validateCallDependencyClosure,
   type CallableVersionSummary,
 } from './flow/callable/dependencies.js';
@@ -110,6 +110,7 @@ export {
   AGENT_TIMEOUT_MAX_MILLIS,
   AGENT_STEP,
   AGENT_STEP_V2,
+  AGENT_STEP_V3,
   AGENT_LIMITS,
   agentMappedInputSchema,
   agentFinalOutputSchema,
@@ -117,12 +118,16 @@ export {
   agentConfigSchema,
   agentConfigV1Schema,
   agentConfigV2Schema,
+  agentConfigV3Schema,
+  agentToolAliasSchema,
   agentToolCallSchema,
   agentTurnOutputSchema,
   type AgentConfig,
+  type AgentToolConfig,
   type AgentToolCall,
   isAgentDefinition,
-  agentToolAllowedWithoutApproval,
+  agentToolsAllowedWithoutApproval,
+  readAgentConfig,
   agentModelRatesSchema,
 } from './flow/control-nodes/agent.js';
 export {

@@ -17,6 +17,7 @@ import { PENDING_TASK_LIMITS } from '../pending-tasks/pending-task-limits.js';
 
 export const AGENT_STEP = Object.freeze({ key: 'ai.agent', version: 1 });
 export const AGENT_STEP_V2 = Object.freeze({ key: AGENT_STEP.key, version: 2 });
+export const AGENT_STEP_V3 = Object.freeze({ key: AGENT_STEP.key, version: 3 });
 export const AGENT_FIND_ROWS = FIND_ROWS_V1;
 export const AGENT_INSERT_ROW = Object.freeze({
   key: 'core.table_insert',
@@ -32,6 +33,7 @@ const AGENT_TIMEOUT_DEFAULT_MILLIS = 120_000;
 export const AGENT_TIMEOUT_MAX_MILLIS =
   (PENDING_TASK_LIMITS.maximumExpirySeconds + 1) * MILLIS_PER_SECOND;
 export const AGENT_TOOL_LIMITS = Object.freeze({
+  tools: 4,
   aliasCharacters: 64,
   providerCallIdCharacters: 256,
   descriptionCharacters: 512,
@@ -56,14 +58,14 @@ export const agentMappedInputSchema = z.strictObject({
   input: boundedNodeJsonRecordSchema.optional().meta({ title: 'Input' }),
 });
 
-const alias = z
+export const agentToolAliasSchema = z
   .string()
   .min(1)
   .max(AGENT_TOOL_LIMITS.aliasCharacters)
   .regex(/^[A-Za-z0-9_-]+$/u);
 
 const toolSetup = z.strictObject({
-  alias: alias.meta({ title: 'Tool alias' }),
+  alias: agentToolAliasSchema.meta({ title: 'Tool alias' }),
   description: z
     .string()
     .trim()
@@ -151,11 +153,7 @@ function agentConfig(findTool: typeof legacyFindTool | typeof idBoundFindTool) {
       ]),
     })
     .refine(
-      ({ tool, timeoutMillis }) =>
-        !('writePermission' in tool) ||
-        tool.writePermission.kind === 'allow' ||
-        (timeoutMillis ?? AGENT_TIMEOUT_DEFAULT_MILLIS) >
-          tool.writePermission.config.expiresAfterSeconds * MILLIS_PER_SECOND,
+      ({ tool, timeoutMillis }) => approvalFitsDeadline(tool, timeoutMillis),
       {
         path: ['timeoutMillis'],
         message: 'The Agent deadline must exceed the tool approval expiry.',
@@ -170,6 +168,74 @@ export const agentConfigSchema = z.union([
 ]);
 
 export type AgentConfig = z.output<typeof agentConfigSchema>;
+
+export const agentConfigV3Schema = z
+  .strictObject({
+    model: agentConfigV2Schema.shape.model,
+    timeoutMillis: agentConfigV2Schema.shape.timeoutMillis,
+    tools: z
+      .array(agentConfigV2Schema.shape.tool)
+      .min(1)
+      .max(AGENT_TOOL_LIMITS.tools),
+  })
+  .refine(
+    ({ tools }) =>
+      new Set(tools.map(({ alias }) => alias)).size === tools.length,
+    {
+      path: ['tools'],
+      message: 'Choose a unique alias for each Agent tool.',
+    },
+  )
+  .refine(
+    ({ tools, timeoutMillis }) =>
+      tools.every((tool) => approvalFitsDeadline(tool, timeoutMillis)),
+    {
+      path: ['timeoutMillis'],
+      message: 'The Agent deadline must exceed each tool approval expiry.',
+    },
+  );
+
+export type AgentToolConfig = AgentConfig['tool'];
+
+function approvalFitsDeadline(
+  tool: Readonly<{
+    config: unknown;
+    writePermission?: z.output<typeof writePermission>;
+  }>,
+  timeoutMillis: number | undefined,
+): boolean {
+  return (
+    tool.writePermission === undefined ||
+    tool.writePermission.kind === 'allow' ||
+    (timeoutMillis ?? AGENT_TIMEOUT_DEFAULT_MILLIS) >
+      tool.writePermission.config.expiresAfterSeconds * MILLIS_PER_SECOND
+  );
+}
+
+export function readAgentConfig(
+  node: Readonly<{
+    definition: Readonly<{ key: string; version: number }>;
+    config: unknown;
+  }>,
+):
+  | Readonly<{
+      model: string;
+      timeoutMillis?: number | undefined;
+      tools: readonly AgentToolConfig[];
+    }>
+  | undefined {
+  if (!isAgentDefinition(node.definition)) return undefined;
+  if (node.definition.version === AGENT_STEP_V3.version)
+    return agentConfigV3Schema.safeParse(node.config).data;
+  const schema =
+    node.definition.version === AGENT_STEP_V2.version
+      ? agentConfigV2Schema
+      : agentConfigV1Schema;
+  const settings = schema.safeParse(node.config).data;
+  if (settings === undefined) return undefined;
+  const { tool, ...config } = settings;
+  return { ...config, tools: [tool] };
+}
 
 export const agentToolCallSchema = z.strictObject({
   id: z.string().min(1).max(AGENT_TOOL_LIMITS.providerCallIdCharacters),
@@ -192,25 +258,18 @@ export function isAgentDefinition(
   return (
     definition?.key === AGENT_STEP.key &&
     (definition.version === AGENT_STEP.version ||
-      definition.version === AGENT_STEP_V2.version)
+      definition.version === AGENT_STEP_V2.version ||
+      definition.version === AGENT_STEP_V3.version)
   );
 }
 
-export function agentToolAllowedWithoutApproval(
-  node: Readonly<{
-    definition: Readonly<{ key: string; version: number }>;
-    config: unknown;
-  }>,
+export function agentToolsAllowedWithoutApproval(
+  node: Parameters<typeof readAgentConfig>[0],
 ) {
-  if (!isAgentDefinition(node.definition)) return undefined;
-  const tool = agentConfigSchema.safeParse(node.config).data?.tool;
-  if (
-    tool !== undefined &&
-    'writePermission' in tool &&
-    tool.writePermission.kind === 'allow'
-  )
-    return tool;
-  return undefined;
+  return (readAgentConfig(node)?.tools ?? []).filter(
+    (tool) =>
+      'writePermission' in tool && tool.writePermission.kind === 'allow',
+  );
 }
 
 const agentTokenRate = z.int().min(0).max(AGENT_LIMITS.costNanoDollars);

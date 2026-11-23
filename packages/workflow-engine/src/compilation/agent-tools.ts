@@ -5,11 +5,10 @@ import type {
 } from '@pertexo/node-sdk';
 import {
   AGENT_LIMITS,
-  AGENT_STEP_V2,
-  type AgentConfig,
+  AGENT_STEP_V3,
+  type AgentToolConfig,
   AGENT_SLACK_CONNECTION_SLOT,
-  agentConfigV1Schema,
-  agentConfigV2Schema,
+  readAgentConfig,
   callableObjectInputSchema,
   isAgentDefinition,
 } from '@pertexo/workflow-model';
@@ -20,22 +19,33 @@ import { definitionManifest, executorManifest } from './graph-rules.js';
 import type { WorkflowExecutableNode } from './workflow-executable.js';
 
 /** Resolve only the manifest version and fixed setup named in the executable. */
-export function pinAgentTool(
+export function pinAgentTools(
   node: WorkflowExecutableNode,
   catalog: NodeCatalog,
 ) {
-  if (!isAgentDefinition(node.definition)) return undefined;
-  const schema =
-    node.definition.version === AGENT_STEP_V2.version
-      ? agentConfigV2Schema
-      : agentConfigV1Schema;
-  const parsed = schema.safeParse(node.config);
-  if (!parsed.success) fail('Agent tool settings are invalid');
-  const {
-    tool,
+  if (!isAgentDefinition(node.definition)) return [];
+  const settings = readAgentConfig(node);
+  if (settings === undefined) fail('Agent tool settings are invalid');
+  const slack = settings.tools.some(({ config }) => 'channelId' in config);
+  if (slack !== Object.hasOwn(node.connectionRefs, AGENT_SLACK_CONNECTION_SLOT))
+    fail('Select a Slack connection for the Agent Slack tool.');
+  return settings.tools.map((tool) =>
+    pinAgentTool(node, catalog, tool, settings),
+  );
+}
+
+function pinAgentTool(
+  node: WorkflowExecutableNode,
+  catalog: NodeCatalog,
+  tool: AgentToolConfig,
+  {
     model,
     timeoutMillis = AGENT_LIMITS.timeoutMillis,
-  } = parsed.data;
+  }: Pick<
+    NonNullable<ReturnType<typeof readAgentConfig>>,
+    'model' | 'timeoutMillis'
+  >,
+) {
   const manifest = definitionManifest(catalog, tool.definition);
   const callable = 'target' in tool.config ? tool.config : undefined;
   const { callableSchema, policy } = toolPolicy(callable, manifest.agentTool);
@@ -44,10 +54,8 @@ export function pinAgentTool(
     [AGENT_SLACK_CONNECTION_SLOT]: slackConnectionId,
     ...modelConnections
   } = node.connectionRefs;
-  if ((slack === undefined) !== (slackConnectionId === undefined))
-    fail('Select a Slack connection for the Agent Slack tool.');
   const connectionRefs =
-    slackConnectionId === undefined
+    slack === undefined || slackConnectionId === undefined
       ? {}
       : { [AGENT_SLACK_CONNECTION_SLOT]: slackConnectionId };
   const writePermission =
@@ -65,6 +73,7 @@ export function pinAgentTool(
   return Object.freeze({
     agentDefinition: node.definition,
     alias: tool.alias,
+    description: tool.description,
     model,
     timeoutMillis,
     approval:
@@ -95,8 +104,7 @@ export function pinAgentTool(
 }
 
 function toolPolicy(
-  callable:
-    Extract<AgentConfig['tool']['config'], { target: unknown }> | undefined,
+  callable: Extract<AgentToolConfig['config'], { target: unknown }> | undefined,
   manifestPolicy: NodeManifest['agentTool'],
 ) {
   const callableSchema =
@@ -117,7 +125,7 @@ function toolPolicy(
 }
 
 function attemptConfig(
-  config: AgentConfig['tool']['config'],
+  config: AgentToolConfig['config'],
 ): WorkflowExecutableNode['config'] {
   if ('table' in config) return pinTableSetup(config);
   if ('target' in config) return { target: { ...config.target } };
@@ -136,4 +144,15 @@ function pinTableSetup({
       ? {}
       : { columnBindings: Object.freeze(columnBindings) }),
   };
+}
+
+export function agentToolForAlias(
+  tools: readonly ReturnType<typeof pinAgentTool>[],
+  alias: string | undefined,
+) {
+  if (alias !== undefined) return tools.find((tool) => tool.alias === alias);
+  const first = tools[0];
+  return first?.agentDefinition.version === AGENT_STEP_V3.version
+    ? undefined
+    : first;
 }

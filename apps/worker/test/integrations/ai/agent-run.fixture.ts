@@ -106,7 +106,8 @@ export async function publishAgentRun(
         ],
         keyColumn: 'key',
       });
-      if (write === undefined && !legacy) expectedTableId = table.id;
+      if ((write === undefined && !legacy) || shape === 'multi-tool')
+        expectedTableId = table.id;
       await tables.importRows({
         ...actor,
         idempotencyKey: randomUUID(),

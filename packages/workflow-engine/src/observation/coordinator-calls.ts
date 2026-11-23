@@ -42,7 +42,7 @@ export function callDeclarationObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: WorkflowCheckpoint,
   nodes: ReadonlyMap<string, ExecutionNode>,
-  agentToolFor: (nodeId: string) => AgentTool | undefined,
+  agentToolFor: (nodeId: string, alias?: string) => AgentTool | undefined,
 ): Readonly<{
   intents: readonly WorkflowCallIntent[];
   observations: readonly WorkflowObservation[];
@@ -91,11 +91,11 @@ function callDeclaration(
   owner: WorkflowCheckpoint['invocations'][number],
   node: ExecutionNode,
   checkpoint: WorkflowCheckpoint,
-  agentToolFor: (nodeId: string) => AgentTool | undefined,
+  agentToolFor: (nodeId: string, alias?: string) => AgentTool | undefined,
 ): Pick<WorkflowCallIntent, 'target' | 'deadlineAt'> | undefined {
   const tool =
     owner.agentWork?.work.kind === 'tool_call'
-      ? agentToolFor(node.id)?.callable
+      ? agentToolFor(node.id, owner.agentWork.toolAlias)?.callable
       : undefined;
   if (tool === undefined) {
     if (!isWorkflowCallDefinition(node.definition)) return undefined;
@@ -160,7 +160,7 @@ export function callOutcomeObservations(
   nodes: ReadonlyMap<string, ExecutionNode>,
   scope: Readonly<{
     graph: WorkflowExecutableGraph;
-    agentToolFor: (nodeId: string) => AgentTool | undefined;
+    agentToolFor: (nodeId: string, alias?: string) => AgentTool | undefined;
   }>,
 ): readonly WorkflowObservation[] {
   let bounded: JsonValue;
@@ -222,12 +222,12 @@ function isAgentCallOutcome(
   fact: WorkflowCallOutcome,
   owner: WorkflowCheckpoint['invocations'][number] | undefined,
   checkpoint: WorkflowCheckpoint,
-  agentToolFor: (nodeId: string) => AgentTool | undefined,
+  agentToolFor: (nodeId: string, alias?: string) => AgentTool | undefined,
 ) {
   const work = owner?.agentWork;
   if (
     work?.work.kind !== 'tool_call' ||
-    agentToolFor(fact.nodeId)?.callable === undefined
+    agentToolFor(fact.nodeId, work.toolAlias)?.callable === undefined
   )
     return false;
   if (

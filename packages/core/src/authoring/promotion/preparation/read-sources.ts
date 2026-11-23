@@ -6,7 +6,7 @@ import { connectionScope } from '../../../shared/resources/connection-scope.repo
 import {
   parseWorkflowGraphDraft,
   workflowNodes,
-  workflowDataTableBinding,
+  workflowDataTableBindings,
 } from '@pertexo/workflow-model';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
@@ -91,13 +91,13 @@ export async function readPromotionSources(
     ),
     connectionIds,
   });
-  const tableIdentities = nodes.flatMap((node) => {
-    const binding = workflowDataTableBinding(node);
-    return binding === undefined ||
-      (binding.location === 'tool' && !binding.find)
-      ? []
-      : [dataTableIdentity(binding.config)];
-  });
+  const tableIdentities = nodes.flatMap((node) =>
+    workflowDataTableBindings(node).flatMap((binding) =>
+      binding.location === 'tool' && !binding.find
+        ? []
+        : [dataTableIdentity(binding.config)],
+    ),
+  );
   const tables = await readTablesByIdentity(
     drizzle(client),
     workspaceId,

@@ -14,13 +14,16 @@ import type {
 } from './workflow-executable.js';
 import { sameIdentity } from './definition-identity.js';
 import { fail } from './executable.errors.js';
-import { pinAgentTool } from './agent-tools.js';
+import { agentToolForAlias, pinAgentTools } from './agent-tools.js';
 type VerifiedExecutableFacts = Readonly<{
   failureRoutes: readonly ExecutionFailureRoute[];
   nodes: readonly ExecutionNode[];
   controls: ReadonlyMap<string, ControlNodeConfig>;
   readOnlyNodeIds: ReadonlySet<string>;
-  agentTools: ReadonlyMap<string, NonNullable<ReturnType<typeof pinAgentTool>>>;
+  agentTools: ReadonlyMap<
+    string,
+    readonly ReturnType<typeof pinAgentTools>[number][]
+  >;
 }>;
 const authenticExecutableIdentities = new WeakMap<
   object,
@@ -81,8 +84,8 @@ export function registerExecutableIdentity(
       ),
       agentTools: new Map(
         nodes.flatMap((node) => {
-          const tool = pinAgentTool(node, catalog);
-          return tool === undefined ? [] : [[node.id, tool] as const];
+          const tools = pinAgentTools(node, catalog);
+          return tools.length === 0 ? [] : [[node.id, tools] as const];
         }),
       ),
     }),
@@ -90,11 +93,19 @@ export function registerExecutableIdentity(
   return value;
 }
 
-export function executableAgentTool(
+export function executableAgentTools(
   value: CompiledWorkflowExecutable,
   nodeId: string,
 ) {
-  return authenticExecutableIdentities.get(value)?.agentTools.get(nodeId);
+  return authenticExecutableIdentities.get(value)?.agentTools.get(nodeId) ?? [];
+}
+
+export function executableAgentTool(
+  value: CompiledWorkflowExecutable,
+  nodeId: string,
+  alias?: string,
+) {
+  return agentToolForAlias(executableAgentTools(value, nodeId), alias);
 }
 
 function withControls(graph: WorkflowExecutableGraph): ExecutionNode[] {

@@ -33,17 +33,20 @@ type AgentPhase =
   | Readonly<{
       kind: 'proposed_call';
       ordinal: number;
+      toolAlias?: string;
       proposal: AgentAttemptReceipt;
     }>
   | Readonly<{
       kind: 'approval_wait';
       ordinal: number;
+      toolAlias?: string;
       proposal: AgentAttemptReceipt;
       task?: Extract<OutputReference, { kind: 'task' }>;
     }>
   | Readonly<{
       kind: 'running_tool';
       ordinal: number;
+      toolAlias?: string;
       proposal: AgentAttemptReceipt;
     }>
   | Readonly<{ kind: 'completion'; output: AgentAttemptReceipt }>;

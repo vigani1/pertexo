@@ -24,7 +24,10 @@ export function resolveAttemptFailures(
     failures: readonly AttemptFailureObservation[];
     invocations: ReadonlyMap<string, FailureInvocation>;
     nodes: ReadonlyMap<string, WorkflowExecutableNode>;
-    agentToolFor?: (nodeId: string) => WorkflowExecutableNode | undefined;
+    agentToolFor?: (
+      nodeId: string,
+      alias?: string,
+    ) => WorkflowExecutableNode | undefined;
     retryPolicyReference: PolicyReference;
     controlCanceled: boolean;
     controlDeadline: boolean;
@@ -124,13 +127,16 @@ function failureNode(
     agentToolFor,
   }: Readonly<{
     nodes: ReadonlyMap<string, WorkflowExecutableNode>;
-    agentToolFor?: (nodeId: string) => WorkflowExecutableNode | undefined;
+    agentToolFor?: (
+      nodeId: string,
+      alias?: string,
+    ) => WorkflowExecutableNode | undefined;
   }>,
   invocation: FailureInvocation | undefined,
 ): WorkflowExecutableNode | undefined {
   if (invocation === undefined) return undefined;
   return invocation.agentWork?.work.kind === 'tool_call'
-    ? agentToolFor?.(invocation.nodeId)
+    ? agentToolFor?.(invocation.nodeId, invocation.agentWork.toolAlias)
     : nodes.get(invocation.nodeId);
 }
 

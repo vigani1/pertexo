@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 
 import {
   InvalidWorkflowGraphError,
-  agentCallSetup,
+  agentCallSetups,
   callableObjectInputSchema,
   canonicalJson,
   type CallableType,
@@ -32,11 +32,12 @@ export async function validatePublicationCalls(
   for (const current of graphs)
     for (const node of current.nodes) {
       if (node.structured !== undefined) graphs.push(node.structured.body);
-      const call = agentCallSetup(node);
-      if (call === undefined) continue;
-      const contracts = agentContracts.get(call.target.workflowVersionId) ?? [];
-      contracts.push(call.input);
-      agentContracts.set(call.target.workflowVersionId, contracts);
+      for (const call of agentCallSetups(node)) {
+        const contracts =
+          agentContracts.get(call.target.workflowVersionId) ?? [];
+        contracts.push(call.input);
+        agentContracts.set(call.target.workflowVersionId, contracts);
+      }
     }
   try {
     await validateCallDependencyClosure(
