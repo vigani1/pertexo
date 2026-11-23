@@ -25,7 +25,7 @@ const prepare = {
   ...manual,
   id: 'prepare-order',
   label: 'Prepare order',
-  definition: { key: 'core.set', version: 1 },
+  definition: { key: 'core.set', version: 2 },
   position: { x: 300, y: 0 },
 };
 const graph = {
