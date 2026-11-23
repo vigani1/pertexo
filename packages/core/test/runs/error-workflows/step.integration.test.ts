@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { expect, it } from 'vitest';
 import { apiPool } from '../../support/workflow-authoring.js';
-import { workflowGraphStepSql } from '../../../src/runs/queries/execution/graph-step.repository.js';
+import { workflowGraphStepSql } from '../../../src/shared/run-records/graph-step.repository.js';
 
 it('reads only declared steps, including structured bodies, without interpreting configuration as metadata', async () => {
   const decoy = {
