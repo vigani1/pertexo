@@ -32,27 +32,27 @@ export function isAgentChildOf(
 
 const modelTurn = 'model';
 
+function agentNodeComponent(key: string): string | undefined {
+  const [, component] = key.split('|');
+  return component?.startsWith(encodeURIComponent(agentNodePrefix)) === true
+    ? component
+    : undefined;
+}
+
 export function isAgentWorkInvocationKey(key: string): boolean {
-  const [, nodeComponent] = key.split('|');
-  return (
-    nodeComponent?.startsWith(encodeURIComponent(agentNodePrefix)) === true
-  );
+  return agentNodeComponent(key) !== undefined;
 }
 
 export function isAgentModelTurnInvocationKey(key: string): boolean {
-  return (
-    isAgentWorkInvocationKey(key) &&
-    key.split('|')[1]?.endsWith(encodeURIComponent(`:${modelTurn}`)) === true
-  );
+  const parts = agentNodeComponent(key)?.split(encodeURIComponent(':'));
+  return parts?.length === 4 && parts[3] === modelTurn;
 }
 
 export function agentToolAliasFromInvocationKey(
   key: string,
 ): string | undefined {
-  if (!isAgentWorkInvocationKey(key)) return undefined;
-  const [, component] = key.split('|');
-  const parts = component?.split(encodeURIComponent(':')) ?? [];
-  return parts[3] === 'tool' && parts.length === 6 ? parts[5] : undefined;
+  const parts = agentNodeComponent(key)?.split(encodeURIComponent(':'));
+  return parts?.length === 6 && parts[3] === 'tool' ? parts[5] : undefined;
 }
 
 /** A NUL in the encoded node component cannot originate in a graph node ID. */

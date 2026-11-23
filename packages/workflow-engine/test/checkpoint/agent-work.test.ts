@@ -6,6 +6,11 @@ import {
   settleAgentModelTurn,
   settleAgentTool,
 } from '../../src/control-nodes/settle-agent-work.js';
+import {
+  agentChildInvocationKey,
+  agentToolAliasFromInvocationKey,
+  isAgentModelTurnInvocationKey,
+} from '../../src/invocations/agent-invocation.js';
 import { createCheckpoint, parseCheckpoint } from '../../src/server.js';
 
 const version = '00000000-0000-4000-8000-000000000001';
@@ -155,4 +160,19 @@ describe('Agent receipts', () => {
       reason: 'agent.stale_receipt',
     });
   });
+});
+
+it('keeps a tool aliased model distinct from a model turn', () => {
+  const model = agentChildInvocationKey(version, agent.parentInvocationKey, {
+    turn: 1,
+    work: { kind: 'model_turn' },
+  });
+  const tool = agentChildInvocationKey(version, agent.parentInvocationKey, {
+    turn: 1,
+    work: { kind: 'tool_call', ordinal: 1 },
+    toolAlias: 'model',
+  });
+  expect(isAgentModelTurnInvocationKey(model)).toBe(true);
+  expect(isAgentModelTurnInvocationKey(tool)).toBe(false);
+  expect(agentToolAliasFromInvocationKey(tool)).toBe('model');
 });
