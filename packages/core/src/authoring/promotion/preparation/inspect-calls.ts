@@ -16,10 +16,11 @@ import {
   validateCallDependencyClosure,
   summarizeWorkflowCalls,
   WORKFLOW_GRAPH_LIMITS,
+  mapWorkflowNodes,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
-import { mapPromotionNodes, type PromotionGraphBudget } from './graph.js';
+import type { PromotionGraphBudget } from './graph.js';
 import type { PromotionSource } from './source.repository.js';
 import { inspectPromotionRequirements } from './inspect-requirements.js';
 
@@ -82,7 +83,7 @@ export async function rebindPromotionCalls(
           },
         });
     }
-  return mapPromotionNodes(graph, (node) => {
+  return mapWorkflowNodes(graph, (node) => {
     const replacement = replacements.get(node.id);
     return replacement === undefined
       ? node

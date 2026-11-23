@@ -1,4 +1,5 @@
 import {
+  mapWorkflowNodes,
   PROMOTION_LIMITS,
   EMPTY_WORKFLOW_GRAPH,
   WorkflowPortabilityError,
@@ -11,7 +12,6 @@ import { admitWorkflowAuthoring } from '../../../workflows/admit-graph.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/head.repository.js';
 import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
 import type { PromotionContext } from '../../workflow-promotion.types.js';
-import { mapPromotionNodes } from '../graph.js';
 import type { PromotionSource } from '../source.repository.js';
 import { rebindPromotionTable } from '../tables.js';
 import { rebindPromotionConnections } from '../rebind-connections.js';
@@ -64,7 +64,7 @@ export async function prepareTargetGraph(
       catalogs: context.catalogs,
       report,
     });
-    graph = mapPromotionNodes(graph, (node) =>
+    graph = mapWorkflowNodes(graph, (node) =>
       rebindPromotionTable(node, sources.tables, tables, (requirement) => {
         report({ workflowId: source.workflowId, ...requirement });
       }),
