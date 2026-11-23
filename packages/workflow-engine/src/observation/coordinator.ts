@@ -71,9 +71,7 @@ export function branchSelectionObservations({
       );
     const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
-    const ignoresBranchMaterial =
-      node === undefined || (!test && isHumanTaskDefinition(node.definition));
-    if (ignoresBranchMaterial) return [];
+    if (node === undefined) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
       assertParallelOutput({
@@ -85,32 +83,12 @@ export function branchSelectionObservations({
       verifiedParallelOutputs.add(outcomeIdentity);
       return [];
     }
-    const outputPorts = configuredBranchOutputPorts(node);
-    if (outputPorts === undefined) return [];
-    const completedValue = material.value;
-    if (completedValue === undefined)
-      operationError('observation_invalid', 'branch output is missing');
-    const output = record(
-      completedValue,
-      'observation_invalid',
-      'branch output',
+    return branchSelectionForCompletedValue(
+      node,
+      material.invocationKey,
+      material.value,
+      test,
     );
-    if (!test || !isHumanTaskDefinition(node.definition))
-      exactKeys(output, ['selectedPort']);
-    if (
-      typeof output.selectedPort !== 'string' ||
-      !outputPorts.includes(output.selectedPort)
-    )
-      operationError('observation_invalid', 'branch output is invalid');
-    return [
-      {
-        kind: 'branch_selected',
-        invocationKey: material.invocationKey,
-        nodeId: node.id,
-        selectedOutputPort: output.selectedPort,
-        coordinatorDerived: true,
-      },
-    ];
   });
   // Only fresh successful facts need material. Previously verified checkpoint
   // successes retain their scoped branch/join authority across recovery.
@@ -128,6 +106,36 @@ export function branchSelectionObservations({
       operationError('observation_invalid', 'Parallel output is missing');
   }
   return observations;
+}
+
+export function branchSelectionForCompletedValue(
+  node: ExecutionNode,
+  invocationKey: string,
+  completedValue: JsonValue | undefined,
+  test = false,
+): WorkflowObservation[] {
+  if (!test && isHumanTaskDefinition(node.definition)) return [];
+  const outputPorts = configuredBranchOutputPorts(node);
+  if (outputPorts === undefined) return [];
+  if (completedValue === undefined)
+    operationError('observation_invalid', 'branch output is missing');
+  const output = record(completedValue, 'observation_invalid', 'branch output');
+  if (!test || !isHumanTaskDefinition(node.definition))
+    exactKeys(output, ['selectedPort']);
+  if (
+    typeof output.selectedPort !== 'string' ||
+    !outputPorts.includes(output.selectedPort)
+  )
+    operationError('observation_invalid', 'branch output is invalid');
+  return [
+    {
+      kind: 'branch_selected',
+      invocationKey,
+      nodeId: node.id,
+      selectedOutputPort: output.selectedPort,
+      coordinatorDerived: true,
+    },
+  ];
 }
 
 export function mergeCoordinatorObservations(

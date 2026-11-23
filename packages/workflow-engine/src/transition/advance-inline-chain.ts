@@ -9,7 +9,7 @@ import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import { assertNotAborted } from '../attempt/admission.js';
 import { resolveAttemptFailures } from '../observation/coordinator-failures.js';
 import {
-  branchSelectionObservations,
+  branchSelectionForCompletedValue,
   mergeCoordinatorObservations,
 } from '../observation/coordinator.js';
 import { forEachCoordinatorObservations } from '../observation/coordinator-loops.js';
@@ -174,8 +174,8 @@ export async function advanceInlineChain(
 }
 
 function settleInvocation(
-  { input, options, state, nodes, settled }: Chain,
-  { invocation }: Candidate,
+  { input, options, state, settled }: Chain,
+  { invocation, node }: Candidate,
   {
     startedAt,
     occurredAt,
@@ -251,7 +251,11 @@ function settleInvocation(
     settled.push({ ...identity, kind: 'succeeded', output: result.output });
     observations.push(
       { ...base, kind: 'outcome', status: 'succeeded', output },
-      ...inlineBranchSelection(nodes, state, identity, result.output),
+      ...branchSelectionForCompletedValue(
+        node,
+        invocation.invocationKey,
+        result.output,
+      ),
     );
   } else if (failure !== undefined) {
     const [decision] = resolveAttemptFailures({
@@ -356,34 +360,5 @@ function settledLoopBatch(
       ) ??
         false)
     );
-  });
-}
-
-function inlineBranchSelection(
-  nodes: ReadonlyMap<string, ExecutionNode>,
-  state: MutableWorkflowTransition,
-  identity: Readonly<{ invocationKey: string; attemptId: string }>,
-  value: JsonValue,
-) {
-  const { attemptId, invocationKey } = identity;
-  const sequence = state.current.nextEventSequence;
-  const output = { kind: 'inline' as const, attemptId };
-  return branchSelectionObservations({
-    completedItems: [
-      {
-        sequence,
-        attemptId,
-        invocationKey: invocationKey,
-        value,
-      },
-    ],
-    successfulOutcomes: new Map([
-      [
-        `${String(sequence)}\u0000${attemptId}\u0000${invocationKey}`,
-        { invocationKey, status: 'succeeded', output },
-      ],
-    ]),
-    invocations: state.invocations,
-    nodes,
   });
 }
