@@ -178,11 +178,7 @@ export const workflowProblems = [
     });
   }),
   errorRegistration(InvalidWorkflowGraphError, (error) => {
-    const issues = error.issues.map(({ path, code, message }) => ({
-      path,
-      code,
-      message,
-    }));
+    const issues = error.issues.map(({ kind: _kind, ...issue }) => issue);
     if (issues.some((issue) => !apiProblemIssueSchema.safeParse(issue).success))
       // Not the error itself: its issues hold what the person wrote, which stays
       // out of the log.
