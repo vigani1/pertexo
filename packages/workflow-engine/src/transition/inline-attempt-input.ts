@@ -17,6 +17,7 @@ import {
   upstreamInvocationKey,
 } from '../attempt/upstream-scope.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
+import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
 import { executableFailureRoutes } from '../compilation/verified-executable.js';
 import { operationError } from '../input-checks/engine-values.js';
 import {
@@ -99,14 +100,10 @@ export async function readInlineAttemptInput(
   const route = executableFailureRoutes(input.executable).find(
     ({ entryNodeId }) => entryNodeId === nodeId,
   );
-  const failureSource =
-    route === undefined
-      ? undefined
-      : context.graph.nodes.find(({ id }) => id === route.sourceNodeId);
-  const agentFailureSourceNodeId =
-    failureSource !== undefined && isAgentDefinition(failureSource.definition)
-      ? failureSource.id
-      : undefined;
+  const agentFailureSourceNodeId = agentFailureSourceId(
+    context.graph,
+    route?.sourceNodeId,
+  );
   const localFailure = state.failureValues.find(
     ({ entryInvocationKey }) => entryInvocationKey === invocationKey,
   )?.value;
@@ -172,6 +169,17 @@ export async function readInlineAttemptInput(
     },
     prepared,
   );
+}
+
+function agentFailureSourceId(
+  graph: WorkflowExecutableGraph,
+  sourceNodeId: string | undefined,
+): string | undefined {
+  if (sourceNodeId === undefined) return undefined;
+  return graph.nodes.find(
+    ({ id, definition }) =>
+      id === sourceNodeId && isAgentDefinition(definition),
+  )?.id;
 }
 
 function mergeInput(
