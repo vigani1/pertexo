@@ -25,6 +25,7 @@ import {
   sameIterationPath,
 } from '../invocations/invocation-scope.js';
 import type { InvocationState } from '../workflow-execution.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { InlineAdvanceOptions } from './advance-inline-chain.js';
 import type { AdvanceWorkflowInput } from './advance-workflow.js';
 import type { MutableWorkflowTransition } from './transition-state.js';
@@ -134,7 +135,10 @@ export async function readInlineAttemptInput(
   const projectedMerge =
     merge === undefined ? undefined : projectMergeInput(merge, outputs);
   if (projectedMerge?.kind === 'missing_output')
-    operationError('checkpoint_invalid', 'settled Merge output is missing');
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      'settled Merge output is missing',
+    );
   const prepared = prepareNodeAttemptInput(
     {
       executable: input.executable,
