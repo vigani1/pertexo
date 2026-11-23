@@ -541,6 +541,43 @@ describe('bounded coordinator inline advances', () => {
     expect(entered).toBe(false);
   });
 
+  it('settles a deadline crossed during preparation without entering the kernel', async () => {
+    let now = Date.parse(occurredAt);
+    let entered = false;
+    const fixture = await start(
+      1,
+      (invocation) => {
+        entered = true;
+        return add(invocation);
+      },
+      {
+        now: () => now,
+        deadlineAt: now + 30,
+        readValues: async () => {
+          await Promise.resolve();
+          now += 31;
+          return { runInput: { value: 10 }, outputs: [], attemptOutputs: [] };
+        },
+      },
+    );
+    const plan = await advanceWorkflow({
+      ...fixture.base,
+      checkpoint: fixture.checkpoint,
+      observations: fixture.observations,
+      inline: fixture.inline,
+    });
+    expect(plan.inlineAttempts).toMatchObject([
+      {
+        kind: 'timed_out',
+        attemptNumber: 1,
+        safeErrorCode: 'execution.deadline_exceeded',
+      },
+    ]);
+    expect(plan.attempts).toEqual([]);
+    expect(plan.checkpoint.runStatus).toBe('timed_out');
+    expect(entered).toBe(false);
+  });
+
   it('settles a run deadline crossed by a synchronous kernel as a timeout', async () => {
     let now = Date.parse(occurredAt);
     const fixture = await start(
