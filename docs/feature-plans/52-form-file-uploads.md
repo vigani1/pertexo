@@ -1,7 +1,6 @@
 # F52 — File uploads in forms and input requests
 
-Status: approved by the owner on 2026-10-26 (recommended options delegated).
-Delivery: one of four features combined in `feat/spreadsheets-attachments-and-task-timeouts`.
+Delivered. See [forms and requested input](../guides/forms.md).
 
 ## Outcome
 

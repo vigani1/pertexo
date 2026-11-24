@@ -14,6 +14,12 @@ an administrator. Verify the account email, sign in at your configured app
 origin and create or enter a workspace. Use an owner, admin or builder account
 for authoring. Invited viewers cannot edit workflows.
 
+## Try the guided example
+
+On the workspace home, select **Try the example** under **Getting started**.
+The editor’s **Your first run** guide takes you through publishing, running
+and inspecting the result. The example needs no external connection.
+
 ## Build a small manual workflow
 
 Open **Workflows**, choose **New workflow**, and create a blank workflow with a

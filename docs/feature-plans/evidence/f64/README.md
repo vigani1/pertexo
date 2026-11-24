@@ -22,7 +22,4 @@ published manual workflow sent `id = 1` to Get post. The worker projected
 `{"title":"Hello"}`. The provider recorded two successful
 `GET /posts/1` requests, one for the test and one for the published run.
 
-| View | Light | Dark |
-| --- | --- | --- |
-| Step picker | [Light](step-tile-light.png) | [Dark](step-tile-dark.png) |
-| Credential form | [Light](credential-form-light.png) | [Dark](credential-form-dark.png) |
+[Step picker](step-tile-dark.png) · [Credential form](credential-form-dark.png)

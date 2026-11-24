@@ -1,6 +1,6 @@
 # F53 — Database step (PostgreSQL)
 
-Status: in progress. First slice of [F21b](21b-next-integrations.md).
+Delivered. First slice of [F21b](21b-next-integrations.md).
 
 ## Outcome
 

@@ -1,7 +1,6 @@
 # F49 — Email attachments
 
-Status: approved by the owner on 2026-10-26 (recommended options delegated).
-Delivery: one of four features combined in `feat/spreadsheets-attachments-and-task-timeouts`.
+Delivered. [Send email with files from earlier steps](../guides/email.md).
 
 ## Outcome
 
