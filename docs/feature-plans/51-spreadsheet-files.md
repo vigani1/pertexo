@@ -1,7 +1,6 @@
 # F51 — Spreadsheet files (Excel)
 
-Status: approved by the owner on 2026-10-26 (recommended options delegated).
-Delivery: one of four features combined in `feat/spreadsheets-attachments-and-task-timeouts`.
+Delivered. See [files in workflows](../guides/files.md).
 
 ## Outcome
 

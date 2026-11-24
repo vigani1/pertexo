@@ -1,9 +1,10 @@
 # F56 — AI Model step
 
-Status: accepted; waits for F57 slices 1-3. Delivers slice 2 of [F22](22-ai-assistance-and-ai-nodes.md)
-first. Decisions in [ADR 094](../adr/094-model-steps.md). F22's model budget
-means the call and attempt bounds below. Authoring assistance and agent tools
-have their own delivery slices.
+Delivered in [#841](https://github.com/vigani1/pertexo/pull/841),
+[#846](https://github.com/vigani1/pertexo/pull/846) and
+[#848](https://github.com/vigani1/pertexo/pull/848). Part of
+[F22](22-ai-assistance-and-ai-nodes.md), governed by
+[ADR 094](../adr/094-model-steps.md).
 
 ## Outcome
 

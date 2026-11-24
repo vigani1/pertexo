@@ -2,8 +2,8 @@
 
 How `apps/web` is built: who owns which state, how features talk to the API,
 where code goes, the visual system and the tests that hold it together.
-[README.md](README.md) covers setup and current capabilities, and
-[AGENTS.md](AGENTS.md) covers agent instructions. Backend contracts, the
+[README.md](README.md) covers setup and verification, and [AGENTS.md](AGENTS.md)
+covers agent instructions. Backend contracts, the
 [domain vocabulary](../../CONTEXT.md) and accepted ADRs stay authoritative;
 update this guide when a decision changes, not with progress notes.
 
@@ -67,226 +67,16 @@ verify compatible versions when that slice is implemented.
 
 ## 2. Folders and dependency direction
 
-The map follows current ownership. Add files when their behavior exists; group a
-feature by role and sub-area as it grows.
+[Web workspace rules](AGENTS.md#layout) own the folder map, feature entries and
+conventions for placing new code. Routes compose feature pages and pass in the
+same API and Query dependencies their loaders use. Feature modules never import
+the shell to obtain those dependencies.
 
-```text
-apps/web/
-  AGENTS.md / README.md / ARCHITECTURE.md
-  src/
-    main.tsx                    # create app-lifetime dependencies
-    app/
-      router.ts                 # inject query client and API dependency
-      query-client.ts           # conservative shared cache defaults
-    routes/
-      root/                     # route tree, root layout, pending/not-found pages
-      auth/                     # login, sign-up, password, invitation routes
-      workspace/                # workspace shell and its section routes
-      workflow/                 # workflow hub, build, runs, settings routes
-    features/
-      auth/                     # session query and login/logout behavior
-      workspaces/               # discovery, membership and workspace UI
-      workflows/
-        data/                   # workflows.api.ts (requests and decoders),
-                                # workflows.queries.ts, *.mutations.ts
-        pages/                  # workflow-list.tsx and other screens
-        components/             # feature presentation
-        hooks/                  # feature hooks
-        model/                  # pure rules
-        public.ts               # rules, hooks and data other code uses
-        workflows-views.public.ts   # components other features render
-        workflows-queries.public.ts # what route loaders import
-        workflows-routing.public.ts # what the always-loaded shell imports
-      catalog/                  # API catalog queries + selection UI
-      connections/              # credential forms, safe metadata and picker
-      workflow-editor/
-        pages/workflow-editor.tsx # feature entry/composition
-        model/
-          state/store.ts        # factory, selectors, commands; no networking
-          state/provider.tsx    # one store per editor identity
-          persistence/editor-history.ts # bounded edit transactions
-          graph/adapter.ts      # domain graph ↔ canvas representation
-          persistence/save-coordinator.ts # serialized saves and conflicts
-        components/             # separate feature-owned visual modules
-          canvas/               # node card, handles, edge, controls, selection
-          add-step/             # palette and step selection
-          inspector/            # panel layout, field renderer and sections
-          chrome/               # command bar and workflow name field
-        public.ts               # and workflow-editor-views/-queries.public.ts
-      workflow-runs/            # run queries, commands, streams and views
-      artifacts/                # signed transfer workflow, when needed
-    components/
-      ui/                       # shadcn/Base UI primitives; flat, as shadcn adds them
-      patterns/                 # proven domain-independent compositions, by area:
-                                # actions, app-update, code, core, guidance,
-                                # lists, settings, states
-    lib/
-      api/
-        client.ts               # transport factory, no feature imports
-        error.ts                # normalized transport failure representation
-        csrf.ts                 # readable CSRF cookie adapter
-        sse.ts                  # bounded SSE decoding, only when runs need it
-      utils.ts                  # existing cn helper
-    styles/                     # semantic tokens, base styles, small utilities
-  test/
-    lib/                        # HTTP/problem/stream protocol tests
-    features/                   # model + component/network behavior
-    support/                    # fresh providers, contract-valid fixtures, MSW
-  e2e/                          # actual browser journeys
-```
-
-Rules:
-
-- `app` and `routes` compose features. Features never import either layer.
-- Shared `components` and `lib` never import features. Primitive UI has no API
-  calls, workspace logic, auth dependency or query keys.
-- Features may consume another feature's entries (below); never its private
-  store/components. Keep that graph acyclic: views may use another feature's
-  `public.ts`, and `public.ts` never re-exports a component, so a rule never
-  waits on another feature's UI. Initially the editor may consume workflows,
-  catalog and connections; those do not import the editor. Run views consume
-  workflow version queries, not editor state.
-- Expose a feature entry, query factories or a reusable picker only as needed.
-  No barrel that re-exports every file; no intra-feature imports through its own
-  public entry. Keep heavy UI out of lightweight query export dependency paths.
-- Routes own page composition; feature code owns behavior. Feature UI obtains
-  the injected API through a small shared context or explicit prop; it must not
-  import `app` to access a singleton. Loaders use the router's same dependency.
-- No root `services/`, `repositories/`, `types/` or `hooks/` dumping grounds. A
-  hook belongs to the feature that gives it meaning. Extract only a genuine
-  reusable responsibility, not another pass-through function.
-- Backend HTTP **route definitions** remain in `apps/api`. Browser route files
-  define pages; feature `*.api.ts` files define outgoing requests. There is no
-  Next-style `app/api` folder or client-side server route implementation.
-
-Grouping within a feature:
-
-- Keep the `pages`, `components`, `model`, `data`, `forms` and `mutations`
-  vocabulary; inside them, group a real cluster of files by what it serves
-  (`components/list/`, `model/graph/`). A folder holds at most about ten files;
-  no one-file folders for symmetry.
-- A hook used by one UI area sits beside that area; a hook shared by several
-  sits at their narrowest common owner. Pure rules are named functions in
-  `model/`, never inside UI.
-- Name a file for what it exports, with a domain qualifier where `data`,
-  `state`, `thread` or `command` would be ambiguous. Tests mirror the source
-  layout under `test/features/`.
-
-Naming: kebab-case filenames; PascalCase components/types; `useX` for hooks;
-`*.api.ts`, `*.queries.ts`, `*.mutations.ts`, `*.schemas.ts` and `*.store.ts`
-when the distinction is useful. Use named exports and `import type`. Prefer
-ordinary TypeScript, explicit props and discriminated unions over clever generic
-layers. Comments explain invariants/tradeoffs, not what the next statement says.
-
-### Unified frontend implementation standard
-
-This is the common implementation contract for **every feature**, not just the
-editor. The sections below supply the detailed behavior; individual features
-must not invent a competing organization, state strategy or styling system. This
-standard is a prerequisite for future implementation, not authorization to begin
-it or a claim that enforcement is already implemented.
-
-#### One structure, created only as needed
-
-```text
-features/<feature>/
-  public.ts                   # rules, hooks and data other code uses; no UI
-  <feature>-views.public.ts   # components other features or routes render
-  <feature>-queries.public.ts # query options and keys route loaders import
-  <feature>-routing.public.ts # what the always-loaded shell imports: search
-                              # parsers, guards, pending and stage pieces
-  pages/                      # screens a route renders (lazy-loaded); a route
-                              # imports its page from here directly
-  components/                 # separate feature-owned visual responsibilities
-    <meaningful-name>.tsx
-    <sub-area>/               # group a substantial area when needed
-  hooks/                      # use-* hooks that give the feature behavior
-  data/                       # server access
-    <subject>.api.ts          # requests and response decoding
-    <subject>.queries.ts      # scoped keys and query options
-    <subject>.mutations.ts    # server commands and cache effects
-    mutations/                # one command hook per file when there are several
-  forms/                      # form UI and its input validation schemas
-  model/                      # pure rules, transformations, complex local state
-```
-
-Only the public entry files sit at a feature's root; everything else lives in
-the folder for its role. Create a folder only when the feature has such files.
-Do not create empty folders, a store for every feature or a hook for every file.
-Tests mirror the owning feature under `test/features/`; shared test setup stays
-in `test/support/`.
-
-| Responsibility          | Consistent home and rule                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Page/navigation         | `routes/`: validated params/search, loaders and feature composition; no business implementation                           |
-| Feature presentation    | Feature entry composes separate UI modules; substantial cards, panels and toolbars live in its `components/`              |
-| Feature behavior        | Named feature-local functions/hooks; pure rules and transformations in `model/` when grouping is useful                   |
-| API communication       | Feature `*.api.ts` uses shared `lib/api` transport; no direct fetch calls in UI or stores                                 |
-| Server synchronization  | `*.queries.ts` and `*.mutations.ts`; no duplicate query keys, request logic or cache rules in components                  |
-| Forms and validation    | Feature-owned forms and `*.schemas.ts`; import portable shared contracts where applicable, keep UI-only input rules local |
-| Types and helpers       | Beside the behavior that owns them; shared wire types come from approved package exports, never backend internals         |
-| Reusable presentation   | `components/ui` for primitives, `components/patterns` for genuinely domain-independent compositions                       |
-| Reusable infrastructure | Focused `lib/<responsibility>` modules; no generic helpers/services dumping ground                                        |
-
-#### Small modules, meaningful names
-
-- Separate substantial visual responsibilities into named files. A feature entry
-  assembles them; it does not define the entire screen's components, request
-  logic, validation and state transitions inside one file.
-- Keep each module cohesive with a small interface. Split by responsibility and
-  independent change, not an arbitrary line limit. Tiny private markup helpers
-  can remain local; avoid one file per fragment and pass-through layers.
-- Use domain vocabulary and purpose in names. Avoid vague `manager`, `helper`,
-  `data` or `common` names that do not reveal what the module does. Apply the
-  filename/export conventions above consistently.
-- Hooks coordinate one meaningful React lifecycle or interaction. Do not move a
-  monolithic component into a monolithic hook. Pure calculations are ordinary
-  functions, not hooks; derived values are calculated rather than synchronized.
-- A feature has at most these four entries, each for one kind of caller, and
-  each name lives in one of them. Entries only re-export (the module-imports
-  check enforces the kinds, the root placement and the shell rule), so the build
-  treats them as side-effect free and a route loads only the names it imports.
-  The always-loaded shell (`main.tsx` and what it imports statically: `app/`,
-  the route trees, root layout and pending pieces) reaches features only through
-  `-routing` and `-queries` entries, which keeps pages out of the first load.
-  Export only what a caller needs; an entry is not an export-everything barrel.
-- Prefer explicit props, callbacks and children. Use compound composition or
-  context for genuinely coordinated behavior, not as a mandatory wrapper. Keep
-  private details private; cross-feature consumers use deliberate exports.
-
-#### One communication and state convention
-
-- Query owns server snapshots; URL owns navigation/shareable filters; forms own
-  input state; local React owns transient UI. Scoped Zustand is reserved for
-  complex shared client state such as the unsaved editor draft.
-- Multiple independent local states are fine. Multiple writable copies of the
-  same information are not. Do not mirror query data into stores or add effects
-  to keep redundant booleans and derived values synchronized.
-- Reads follow feature query options → feature API → shared transport. Server
-  commands follow mutation/save coordinator → feature API → shared transport,
-  with explicit cache updates/invalidation. UI renders the resulting state.
-- Use the common normalized API error contract and one visible feedback owner
-  per failure. Forms map field errors inline; page/feature recovery handles
-  broader failures. Client validation improves feedback; the server remains
-  authoritative. See sections 4–9 for the exact contracts and exceptions.
-- Use Tailwind utilities, semantic tokens and shared variants for ordinary UI.
-  Global CSS still owns theme/base styles; custom CSS is a small, justified
-  exception for effects or vendor integration, not a parallel feature styling
-  system. Follow section 11's visual rules.
-
-#### Before coding and before calling a slice done
-
-Before each approved slice, identify its scope, file ownership, public
-interface, state owners, API/shared contracts, error/validation behavior and
-observable acceptance tests. Keep this a short task checklist, not another
-architecture document. Resolve consequential departures from this standard
-before implementing them; do not reopen settled choices for routine work.
-
-Before handoff, check that no giant component/hook, duplicated writable state,
-private cross-feature import, speculative abstraction or unnecessary CSS layer
-was introduced. Run the applicable tests and import/lint checks from section 13
-and meet section 14's definition of done. Mechanical checks support this
-standard; they do not replace checking responsibility and readability.
+The always-loaded shell reaches features through their routing and query
+entries. Keep views out of those entries so a loader or search parser cannot
+pull a page or the editor canvas into the initial bundle. Routes render feature
+pages, while endpoint requests and response decoding live in feature data
+modules.
 
 ## 3. Exactly who owns each kind of state
 
@@ -317,10 +107,9 @@ derived rather than being synchronized through effects; effects are for external
 systems such as streams, timers and navigation protection.
 [React guidance](https://react.dev/learn/you-might-not-need-an-effect).
 
-No persisted Query cache, offline mutation queue, persisted credentials or draft
-localStorage in the first release. Harmless UI preferences may be versioned and
-persisted later. Crash recovery needs an explicit privacy/storage design; an
-unload warning is not durable recovery.
+Query snapshots and unsaved drafts live in memory. Appearance is a
+[browser-local preference](../../docs/feature-plans/36-light-theme.md). An
+unload warning cannot restore edits after a crash.
 
 ## 4. Shared packages, API contracts and types
 
@@ -933,16 +722,16 @@ Do not create a stream per node or a global event bus.
 - A graph node can have several invocations. Do not key all run details only by
   graph node ID or show `outcome_unknown` as success/retryable by default.
 
-For future artifacts, use a separate transfer adapter: API reserve → signed
-storage upload → API finalize. Signed URLs are short-lived capabilities; use
-`credentials: 'omit'`, no API CSRF/session headers, and exactly the allowed
-signed method/header/body semantics. Never log or persist signed URLs. Browser
-JavaScript cannot set `Content-Length`; let the browser derive it from exact
-bytes and verify signature compatibility and storage CORS in a real upload test.
-Do not blindly loop over forbidden headers.
-[Browser-controlled headers](https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header).
-Show reserve/upload/finalize failures separately; cancellation is not proof the
-object or reservation disappeared. Artifact list UI is not assumed available.
+File uploads use the feature-local
+[transfer adapter](src/features/artifacts/data/artifact-upload.api.ts). Reserve
+through the API, upload to signed storage, then finalize through the API. The
+signed PUT omits credentials and referrer, rejects redirects and lets the
+browser derive `Content-Length`. File objects and signed URLs stay in the upload
+session. Only finalized descriptors enter a draft or run input.
+
+Present reserve, upload and finalize failures separately. Cancellation may leave
+a reservation or object behind. Use a real upload test to verify the signature
+and storage CORS.
 
 ## 11. Visual design
 
@@ -1334,33 +1123,16 @@ layout and CSS masks before broad release.
 
 ## 13. Tests and mechanical enforcement
 
-No architecture is uniform just because a document says so. Enforce boundaries
-in the same slice that introduces them:
+See [web workspace checks](AGENTS.md#what-guards-it) for import and lint rules
+and [run and verify](README.md#run-and-verify) for commands.
 
-- ESLint keeps Node and backend imports out of `src`, allows only the
-  browser-safe `@pertexo/contracts`, `@pertexo/workflow-model` and
-  `@pertexo/templates` doors, restricts raw `fetch` to the transport adapters,
-  and keeps `components/` and `lib/` from importing features, routes or `app/`.
-  Extend those rules in the slice that introduces a new boundary, with
-  representative allowed and forbidden imports.
-- Fresh QueryClient/router/editor store for each unit/component test. Test
-  through public behavior, not setter call counts or giant snapshots. Page tests
-  share one budget set in `test/setup.ts` (testing-library's `asyncUtilTimeout`
-  of 3 s) and vitest's 15 s per-test ceiling; don't add per-file overrides.
-  Shared primitives have focused tests in `test/components/` and `test/lib/`.
-- ESLint rejects `mutate(x, options)` in `src` (callbacks are dropped when the
-  caller unmounts); act after an awaited `mutateAsync()` instead.
-- MSW lets the real transport and decoders participate in component tests.
-  Fixtures satisfy public schemas; malformed fixtures are explicit negative
-  cases. Mocking HTTP does not prove production auth/CORS/SSE.
-  [MSW's network-level approach](https://mswjs.io/docs/).
-- Keep both Playwright lanes in CI: journeys against the mocked API drive the
-  production browser, transport and decoders, and browser journeys against the
-  real stack run from the API integration suite with isolated users and
-  workspaces. Vite child processes explicitly use `NODE_ENV=production` so
-  Vitest’s `test` environment cannot select React’s development runtime.
-  StrictMode effect replay and reconnection remain covered by component tests.
-  Do not put test bypasses into production auth.
+- Give each component test a fresh Query client, router and editor store as
+  applicable. Keep the shared budgets in `test/setup.ts` and `vitest.config.ts`.
+- Use MSW to exercise the real transport and decoders with contract-valid
+  fixtures. A malformed fixture should test a specific refusal.
+- Mocked Playwright journeys exercise the built frontend. The live lane uses
+  isolated users and workspaces against the real stack. Vite child processes use
+  `NODE_ENV=production` to match the shipped React runtime.
 
 ### Required regression scenarios, introduced with their slice
 
@@ -1385,179 +1157,24 @@ two-tab editing conflict; a happy-path video alone is not enough.
 
 ## 14. Definition of done for each feature
 
-Before handing off a slice, confirm:
-
-1. Its API contract exists, input/response/error types are not duplicated, and
-   authorization/CSRF/idempotency/concurrency rules are correct for each method.
-2. Each state has one owner, scope/lifecycle cleanup is explicit, and no refetch
-   or late response silently destroys user edits or crosses identities.
-3. Loading, empty, forbidden, missing, invalid, stale and failed states are
-   designed—not only the happy path. Recovery actions genuinely work.
-4. Components follow the existing visual tokens and accessible interaction
-   rules; no legacy backend assumptions or unused component-library bulk is
-   imported.
-5. Relevant model/transport/component/browser tests pass, along with build,
-   typecheck, lint and boundary checks. Run wider root gates for shared-contract
-   or architecture-tooling changes. Check the rendered result for visual work.
-6. README's capabilities and this guide follow the change; no separate progress
-   or audit documents.
-
-This guide settles recurring conventions and expensive boundaries early. It does
-not guarantee bug-free implementation; small slice-level checks and real-browser
-evidence remain necessary. They should validate these decisions, not restart the
-architecture discussion every time a feature is added.
+Verify the relevant behavior and failure states from section 13. Check that
+identity changes dispose scope, edits survive conflicts, and recovery actions
+match the server contract. For visual work, check the affected states at narrow
+and desktop widths, with keyboard and reduced motion. Update this guide when
+ownership or a protocol changes.
 
 ## 15. Function placement and component composition
 
-### Where does a new function go?
-
-Choose by responsibility and consumers, not merely because it is a function. All
-paths below are relative to `apps/web/src` and are planned examples unless they
-already exist.
-
-| Function or reusable behavior              | Location                                                   | Example / constraint                                                                                       |
-| ------------------------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Tiny helper used by one component          | Same component file, private                               | Format a component-specific caption; extract when it obscures rendering                                    |
-| Pure workflow/run logic                    | Owning `features/<feature>/model/` or a named feature file | `run-status.ts`, `editor-history.ts`; no React, fetch, toast or navigation                                 |
-| Wire-to-view or graph-to-canvas conversion | Named feature adapter                                      | `graph-adapter.ts`; preserve shared contract data and test round trips                                     |
-| Outgoing HTTP operation                    | `features/<feature>/<feature>.api.ts`                      | Encode path/body, choose decoder and required headers                                                      |
-| Query keys/options                         | `features/<feature>/<feature>.queries.ts`                  | One definition shared by loaders and consuming hooks                                                       |
-| Command hook with cache effects            | `features/<feature>/<feature>.mutations.ts`                | `useCreateWorkflow`; delegate actual transport to API function                                             |
-| Stateful UI behavior used within a feature | Named feature-local `use-*.ts` file                        | `use-run-events.ts`; explicit dependencies and cleanup                                                     |
-| Editor state transition                    | Editor model/store command                                 | `addNode`, `applyNodeConfig`; not a component-specific setter exported everywhere                          |
-| Auth-wide cleanup / app lifecycle          | `app/` orchestration                                       | Dispose scopes and dependencies; feature code never imports upward                                         |
-| Generic HTTP/CSRF/problem decoding         | `lib/api/`                                                 | No feature imports or visual feedback                                                                      |
-| Truly shared pure formatting               | Named `lib/format-*.ts` module                             | `format-duration.ts`; explicit units/locale and missing-value handling                                     |
-| Shared browser subscription hook           | Named `lib/use-*.ts`, only after real reuse                | Browser behavior without business meaning; SSR assumptions are irrelevant here but cleanup/testing are not |
-| Shared visual composition                  | `components/patterns/`                                     | Repeated panel/error presentation, data passed by props                                                    |
-| Primitive control                          | `components/ui/`                                           | Button/field/dialog; no domain branching                                                                   |
-| Cross-app domain definition                | Existing appropriate public workspace package              | Shared contract/graph type, not a browser helper moved into contracts                                      |
-
-Keep existing `lib/class-names.ts` for `cn`; it is not the destination for every
-function. Do not create `helpers.ts`, `common.ts`, `functions.ts`, `use-app.ts`
-or a giant `types.ts` to avoid choosing an owner. A feature-owned formatter
-stays with that feature even if several of its components use it.
-
-Extraction test: can the function be named precisely, does it hide meaningful
-behavior, and do actual callers share the same contract? If so, extract at the
-narrowest common owner. Two similar-looking functions with different business
-rules need not become one flag-driven generic helper. Do not move React helpers
-into backend/shared contracts to manufacture reuse. Check existing public
-functions first; extend an existing module when the responsibility truly
-matches.
-
-### Functions, hooks and effects
-
-- Prefer pure transformations with explicit inputs/outputs. Keep mutation of
-  browser/HTTP state at a deliberate seam. A pure formatter is not `useFormat`.
-- A custom hook reuses React behavior, not automatically shared state. Its
-  independent calls are independent unless they intentionally access the same
-  Query cache or scoped store.
-  [React custom-hook guidance](https://react.dev/learn/reusing-logic-with-custom-hooks).
-- Use a hook when lifecycle, context or React subscriptions justify it. Do not
-  wrap every exported function or `useQuery` call in another hook for symmetry.
-  A named domain hook is useful when it hides repeated domain behavior.
-- Event handlers express user intent: apply config, request publish, close
-  dialog. Effects connect/disconnect external systems; they do not infer a
-  command from several booleans or mirror server data into a second store.
-- Return a small interface with named data/status/actions. Do not expose
-  internal setters, raw store instances or twenty unrelated values. Avoid a
-  single `useWorkflowPage` that hides fetching, permissions, editor history and
-  all UI.
-- Destructure dependencies explicitly. Async behavior owns abort/cleanup and
-  stale-result protection. Where nondeterminism matters, inject the clock/ID
-  generator/transport at that seam rather than mocking arbitrary internals.
-- Use explicit units (`durationMs`, not `time`), meaningful domain names, guard
-  clauses and exhaustive discriminated cases. Do not swallow failures, add
-  `any`/non-null casts to bypass contracts, or introduce clever generic
-  machinery for routine field/response types.
-
-### Component composition: the default and the exception
-
-Default: ordinary props for data and callbacks; `children` for visual structure.
-A shared panel need not know whether it contains workflows, connections or runs.
-React documents
-[children-based composition](https://react.dev/learn/passing-props-to-a-component#passing-jsx-as-children).
-
-Illustrative composition, **not existing components or a scaffold to create
-now**:
-
-```tsx
-<EditorToolbar>
-  <WorkflowTitle name={name} />
-  <SaveStatus state={saveState} />
-  <ToolbarActions>
-    <SaveDraftButton />
-    <PublishWorkflowButton />
-  </ToolbarActions>
-</EditorToolbar>
-```
-
-Here feature action components own their hooks; the toolbar only lays out
-children. Compare that with a toolbar taking `isEditor`, `isRun`, `canPublish`,
-`showSave`, `showReplay` and every endpoint callback: use explicit editor/run
-compositions instead. Normal booleans such as `disabled`, `open` and `required`
-are fine; the problem is unrelated operating modes multiplying branches.
-
-Use **compound components** when coordinated parts genuinely share behavior,
-such as a dialog's trigger/content/close or a tab list and its panels. Prefer
-the existing Base UI primitive for those behaviors. If a custom compound module
-is justified, its provider owns coordination, its interface is small, and
-consumers compose only supported parts. Context is not needed just because a
-static panel has a header and footer; named components/slots are enough.
-
-Additional rules:
-
-- Visual variants use CVA; behaviorally different workflows use explicit feature
-  compositions. Do not build a generic page/form/dialog factory full of modes.
-- Render callbacks are appropriate when passing data back, e.g. a table cell;
-  they are not required for every static header/footer slot.
-- High-frequency editor data stays in selective Zustand subscriptions. A context
-  carrying the entire changing graph to every compound child defeats that
-  design.
-- Keep one controlled-state owner. Do not mix controlled props with independent
-  internal copies or synchronize them through effects. Shared primitives never
-  read workspace permissions or run feature queries behind the caller's back.
-- Test the composed user interaction and accessibility through its interface,
-  not internal context shape. Extract enough for readability, not one file per
-  JSX fragment or a prescribed file-length target.
+[Web workspace rules](AGENTS.md#where-new-code-goes) own function placement.
+Compose feature actions in a shared layout with props and children. Use Base UI
+for coordinated parts such as dialog triggers, content and focus return. Use CVA
+for visual variants. Keep permissions and queries in the calling feature, and
+subscribe to editor state through narrow store selectors.
 
 ## 16. How skills are applied
 
-Skills guide work; they are not application dependencies and are not all loaded
-on every task. Read the applicable SKILL.md before acting, use only relevant
-rules/references, announce their use, and keep current contracts/ADRs and
-project instructions ahead of generic recommendations. Do not copy skill example
-APIs without checking the installed version. Existing Base UI controls are not
-Radix, and this app is Vite, not Next.js.
-
-| Work being done                                          | Applicable skill                | Expected effect                                                                      |
-| -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
-| New module interface, utility extraction or feature seam | `codebase-design`               | Small meaningful interface, locality, explicit dependencies; no pass-through layer   |
-| Reusable component/compound interface                    | `vercel-composition-patterns`   | Children/explicit variants; scoped coordination only when needed                     |
-| React rendering, effects and performance                 | `vercel-react-best-practices`   | Correct subscriptions, dependency behavior, loading/bundle choices                   |
-| Query keys, cache, mutation effects                      | `tanstack-query-best-practices` | Apply section 6 with endpoint-specific protocol constraints                          |
-| Brand/design migration                                   | `frontend-design`               | Preserve the selected legacy identity and intentional hierarchy                      |
-| Add/adapt primitives                                     | `shadcn`                        | Inspect current Base UI setup; add only needed controls; accessible composition      |
-| Accessibility/UI review                                  | `web-design-guidelines`         | Inspect real interaction/markup and report actionable gaps                           |
-| Browser integration verification                         | `webapp-testing`                | Exercise real journeys and failure states, not only screenshots                      |
-| Finish React feature/fix or prepare React commit         | `react-doctor`                  | Run relevant diagnostics; investigate findings without claiming proof of correctness |
-| New domain terminology or ADR                            | `domain-modeling`               | Preserve consistent vocabulary and authoritative domain definitions                  |
-| Genuinely complex type contract                          | `typescript-advanced-types`     | Solve the specific compile-time requirement; otherwise use ordinary TS               |
-| Hard unexplained regression                              | `diagnosing-bugs`               | Reproduce, test competing explanations, then fix within authorization                |
-| Explicit test-first request                              | `tdd`                           | Implement behavior through the established test seam                                 |
-| Review against a commit/branch baseline                  | `code-review`                   | Fixed-point diff review, not a recurring whole-repo audit                            |
-
-Backend prerequisites use `nestjs-best-practices`, `node` or `postgres` only for
-the relevant backend work. No Next.js optimization, Prisma, Three.js or other
-unrelated stack adoption because a skill exists. If a needed skill is
-unavailable, state that and use current primary documentation/project evidence
-as fallback.
-
-For each slice, use skills to make the initial design and implementation
-decisions, then run the tests/gates in section 13. Do not create a new
-checklist/report per skill, run the full skill catalog, or repeatedly reopen
-settled architecture.
+See the [web workspace rules](AGENTS.md#rules) for the skills relevant to this
+workspace.
 
 ## 17. Screen-and-journey map
 
@@ -1565,46 +1182,20 @@ Browser path abbreviations: `B = /w/$workspaceId`,
 `E = B/workflows/$workflowId`. A tab uses validated URL search when it should
 survive refresh/back navigation. Backend routes remain separate from these URLs.
 
-### Navigation and first usable release
+### Navigation and first run
 
-Root `/` resolves the session and sends the user to workspace selection or
-login. After choosing a workspace, land on its workflow list—not a metrics
-dashboard without supporting data. The target workspace navigation is Workflows,
-Connections, Runs and Workspace settings, plus the workspace switcher. Only show
-destinations as their slices become usable and the user is allowed to access
-them; Workflows, capability-gated Connections, workspace Run history,
-notification destinations, the authorized workspace-member directory and
-lifecycle controls are delivered. Other workspace administration remains gated
-on its command contracts and product semantics. Account/logout lives in the user
-menu. Overview is a later optional destination, not a replacement for the
-current workflow-list landing page.
+The root route resolves the session and opens workspace Home when a workspace is
+selected. The workspace picker handles selection or creation when needed. Home
+offers a
+[guided example](../../docs/guides/getting-started.md#try-the-guided-example).
+Workflows, Runs, Connections, Team and Settings are workspace routes. Their
+availability depends on the workspace and its capabilities.
 
-### How the screens work together
-
-1. **First visit:** login → verified session → workspace selection/create →
-   workflow list. Unauthorized workspace deep links show forbidden/not-found; do
-   not silently switch the URL to unrelated data.
-2. **Authoring:** list → create → editor → select catalog node → configure/apply
-   → link → save/reload. Adding a credential opens a feature-owned dialog;
-   successful creation refreshes the picker and commits only its ID reference.
-3. **Execution:** editor → save/validate → publish → start run → run detail. Run
-   detail shows the version accepted by the backend and permits a link back to
-   its workflow; viewing that historical graph must not replace the draft.
-4. **Recovery:** inline validation focuses the field/node; connection expiry
-   opens connection recovery; draft conflict stays in the editor; lost SSE shows
-   reconnecting/degraded status. Session expiry uses the dirty-state safeguards,
-   not an unconditional redirect. Each error has one recovery owner.
-5. **Updates:** Query handles server refresh, the editor coordinator handles
-   save acknowledgment, and the run controller handles SSE. New deployment/chunk
-   recovery follows section 12. These are behaviors across screens, not extra
-   pages or a second global “updates” store.
-
-Before implementing each screen, specify in the same slice: route/entry point,
-actions and permitted roles/capabilities, exact endpoint/query key ownership,
-fields and validation, loading/empty/stale/error/forbidden states, dirty-exit
-behavior, keyboard/mobile behavior, and one happy-path plus failure-path test.
-Treat unsupported backend functionality as blocked/deferred UI, not a clickable
-placeholder. This page map does not supersede the detailed protocol rules above.
+The authoring route keeps unsaved edits in its editor scope. Publishing creates
+a version. Starting a run opens its detail page, which shows the version the
+server accepted. Historical graphs never replace the current draft. A denied
+workspace deep link keeps its requested scope and shows the corresponding
+failure.
 
 ### Personal automation tokens
 
@@ -1617,12 +1208,8 @@ holds it; closing or changing person/workspace clears it. Unknown creation
 outcomes refresh metadata and require revoke/replacement. Cookie/CSRF and
 recent-sign-in rules remain server-owned.
 
-F04 file uploads use one reviewed feature-local direct-transfer adapter in
-`features/artifacts/data/artifact-upload.api.ts`: signed PUT only, omitted
-credentials, no redirects or referrer, and browser-owned Content-Length.
-Application endpoint calls still use ApiClient. File objects, bytes and signed
-capabilities stay local to the upload session; only finalized descriptors enter
-a draft or run input.
+See [artifact transfers](#10-runs-sse-and-artifact-transfers) for the other
+browser flow that handles temporary credentials outside the cache.
 
 ### Canonical request identity
 

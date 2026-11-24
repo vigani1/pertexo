@@ -1,7 +1,7 @@
 # @pertexo/web
 
 Follow the [root rules](../../AGENTS.md); this file only adds to them.
-[README.md](README.md) lists what is built and
+[README.md](README.md) covers setup and verification, and
 [ARCHITECTURE.md](ARCHITECTURE.md) explains the patterns, the visual system and
 the tests in depth.
 

@@ -1,7 +1,8 @@
 # F60 — MCP server and client step
 
-Status: designed. Follows [F59](59-ai-classify-step.md) and precedes
-[F61](61-ai-agent-step.md). Server contract in
+Delivered in [#851](https://github.com/vigani1/pertexo/pull/851),
+[#853](https://github.com/vigani1/pertexo/pull/853) and
+[#854](https://github.com/vigani1/pertexo/pull/854). Server contract:
 [ADR 097](../adr/097-mcp-workflow-exposure.md).
 
 ## Outcome and usage

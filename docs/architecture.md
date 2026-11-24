@@ -29,7 +29,7 @@ reset; ADR 091 overrides its core-layer and entry-point rules.
 | `contracts`       | Zod HTTP request/response/problem schemas and server-side OpenAPI generation                                         |
 | `node-sdk`        | Node definitions, config/port contracts and executor interfaces                                                      |
 | `nodes-core`      | Built-in deterministic and control nodes                                                                             |
-| `integrations`    | Provider protocol clients and HTTP, Slack and email step execution; apps inject security and network implementations |
+| `integrations`    | Provider modules for connections, actions and polling, including approved community HTTP actions; apps inject secure transport |
 | `node-catalog`    | The registry combining built-in and provider nodes                                                                   |
 | `templates`       | Curated workflow content and origin identities                                                                       |
 | `queue`           | Redis/BullMQ job transport and pub/sub hints                                                                         |
@@ -81,13 +81,17 @@ pinned definition, initial checkpoint, capacity and durable outbox work in a
 transaction. The worker dispatches identifiers through Redis/BullMQ. Consumers
 check delivery identity against durable receipts before advancing or effects.
 
-Core execution loads state and asks the pure engine for the next transition. Run
-persistence locks state and saves transitions with checkpoint version checks.
-Attempts execute pinned step implementations; Code goes to the isolated runner.
+Core execution loads state and asks the pure engine for the next transition.
+Both execution paths use the pinned step implementations and the same checkpoint
+version checks. Eligible pure steps run inline during a bounded advance and
+persist their results with that transition. The delivery path dispatches separate
+jobs for leased attempts. Code goes to the isolated runner. See
+[inline execution](feature-plans/58-inline-pure-steps.md).
+
 Durable waits and retries survive restarts. The stalled-work scanner uses
-PostgreSQL's next-work time to recover missed transport wakeups. An effect whose
-outcome is unknown is never blindly retried. SSE is a hint: reconnecting clients
-refetch authoritative reads.
+PostgreSQL's next-work time to recover missed transport wakeups. Effects with an
+unknown outcome require explicit recovery. SSE carries update hints. Reconnecting
+clients refetch authoritative snapshots.
 
 Call steps pin child versions and use durable parent/child facts and slot
 lending, not recursive execution. Human input resumes a stored wait. Error

@@ -1,7 +1,9 @@
 # F61 — AI Agent step
 
-Status: designed. Follows [F60](60-mcp.md) and precedes
-[F62](62-ai-authoring-assistant.md). Execution contract in
+Delivered in [#855](https://github.com/vigani1/pertexo/pull/855),
+[#857](https://github.com/vigani1/pertexo/pull/857) and
+[#858](https://github.com/vigani1/pertexo/pull/858). Multiple tools shipped in
+[#890](https://github.com/vigani1/pertexo/pull/890). Execution contract:
 [ADR 098](../adr/098-agent-tool-execution.md).
 
 ## Outcome and usage
@@ -94,8 +96,8 @@ New Agent steps use version 3 and can configure several tools with distinct
 aliases. Each proposal uses the selected tool's published setup and approval
 rule. Versions 1 and 2 retain their one-tool configuration.
 
-The live editor proof shows the two-tool setup in [light](evidence/f61/agent-multi-tool-setup-light.png)
-and [dark](evidence/f61/agent-multi-tool-setup-dark.png) themes.
+The [live editor screenshot](evidence/f61/agent-multi-tool-setup-dark.png)
+shows the two-tool setup.
 
 Through the real worker and database, exercise a malicious tool proposal,
 bad arguments, expired and double-submitted approval, connection revocation

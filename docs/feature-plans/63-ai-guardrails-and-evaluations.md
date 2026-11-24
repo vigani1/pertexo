@@ -1,7 +1,9 @@
 # F63 — AI Guardrails and evaluations
 
-Status: designed. Follows [F62](62-ai-authoring-assistant.md) and closes the
-current [F22](22-ai-assistance-and-ai-nodes.md) track.
+Delivered in [#874](https://github.com/vigani1/pertexo/pull/874),
+[#875](https://github.com/vigani1/pertexo/pull/875) and
+[#876](https://github.com/vigani1/pertexo/pull/876). Part of
+[F22](22-ai-assistance-and-ai-nodes.md).
 
 ## Outcome and usage
 

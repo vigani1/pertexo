@@ -10,27 +10,52 @@ monorepo with its own execution engine, API, worker and web app.
 
 ## Highlights
 
-- **Durable execution.** PostgreSQL is the source of truth for every run,
-  checkpoint and wait. Steps run as leased attempts dispatched through a
-  transactional outbox: a crashed worker's attempt is reclaimed, and one that
-  may already have had an effect is marked as uncertain instead of retried.
+- **Durable execution.** PostgreSQL records runs, checkpoints and waits. The
+  worker runs eligible pure steps inline and uses leased attempts for steps on
+  the delivery path. Work can resume after a restart, and an external effect
+  with an unknown outcome requires explicit recovery.
 - **Safe publishing.** Workflows are edited as drafts and published as immutable
   versions. Runs stay pinned to the version they started on, and reusable
   subworkflows call an exact published version.
 - **Try it before it's live.** Test a single step from the editor, save named
   inputs for real runs that warn about their effects first, and see exactly what
   an imported file contains before anything runs.
-- **Guardrails built in.** Workspace capacity and per-workflow concurrency
-  limits, automatic pausing of workflows that keep failing, connection health
-  checks and a failure inbox.
-- **Secure by default.** Row-level security scopes every query to one workspace.
-  Connection credentials are envelope-encrypted, webhooks are signed and five
-  roles decide who can do what.
+- **Run controls.** Workspace capacity and per-workflow concurrency limits,
+  automatic pausing of workflows that keep failing, connection health checks and
+  a failure inbox.
+- **Workspace security.** Row-level security scopes workspace data. Connection
+  credentials are envelope-encrypted, webhooks support signed authentication,
+  and workspace roles control access.
 - **Work together.** Discuss workflows and steps, mention teammates privately,
   and see advisory viewing/editing presence while draft revision checks keep
   concurrent saves safe. See [collaboration](docs/guides/collaboration.md).
 - **Weft, its own design language.** Runs are threads, outcomes are knots and
   live work glows. The interface reads like the work it shows.
+
+## What it supports
+
+- **Start workflows** manually, on a schedule, from a webhook or form, when
+  another workflow fails, or by polling an HTTP feed or PostgreSQL table.
+  Webhooks can return a bounded synchronous response. Runs can wait for an
+  approval, a form submission, or a callback.
+- **Work with data** using workspace tables, reusable variables, paging and CSV,
+  JSON, text and Excel files. Run JavaScript or Python in an isolated Code
+  runner. See the
+  [data and file guides](docs/guides/README.md#build-and-run-workflows).
+- **Connect services** over HTTP with headers or OAuth2, send Slack messages and
+  email, and read or write PostgreSQL rows. Self-host operators can approve
+  [community integration packages](docs/guides/community-integration-authoring.md)
+  that add declarative HTTP actions.
+- **Use AI and MCP** for model calls, classification, agents with approved
+  tools, guardrails and workflow evaluations. An assistant can explain a failed
+  run or propose a draft change for review. The MCP client calls external tools,
+  and Pertexo can expose selected published workflows as tools. See
+  [AI and MCP](docs/guides/README.md#ai-and-mcp).
+- **Manage a workspace** with roles, scoped sharing, publishing approval, audit
+  history, environment promotion, organization SSO and SCIM. Automate workspace
+  actions with the [API and CLI](docs/guides/automation.md).
+
+The [user guides](docs/guides/README.md) cover setup and feature limits.
 
 | Workspace home                                                                                     | Workflow editor                                                                                   |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -107,8 +132,8 @@ For a real server, follow [the runbook](./docs/operations/single-server.md).
 
 - TypeScript and pnpm workspaces
 - React, Vite, TanStack Router/Query, Tailwind and Base UI for the web app
-- NestJS API with separately deployable workers
-- PostgreSQL with explicit SQL and row-level security
+- NestJS API and a separate Node.js worker process
+- PostgreSQL, Drizzle and row-level security
 - Redis and BullMQ
 - Zod contracts with generated OpenAPI descriptions
 - OpenTelemetry and structured logging
@@ -136,14 +161,10 @@ Ctrl+C; services keep their data until `docker compose down -v`.
   credentials or production configuration.
 - Local authentication mail is never sent: the API prints each verification or
   reset link to its log.
-- Connections, Alerts and webhooks use `CONNECTION_ENCRYPTION_MODE=local` and
-  `CONNECTION_LOCAL_KEY` from the example. The key must encode 32 bytes and stay
-  stable across API and worker restarts; changing it makes existing local
-  connection and webhook secrets unreadable. The example key is public and meant
-  only for disposable development credentials. Staging and production refuse
-  local mode and require `CONNECTION_KMS_KEY_REFERENCE` and
-  `CONNECTION_KMS_REGION` instead. Existing `.env` files are not overwritten;
-  add the two local settings from `.env.example` to enable them.
+- The example environment uses a public self-managed encryption key for
+  disposable development credentials. Keep the key and version stable across API
+  and worker restarts. Production uses private self-managed keys or AWS KMS. See
+  the [encryption and rotation guide](docs/operations/encryption-keys.md).
 - Without invitation token protection, Team disables Invite and resend with a
   configuration reason, and sending commands return a typed 503. Invitation
   emails wait for their separate delivery configuration.

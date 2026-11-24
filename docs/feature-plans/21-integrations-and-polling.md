@@ -1,9 +1,9 @@
 # F21 — Provider expansion and durable polling/subscriptions
 
-Status: proposed plan; not implementation-authorized by this document.
-Slice 0, generic OAuth2 connections for HTTP Request: planned, contract only, in [21a](21a-oauth2-connections.md).
-Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
-Scope: Later integration program. Relative size: **XL per provider family**, not a calendar estimate.
+Generic OAuth2, SMTP, PostgreSQL actions, and HTTP and PostgreSQL polling are
+on `main`. Broader native connectors and subscriptions remain open. See
+[OAuth2](21a-oauth2-connections.md), [the delivery sequence](21b-next-integrations.md)
+and the [product roadmap](../product-roadmap.md).
 
 ## Outcome
 
@@ -11,17 +11,14 @@ Complete a small set of real user automations with dependable provider actions a
 
 ## Current implementation and evidence
 
-HTTP Request, Slack message, email notification, webhook and schedule exist. Broad vendors, polling cursors and connected subscription entities remain deferred.
+HTTP Request, Slack messages, email, and manual, form, webhook, schedule,
+workflow error and polling triggers are available. [F54](54-polling-triggers.md)
+and [F55](55-database-row-trigger.md) define the implemented polling cursor
+and trigger behavior. Native provider subscriptions remain future work.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
-
-- [packages/integrations/src](../../packages/integrations/src)
-- [Current architecture](../architecture.md)
-- [Reset tracker](../architecture-reset-plan.md)
-
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+See the [integration modules plan](57-integration-modules.md) for the current
+provider structure and [the architecture guide](../architecture.md) for runtime
+ownership.
 
 ## Dependencies and planning gate
 
@@ -103,9 +100,8 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+For delivered slices, see the linked plans. This checklist applies to future
+provider work.
 
 ## Authorized SMTP email connection follow-up (2026-11-08)
 

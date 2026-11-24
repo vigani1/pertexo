@@ -1,8 +1,7 @@
 # F54 — HTTP polling trigger
 
-Status: accepted; slice 1 in progress. Parent:
-[F21b, slice 2](21b-next-integrations.md). Decision:
-[ADR 093](../adr/093-polling-triggers.md).
+Delivered. Parent: [F21b, slice 2](21b-next-integrations.md).
+Decision: [ADR 093](../adr/093-polling-triggers.md).
 
 ## What the builder does
 

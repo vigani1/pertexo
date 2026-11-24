@@ -1,7 +1,9 @@
 # F62 — AI authoring assistant
 
-Status: designed. Follows [F61](61-ai-agent-step.md) and precedes
-[F63](63-ai-guardrails-and-evaluations.md).
+Delivered in [#861](https://github.com/vigani1/pertexo/pull/861),
+[#866](https://github.com/vigani1/pertexo/pull/866) and
+[#883](https://github.com/vigani1/pertexo/pull/883). Part of
+[F22](22-ai-assistance-and-ai-nodes.md).
 
 ## Outcome and usage
 

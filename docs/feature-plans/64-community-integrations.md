@@ -1,6 +1,10 @@
 # F64 — Community integrations
 
-Status: accepted; builds after the AI track (F59–F63). Decision: [ADR 099](../adr/099-community-integration-packages.md).
+Delivered in [#877](https://github.com/vigani1/pertexo/pull/877),
+[#878](https://github.com/vigani1/pertexo/pull/878),
+[#879](https://github.com/vigani1/pertexo/pull/879) and
+[#882](https://github.com/vigani1/pertexo/pull/882). Decision:
+[ADR 099](../adr/099-community-integration-packages.md).
 
 ## Outcome
 

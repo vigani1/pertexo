@@ -1,7 +1,7 @@
 # F59 — AI Classify step
 
-Status: designed. Start after [F56 slices 3–4](56-ai-model-step.md), then deliver
-[F60](60-mcp.md). Parent [F22](22-ai-assistance-and-ai-nodes.md).
+Delivered in [#850](https://github.com/vigani1/pertexo/pull/850).
+Part of [F22](22-ai-assistance-and-ai-nodes.md).
 
 ## Outcome and usage
 

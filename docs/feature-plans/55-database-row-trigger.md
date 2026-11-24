@@ -1,6 +1,6 @@
 # F55 — Database row trigger (PostgreSQL)
 
-Status: in progress. Parent: [F21b](21b-next-integrations.md).
+Delivered. Parent: [F21b](21b-next-integrations.md).
 Decision: [ADR 093](../adr/093-polling-triggers.md).
 
 ## What the builder does

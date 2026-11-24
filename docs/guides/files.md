@@ -481,7 +481,7 @@ Save an attachment before relying on its retention. Unsaved browser state is not
 a durable reference. If a file is unavailable, re-upload and attach its finalized
 reference; do not substitute a signed download URL for the descriptor.
 
-## Browser evidence and later work
+## Browser evidence
 
 Synthetic local fixtures exercise the ordinary browser, API, compiled worker and
 signature-validating storage; no real destination service is used. See
@@ -490,8 +490,3 @@ signature-validating storage; no real destination service is used. See
 [HTTP raw mode](../images/f04/multipart-raw.png),
 [multipart desktop](../images/f04/multipart-desktop.png) and
 [multipart phone](../images/f04/multipart-phone.png).
-
-Later work: larger files via streaming or paging first, then separately planned
-webhook file ingestion, other spreadsheet formats (`.xls`, `.ods`) and
-multi-sheet writes, a file browser, scanning and artifact-aware step recovery.
-None is supplied by this bounded release.
