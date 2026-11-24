@@ -2,12 +2,14 @@ import { workflowValidateResponseSchema } from '@pertexo/contracts';
 import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
   safeParseWorkflowGraphDraft,
+  isRecord,
   placeableDefinitions,
   workflowDefinitionPlacementIssues,
   type GraphValidationIssue,
   startingConfig,
   type WorkflowGraph,
   type WorkflowNode,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
 import { restoreDraftFields } from './masked-draft.js';
@@ -31,7 +33,7 @@ export async function inspectProposalCandidate(
     signal: AbortSignal;
   }>,
 ) {
-  const parsed = safeParseWorkflowGraphDraft(graph);
+  const parsed = safeParseWorkflowGraphDraft(withEmptyConnections(graph));
   if (!parsed.success) {
     const issue =
       'issues' in parsed.error
@@ -62,13 +64,13 @@ export async function inspectProposalCandidate(
   );
   if (placementIssues.length > 0)
     return rejected(placementIssues, placementIssues);
+  const omittedPresetFields = new Set<string>();
   const admitted = safeParseWorkflowGraphDraft({
     ...restored.graph,
-    nodes: initializeAddedSteps(
-      draft.graphJson.nodes,
-      restored.graph.nodes,
-      placeable,
-    ),
+    nodes: initializeAddedSteps(draft.graphJson.nodes, restored.graph.nodes, {
+      catalog: placeable,
+      omittedPresetFields,
+    }),
   });
   if (!admitted.success)
     return rejected(
@@ -107,14 +109,51 @@ export async function inspectProposalCandidate(
       inspected.graphIssues,
       parsed.data,
       restored.graph,
+      omittedPresetFields,
     ),
+  };
+}
+
+function withEmptyConnections(graph: unknown, depth = 0): unknown {
+  if (
+    depth > WORKFLOW_GRAPH_CONTRACT_LIMITS.structuredDepth ||
+    !isRecord(graph) ||
+    !Array.isArray(graph.nodes)
+  )
+    return graph;
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node: unknown) => {
+      if (!isRecord(node)) return node;
+      const { structured } = node;
+      return {
+        connectionRefs: {},
+        ...node,
+        ...(isRecord(structured)
+          ? {
+              structured: {
+                ...structured,
+                body: withEmptyConnections(structured.body, depth + 1),
+              },
+            }
+          : {}),
+      };
+    }),
   };
 }
 
 function initializeAddedSteps(
   previous: readonly WorkflowNode[],
   level: readonly WorkflowNode[],
-  catalog: ReturnType<ListNodeDefinitionsService['execute']>['items'],
+  {
+    catalog,
+    omittedPresetFields,
+    levelPath = '$',
+  }: Readonly<{
+    catalog: ReturnType<ListNodeDefinitionsService['execute']>['items'];
+    omittedPresetFields: Set<string>;
+    levelPath?: string;
+  }>,
 ): readonly WorkflowNode[] {
   const existing = new Map(previous.map((node) => [node.id, node]));
   return level.map((node) => {
@@ -131,8 +170,14 @@ function initializeAddedSteps(
     const config =
       definition === undefined
         ? node.config
-        : startingConfig(definition, level, node.config);
+        : startingConfig(definition, level, node.config, 'proposal');
     const configVersion = definition?.configVersion ?? node.configVersion;
+    const nodePath = `${levelPath}.nodes.${node.id}`;
+    const preset = definition?.configSchema.default;
+    if (isRecord(preset))
+      for (const field of Object.keys(preset))
+        if (!Object.hasOwn(config, field))
+          omittedPresetFields.add(`${nodePath}.config.${field}`);
     const { structured } = node;
     if (structured === undefined) return { ...node, config, configVersion };
     return {
@@ -146,7 +191,11 @@ function initializeAddedSteps(
           nodes: initializeAddedSteps(
             original?.structured?.body.nodes ?? [],
             structured.body.nodes,
-            catalog,
+            {
+              catalog,
+              omittedPresetFields,
+              levelPath: `${nodePath}.structured.body`,
+            },
           ),
         },
       },
@@ -176,6 +225,7 @@ function publicationFeedback(
   issues: readonly GraphValidationIssue[],
   submitted: WorkflowGraph,
   restored: WorkflowGraph,
+  omittedPresetFields: ReadonlySet<string>,
 ) {
   // Both path styles must use candidate order, which may differ from the base.
   const protectedPaths = ['$.callable', '$.notes'];
@@ -203,7 +253,7 @@ function publicationFeedback(
     }
   return issues.filter(
     (issue) =>
-      issue.kind !== 'requires_user' &&
+      (issue.kind !== 'requires_user' || omittedPresetFields.has(issue.path)) &&
       !issue.path.includes('.connectionRefs.') &&
       !protectedPaths.some(
         (path) =>

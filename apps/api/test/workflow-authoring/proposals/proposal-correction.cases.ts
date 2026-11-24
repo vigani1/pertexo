@@ -14,8 +14,7 @@ export function proposalCorrectionCases({
   propose: (
     path: string,
     script: {
-      name: string;
-      args: object;
+      graph: unknown;
       outputTokens?: number;
       waitMillis?: number;
       hold?: boolean;
@@ -32,10 +31,7 @@ export function proposalCorrectionCases({
     method: 'INVALID',
   });
   const invalidUrl = withHttpConfig({ url: 42 });
-  const candidate = (graph: unknown) => ({
-    name: 'propose_draft',
-    args: { graph },
-  });
+  const candidate = (graph: unknown) => ({ graph });
 
   it('sends the setting issue to the model and returns a corrected draft with one usage record', async () => {
     const path = await workflow();
@@ -52,8 +48,10 @@ export function proposalCorrectionCases({
     const { messages } = JSON.parse(bodies[1] ?? 'null') as {
       messages: { role: string; content?: string }[];
     };
-    const toolResult = messages.findLast(({ role }) => role === 'tool');
-    const { issues } = JSON.parse(toolResult?.content ?? 'null') as {
+    const { task } = JSON.parse(
+      messages[0]?.content?.split('\n').at(-1) ?? 'null',
+    ) as { task: string };
+    const { issues } = JSON.parse(task.split('\n').at(-1) ?? 'null') as {
       issues: { path: string; code: string; message: string }[];
     };
     expect(issues).toHaveLength(1);
@@ -92,6 +90,54 @@ export function proposalCorrectionCases({
     expect(requests[start + 1]).toContain(
       'workflow edge target port is unavailable',
     );
+  });
+
+  it('repairs an omitted match condition instead of wiring a starter case', async () => {
+    const path = await workflow();
+    const start = requests.length;
+    const [trigger] = valid.nodes;
+    if (trigger === undefined) throw new Error('Expected a trigger fixture');
+    const route = {
+      ...trigger,
+      id: 'route',
+      definition: { key: 'core.switch', version: 2 },
+      inputMappings: {
+        value: { kind: 'run_input' as const, path: '$.category' },
+      },
+    };
+    const graph = {
+      ...valid,
+      nodes: [...valid.nodes, route],
+      edges: [
+        {
+          id: 'start-route',
+          source: { nodeId: 'manual', port: 'out' },
+          target: { nodeId: 'route', port: 'in' },
+        },
+        {
+          id: 'route-request',
+          source: { nodeId: 'route', port: 'case-01' },
+          target: { nodeId: 'request', port: 'in' },
+        },
+      ],
+    };
+    const config = { cases: [{ id: 'case-01', equals: 'billing' }] };
+    const result = await propose(path, [
+      candidate(graph),
+      candidate({ ...graph, nodes: [...valid.nodes, { ...route, config }] }),
+    ]);
+    expect(result).toMatchObject({
+      kind: 'inspected',
+      rounds: 1,
+      validation: { valid: true },
+    });
+    if (result.kind !== 'inspected') throw new Error('Expected a proposal');
+    expect(result.draft.graph.nodes.find(({ id }) => id === route.id)).toEqual({
+      ...route,
+      config,
+    });
+    expect(requests.slice(start)).toHaveLength(2);
+    expect(requests[start + 1]).toMatch(/config.*(case|invalid)/i);
   });
 
   it('returns the last candidate issues after two corrections', async () => {

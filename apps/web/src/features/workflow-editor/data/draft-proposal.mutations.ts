@@ -1,4 +1,5 @@
 import {
+  DRAFT_PROPOSAL_TIMING,
   draftProposalDisclosureSchema,
   draftProposalResultSchema,
   type DraftProposalResult,
@@ -37,6 +38,7 @@ export function useDraftProposal() {
         path,
         method: 'POST',
         body,
+        timeoutMs: DRAFT_PROPOSAL_TIMING.requestMillis,
         response: {
           kind: 'json',
           decode: (value) => draftProposalResultSchema.parse(value),
