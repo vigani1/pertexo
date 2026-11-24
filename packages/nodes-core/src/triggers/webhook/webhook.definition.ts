@@ -20,7 +20,7 @@ export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   family: 'trigger',
   display: Object.freeze({
     name: 'Webhook',
-    description: 'Start when an incoming HTTP request arrives from another app',
+    description: 'Start when another app sends a request',
   }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_WEBHOOK_CONFIG_SCHEMA),

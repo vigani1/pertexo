@@ -20,8 +20,7 @@ export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
   family: 'trigger',
   display: Object.freeze({
     name: 'Schedule',
-    description:
-      'Run automatically on a schedule, such as every few minutes, daily, or once a week',
+    description: 'Start on a repeating timetable',
   }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SCHEDULE_CONFIG_SCHEMA, {

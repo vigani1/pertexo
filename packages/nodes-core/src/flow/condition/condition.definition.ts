@@ -24,7 +24,7 @@ export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
   family: 'logic',
   display: Object.freeze({
     name: 'Condition',
-    description: 'Check if a condition is true and take the matching branch',
+    description: 'Send the run down the true or false branch',
   }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_CONDITION_CONFIG_SCHEMA),

@@ -11,6 +11,28 @@ const DESCRIPTION_CONTEXT_BYTES = 8_192;
 const CATALOG_CONTEXT_ENTRIES = 8;
 const CATALOG_LOOKUP_ENTRIES = 3;
 const DESCRIPTION_MATCHES_PER_TERM = 2;
+
+// The published catalog pins its display text. These descriptions serve only
+// assistant search and proposal prompts.
+const PROPOSAL_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
+  [
+    'core.condition',
+    'Check if a condition is true and take the matching branch',
+  ],
+  ['core.set', 'Choose, rename, or add fields to build a result object'],
+  [
+    'core.switch',
+    'Route the run when a value or category matches, with a fallback',
+  ],
+  [
+    'core.schedule',
+    'Run automatically on a schedule, such as every few minutes, daily, or once a week',
+  ],
+  [
+    'core.webhook',
+    'Start when an incoming HTTP request arrives from another app',
+  ],
+]);
 const GENERIC_SEARCH_WORDS = new Set([
   'a',
   'an',
@@ -99,17 +121,17 @@ export function proposalCatalog(
       ...words(item.integration?.operationKey ?? ''),
     ]);
     const familyMatches = overlap(query, words(item.family));
-    const descriptionMatches = matchingTerms(
-      query,
-      words(item.display?.description ?? ''),
-    );
+    const description =
+      PROPOSAL_DESCRIPTIONS.get(item.definition.key) ??
+      item.display?.description;
+    const descriptionMatches = matchingTerms(query, words(description ?? ''));
     if (
       (!inDraft || seen !== undefined) &&
       !exact &&
       identityMatches + familyMatches + descriptionMatches.length === 0
     )
       return [];
-    const entry = projectEntry(item, inDraft && !current.has(id));
+    const entry = projectEntry(item, inDraft && !current.has(id), description);
     return [
       {
         entry,
@@ -189,11 +211,15 @@ export function expandProposalCatalog(
   return { entries, found: true };
 }
 
-function projectEntry(item: CatalogEntry, existingOnly: boolean) {
+function projectEntry(
+  item: CatalogEntry,
+  existingOnly: boolean,
+  description: string | undefined,
+) {
   const { default: _editorPreset, ...configSchema } = item.configSchema;
   return {
     name: item.presentation?.name ?? item.display?.name ?? item.definition.key,
-    description: item.display?.description,
+    description,
     definition: item.definition,
     configVersion: item.configVersion,
     ports: item.ports,
