@@ -9,8 +9,16 @@ export const key = 'fake-editor-model-key';
 export const baseUrl = 'https://model.provider.test/v1';
 
 export async function openModelProvider(
-  scriptedResponses?: readonly unknown[],
+  source?: readonly unknown[] | Readonly<{ origin: URL; model: string }>,
 ) {
+  const live = source !== undefined && 'origin' in source ? source : undefined;
+  const scriptedResponses =
+    source !== undefined && !('origin' in source) ? source : undefined;
+  if (
+    live !== undefined &&
+    (live.origin.protocol !== 'http:' || live.origin.hostname !== '127.0.0.1')
+  )
+    throw new Error('Authoring evaluation requires a loopback model endpoint');
   const port = process.env.PERTEXO_LIVE_PROVIDER_PORT;
   if (port === undefined) throw new Error('Use the owned product fixture');
   const probes: string[] = [];
@@ -19,7 +27,7 @@ export async function openModelProvider(
   let answer: unknown = { order: 'order-17' };
   const server = createServer((request, response) => {
     void respond(request, response).catch(() => {
-      response.writeHead(500).end('{}');
+      if (!response.destroyed) response.writeHead(500).end('{}');
     });
   });
 
@@ -31,7 +39,7 @@ export async function openModelProvider(
     }
     if (request.method === 'GET' && request.url === '/v1/models') {
       probes.push(request.url);
-      response.end(JSON.stringify({ data: [{ id: model }] }));
+      response.end(JSON.stringify({ data: [{ id: live?.model ?? model }] }));
       return;
     }
     if (request.method !== 'POST' || request.url !== '/v1/chat/completions') {
@@ -41,6 +49,21 @@ export async function openModelProvider(
     let body = '';
     for await (const chunk of request) body += String(chunk);
     calls.push(JSON.parse(body) as unknown);
+    if (live !== undefined) {
+      const controller = new AbortController();
+      response.once('close', () => {
+        controller.abort();
+      });
+      const upstream = await fetch(new URL(request.url, live.origin), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+        signal: controller.signal,
+        redirect: 'error',
+      });
+      response.writeHead(upstream.status).end(await upstream.text());
+      return;
+    }
     const scripted = scriptedResponses?.[calls.length - 1];
     if (scriptedResponses !== undefined) {
       if (scripted === undefined) response.writeHead(500).end('{}');

@@ -29,7 +29,20 @@ export function startingConfig(
   definition: SetupDefinition,
   levelNodes: readonly LevelNode[],
   supplied?: NodeConfig,
+  mode: 'editor' | 'proposal' = 'editor',
 ): NodeConfig {
+  if (mode === 'proposal') {
+    // A proposal must choose its own starting shape and behavior. The editor's
+    // whole presets are examples, including blank conditions and sample branches.
+    const values = supplied ?? {};
+    const union = readSchemaUnion(definition.configSchema);
+    if (union === undefined)
+      return { ...propertyDefaults(definition.configSchema), ...values };
+    const choice = values[union.key];
+    return typeof choice === 'string'
+      ? { ...withUnionChoice(union, {}, choice), ...values }
+      : values;
+  }
   const defaults = startingDefaults(definition, levelNodes);
   if (supplied === undefined) return defaults;
   const union = readSchemaUnion(definition.configSchema);

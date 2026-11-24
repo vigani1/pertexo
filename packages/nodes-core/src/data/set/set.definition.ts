@@ -21,7 +21,7 @@ export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
   family: 'transform',
   display: Object.freeze({
     name: 'Set fields',
-    description: 'Build an object from mapped values',
+    description: 'Choose, rename, or add fields to build a result object',
   }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SET_CONFIG_SCHEMA),

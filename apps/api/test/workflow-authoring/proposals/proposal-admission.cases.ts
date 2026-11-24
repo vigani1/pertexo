@@ -16,7 +16,8 @@ export function proposalAdmissionCases({
   workflow: () => Promise<string>;
   propose: (
     path: string,
-    script: { name: string; args: object }[],
+    script: { graph: unknown }[],
+    request?: string,
   ) => Promise<DraftProposalResult>;
   draft: (
     path: string,
@@ -40,18 +41,25 @@ export function proposalAdmissionCases({
         { ...httpRequest, definition: { key: 'core.code', version: 1 } },
       ],
     };
-    const candidate = { name: 'propose_draft', args: { graph } };
+    const candidate = { graph };
     const start = requests.length;
-    const result = await propose(path, [
-      { name: 'search_catalog', args: { query: 'core.code' } },
-      { name: 'get_step_details', args: { key: 'core.code', version: 1 } },
-      candidate,
-      candidate,
-      candidate,
-    ]);
-    const [, search, detail] = requests.slice(start);
-    expect(search).toContain('"content":"[]"');
-    expect(detail).toContain('step_unavailable');
+    const result = await propose(
+      path,
+      [candidate, candidate, candidate],
+      'Add a Code step.',
+    );
+    const { messages } = JSON.parse(requests[start] ?? 'null') as {
+      messages: readonly { content: string }[];
+    };
+    const { task } = JSON.parse(
+      messages[0]?.content.split('\n').at(-1) ?? 'null',
+    ) as { task: string };
+    const { catalog } = JSON.parse(task.split('\n').at(-1) ?? 'null') as {
+      catalog: readonly { definition: { key: string } }[];
+    };
+    expect(catalog.map(({ definition }) => definition.key)).not.toContain(
+      'core.code',
+    );
     expect(result).toMatchObject({
       kind: 'rejected',
       issues: [{ code: 'definition_not_placeable' }],
@@ -82,9 +90,7 @@ export function proposalAdmissionCases({
         },
       };
       const graph = { ...httpWorkflow, nodes: [manual, file] };
-      const result = await propose(path, [
-        { name: 'propose_draft', args: { graph } },
-      ]);
+      const result = await propose(path, [{ graph }]);
       expect(result).toMatchObject({
         kind: 'rejected',
         issues: [{ path: '$.nodes[1].inputMappings.file.value', message }],

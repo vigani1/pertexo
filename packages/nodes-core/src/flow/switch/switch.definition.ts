@@ -25,7 +25,8 @@ export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
   family: 'logic',
   display: Object.freeze({
     name: 'Switch',
-    description: 'Route the run to one of several cases',
+    description:
+      'Route the run when a value or category matches, with a fallback',
   }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SWITCH_CONFIG_SCHEMA),
