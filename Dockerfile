@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS build
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
@@ -13,7 +13,7 @@ RUN --mount=type=cache,id=pertexo-step6-pnpm,target=/root/.local/share/pnpm/stor
     -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
     -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
 
-FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS python-build
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS python-build
 RUN apt-get update && apt-get install --yes --no-install-recommends \
     gcc make xz-utils libc6-dev libssl-dev zlib1g-dev libffi-dev libbz2-dev liblzma-dev \
   && rm -rf /var/lib/apt/lists/*
@@ -43,7 +43,7 @@ COPY --from=build --chown=101:101 /workspace/THIRD_PARTY_NOTICES.txt /usr/share/
 COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 
-FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS production-dependencies
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS production-dependencies
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
@@ -58,7 +58,7 @@ ADD --checksum=sha256:8498d2c0bd6747dfc2fc6eec62774a86967079555f7043d5a7b78ee4ef
 ADD --checksum=sha256:d7d1943aec9597629bf73075efcc5ef6dc9bda96d78e80d843156ecd448478b8 https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_amd64.deb /perl-amd64.deb
 ADD --checksum=sha256:03d979b849a1a0a8955eee28b988dbc25a407fd3a0581df5c94e6ae7bcc01ddf https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_arm64.deb /perl-arm64.deb
 
-FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS runtime
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS runtime
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
