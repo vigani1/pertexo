@@ -5,7 +5,9 @@ export const MODEL_LIMITS = {
   requestBytes: 64 * 1_024,
   responseBytes: 128 * 1_024,
   defaultOutputTokens: 1_024,
-  maxOutputTokens: 4_096,
+  // Reasoning tokens count toward the output limit: GLM 5.3 spent all 4,096
+  // on reasoning and returned nothing, and single answers used up to 2,598.
+  maxOutputTokens: 16_384,
   defaultTimeoutMillis: 30_000,
   maxTimeoutMillis: 60_000,
 } as const;
