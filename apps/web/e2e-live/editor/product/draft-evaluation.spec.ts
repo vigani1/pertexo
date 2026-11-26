@@ -54,11 +54,18 @@ const schedule = (intervalMinutes: number) => ({
   label: 'Schedule',
   config: { kind: 'interval', intervalMinutes },
 });
+// The settings the editor saves for a new HTTP request step.
+const requestDefaults = {
+  timeoutMillis: 10_000,
+  maxRedirects: 3,
+  maxResponseBytes: 1_048_576,
+  inlineResponseBytes: 65_536,
+};
 const request = (url: string, headers: Record<string, string>) => ({
   ...prepare,
   definition: { key: 'http.request', version: 1 },
   label: 'Fetch orders',
-  config: { method: 'GET', url, headers },
+  config: { method: 'GET', url, headers, ...requestDefaults },
 });
 const initialUrl = 'https://api.example.test/orders';
 const changedUrl = 'https://api.example.test/v2/orders';
