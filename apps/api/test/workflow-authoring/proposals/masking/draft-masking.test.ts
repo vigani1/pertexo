@@ -4,11 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
   createCatalogServices,
   ListNodeDefinitionsService,
-} from '../../../src/catalog/catalog.service.js';
-import {
-  projectDraftForModel,
-  restoreDraftFields,
-} from '../../../src/workflow-authoring/proposals/masked-draft.js';
+} from '../../../../src/catalog/catalog.service.js';
+import { projectDraftForModel } from '../../../../src/workflow-authoring/proposals/masking/project-draft.js';
+import { restoreDraftFields } from '../../../../src/workflow-authoring/proposals/masking/restore-draft.js';
 
 const { assistantDisclosure } = createCatalogServices().listNodeDefinitions;
 const project = (graph: WorkflowGraph) =>

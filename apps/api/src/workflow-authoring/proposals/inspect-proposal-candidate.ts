@@ -11,7 +11,7 @@ import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
-import { restoreDraftFields } from './masked-draft.js';
+import { restoreDraftFields } from './masking/restore-draft.js';
 
 type ProposalInspection = Parameters<
   WorkflowAuthoringStore['inspectCandidate']

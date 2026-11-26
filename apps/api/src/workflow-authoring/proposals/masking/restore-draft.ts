@@ -1,88 +1,24 @@
 import {
-  isMaskedAddress,
-  type AssistantDisclosure,
-} from '@pertexo/node-sdk/server';
-import {
   canonicalJson,
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
+import {
+  fieldMask,
+  maskedConnection,
+  maskedMapping,
+  maskedSetting,
+  opaqueField,
+  type DisclosureLookup,
+  type Fields,
+} from './masked-fields.js';
 
-/** The disclosure that applies to a step as saved, when its definition has one. */
-export type DisclosureLookup = (
-  node: WorkflowNode,
-) => AssistantDisclosure | undefined;
-
-// Stands for every undeclared field of a record, whose names may be private.
-const opaqueField = '@existing';
-const maskedSetting = { kind: 'existing_setting' } as const;
-const maskedMapping = {
-  kind: 'literal',
-  value: { kind: 'existing_mapping' },
-} as const;
-const maskedConnection = '@existing_connection';
 const CONNECTION_REQUIRES_USER = 'connection_requires_user';
 
-type Fields = AssistantDisclosure['config'] | undefined;
 interface Issue {
   path: string;
   code: string;
   message: string;
-}
-
-export function projectDraftForModel(
-  { notes: _notes, callable: _callable, ...graph }: WorkflowGraph,
-  disclosureFor: DisclosureLookup,
-): WorkflowGraph {
-  return { ...graph, nodes: projectNodes(graph.nodes, disclosureFor) };
-}
-
-function projectNodes(
-  nodes: readonly WorkflowNode[],
-  disclosureFor: DisclosureLookup,
-): WorkflowNode[] {
-  return nodes.map((node) => {
-    const fields = disclosureFor(node);
-    const { structured, ...rest } = node;
-    return {
-      ...rest,
-      config: projectRecord(node.config, fields?.config, maskedSetting),
-      inputMappings: projectRecord(
-        node.inputMappings,
-        fields?.inputs,
-        maskedMapping,
-      ),
-      connectionRefs: projectRecord(
-        node.connectionRefs,
-        undefined,
-        maskedConnection,
-      ),
-      ...(structured === undefined
-        ? {}
-        : {
-            structured: {
-              ...structured,
-              body: {
-                ...structured.body,
-                nodes: projectNodes(structured.body.nodes, disclosureFor),
-              },
-            },
-          }),
-    };
-  });
-}
-
-function projectRecord<Value>(
-  record: Readonly<Record<string, Value>>,
-  fields: Fields,
-  marker: Value,
-): Readonly<Record<string, Value>> {
-  return Object.fromEntries(
-    Object.entries(record).map(([key, value]) => {
-      const mask = fieldMask(fields, key, value);
-      return mask === undefined ? [key, value] : [mask, marker];
-    }),
-  );
 }
 
 /**
@@ -405,21 +341,6 @@ function protectedValueChanged(issues: Issue[], path: string) {
     message:
       'A protected setting was changed or removed. Edit it in the editor.',
   });
-}
-
-/** The name a field takes in the projection, or nothing when it is visible. */
-function fieldMask(
-  fields: Fields,
-  key: string,
-  value: unknown,
-): string | undefined {
-  if (fields?.visible.includes(key)) return undefined;
-  if (fields?.masked.includes(key)) return key;
-  if (fields?.addresses?.includes(key))
-    return isMaskedAddress(value) ? key : undefined;
-  if (fields?.unlisted === 'visible') return undefined;
-  // Unknown keys can themselves contain private data from older or incomplete drafts.
-  return fields?.unlisted === 'masked' ? key : opaqueField;
 }
 
 function hasProtectedValues(

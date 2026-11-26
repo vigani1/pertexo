@@ -29,7 +29,7 @@ import {
   serializeWorkflowValidation,
 } from '../http/serializers.js';
 import { inspectProposalCandidate } from './inspect-proposal-candidate.js';
-import { projectDraftForModel } from './masked-draft.js';
+import { projectDraftForModel } from './masking/project-draft.js';
 import { expandProposalCatalog, proposalCatalog } from './proposal-catalog.js';
 import {
   proposalAnswer,
