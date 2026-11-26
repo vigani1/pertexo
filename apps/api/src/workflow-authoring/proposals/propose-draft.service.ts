@@ -105,7 +105,10 @@ export class ProposeDraftService {
       return { kind: 'confirmation_changed' as const };
     const requestText = proposalRequestText(request);
     const catalog = proposalCatalog(this.catalog, requestText, draft.graphJson);
-    const currentDraft = projectDraftForModel(draft.graphJson);
+    const currentDraft = projectDraftForModel(
+      draft.graphJson,
+      this.catalog.assistantDisclosure,
+    );
     const prompt = (query?: string) => {
       if (query === undefined)
         return proposalPrompt({ currentDraft, catalog, request: requestText });

@@ -1,8 +1,4 @@
 import {
-  PlatformNodeDefinitionUnavailableError,
-  resolvePlatformNodeDefinition,
-} from '@pertexo/node-catalog';
-import {
   isMaskedAddress,
   type AssistantDisclosure,
 } from '@pertexo/node-sdk/server';
@@ -12,6 +8,12 @@ import {
   type WorkflowNode,
 } from '@pertexo/workflow-model';
 
+/** The disclosure that applies to a step as saved, when its definition has one. */
+export type DisclosureLookup = (
+  node: WorkflowNode,
+) => AssistantDisclosure | undefined;
+
+// Stands for every undeclared field of a record, whose names may be private.
 const opaqueField = '@existing';
 const maskedSetting = { kind: 'existing_setting' } as const;
 const maskedMapping = {
@@ -19,6 +21,7 @@ const maskedMapping = {
   value: { kind: 'existing_mapping' },
 } as const;
 const maskedConnection = '@existing_connection';
+const CONNECTION_REQUIRES_USER = 'connection_requires_user';
 
 type Fields = AssistantDisclosure['config'] | undefined;
 interface Issue {
@@ -33,21 +36,75 @@ export const protectedSettingRefusal = {
   message: 'Edit this protected setting in the editor.',
 } as const;
 
-export function projectDraftForModel({
-  notes: _notes,
-  callable: _callable,
-  ...graph
-}: WorkflowGraph): WorkflowGraph {
-  return { ...graph, nodes: graph.nodes.map(projectNode) };
+export function projectDraftForModel(
+  { notes: _notes, callable: _callable, ...graph }: WorkflowGraph,
+  disclosureFor: DisclosureLookup,
+): WorkflowGraph {
+  return { ...graph, nodes: projectNodes(graph.nodes, disclosureFor) };
 }
 
+function projectNodes(
+  nodes: readonly WorkflowNode[],
+  disclosureFor: DisclosureLookup,
+): WorkflowNode[] {
+  return nodes.map((node) => {
+    const fields = disclosureFor(node);
+    const { structured, ...rest } = node;
+    return {
+      ...rest,
+      config: projectRecord(node.config, fields?.config, maskedSetting),
+      inputMappings: projectRecord(
+        node.inputMappings,
+        fields?.inputs,
+        maskedMapping,
+      ),
+      connectionRefs: projectRecord(
+        node.connectionRefs,
+        undefined,
+        maskedConnection,
+      ),
+      ...(structured === undefined
+        ? {}
+        : {
+            structured: {
+              ...structured,
+              body: {
+                ...structured.body,
+                nodes: projectNodes(structured.body.nodes, disclosureFor),
+              },
+            },
+          }),
+    };
+  });
+}
+
+function projectRecord<Value>(
+  record: Readonly<Record<string, Value>>,
+  fields: Fields,
+  marker: Value,
+): Readonly<Record<string, Value>> {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => {
+      const mask = fieldMask(fields, key, value);
+      return mask === undefined ? [key, value] : [mask, marker];
+    }),
+  );
+}
+
+/**
+ * Put the saved masked values back into the model's candidate. A rejection
+ * also names the issues the model can correct; a connection is the user's to
+ * choose.
+ */
 export function restoreDraftFields(
   base: WorkflowGraph,
   candidate: WorkflowGraph,
+  disclosureFor: DisclosureLookup,
 ) {
   const restoration: Restoration = {
     issues: [],
     protectedPaths: ['$.callable', '$.notes'],
+    disclosureFor,
   };
   for (const field of ['notes', 'callable'] as const)
     if (base[field] !== undefined && candidate[field] !== undefined)
@@ -66,12 +123,19 @@ export function restoreDraftFields(
   const { issues, protectedPaths } = restoration;
   return issues.length === 0
     ? { kind: 'ready' as const, graph, protectedPaths }
-    : { kind: 'rejected' as const, issues };
+    : {
+        kind: 'rejected' as const,
+        issues,
+        feedback: issues.filter(
+          ({ code }) => code !== CONNECTION_REQUIRES_USER,
+        ),
+      };
 }
 
 interface Restoration {
   issues: Issue[];
   protectedPaths: string[];
+  disclosureFor: DisclosureLookup;
 }
 
 // Publication reports both ID-based paths and paths with candidate indexes.
@@ -85,6 +149,13 @@ interface RestoringStep {
   restoration: Restoration;
 }
 
+interface RestoringRecord<Value> {
+  marker: Value;
+  key: 'config' | 'inputMappings' | 'connectionRefs';
+  before?: Fields;
+  after?: Fields;
+}
+
 function restoreNodes(
   previous: readonly WorkflowNode[],
   next: readonly WorkflowNode[],
@@ -94,7 +165,7 @@ function restoreNodes(
   const byId = new Map(previous.map((node) => [node.id, node]));
   const nextIds = new Set(next.map((node) => node.id));
   for (const node of previous)
-    if (!nextIds.has(node.id) && hasProtectedValues(node))
+    if (!nextIds.has(node.id) && hasProtectedValues(node, restoration))
       protectedValueChanged(
         restoration.issues,
         `${scope.byId}.nodes.${node.id}`,
@@ -106,7 +177,11 @@ function restoreNodes(
     };
     const original = byId.get(node.id);
     const duplicate = !nextIds.delete(node.id);
-    if (duplicate && original !== undefined && hasProtectedValues(original))
+    if (
+      duplicate &&
+      original !== undefined &&
+      hasProtectedValues(original, restoration)
+    )
       protectedValueChanged(restoration.issues, path.byId);
     return restoreNode(original, node, path, restoration);
   });
@@ -119,10 +194,14 @@ function restoreNode(
   restoration: Restoration,
 ): WorkflowNode {
   const changed = original !== undefined && changedDefinition(original, node);
-  if (changed && hasProtectedValues(original))
+  if (changed && hasProtectedValues(original, restoration))
     protectedValueChanged(restoration.issues, path.byId);
-  const before = disclosure(original);
-  const after = original === undefined || changed ? disclosure(node) : before;
+  const before =
+    original === undefined ? undefined : restoration.disclosureFor(original);
+  const after =
+    original === undefined || changed
+      ? restoration.disclosureFor(node)
+      : before;
   const step = { path, restoration };
   const config = restoreRecord(
     original?.config,
@@ -155,7 +234,11 @@ function restoreNode(
   const structured = node.structured;
   const restored = { ...node, config, inputMappings, connectionRefs };
   if (structured === undefined) {
-    if (previousBody?.nodes.some(hasProtectedValues))
+    if (
+      previousBody?.nodes.some((child) =>
+        hasProtectedValues(child, restoration),
+      )
+    )
       protectedValueChanged(restoration.issues, `${path.byId}.structured`);
     return restored;
   }
@@ -188,7 +271,7 @@ function restoreConnections(
     if (hasEntries(after))
       step.restoration.issues.push({
         path: `${step.path.byId}.connectionRefs`,
-        code: 'connection_requires_user',
+        code: CONNECTION_REQUIRES_USER,
         message: 'Select the connection in the editor.',
       });
     return after;
@@ -196,10 +279,7 @@ function restoreConnections(
   return restoreRecord(
     before,
     after,
-    {
-      marker: maskedConnection,
-      key: 'connectionRefs',
-    },
+    { marker: maskedConnection, key: 'connectionRefs' },
     step,
   );
 }
@@ -207,56 +287,111 @@ function restoreConnections(
 function restoreRecord<Value>(
   before: Readonly<Record<string, Value>> | undefined,
   after: Readonly<Record<string, Value>>,
-  record: Readonly<{
-    marker: Value;
-    key: 'config' | 'inputMappings' | 'connectionRefs';
-    before?: Fields;
-    after?: Fields;
-  }>,
-  { path, restoration }: RestoringStep,
+  record: RestoringRecord<Value>,
+  step: RestoringStep,
 ): Readonly<Record<string, Value>> {
-  const result = new Map(Object.entries(after));
-  const markers = new Set<string>();
+  const { values, placeholders } = keepMaskedBaseFields(
+    before,
+    after,
+    record,
+    step,
+  );
+  checkPlaceholders(after, placeholders, record, step);
+  // A new step's values are the model's own, so it may set any field.
+  if (before !== undefined)
+    refuseNewMaskedFields(after, placeholders, record, step);
+  return Object.fromEntries(values);
+}
+
+/** The saved value wins for every masked field; the model saw only its name. */
+function keepMaskedBaseFields<Value>(
+  before: Readonly<Record<string, Value>> | undefined,
+  after: Readonly<Record<string, Value>>,
+  record: RestoringRecord<Value>,
+  { path, restoration }: RestoringStep,
+) {
+  const values = new Map(Object.entries(after));
+  const placeholders = new Set<string>();
   for (const [key, value] of Object.entries(before ?? {})) {
     const mask = fieldMask(record.before, key, value);
     if (mask === undefined) continue;
-    protect(mask);
-    result.set(key, value);
-    markers.add(mask);
-  }
-  for (const mask of markers)
-    if (
-      !Object.hasOwn(after, mask) ||
-      canonicalJson(after[mask]) !== canonicalJson(record.marker)
-    )
-      protectedValueChanged(restoration.issues, `${path.byId}.${suffix(mask)}`);
-  if (markers.has(opaqueField) && !Object.hasOwn(before ?? {}, opaqueField))
-    result.delete(opaqueField);
-  for (const [key, value] of Object.entries(after)) {
-    if (markers.has(key)) continue;
-    const mask = fieldMask(record.after, key, value);
-    if (mask === undefined) continue;
-    protect(mask);
-    if (before !== undefined)
-      restoration.issues.push({
-        path: `${path.byId}.${suffix(mask)}`,
-        code: 'masked_value_added',
-        message: 'A protected setting was added. Set it in the editor.',
-      });
-  }
-  return Object.fromEntries(result);
-
-  function suffix(mask: string) {
-    return mask === opaqueField ? record.key : `${record.key}.${mask}`;
-  }
-
-  function protect(mask: string) {
-    const field = suffix(mask);
+    const field = fieldPath(record, mask);
+    // The model cannot see these values, so it is not asked to fix them.
     restoration.protectedPaths.push(
       `${path.byId}.${field}`,
       `${path.byIndex}.${field}`,
     );
+    values.set(key, value);
+    placeholders.add(mask);
   }
+  // The opaque placeholder stands for the undeclared fields restored above.
+  if (
+    placeholders.has(opaqueField) &&
+    !Object.hasOwn(before ?? {}, opaqueField)
+  )
+    values.delete(opaqueField);
+  return { values, placeholders };
+}
+
+/**
+ * Each restored field must keep its placeholder, and a placeholder anywhere
+ * else would be saved as a real value.
+ */
+function checkPlaceholders<Value>(
+  after: Readonly<Record<string, Value>>,
+  placeholders: ReadonlySet<string>,
+  record: RestoringRecord<Value>,
+  { path, restoration }: RestoringStep,
+) {
+  for (const mask of placeholders)
+    if (
+      !Object.hasOwn(after, mask) ||
+      !isPlaceholder(record, mask, after[mask])
+    )
+      protectedValueChanged(
+        restoration.issues,
+        `${path.byId}.${fieldPath(record, mask)}`,
+      );
+  for (const [key, value] of Object.entries(after))
+    if (!placeholders.has(key) && isPlaceholder(record, key, value))
+      restoration.issues.push({
+        path: `${path.byId}.${fieldPath(record, key)}`,
+        code: 'masked_placeholder_copied',
+        message:
+          'A placeholder stands only for a saved protected setting. Set a real value or leave the field unset.',
+      });
+}
+
+function refuseNewMaskedFields<Value>(
+  after: Readonly<Record<string, Value>>,
+  placeholders: ReadonlySet<string>,
+  record: RestoringRecord<Value>,
+  { path, restoration }: RestoringStep,
+) {
+  for (const [key, value] of Object.entries(after)) {
+    if (placeholders.has(key) || isPlaceholder(record, key, value)) continue;
+    const mask = fieldMask(record.after, key, value);
+    if (mask !== undefined)
+      restoration.issues.push({
+        path: `${path.byId}.${fieldPath(record, mask)}`,
+        code: 'masked_value_added',
+        message: 'A protected setting was added. Set it in the editor.',
+      });
+  }
+}
+
+function isPlaceholder<Value>(
+  record: RestoringRecord<Value>,
+  key: string,
+  value: Value | undefined,
+): boolean {
+  return (
+    key === opaqueField || canonicalJson(value) === canonicalJson(record.marker)
+  );
+}
+
+function fieldPath(record: RestoringRecord<unknown>, mask: string): string {
+  return mask === opaqueField ? record.key : `${record.key}.${mask}`;
 }
 
 function protectedValueChanged(issues: Issue[], path: string) {
@@ -268,49 +403,7 @@ function protectedValueChanged(issues: Issue[], path: string) {
   });
 }
 
-function projectNode(node: WorkflowNode): WorkflowNode {
-  const fields = disclosure(node);
-  const { structured, ...rest } = node;
-  return {
-    ...rest,
-    config: projectRecord(node.config, fields?.config, maskedSetting),
-    inputMappings: projectRecord(
-      node.inputMappings,
-      fields?.inputs,
-      maskedMapping,
-    ),
-    connectionRefs: projectRecord(
-      node.connectionRefs,
-      undefined,
-      maskedConnection,
-    ),
-    ...(structured === undefined
-      ? {}
-      : {
-          structured: {
-            ...structured,
-            body: {
-              ...structured.body,
-              nodes: structured.body.nodes.map(projectNode),
-            },
-          },
-        }),
-  };
-}
-
-function projectRecord<Value>(
-  record: Readonly<Record<string, Value>>,
-  fields: Fields,
-  marker: Value,
-): Readonly<Record<string, Value>> {
-  return Object.fromEntries(
-    Object.entries(record).map(([key, value]) => {
-      const mask = fieldMask(fields, key, value);
-      return mask === undefined ? [key, value] : [mask, marker];
-    }),
-  );
-}
-
+/** The name a field takes in the projection, or nothing when it is visible. */
 function fieldMask(
   fields: Fields,
   key: string,
@@ -325,8 +418,11 @@ function fieldMask(
   return fields?.unlisted === 'masked' ? key : opaqueField;
 }
 
-function hasProtectedValues(node: WorkflowNode): boolean {
-  const fields = disclosure(node);
+function hasProtectedValues(
+  node: WorkflowNode,
+  restoration: Restoration,
+): boolean {
+  const fields = restoration.disclosureFor(node);
   return (
     hasEntries(node.connectionRefs) ||
     Object.entries(node.config).some(
@@ -335,23 +431,11 @@ function hasProtectedValues(node: WorkflowNode): boolean {
     Object.entries(node.inputMappings).some(
       ([key, value]) => fieldMask(fields?.inputs, key, value) !== undefined,
     ) ||
-    (node.structured?.body.nodes.some(hasProtectedValues) ?? false)
+    (node.structured?.body.nodes.some((child) =>
+      hasProtectedValues(child, restoration),
+    ) ??
+      false)
   );
-}
-
-function disclosure(
-  node: WorkflowNode | undefined,
-): AssistantDisclosure | undefined {
-  if (node === undefined) return undefined;
-  try {
-    const definition = resolvePlatformNodeDefinition(node.definition);
-    return node.configVersion === definition.manifest.configVersion
-      ? definition.assistantDisclosure
-      : undefined;
-  } catch (error: unknown) {
-    if (!(error instanceof PlatformNodeDefinitionUnavailableError)) throw error;
-    return undefined;
-  }
 }
 
 function hasEntries(record: object | undefined): boolean {
