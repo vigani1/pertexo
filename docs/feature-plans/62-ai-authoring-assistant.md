@@ -43,7 +43,9 @@ An operator sets provider limits, address policy and retention expectations.
   on edits. Withhold unknown config names. Safe explanation metadata follows current run-read
   permission, and opaque IDs in answers resolve only to authorized links.
   Never pass credentials in messages or tool arguments. The runtime
-  attaches its credential only to authorized provider transport.
+  attaches its credential only to authorized provider transport. The user's
+  request is sent as typed: what the user writes is theirs to send, as in
+  n8n and Zapier.
 - The structured response returns a candidate in the existing workflow draft
   graph shape against the existing base revision. Materialize server-held
   fields through the authorized draft and reject changes to masked values.
@@ -57,13 +59,24 @@ An operator sets provider limits, address policy and retention expectations.
   Whole editor presets, such as a blank starter case, require an explicit
   choice in a proposal. Feed correctable issues from graph checks back to the
   model alongside the original masked draft. Include the previous candidate
-  only when it can be projected without the refused values. The
+  as the model wrote it once its saved values are restored: it shows steps
+  the model added exactly, and placeholders only where saved masked values
+  were put back. A refused restoration sends its issues without the
+  candidate. Proposal generation has 90 seconds and the request 95, sized
+  for reasoning models: each model call may use the model step's largest
+  timeout and output, within the proposal deadline and an output budget of
+  one full answer per possible call. The
   assistant has at most two correction rounds within the same request limits.
   Report the rounds used with the final proposal.
   No new persisted proposal format, patch language or ADR.
 - The assistant may return an explanation or an inspected proposal. It has
   no tool for saving, publishing, running, provisioning credentials or
   calling workflow tools. No shared chat history in this delivery.
+- Decision: when a request only asks to change a protected setting, the
+  model answers `{"maskedSetting":true}` instead of a draft. The proposal is
+  rejected with `protected_setting_requested`, so a client can tell a
+  declined request from an attempted change (`masked_value_changed`). It is
+  the third answer shape beside a draft and a catalog lookup.
 
 - Record bounded model usage once per explanation or proposal as
   `assistant.model` against its run or workflow, summing all proposal rounds.
@@ -71,19 +84,40 @@ An operator sets provider limits, address policy and retention expectations.
 
 ## Step settings disclosed to the model
 
-A built-in registration lists its top-level config and input fields. Show the
-settings and mappings that shape workflow logic or data. Mask request material
-commonly used for credentials, including HTTP headers, query parameters, bodies,
-webhook authentication, and secret-typed fields. Always mask connections and
-approval audiences, including audiences inside Agent tool settings. Classify
-open input schemas explicitly. Saved HTTP addresses
-with query strings or embedded credentials stay protected as a whole. A
+A built-in registration lists every top-level config and input field as
+visible or masked, and an open schema also says how to treat unlisted names;
+the step registry refuses a declaration that misses, repeats or invents a
+field. Show the settings and mappings that shape workflow logic or data. Mask
+request material commonly used for credentials, including HTTP headers, query
+parameters, bodies, webhook authentication, and secret-typed fields. Named
+request inputs count as bodies. Always mask connections, approval audiences,
+including audiences inside Agent tool settings, and recipient addresses. A
 declared masked field keeps its name and a placeholder. Undeclared field names
 and definitions without a disclosure use an opaque placeholder for the record.
 
+An address field (`http.request` and `http.poll` `url`, `core.form`
+`redirectUrl`) is visible unless one rule, `isMaskedAddress` in node-sdk,
+masks it whole: it has user information, a query string, or a path segment
+of 20 or more letters, digits, `_`, `-` or `:` that mixes letters and digits.
+That last case covers Slack, Discord, Teams and Telegram webhook addresses,
+and also masks an address with a UUID in its path. Ordinary paths such as
+`/v2/orders` stay visible.
+
 The assistant can edit visible fields on existing steps. It must carry forward
-each placeholder exactly and leave absent protected fields unset. Before applying
-a proposal, review the before and after values for changed settings and mappings.
+each placeholder exactly and leave absent protected fields unset. A step the
+model adds holds only the model's own values, so it may set any field there,
+and those fields' issues reach correction feedback; a placeholder copied
+where no saved value stands behind it is refused with
+`masked_placeholder_copied`. Before applying a proposal, review the before and
+after values for changed settings and mappings.
+
+Known limits:
+
+- The Agent's `tool` and `tools` settings are masked whole because an
+  approval audience sits inside them, so the assistant cannot edit tool
+  logic such as "make the Slack tool require approval".
+- Named request inputs (`http.request`, `mcp.call_tool`) count as bodies and
+  stay masked.
 
 | Definition | Visible settings | Visible input mappings | Masked settings and mappings |
 | --- | --- | --- | --- |
@@ -103,7 +137,7 @@ a proposal, review the before and after values for changed settings and mappings
 | `core.date` 1, 2 | `operation`, `format`, `timeZone`, `unit` | `value`, `amount` | — |
 | `core.filter` 1, 2 | `path`, `operator` | `items`, `value` | — |
 | `core.foreach` 1 | — | `items` | — |
-| `core.form` 1 | `coordination`, `title`, `instructions`, `thankYouMessage`, `redirectUrl`, `fields` | `values`, `submittedBy`, `submittedAt` | — |
+| `core.form` 1 | `coordination`, `title`, `instructions`, `thankYouMessage`, `fields`, `redirectUrl` (address rule) | `values`, `submittedBy`, `submittedAt` | — |
 | `core.hmac` 1 | `algorithm`, `encoding` | `value` | — |
 | `core.html` 1 | `operation`, `selector`, `limit`, `attribute` | `value` | — |
 | `core.manual` 1 | — | Named mappings | — |
@@ -137,8 +171,8 @@ a proposal, review the before and after values for changed settings and mappings
 | `database.execute` 1 | `timeoutMillis`, `maxRows`, `operation`, `sql`, `schema`, `table`, `key`, `keys` | `parameters`, `rows` | — |
 | `database.poll` 1 | `schema`, `table`, `orderingColumn`, `keyColumn`, `intervalMinutes`, `mode` | `triggerId`, `nodeId`, `item` | — |
 | `email.send_notification` 1 | `timeoutMillis` | `subject`, `text`, `attachments` | `toEmail` |
-| `http.poll` 1 | `intervalMinutes`, `itemsPath`, `itemKeyPath`, `url` (address only) | `triggerId`, `nodeId`, `item` | — |
-| `http.request` 1 | `method`, `timeoutMillis`, `maxRedirects`, `maxResponseBytes`, `inlineResponseBytes`, `pagination`, `returnErrorResponses`, `url` (address only) | — | `headers`, `multipart`, `body`, Other named mappings |
+| `http.poll` 1 | `intervalMinutes`, `itemsPath`, `itemKeyPath`, `url` (address rule) | `triggerId`, `nodeId`, `item` | — |
+| `http.request` 1 | `method`, `timeoutMillis`, `maxRedirects`, `maxResponseBytes`, `inlineResponseBytes`, `pagination`, `returnErrorResponses`, `url` (address rule) | — | `headers`, `multipart`, `body`, Other named mappings |
 | `mcp.call_tool` 1 | `toolName`, `toolInputSchema` | — | Other named mappings |
 | `slack.send_message` 1 | `timeoutMillis` | `channelId`, `text` | — |
 
@@ -185,9 +219,12 @@ The product browser journey includes a scripted catalog recovery and checks
 both outcomes on the published workflow. The opt-in evaluation grades eight
 cases. It checks new workflows, routing, renaming, schedule and mapping
 changes, URL edits that preserve a saved header, and refusal to change protected
-settings. The two HTTP edits keep an unpublished draft so the evaluation never
-sends a workflow request. The refusal case checks both the saved draft and
-every outbound model request.
+settings. The two HTTP cases seed an `X-Partner-Reference` header, which a
+saved workflow can hold, and keep the draft unpublished so the evaluation never
+sends a workflow request. The refusal case checks that the saved header keeps
+its value byte for byte, that the requested value is saved nowhere, and that
+the saved value never reaches a model request. The requested value itself may
+appear there, because it is the user's own text.
 
 Start a local OpenAI-compatible endpoint and use the normal owned browser test
 environment. Run just the evaluation spec, three times per case:
