@@ -39,3 +39,10 @@ export const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_WAIT_REGISTRATION = Object.freeze({
+  manifest: CORE_WAIT_MANIFEST,
+  configSchema: CORE_WAIT_CONFIG_SCHEMA,
+  inputSchema: CORE_WAIT_INPUT_SCHEMA,
+  outputSchema: CORE_WAIT_OUTPUT_SCHEMA,
+});

@@ -44,3 +44,10 @@ export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_TERMINATE_REGISTRATION = Object.freeze({
+  manifest: CORE_TERMINATE_MANIFEST,
+  configSchema: CORE_TERMINATE_CONFIG_SCHEMA,
+  inputSchema: CORE_TERMINATE_INPUT_SCHEMA,
+  outputSchema: CORE_TERMINATE_OUTPUT_SCHEMA,
+});

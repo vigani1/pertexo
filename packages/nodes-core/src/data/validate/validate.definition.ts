@@ -54,3 +54,10 @@ export const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_VALIDATE_REGISTRATION = Object.freeze({
+  manifest: CORE_VALIDATE_MANIFEST,
+  configSchema: CORE_VALIDATE_CONFIG_SCHEMA,
+  inputSchema: CORE_VALIDATE_INPUT_SCHEMA,
+  outputSchema: CORE_VALIDATE_OUTPUT_SCHEMA,
+});

@@ -45,3 +45,10 @@ export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_REQUEST_INPUT_REGISTRATION = Object.freeze({
+  manifest: CORE_REQUEST_INPUT_MANIFEST,
+  configSchema: CORE_REQUEST_INPUT_CONFIG_SCHEMA,
+  inputSchema: CORE_REQUEST_INPUT_INPUT_SCHEMA,
+  outputSchema: CORE_REQUEST_INPUT_OUTPUT_SCHEMA,
+});

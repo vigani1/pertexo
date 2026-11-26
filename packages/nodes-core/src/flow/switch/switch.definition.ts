@@ -47,3 +47,10 @@ export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_SWITCH_REGISTRATION = Object.freeze({
+  manifest: CORE_SWITCH_MANIFEST,
+  configSchema: CORE_SWITCH_CONFIG_SCHEMA,
+  inputSchema: CORE_SWITCH_INPUT_SCHEMA,
+  outputSchema: CORE_SWITCH_OUTPUT_SCHEMA,
+});

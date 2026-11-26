@@ -43,3 +43,10 @@ export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_SCHEDULE_REGISTRATION = Object.freeze({
+  manifest: CORE_SCHEDULE_MANIFEST,
+  configSchema: CORE_SCHEDULE_CONFIG_SCHEMA,
+  inputSchema: CORE_SCHEDULE_INPUT_SCHEMA,
+  outputSchema: CORE_SCHEDULE_OUTPUT_SCHEMA,
+});

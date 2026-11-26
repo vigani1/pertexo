@@ -43,3 +43,10 @@ export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_SET_REGISTRATION = Object.freeze({
+  manifest: CORE_SET_MANIFEST,
+  configSchema: CORE_SET_CONFIG_SCHEMA,
+  inputSchema: CORE_SET_INPUT_SCHEMA,
+  outputSchema: CORE_SET_OUTPUT_SCHEMA,
+});

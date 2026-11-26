@@ -52,3 +52,10 @@ export const CORE_TAKE_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_TAKE_REGISTRATION = Object.freeze({
+  manifest: CORE_TAKE_MANIFEST,
+  configSchema: CORE_TAKE_CONFIG_SCHEMA,
+  inputSchema: CORE_TAKE_INPUT_SCHEMA,
+  outputSchema: CORE_TAKE_OUTPUT_SCHEMA,
+});

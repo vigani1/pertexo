@@ -53,3 +53,10 @@ export const CORE_SORT_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_SORT_REGISTRATION = Object.freeze({
+  manifest: CORE_SORT_MANIFEST,
+  configSchema: CORE_SORT_CONFIG_SCHEMA,
+  inputSchema: CORE_SORT_INPUT_SCHEMA,
+  outputSchema: CORE_SORT_OUTPUT_SCHEMA,
+});
