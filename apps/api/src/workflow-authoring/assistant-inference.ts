@@ -190,6 +190,8 @@ export function failureOutcome(error: NodeExecutorFailure) {
   if (error.errorKind === 'timeout') return 'timeout';
   if (error.safeErrorCode === 'model.response_too_large')
     return 'response_too_large';
+  if (error.safeErrorCode === 'model.output_truncated')
+    return 'output_truncated';
   if (error.safeErrorCode === 'model.invalid_response')
     return 'invalid_response';
   return 'provider_failure';

@@ -26,6 +26,8 @@ export interface ProposalReply {
   graph: unknown;
   text?: string;
   outputTokens?: number;
+  /** `length` is a reply the model cut off at its output limit. */
+  finishReason?: 'stop' | 'length';
   waitMillis?: number;
   hold?: boolean;
 }
@@ -71,7 +73,7 @@ export function useProposalApi(name: string) {
         return;
       }
       if (reply.hold) return;
-      const { graph, text, outputTokens = 10 } = reply;
+      const { graph, text, outputTokens = 10, finishReason = 'stop' } = reply;
       if (reply.waitMillis === undefined) {
         sendReply();
       } else {
@@ -87,7 +89,7 @@ export function useProposalApi(name: string) {
           JSON.stringify({
             choices: [
               {
-                finish_reason: 'stop',
+                finish_reason: finishReason,
                 message: { content: text ?? JSON.stringify({ draft: graph }) },
               },
             ],

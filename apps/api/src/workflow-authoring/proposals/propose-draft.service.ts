@@ -230,7 +230,9 @@ export class ProposeDraftService {
       }
       if (turn.kind !== 'graph') {
         const result =
-          turn.kind === 'invalid_response' || turn.kind === 'request_too_large'
+          turn.kind === 'invalid_response' ||
+          turn.kind === 'request_too_large' ||
+          turn.kind === 'output_truncated'
             ? (lastCandidate ?? turn)
             : turn;
         return { result, rounds };

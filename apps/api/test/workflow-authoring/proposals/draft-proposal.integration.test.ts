@@ -371,6 +371,45 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(bodies.join('\n')).not.toContain(settingSentinel);
   });
 
+  it('reports a reply the model cut off at its output limit as out of output space', async () => {
+    const path = await workflow();
+    const start = requests.length;
+    const truncated = {
+      graph: null,
+      text: '',
+      finishReason: 'length',
+      outputTokens: 16_384,
+    } as const;
+    expect(await propose(path, [truncated])).toMatchObject({
+      kind: 'output_truncated',
+      rounds: 0,
+    });
+    const body = JSON.parse(requests[start] ?? 'null') as {
+      max_tokens: number;
+    };
+    expect(body.max_tokens).toBe(16_384);
+  });
+
+  it('keeps the earlier candidate when a correction is cut off at the output limit', async () => {
+    const path = await workflow();
+    const dangling = {
+      ...httpWorkflow,
+      edges: httpWorkflow.edges.map((edge) => ({
+        ...edge,
+        target: { ...edge.target, nodeId: 'missing' },
+      })),
+    };
+    const result = await propose(path, [
+      { graph: dangling },
+      { graph: null, text: '', finishReason: 'length' },
+    ]);
+    expect(result).toMatchObject({
+      kind: 'inspected',
+      rounds: 1,
+      validation: { valid: false },
+    });
+  });
+
   function workflow(path = workspace, browser = owner) {
     return proposals.workflow(path, browser);
   }
