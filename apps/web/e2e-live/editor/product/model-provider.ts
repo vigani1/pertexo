@@ -8,6 +8,18 @@ export const model = 'local-extraction-model';
 export const key = 'fake-editor-model-key';
 export const baseUrl = 'https://model.provider.test/v1';
 
+export function modelReply(value: unknown) {
+  return {
+    choices: [
+      {
+        finish_reason: 'stop',
+        message: { content: JSON.stringify(value) },
+      },
+    ],
+    usage: { prompt_tokens: 20, completion_tokens: 10 },
+  };
+}
+
 export async function openModelProvider(
   source?: readonly unknown[] | Readonly<{ origin: URL; model: string }>,
 ) {
