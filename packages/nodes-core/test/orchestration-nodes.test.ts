@@ -9,7 +9,7 @@ import {
 import {
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
-  CORE_FOR_EACH_MANIFEST,
+  CORE_FOR_EACH_REGISTRATION,
 } from '../src/flow/for-each/for-each.definition.js';
 import {
   CORE_MERGE_CONFIG_SCHEMA,
@@ -23,21 +23,21 @@ import {
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_DEFINITION,
 } from '../src/index.js';
-import { CORE_MERGE_MANIFEST } from '../src/flow/merge/merge.definition.js';
+import { CORE_MERGE_REGISTRATION } from '../src/flow/merge/merge.definition.js';
 import {
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_OUTPUT_SCHEMA,
 } from '../src/flow/parallel/parallel.schemas.js';
-import { CORE_PARALLEL_MANIFEST } from '../src/flow/parallel/parallel.definition.js';
+import { CORE_PARALLEL_REGISTRATION } from '../src/flow/parallel/parallel.definition.js';
 import {
   CORE_SWITCH_EXECUTOR,
-  CORE_SWITCH_MANIFEST,
+  CORE_SWITCH_REGISTRATION,
 } from '../src/flow/switch/switch.definition.js';
 import { CORE_WAIT_CONFIG_SCHEMA } from '../src/flow/wait/wait.schemas.js';
 import {
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
-  CORE_WAIT_MANIFEST,
+  CORE_WAIT_REGISTRATION,
 } from '../src/flow/wait/wait.definition.js';
 
 describe('core orchestration node contracts', () => {
@@ -57,7 +57,7 @@ describe('core orchestration node contracts', () => {
         ],
       }).success,
     ).toBe(false);
-    expect(CORE_SWITCH_MANIFEST).toMatchObject({
+    expect(CORE_SWITCH_REGISTRATION.manifest).toMatchObject({
       definition: CORE_SWITCH_DEFINITION,
       executor: CORE_SWITCH_EXECUTOR,
       ports: {
@@ -104,7 +104,7 @@ describe('core orchestration node contracts', () => {
         maxConcurrency: 3,
       }).success,
     ).toBe(false);
-    expect(CORE_PARALLEL_MANIFEST).toMatchObject({
+    expect(CORE_PARALLEL_REGISTRATION.manifest).toMatchObject({
       definition: CORE_PARALLEL_DEFINITION,
       executor: CORE_PARALLEL_EXECUTOR,
       ports: { inputs: ['in'] },
@@ -124,7 +124,7 @@ describe('core orchestration node contracts', () => {
         policy: { kind: 'count', count: 0 },
       }).success,
     ).toBe(false);
-    expect(CORE_MERGE_MANIFEST).toMatchObject({
+    expect(CORE_MERGE_REGISTRATION.manifest).toMatchObject({
       definition: CORE_MERGE_DEFINITION,
       executor: CORE_MERGE_EXECUTOR,
       ports: { outputs: ['out'] },
@@ -154,7 +154,7 @@ describe('core orchestration node contracts', () => {
     expect(
       CORE_FOR_EACH_CONFIG_SCHEMA.safeParse({ maxIterations: 3 }).success,
     ).toBe(false);
-    expect(CORE_FOR_EACH_MANIFEST).toMatchObject({
+    expect(CORE_FOR_EACH_REGISTRATION.manifest).toMatchObject({
       definition: CORE_FOR_EACH_DEFINITION,
       executor: CORE_FOR_EACH_EXECUTOR,
       family: 'logic',
@@ -271,7 +271,7 @@ describe('core orchestration node contracts', () => {
       CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 1, extra: true })
         .success,
     ).toBe(false);
-    expect(CORE_WAIT_MANIFEST).toMatchObject({
+    expect(CORE_WAIT_REGISTRATION.manifest).toMatchObject({
       definition: CORE_WAIT_DEFINITION,
       executor: CORE_WAIT_EXECUTOR,
       family: 'logic',
@@ -338,17 +338,17 @@ describe('core orchestration node contracts', () => {
   });
 
   it('publishes runtime-only structured-node refinements for browser consumers', () => {
-    expect(CORE_PARALLEL_MANIFEST.configSchema).toMatchObject({
+    expect(CORE_PARALLEL_REGISTRATION.manifest.configSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [
         expect.stringContaining('maxConcurrency'),
       ],
     });
-    expect(CORE_PARALLEL_MANIFEST.outputSchema).toMatchObject({
+    expect(CORE_PARALLEL_REGISTRATION.manifest.outputSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [expect.stringContaining('unique')],
     });
     for (const schema of [
-      CORE_MERGE_MANIFEST.inputSchema,
-      CORE_MERGE_MANIFEST.outputSchema,
+      CORE_MERGE_REGISTRATION.manifest.inputSchema,
+      CORE_MERGE_REGISTRATION.manifest.outputSchema,
     ])
       expect(schema).toMatchObject({
         'x-pertexo-runtime-only-semantics': [

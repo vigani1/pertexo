@@ -20,7 +20,7 @@ export const CORE_MERGE_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_MERGE_DEFINITION,
   family: 'logic',
   display: Object.freeze({

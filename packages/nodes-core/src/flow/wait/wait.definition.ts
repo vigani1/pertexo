@@ -15,7 +15,7 @@ export const CORE_WAIT_EXECUTOR = Object.freeze({
   key: 'core.wait',
   version: 1,
 });
-export const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
+const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WAIT_DEFINITION,
   family: 'logic',
   display: Object.freeze({

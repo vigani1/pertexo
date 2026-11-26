@@ -10,7 +10,7 @@ export const CORE_CODE_DEFINITION = Object.freeze({
   version: 1,
 });
 export const CORE_CODE_EXECUTOR = Object.freeze({ ...CORE_CODE_DEFINITION });
-export const CORE_CODE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_CODE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CODE_DEFINITION,
   family: 'transform',
   display: Object.freeze({
