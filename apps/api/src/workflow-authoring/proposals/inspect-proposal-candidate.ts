@@ -11,7 +11,7 @@ import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
-import { projectDraftForModel, restoreDraftFields } from './masked-draft.js';
+import { restoreDraftFields } from './masked-draft.js';
 
 type ProposalInspection = Parameters<
   WorkflowAuthoringStore['inspectCandidate']
@@ -48,15 +48,13 @@ export async function inspectProposalCandidate(
           };
     return rejected([issue], [issue]);
   }
-  const restored = restoreDraftFields(draft.graphJson, parsed.data);
+  const restored = restoreDraftFields(
+    draft.graphJson,
+    parsed.data,
+    catalog.assistantDisclosure,
+  );
   if (restored.kind === 'rejected')
-    return rejected(
-      restored.issues,
-      restored.issues.filter(
-        ({ code }) =>
-          code === 'masked_value_changed' || code === 'masked_value_added',
-      ),
-    );
+    return rejected(restored.issues, restored.feedback);
   const { items, codeSettings } = catalog.execute();
   const placeable = placeableDefinitions(items, codeSettings);
   const placementIssues = workflowDefinitionPlacementIssues(
@@ -107,7 +105,9 @@ export async function inspectProposalCandidate(
     );
   return {
     ...inspected,
-    previousGraph: projectDraftForModel(parsed.data),
+    // Restoration accepted it, so it holds the model's own values and
+    // placeholders only where saved masked values were put back.
+    previousGraph: parsed.data,
     feedback: publicationFeedback(
       inspected.graphIssues,
       restored.protectedPaths,

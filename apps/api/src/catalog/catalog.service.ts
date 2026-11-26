@@ -1,12 +1,17 @@
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
-import { compareOrdinal } from '@pertexo/workflow-model';
+import type { AssistantDisclosure } from '@pertexo/node-sdk/server';
+import { compareOrdinal, type WorkflowNode } from '@pertexo/workflow-model';
 import type { IntegrationListResponse } from '@pertexo/contracts';
 import {
   platformBrowserNodeDefinitionCatalog,
   connectionFormCatalog,
+  resolvePlatformNodeDefinition,
   type PlatformNodeDefinitionBrowserCatalog,
   type PlatformNodeDefinitionBrowserProjection,
 } from '@pertexo/node-catalog';
+
+/** Each served definition's assistant disclosure, by `key@version`. */
+export type AssistantDisclosures = ReadonlyMap<string, AssistantDisclosure>;
 
 export class ListNodeDefinitionsService {
   private readonly catalog: PlatformNodeDefinitionBrowserCatalog;
@@ -14,6 +19,7 @@ export class ListNodeDefinitionsService {
   public constructor(
     catalog: PlatformNodeDefinitionBrowserCatalog,
     private readonly codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
+    private readonly disclosures: AssistantDisclosures = new Map(),
   ) {
     this.catalog = catalog;
   }
@@ -25,6 +31,30 @@ export class ListNodeDefinitionsService {
       connections: connectionFormCatalog(),
     };
   }
+
+  /**
+   * What the assistant may see of a saved step. A step saved under another
+   * config version keeps fields the declaration may not name, so it has none.
+   */
+  public readonly assistantDisclosure = (
+    node: Pick<WorkflowNode, 'definition' | 'configVersion'>,
+  ): AssistantDisclosure | undefined => {
+    const { key, version } = node.definition;
+    const definition = this.catalog.definitions.find(
+      (item) =>
+        item.definition.key === key && item.definition.version === version,
+    );
+    return definition?.configVersion === node.configVersion
+      ? this.disclosures.get(disclosureKey(definition.definition))
+      : undefined;
+  };
+}
+
+function disclosureKey({
+  key,
+  version,
+}: Readonly<{ key: string; version: number }>) {
+  return `${key}@${String(version)}`;
 }
 
 export class ListIntegrationsService {
@@ -105,8 +135,20 @@ export function createCatalogServices(
   readonly listIntegrations: ListIntegrationsService;
 }> {
   const catalog = platformBrowserNodeDefinitionCatalog();
+  const disclosures = new Map(
+    catalog.definitions.flatMap(({ definition }) => {
+      const { assistantDisclosure } = resolvePlatformNodeDefinition(definition);
+      return assistantDisclosure === undefined
+        ? []
+        : [[disclosureKey(definition), assistantDisclosure] as const];
+    }),
+  );
   return Object.freeze({
-    listNodeDefinitions: new ListNodeDefinitionsService(catalog, codeSettings),
+    listNodeDefinitions: new ListNodeDefinitionsService(
+      catalog,
+      codeSettings,
+      disclosures,
+    ),
     listIntegrations: new ListIntegrationsService(catalog),
   });
 }

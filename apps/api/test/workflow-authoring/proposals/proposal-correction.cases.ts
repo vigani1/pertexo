@@ -69,6 +69,57 @@ export function proposalCorrectionCases({
     ]);
   });
 
+  it('sends the issues of a step the model adds back with the values it wrote', async () => {
+    const path = await workflow();
+    const start = requests.length;
+    const headers = { 'X-Trace': 'value-from-model' };
+    const result = await propose(path, [
+      candidate(
+        withHttpConfig({
+          url: 'https://orders.example.test',
+          headers: { ...headers, 'X-Upstream-Token': 'model-typed' },
+        }),
+      ),
+      candidate(
+        withHttpConfig({ url: 'https://orders.example.test', headers }),
+      ),
+    ]);
+    expect(result).toMatchObject({ kind: 'inspected', rounds: 1 });
+    if (result.kind !== 'inspected') throw new Error('Expected a proposal');
+    expect(
+      result.draft.graph.nodes.find(({ id }) => id === 'request')?.config,
+    ).toMatchObject({ headers });
+    const { issues, previousGraph } = correction(requests[start + 1]);
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        path: expect.stringMatching(/^\$\.nodes\.request\.config\.headers/u),
+      }),
+    );
+    expect(JSON.stringify(previousGraph)).toContain('value-from-model');
+    expect(JSON.stringify(previousGraph)).not.toContain('existing_setting');
+  });
+
+  it('refuses a placeholder copied onto a step the model adds and asks it to correct that', async () => {
+    const path = await workflow();
+    const start = requests.length;
+    const copied = withHttpConfig({
+      url: 'https://orders.example.test',
+      headers: { kind: 'existing_setting' },
+    });
+    const result = await propose(path, [candidate(copied), candidate(valid)]);
+    expect(result).toMatchObject({ kind: 'inspected', rounds: 1 });
+    if (result.kind !== 'inspected') throw new Error('Expected a proposal');
+    expect(JSON.stringify(result.draft.graph)).not.toContain(
+      'existing_setting',
+    );
+    expect(correction(requests[start + 1]).issues).toEqual([
+      expect.objectContaining({
+        path: '$.nodes.request.config.headers',
+        code: 'masked_placeholder_copied',
+      }),
+    ]);
+  });
+
   it('corrects an invalid link port reported by publication', async () => {
     const path = await workflow();
     const start = requests.length;
@@ -198,6 +249,19 @@ export function proposalCorrectionCases({
       deadlineMillis + firstReplyMillis / 2,
     );
   });
+
+  function correction(body: string | undefined) {
+    const { messages } = JSON.parse(body ?? 'null') as {
+      messages: { content?: string }[];
+    };
+    const { task } = JSON.parse(
+      messages[0]?.content?.split('\n').at(-1) ?? 'null',
+    ) as { task: string };
+    return JSON.parse(task.split('\n').at(-1) ?? 'null') as {
+      previousGraph?: unknown;
+      issues: { path: string; code: string; message: string }[];
+    };
+  }
 
   function withHttpConfig(
     config: WorkflowGraph['nodes'][number]['config'],
