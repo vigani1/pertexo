@@ -91,11 +91,11 @@ export function proposalCorrectionCases({
       result.draft.graph.nodes.find(({ id }) => id === 'request')?.config,
     ).toMatchObject({ headers });
     const { issues, previousGraph } = correction(requests[start + 1]);
-    expect(issues).toContainEqual(
-      expect.objectContaining({
-        path: expect.stringMatching(/^\$\.nodes\.request\.config\.headers/u),
-      }),
-    );
+    expect(
+      issues.some(({ path }) =>
+        path.startsWith('$.nodes.request.config.headers'),
+      ),
+    ).toBe(true);
     expect(JSON.stringify(previousGraph)).toContain('value-from-model');
     expect(JSON.stringify(previousGraph)).not.toContain('existing_setting');
   });
