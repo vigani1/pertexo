@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { DRAFT_PROPOSAL_TIMING } from '@pertexo/contracts';
 import { failureArtifactJourney } from '../../infrastructure/testing/live-failure-artifacts.mjs';
 
 // Playwright also saves ARIA error-context snapshots independently of trace,
@@ -36,6 +37,8 @@ if (liveWebOrigin === undefined)
     'PERTEXO_LIVE_WEB_ORIGIN is missing: run live journeys through their apps/api integration test.',
   );
 
+const JOURNEY_TIMEOUT_MILLIS = 60_000;
+
 export default defineConfig({
   testDir: './e2e-live',
   // Playwright empties this when it starts, and journeys run side by side.
@@ -44,7 +47,12 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   workers: 1,
-  timeout: 60_000,
+  // The opt-in real-model evaluation (draft-evaluation.spec.ts) may spend a
+  // whole proposal budget in one case, on top of the usual journey setup.
+  timeout:
+    process.env.PERTEXO_AUTHORING_EVAL_ORIGIN === undefined
+      ? JOURNEY_TIMEOUT_MILLIS
+      : JOURNEY_TIMEOUT_MILLIS + DRAFT_PROPOSAL_TIMING.requestMillis,
   use: {
     baseURL: liveWebOrigin,
     // Live authentication cookies/verification URLs must not become artifacts,
