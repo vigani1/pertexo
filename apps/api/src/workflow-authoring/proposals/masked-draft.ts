@@ -224,9 +224,19 @@ function restoreNode(
     node.connectionRefs,
     step,
   );
+  const restored = { ...node, config, inputMappings, connectionRefs };
+  return restoreBody(original, restored, path, restoration);
+}
+
+/** A For Each body is a level of its own, restored step by step. */
+function restoreBody(
+  original: WorkflowNode | undefined,
+  node: WorkflowNode,
+  path: DraftPath,
+  restoration: Restoration,
+): WorkflowNode {
   const previousBody = original?.structured?.body;
   const structured = node.structured;
-  const restored = { ...node, config, inputMappings, connectionRefs };
   if (structured === undefined) {
     if (
       previousBody?.nodes.some((child) =>
@@ -234,10 +244,10 @@ function restoreNode(
       )
     )
       protectedValueChanged(restoration.issues, `${path.byId}.structured`);
-    return restored;
+    return node;
   }
   return {
-    ...restored,
+    ...node,
     structured: {
       ...structured,
       body: {
