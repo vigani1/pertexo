@@ -21,7 +21,7 @@ export function registerPollingDefinition<Config extends z.ZodType>({
   definition,
   display,
   configSchema,
-  assistantConfig,
+  assistantDisclosure,
   connectionSlot,
   optionalConnection,
   runtimeOnlySemantics,
@@ -29,7 +29,8 @@ export function registerPollingDefinition<Config extends z.ZodType>({
   definition: NodeManifest['definition'];
   display: NodeManifest['display'];
   configSchema: Config;
-  assistantConfig: AssistantDisclosure['config'];
+  // Every poll shares one input envelope, so a trigger declares only its config.
+  assistantDisclosure: Pick<AssistantDisclosure, 'config'>;
   connectionSlot: string;
   optionalConnection?: boolean;
   runtimeOnlySemantics?: readonly [string, ...string[]];
@@ -73,7 +74,7 @@ export function registerPollingDefinition<Config extends z.ZodType>({
     manifest,
     configSchema,
     assistantDisclosure: {
-      config: assistantConfig,
+      ...assistantDisclosure,
       inputs: { visible: ['triggerId', 'nodeId', 'item'] },
     },
     inputSchema: pollEnvelope,

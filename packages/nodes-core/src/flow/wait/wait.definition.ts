@@ -47,7 +47,7 @@ export const CORE_WAIT_REGISTRATION = Object.freeze({
       visible: ['durationSeconds', 'mode', 'timeoutSeconds'],
       masked: ['authentication'],
     },
-    inputs: { visible: [], additional: 'visible' },
+    inputs: { visible: [], unlisted: 'visible' },
   } as const,
   configSchema: CORE_WAIT_CONFIG_SCHEMA,
   inputSchema: CORE_WAIT_INPUT_SCHEMA,

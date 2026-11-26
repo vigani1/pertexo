@@ -9,8 +9,8 @@ export interface AssistantFields {
   readonly visible: readonly string[];
   readonly masked?: readonly string[];
   /** HTTP addresses with embedded credentials or query values are masked. */
-  readonly urls?: readonly string[];
-  readonly additional?: 'visible' | 'masked';
+  readonly addresses?: readonly string[];
+  readonly unlisted?: 'visible' | 'masked';
 }
 
 export interface AssistantDisclosure {
@@ -53,15 +53,15 @@ export function validateAssistantDisclosure({
     for (const field of [
       ...fields.visible,
       ...(fields.masked ?? []),
-      ...(fields.urls ?? []),
+      ...(fields.addresses ?? []),
     ])
       if (!names.delete(field))
         throw new NodeRegistryCompatibilityError(
           `Assistant disclosure for ${identity} names an unknown or repeated ${kind} field: ${field}`,
         );
-    if (fields.additional !== undefined && !additional)
+    if (fields.unlisted !== undefined && !additional)
       throw new NodeRegistryCompatibilityError(
-        `Assistant disclosure for ${identity} names additional ${kind} fields on a closed schema`,
+        `Assistant disclosure for ${identity} names unlisted ${kind} fields on a closed schema`,
       );
   }
 }
