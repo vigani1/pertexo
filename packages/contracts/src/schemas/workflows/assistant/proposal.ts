@@ -38,6 +38,7 @@ export const draftProposalResultSchema = z.union([
       'confirmation_changed',
       'timeout',
       'response_too_large',
+      'output_truncated',
       'request_too_large',
       'invalid_response',
       'provider_failure',

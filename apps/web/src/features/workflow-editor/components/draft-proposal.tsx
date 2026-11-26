@@ -29,6 +29,8 @@ const outcomeCopy = {
   timeout: 'The model request timed out.',
   request_too_large: 'This draft is too large to send to the AI assistant.',
   response_too_large: 'The proposal exceeded the size limit.',
+  output_truncated:
+    'The model ran out of output space before it finished. Try a shorter request or a model with more output.',
   invalid_response: 'The model returned an unreadable proposal.',
   provider_failure: 'The AI provider could not complete the request.',
 } as const;

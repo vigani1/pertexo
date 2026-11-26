@@ -38,6 +38,7 @@ export const explainFailedRunResultSchema = z.union([
       'confirmation_changed',
       'timeout',
       'response_too_large',
+      'output_truncated',
       'invalid_response',
       'provider_failure',
     ]),

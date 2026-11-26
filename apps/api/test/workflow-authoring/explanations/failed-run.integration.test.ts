@@ -39,7 +39,7 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
   });
   const requests: string[] = [];
   const timedRequest = Promise.withResolvers<undefined>();
-  let mode: 'answer' | 'large' | 'timeout' = 'answer';
+  let mode: 'answer' | 'large' | 'truncated' | 'timeout' = 'answer';
   const inference = createServer((request, response) => {
     request.setEncoding('utf8');
     let body = '';
@@ -57,6 +57,15 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
         return;
       }
       response.setHeader('content-type', 'application/json');
+      if (mode === 'truncated') {
+        response.end(
+          JSON.stringify({
+            choices: [{ finish_reason: 'length', message: { content: '' } }],
+            usage: { prompt_tokens: 40, completion_tokens: 16_384 },
+          }),
+        );
+        return;
+      }
       response.end(
         JSON.stringify({
           choices: [
@@ -209,6 +218,18 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
       expect(JSON.stringify(retained.rows)).not.toContain(sentinel);
       expect(result.payload).not.toContain(sentinel);
     }
+  });
+
+  it('reports an answer the model cut off at its output limit as out of output space', async () => {
+    mode = 'truncated';
+    const start = requests.length;
+    const truncated = await explain(owner);
+    expect(truncated.statusCode, truncated.payload).toBe(200);
+    expect(truncated.json()).toMatchObject({ kind: 'output_truncated' });
+    const body = JSON.parse(requests[start] ?? 'null') as {
+      max_tokens: number;
+    };
+    expect(body.max_tokens).toBe(16_384);
   });
 
   it('reports provider failures and releases database transactions while inference waits', async () => {

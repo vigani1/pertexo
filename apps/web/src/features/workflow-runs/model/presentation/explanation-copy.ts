@@ -7,6 +7,8 @@ export const explanationCopy = {
     'The assistant settings changed. Open the disclosure again to review the destination.',
   timeout: 'The model request timed out.',
   response_too_large: 'The model response exceeded the size limit.',
+  output_truncated:
+    'The model ran out of output space before it finished. Try a model with more output.',
   invalid_response: 'The model returned an unreadable explanation.',
   provider_failure: 'The AI provider could not complete the request.',
 } as const;

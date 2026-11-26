@@ -98,6 +98,20 @@ test('explains when the draft exceeds the model request budget', async ({
   ).toBeVisible();
 });
 
+test('explains when the model runs out of output space', async ({
+  page,
+  context,
+}) => {
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remoteDraft(initial));
+  await requestProposal(page, { kind: 'output_truncated' });
+  await expect(
+    page.getByText(
+      'The model ran out of output space before it finished. Try a shorter request or a model with more output.',
+    ),
+  ).toBeVisible();
+});
+
 test('shows field changes within the width of a phone', async ({
   page,
   context,
