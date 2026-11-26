@@ -63,7 +63,7 @@ export function proposalLookupCases({
     expect(
       Buffer.byteLength(JSON.stringify(recovered.catalog)),
     ).toBeLessThanOrEqual(16_384);
-    expect(bodies[1]).toContain('"max_tokens":4086');
+    expect(bodies[1]).toContain('"max_tokens":4096');
     expect((await draft(path)).payload).toBe(before.payload);
   });
 

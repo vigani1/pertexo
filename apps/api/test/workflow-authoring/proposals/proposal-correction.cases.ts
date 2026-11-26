@@ -15,6 +15,7 @@ export function proposalCorrectionCases({
     path: string,
     script: {
       graph: unknown;
+      text?: string;
       outputTokens?: number;
       waitMillis?: number;
       hold?: boolean;
@@ -211,12 +212,13 @@ export function proposalCorrectionCases({
     expect(requests.slice(start)).toHaveLength(3);
   });
 
-  it('uses only the remaining output tokens and stops when the budget is consumed', async () => {
+  it('caps each call at the model limit and stops when the proposal budget is spent', async () => {
     const path = await workflow();
     const start = requests.length;
     const result = await propose(path, [
-      { ...candidate(invalid), outputTokens: 4_095 },
-      { ...candidate(invalidUrl), outputTokens: 1 },
+      { ...lookup('HTTP request'), outputTokens: 4_096 },
+      { ...candidate(invalid), outputTokens: 4_096 },
+      { ...candidate(invalidUrl), outputTokens: 4_096 },
       candidate(valid),
     ]);
     expect(result).toMatchObject({
@@ -226,29 +228,56 @@ export function proposalCorrectionCases({
         valid: false,
         issues: [{ path: '$.nodes.request.config.url' }],
       },
-      usage: { outputTokens: 4_096 },
+      usage: { outputTokens: 12_288 },
     });
     const bodies = requests.slice(start);
-    expect(bodies).toHaveLength(2);
-    expect(bodies[0]).toContain('"max_tokens":4096');
-    expect(bodies[1]).toContain('"max_tokens":1');
+    expect(bodies).toHaveLength(3);
+    for (const body of bodies) expect(body).toContain('"max_tokens":4096');
   });
 
-  it('times out a correction on the original request deadline', async () => {
+  it('gives the last call only the output tokens that remain', async () => {
     const path = await workflow();
-    const firstReplyMillis = 4_000;
     const start = requests.length;
-    const startedAt = performance.now();
     const result = await propose(path, [
-      { ...candidate(invalid), waitMillis: firstReplyMillis },
-      { ...candidate(valid), hold: true },
+      { ...lookup('HTTP request'), outputTokens: 4_096 },
+      { ...candidate(invalid), outputTokens: 4_095 },
+      { ...candidate(invalidUrl), outputTokens: 4_096 },
+      { ...candidate(valid), outputTokens: 1 },
     ]);
-    expect(result).toMatchObject({ kind: 'timeout', rounds: 1 });
-    expect(requests.slice(start)).toHaveLength(2);
-    expect(performance.now() - startedAt).toBeLessThan(
-      deadlineMillis + firstReplyMillis / 2,
-    );
+    expect(result).toMatchObject({
+      kind: 'inspected',
+      rounds: 2,
+      validation: { valid: true },
+    });
+    const bodies = requests.slice(start);
+    expect(bodies).toHaveLength(4);
+    expect(bodies[3]).toContain('"max_tokens":1');
   });
+
+  // A real deadline: the test waits out the whole proposal budget.
+  it(
+    'times out a correction on the original request deadline',
+    { timeout: deadlineMillis + 15_000 },
+    async () => {
+      const path = await workflow();
+      const firstReplyMillis = 4_000;
+      const start = requests.length;
+      const startedAt = performance.now();
+      const result = await propose(path, [
+        { ...candidate(invalid), waitMillis: firstReplyMillis },
+        { ...candidate(valid), hold: true },
+      ]);
+      expect(result).toMatchObject({ kind: 'timeout', rounds: 1 });
+      expect(requests.slice(start)).toHaveLength(2);
+      expect(performance.now() - startedAt).toBeLessThan(
+        deadlineMillis + firstReplyMillis / 2,
+      );
+    },
+  );
+
+  function lookup(query: string) {
+    return { graph: null, text: JSON.stringify({ catalogLookup: query }) };
+  }
 
   function correction(body: string | undefined) {
     const { messages } = JSON.parse(body ?? 'null') as {

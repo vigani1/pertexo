@@ -107,6 +107,7 @@ export type { ConnectionDefinition } from './providers/connection-definition.js'
 export type { ConnectionLookup } from './providers/connection-lookup.js';
 
 export { createModelClient, type ModelClient } from './ai/model-client.js';
+export { MODEL_LIMITS } from './ai/model-settings.js';
 export {
   modelCredentialHost,
   runAgentTurn,

@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { expect, type Page, type TestInfo } from '@playwright/test';
 import {
+  DRAFT_PROPOSAL_TIMING,
   draftProposalResultSchema,
   workflowNodeRunOutputResponseSchema,
 } from '@pertexo/contracts';
@@ -76,6 +77,7 @@ export async function requestProposal(
     (message) =>
       message.request().method() === 'POST' &&
       new URL(message.url()).pathname === `${path}/draft/proposal`,
+    { timeout: DRAFT_PROPOSAL_TIMING.requestMillis },
   );
   const started = performance.now();
   await dialog.getByRole('button', { name: 'Send to model' }).click();
