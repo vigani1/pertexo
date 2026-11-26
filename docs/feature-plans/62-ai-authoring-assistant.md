@@ -19,7 +19,8 @@ workspace AI connection and model. The user must have permission to use
 that connection and to read the requested workflow or run. Before sending,
 the UI identifies the endpoint and the context categories transferred.
 Explain sends safe run metadata and summaries by default. Draft generation
-sends the request, filtered draft context and relevant catalog definitions.
+sends the request, draft structure, disclosed step settings and input mappings,
+and relevant catalog definitions.
 An operator sets provider limits, address policy and retention expectations.
 
 ## Settings and execution
@@ -38,9 +39,8 @@ An operator sets provider limits, address policy and retention expectations.
 - Project only the context needed for the task. Exclude credentials,
   connection secret material, authorization headers, raw provider failure
   bodies and run payloads. Use typed references or placeholders for
-  connection and secret-bearing settings, omitting sensitive workflow
-  fields and unknown config from the projection. Preserve such fields
-  server-side on edits. Safe explanation metadata follows current run-read
+  connection and secret-bearing settings. Preserve those values server-side
+  on edits. Withhold unknown config names. Safe explanation metadata follows current run-read
   permission, and opaque IDs in answers resolve only to authorized links.
   Never pass credentials in messages or tool arguments. The runtime
   attaches its credential only to authorized provider transport.
@@ -56,7 +56,8 @@ An operator sets provider limits, address policy and retention expectations.
   appear as issues. Use field defaults for new steps in a selected setup.
   Whole editor presets, such as a blank starter case, require an explicit
   choice in a proposal. Feed correctable issues from graph checks back to the
-  model alongside its previous candidate and the original masked draft. The
+  model alongside the original masked draft. Include the previous candidate
+  only when it can be projected without the refused values. The
   assistant has at most two correction rounds within the same request limits.
   Report the rounds used with the final proposal.
   No new persisted proposal format, patch language or ADR.
@@ -67,6 +68,79 @@ An operator sets provider limits, address policy and retention expectations.
 - Record bounded model usage once per explanation or proposal as
   `assistant.model` against its run or workflow, summing all proposal rounds.
   It follows the same retention window as preview usage.
+
+## Step settings disclosed to the model
+
+A built-in registration lists its top-level config and input fields. Show the
+settings and mappings that shape workflow logic or data. Mask request material
+commonly used for credentials, including HTTP headers, query parameters, bodies,
+webhook authentication, and secret-typed fields. Always mask connections and
+approval audiences, including audiences inside Agent tool settings. Classify
+open input schemas explicitly. Saved HTTP addresses
+with query strings or embedded credentials stay protected as a whole. A
+declared masked field keeps its name and a placeholder. Undeclared field names
+and definitions without a disclosure use an opaque placeholder for the record.
+
+The assistant can edit visible fields on existing steps. It must carry forward
+each placeholder exactly and leave absent protected fields unset. Before applying
+a proposal, review the before and after values for changed settings and mappings.
+
+| Definition | Visible settings | Visible input mappings | Masked settings and mappings |
+| --- | --- | --- | --- |
+| `ai.agent` 1, 2 | `model`, `timeoutMillis` | `prompt`, `input`, `toolSchema`, `history` | `config.tool` |
+| `ai.agent` 3 | `model`, `timeoutMillis` | `prompt`, `input`, `history`, `tools` | `config.tools` |
+| `ai.classify` 1 | `model`, `timeoutMillis`, `maxOutputTokens`, `categories` | `text` | — |
+| `ai.guardrails` 1 | `checks` | `text` | — |
+| `ai.model` 1 | `model`, `timeoutMillis`, `maxOutputTokens`, `mode`, `outputSchema` | `prompt` | — |
+| `core.approval` 1 | `title`, `instructions`, `expiresAfterSeconds`, `onExpiry`, `allowStarterToDecide` | `details` | `audience` |
+| `core.batch` 1, 2 | `size` | `items` | — |
+| `core.call` 1 | `target` | `input` | — |
+| `core.code` 1 | `language`, `code`, `timeoutSeconds` | Named mappings | — |
+| `core.concat` 1, 2 | — | `items`, `otherItems` | — |
+| `core.condition` 1, 2 | — | `condition` | — |
+| `core.create_file` 1 | `format`, `inputMode`, `delimiter`, `columns`, `sheetName` | `data`, `pages` | — |
+| `core.crypto` 1 | `operation`, `algorithm`, `encoding`, `length` | `value` | — |
+| `core.date` 1, 2 | `operation`, `format`, `timeZone`, `unit` | `value`, `amount` | — |
+| `core.filter` 1, 2 | `path`, `operator` | `items`, `value` | — |
+| `core.foreach` 1 | — | `items` | — |
+| `core.form` 1 | `coordination`, `title`, `instructions`, `thankYouMessage`, `redirectUrl`, `fields` | `values`, `submittedBy`, `submittedAt` | — |
+| `core.hmac` 1 | `algorithm`, `encoding` | `value` | — |
+| `core.html` 1 | `operation`, `selector`, `limit`, `attribute` | `value` | — |
+| `core.manual` 1 | — | Named mappings | — |
+| `core.merge` 1, 2 | `parallelNodeId`, `policy` | `ledger`, `selectedBranchIds` | — |
+| `core.number` 1, 2 | `operation`, `locale`, `grouping`, `minimumFractionDigits`, `maximumFractionDigits`, `currency` | `value` | — |
+| `core.parallel` 1 | `branches`, `maxConcurrency` | — | — |
+| `core.read_file` 1 | `format`, `outputMode`, `delimiter`, `convertValues`, `sheet`, `headerRow` | `file` | — |
+| `core.request_input` 1 | `coordination`, `title`, `instructions`, `fields`, `expiresAfterSeconds`, `onExpiry` | `details`, `prefill` | `audience` |
+| `core.respond_webhook` 1 | `bodyType`, `textContentType` | `statusCode` | `headers`, `body` |
+| `core.run_values` 1 | — | `values` | — |
+| `core.schedule` 1 | `kind`, `expression`, `timezone`, `misfirePolicy`, `intervalMinutes` | `triggerId`, `nodeId`, `scheduledAt` | — |
+| `core.set` 1, 2 | — | Named mappings | — |
+| `core.sort` 1, 2 | `path`, `valueType`, `direction`, `missing` | `items` | — |
+| `core.summarize` 1, 2 | `valuePath`, `groupBy`, `missing` | `items` | — |
+| `core.switch` 1, 2 | `cases` | `value` | — |
+| `core.table_delete` 1 | `table`, `columnBindings` | `query` | — |
+| `core.table_find` 2 | `table`, `columnBindings`, `tableId` | `query` | — |
+| `core.table_find` 1 | `table`, `columnBindings` | `query` | — |
+| `core.table_insert` 1 | `table`, `columnBindings` | `values` | — |
+| `core.table_update` 1 | `table`, `columnBindings` | `query`, `values` | — |
+| `core.table_upsert` 1 | `table`, `columnBindings` | `values` | — |
+| `core.take` 1, 2 | `count` | `items` | — |
+| `core.terminate` 1 | — | Named mappings | — |
+| `core.text` 1, 2 | `operation`, `all`, `length`, `ellipsis` | `value`, `search`, `replacement`, `delimiter` | — |
+| `core.unique` 1, 2 | `path`, `missing` | `items` | — |
+| `core.validate` 1, 2 | `rules` | Named mappings | — |
+| `core.wait` 1 | `durationSeconds`, `mode`, `timeoutSeconds` | Named mappings | `authentication` |
+| `core.webhook` 1 | `coordination`, `runInput`, `responseMode`, `responseWaitSeconds` | — | Other named mappings |
+| `core.workflow_error` 1 | — | `workflow`, `run`, `failedStep`, `error` | — |
+| `core.xml` 1 | `operation` | `value` | — |
+| `database.execute` 1 | `timeoutMillis`, `maxRows`, `operation`, `sql`, `schema`, `table`, `key`, `keys` | `parameters`, `rows` | — |
+| `database.poll` 1 | `schema`, `table`, `orderingColumn`, `keyColumn`, `intervalMinutes`, `mode` | `triggerId`, `nodeId`, `item` | — |
+| `email.send_notification` 1 | `timeoutMillis` | `subject`, `text`, `attachments` | `toEmail` |
+| `http.poll` 1 | `intervalMinutes`, `itemsPath`, `itemKeyPath`, `url` (address only) | `triggerId`, `nodeId`, `item` | — |
+| `http.request` 1 | `method`, `timeoutMillis`, `maxRedirects`, `maxResponseBytes`, `inlineResponseBytes`, `pagination`, `returnErrorResponses`, `url` (address only) | — | `headers`, `multipart`, `body`, Other named mappings |
+| `mcp.call_tool` 1 | `toolName`, `toolInputSchema` | — | Other named mappings |
+| `slack.send_message` 1 | `timeoutMillis` | `channelId`, `text` | — |
 
 ## Codebase structure
 
@@ -105,11 +179,30 @@ edits to existing drafts. Grade the actual conditions, mappings, retained
 fields, and runtime behavior. Track request size, correction rounds and
 latency alongside pass rates for each model and provider tested.
 
+## Evaluation
+
 The product browser journey includes a scripted catalog recovery and checks
-both outcomes on the published workflow. To run the real-model cases in the
-same owned fixture, start a local OpenAI-compatible model endpoint and set
-`PERTEXO_AUTHORING_EVAL_ORIGIN` to its `http://127.0.0.1` origin and
-`PERTEXO_AUTHORING_EVAL_MODEL` to its model identifier. Run the product journey
-with `node infrastructure/testing/run-browser-journeys.mjs 1 product` using
-the normal local browser test environment. The evaluation attaches proposal
-outcomes, request sizes, timing and reported usage to the Playwright results.
+both outcomes on the published workflow. The opt-in evaluation grades eight
+cases. It checks new workflows, routing, renaming, schedule and mapping
+changes, URL edits that preserve a saved header, and refusal to change protected
+settings. The two HTTP edits keep an unpublished draft so the evaluation never
+sends a workflow request. The refusal case checks both the saved draft and
+every outbound model request.
+
+Start a local OpenAI-compatible endpoint and use the normal owned browser test
+environment. Run just the evaluation spec, three times per case:
+
+```bash
+PERTEXO_AUTHORING_EVAL_ORIGIN=http://127.0.0.1:8000 \
+PERTEXO_AUTHORING_EVAL_MODEL=your-local-model \
+EDITOR_BROWSER_SPEC=draft-evaluation.spec.ts EDITOR_BROWSER_REPEAT_EACH=3 \
+node infrastructure/testing/run-browser-journeys.mjs 1 product
+```
+
+Each case attaches its outcome, request bytes, correction rounds, latency and
+reported usage to the Playwright results. For a local fixture check, set
+`PERTEXO_AUTHORING_EVAL_SCRIPTED=true` in place of the origin and model to run
+the four edit cases with fixed replies.
+
+See the proposal review on a phone in [light mode](evidence/f62/draft-settings-light.png)
+and [dark mode](evidence/f62/draft-settings-dark.png).

@@ -57,6 +57,10 @@ export const CORE_SUMMARIZE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_SUMMARIZE_REGISTRATION = Object.freeze({
   manifest: CORE_SUMMARIZE_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['valuePath', 'groupBy', 'missing'] },
+    inputs: { visible: ['items'] },
+  } as const,
   configSchema: CORE_SUMMARIZE_CONFIG_SCHEMA,
   inputSchema: CORE_SUMMARIZE_INPUT_SCHEMA,
   outputSchema: CORE_SUMMARIZE_OUTPUT_SCHEMA,

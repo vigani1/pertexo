@@ -7,12 +7,11 @@ import {
   workflowDefinitionPlacementIssues,
   type GraphValidationIssue,
   startingConfig,
-  type WorkflowGraph,
   type WorkflowNode,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
-import { restoreDraftFields } from './masked-draft.js';
+import { projectDraftForModel, restoreDraftFields } from './masked-draft.js';
 
 type ProposalInspection = Parameters<
   WorkflowAuthoringStore['inspectCandidate']
@@ -53,7 +52,10 @@ export async function inspectProposalCandidate(
   if (restored.kind === 'rejected')
     return rejected(
       restored.issues,
-      restored.issues.filter(({ code }) => code === 'masked_value_changed'),
+      restored.issues.filter(
+        ({ code }) =>
+          code === 'masked_value_changed' || code === 'masked_value_added',
+      ),
     );
   const { items, codeSettings } = catalog.execute();
   const placeable = placeableDefinitions(items, codeSettings);
@@ -105,10 +107,10 @@ export async function inspectProposalCandidate(
     );
   return {
     ...inspected,
+    previousGraph: projectDraftForModel(parsed.data),
     feedback: publicationFeedback(
       inspected.graphIssues,
-      parsed.data,
-      restored.graph,
+      restored.protectedPaths,
       omittedPresetFields,
     ),
   };
@@ -223,34 +225,9 @@ function rejected(
 
 function publicationFeedback(
   issues: readonly GraphValidationIssue[],
-  submitted: WorkflowGraph,
-  restored: WorkflowGraph,
+  protectedPaths: readonly string[],
   omittedPresetFields: ReadonlySet<string>,
 ) {
-  // Both path styles must use candidate order, which may differ from the base.
-  const protectedPaths = ['$.callable', '$.notes'];
-  const levels = [{ submitted, restored, idPath: '$', indexPath: '$' }];
-  for (const level of levels)
-    for (const [index, node] of level.restored.nodes.entries()) {
-      const original = level.submitted.nodes[index];
-      if (original === undefined) continue;
-      const idPath = `${level.idPath}.nodes.${node.id}`;
-      const indexPath = `${level.indexPath}.nodes[${String(index)}]`;
-      for (const field of [
-        'config',
-        'inputMappings',
-        'connectionRefs',
-      ] as const)
-        if (node[field] !== original[field])
-          protectedPaths.push(`${idPath}.${field}`, `${indexPath}.${field}`);
-      if (node.structured !== undefined && original.structured !== undefined)
-        levels.push({
-          submitted: original.structured.body,
-          restored: node.structured.body,
-          idPath: `${idPath}.structured.body`,
-          indexPath: `${indexPath}.structured.body`,
-        });
-    }
   return issues.filter(
     (issue) =>
       (issue.kind !== 'requires_user' || omittedPresetFields.has(issue.path)) &&

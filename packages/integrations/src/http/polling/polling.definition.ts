@@ -19,6 +19,10 @@ export const HTTP_POLL_DEFINITION_REGISTRATION = registerPollingDefinition({
     description: 'Start a run for each new item in a JSON feed',
   },
   configSchema,
+  assistantConfig: {
+    visible: ['intervalMinutes', 'itemsPath', 'itemKeyPath'],
+    urls: ['url'],
+  },
   connectionSlot: HTTP_POLL_CONNECTION_SLOT,
   optionalConnection: true,
   runtimeOnlySemantics: [

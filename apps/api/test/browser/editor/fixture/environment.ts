@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { posix } from 'node:path';
 
 import { createRequire } from 'node:module';
 
@@ -7,6 +8,18 @@ import { z } from 'zod';
 import { liveWebOrigin } from '../../web-origin.js';
 
 export const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
+
+const selectedSpec = z
+  .string()
+  .regex(/^[a-z0-9-]+\.spec\.ts$/u)
+  .optional()
+  .parse(process.env.EDITOR_BROWSER_SPEC);
+const repeatEach = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .parse(process.env.EDITOR_BROWSER_REPEAT_EACH);
 
 export const scenario = z
   .enum([
@@ -108,6 +121,20 @@ export function editorJourneyPath(selected: typeof scenario): string {
       ? 'editor/files/maximum-upload.spec.ts'
       : 'editor/files/';
   return EDITOR_JOURNEY_PATHS[selected];
+}
+
+export function editorJourneyArguments(selected: typeof scenario): string[] {
+  const journeyPath = editorJourneyPath(selected);
+  if (selectedSpec !== undefined && journeyPath.endsWith('.spec.ts'))
+    throw new Error(
+      'EDITOR_BROWSER_SPEC requires a journey with multiple specs',
+    );
+  return [
+    selectedSpec === undefined
+      ? journeyPath
+      : posix.join(journeyPath, selectedSpec),
+    ...(repeatEach === undefined ? [] : ['--repeat-each', String(repeatEach)]),
+  ];
 }
 
 const EDITOR_JOURNEY_PATHS = {

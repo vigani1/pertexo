@@ -1,5 +1,7 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import type {
+  AssistantDisclosure,
+  NodeDefinitionRegistration,
   NodeExecutionInvocation,
   NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
@@ -19,6 +21,7 @@ export function registerPollingDefinition<Config extends z.ZodType>({
   definition,
   display,
   configSchema,
+  assistantConfig,
   connectionSlot,
   optionalConnection,
   runtimeOnlySemantics,
@@ -26,10 +29,15 @@ export function registerPollingDefinition<Config extends z.ZodType>({
   definition: NodeManifest['definition'];
   display: NodeManifest['display'];
   configSchema: Config;
+  assistantConfig: AssistantDisclosure['config'];
   connectionSlot: string;
   optionalConnection?: boolean;
   runtimeOnlySemantics?: readonly [string, ...string[]];
-}>) {
+}>): NodeDefinitionRegistration & {
+  readonly configSchema: Config;
+  readonly inputSchema: typeof pollEnvelope;
+  readonly outputSchema: typeof pollEnvelope;
+} {
   const manifest: NodeManifest = Object.freeze({
     definition,
     family: 'trigger',
@@ -64,6 +72,10 @@ export function registerPollingDefinition<Config extends z.ZodType>({
   return Object.freeze({
     manifest,
     configSchema,
+    assistantDisclosure: {
+      config: assistantConfig,
+      inputs: { visible: ['triggerId', 'nodeId', 'item'] },
+    },
     inputSchema: pollEnvelope,
     outputSchema: pollEnvelope,
   });

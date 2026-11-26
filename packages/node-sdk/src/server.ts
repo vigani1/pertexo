@@ -6,6 +6,11 @@ export {
   type InlineNodeRegistry,
 } from './execution/registry.js';
 export {
+  assistantSchemaFields,
+  validateAssistantDisclosure,
+  type AssistantDisclosure,
+} from './execution/assistant-disclosure.js';
+export {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   hostReleaseCompatibility,
   PERTEXO_HOST_RELEASE,

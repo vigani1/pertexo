@@ -48,6 +48,18 @@ const manifest: NodeManifest = Object.freeze({
 
 export const MODEL_REGISTRATION = Object.freeze({
   manifest,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'model',
+        'timeoutMillis',
+        'maxOutputTokens',
+        'mode',
+        'outputSchema',
+      ],
+    },
+    inputs: { visible: ['prompt'] },
+  } as const,
   configSchema: modelConfigSchema,
   inputSchema: modelInputSchema,
   outputSchema: modelOutputSchema,

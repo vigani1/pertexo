@@ -39,6 +39,10 @@ const manifest: NodeManifest = Object.freeze({
 
 export const GUARDRAILS_REGISTRATION = Object.freeze({
   manifest,
+  assistantDisclosure: {
+    config: { visible: ['checks'] },
+    inputs: { visible: ['text'] },
+  } as const,
   configSchema: guardrailsConfigSchema,
   requiredConnectionsForConfig: (config: unknown) =>
     (config as GuardrailsConfig).checks.some(({ kind }) => kind === 'model')

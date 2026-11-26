@@ -10,7 +10,10 @@ import {
   NODE_CATALOG_COUNT_LIMITS,
   type NodeCatalog,
 } from '@pertexo/node-sdk';
-import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
+import {
+  validateAssistantDisclosure,
+  type NodeDefinitionRegistration,
+} from '@pertexo/node-sdk/server';
 import {
   CORE_NODE_CATALOG,
   CORE_NODE_DEFINITION_REGISTRATIONS,
@@ -91,10 +94,13 @@ function registerPlatform(modules: readonly IntegrationModule[]) {
   });
   const registrations = new Map(
     [...CORE_NODE_DEFINITION_REGISTRATIONS, ...integrations.registrations].map(
-      (registration) => [
-        `${registration.manifest.definition.key}@${String(registration.manifest.definition.version)}`,
-        registration,
-      ],
+      (registration) => {
+        validateAssistantDisclosure(registration);
+        return [
+          `${registration.manifest.definition.key}@${String(registration.manifest.definition.version)}`,
+          registration,
+        ];
+      },
     ),
   );
   return { integrations, catalog, registrations };

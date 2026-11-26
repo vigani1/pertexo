@@ -23,6 +23,7 @@ import type {
   NodeRegistryOptions,
 } from './node-execution.types.js';
 import { NodeRegistryCompatibilityError } from './node-execution.errors.js';
+import { validateAssistantDisclosure } from './assistant-disclosure.js';
 
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
   1,
@@ -124,6 +125,7 @@ function validateDefinitionRegistration(
         `${label} JSON Schema projection does not match the registered Zod schema projection`,
       );
   }
+  validateAssistantDisclosure(registration);
   return {
     manifest: parsed,
     configSchema: registration.configSchema,

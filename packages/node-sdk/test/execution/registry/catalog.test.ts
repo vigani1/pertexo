@@ -29,6 +29,27 @@ import {
 } from './registry.fixture.js';
 
 describe('node-sdk catalog contracts', () => {
+  it('rejects an assistant disclosure for a field outside the registered schema', () => {
+    expect(() =>
+      createNodeRegistry({
+        catalog: catalog(),
+        definitions: [
+          {
+            manifest,
+            configSchema,
+            inputSchema: objectSchema,
+            outputSchema: objectSchema,
+            assistantDisclosure: {
+              config: { visible: ['unknownSetting'], masked: [] },
+              inputs: { visible: [], masked: [] },
+            },
+          },
+        ],
+        executors: [executorRegistration()],
+      }),
+    ).toThrow(/test\.echo@1.*unknownSetting/u);
+  });
+
   it('holds definition and executor keys to the identity key length', () => {
     const longest = 'a'.repeat(NODE_IDENTITY_KEY_MAX_CHARACTERS);
     for (const schema of [definitionIdentitySchema, executorIdentitySchema]) {

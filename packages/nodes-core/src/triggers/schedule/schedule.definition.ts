@@ -46,6 +46,18 @@ export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_SCHEDULE_REGISTRATION = Object.freeze({
   manifest: CORE_SCHEDULE_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'kind',
+        'expression',
+        'timezone',
+        'misfirePolicy',
+        'intervalMinutes',
+      ],
+    },
+    inputs: { visible: ['triggerId', 'nodeId', 'scheduledAt'] },
+  } as const,
   configSchema: CORE_SCHEDULE_CONFIG_SCHEMA,
   inputSchema: CORE_SCHEDULE_INPUT_SCHEMA,
   outputSchema: CORE_SCHEDULE_OUTPUT_SCHEMA,

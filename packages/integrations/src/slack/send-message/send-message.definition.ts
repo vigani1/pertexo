@@ -58,6 +58,10 @@ export const SLACK_SEND_MESSAGE_MANIFEST: NodeManifest = Object.freeze({
 
 export const SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION = Object.freeze({
   manifest: SLACK_SEND_MESSAGE_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['timeoutMillis'] },
+    inputs: { visible: ['channelId', 'text'] },
+  } as const,
   configSchema: slackSendMessageConfigSchema,
   inputSchema: slackSendMessageInputSchema,
   outputSchema: slackSendMessageOutputSchema,

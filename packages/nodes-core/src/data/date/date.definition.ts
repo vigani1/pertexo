@@ -57,6 +57,10 @@ export const CORE_DATE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_DATE_REGISTRATION = Object.freeze({
   manifest: CORE_DATE_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['operation', 'format', 'timeZone', 'unit'] },
+    inputs: { visible: ['value', 'amount'] },
+  } as const,
   configSchema: CORE_DATE_CONFIG_SCHEMA,
   inputSchema: CORE_DATE_INPUT_SCHEMA,
   outputSchema: CORE_DATE_OUTPUT_SCHEMA,

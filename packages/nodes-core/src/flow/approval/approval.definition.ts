@@ -48,6 +48,19 @@ export const CORE_APPROVAL_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_APPROVAL_REGISTRATION = Object.freeze({
   manifest: CORE_APPROVAL_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'title',
+        'instructions',
+        'expiresAfterSeconds',
+        'onExpiry',
+        'allowStarterToDecide',
+      ],
+      masked: ['audience'],
+    },
+    inputs: { visible: ['details'] },
+  } as const,
   configSchema: CORE_APPROVAL_CONFIG_SCHEMA,
   inputSchema: CORE_APPROVAL_INPUT_SCHEMA,
   outputSchema: CORE_APPROVAL_OUTPUT_SCHEMA,

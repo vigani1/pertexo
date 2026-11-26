@@ -1,5 +1,6 @@
 import { noteTextStart } from './note-text';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 export type NoteChange = Readonly<{
   kind: 'added' | 'removed' | 'changed';
@@ -25,6 +26,14 @@ export type ChangedStep = Readonly<{
   before: WorkflowNode;
   after: WorkflowNode;
   aspects: readonly StepChangeAspect[];
+  settings: readonly DraftFieldChange<WorkflowNode['config'][string]>[];
+  mappings: readonly DraftFieldChange<WorkflowNode['inputMappings'][string]>[];
+}>;
+
+export type DraftFieldChange<Value> = Readonly<{
+  name: string;
+  before: Value | undefined;
+  after: Value | undefined;
 }>;
 
 export type WorkflowGraphDiff = Readonly<{
@@ -95,15 +104,26 @@ export function diffWorkflowGraphs(
       added.push(node);
       continue;
     }
+    const settings = fieldChanges(previous.node.config, node.config);
+    const mappings = fieldChanges(
+      previous.node.inputMappings,
+      node.inputMappings,
+    );
     const aspects: StepChangeAspect[] = [
-      ...changedAspects(previous.node, node).filter(
+      ...changedAspects(previous.node, node, { settings, mappings }).filter(
         (aspect) => !(options.ignoreLayout ?? false) || aspect !== 'position',
       ),
       // Unlike moving on the canvas, this changes how often the step runs.
       ...(previous.inside?.id === inside?.id ? [] : (['placement'] as const)),
     ];
     if (aspects.length > 0)
-      changed.push({ before: previous.node, after: node, aspects });
+      changed.push({
+        before: previous.node,
+        after: node,
+        aspects,
+        settings,
+        mappings,
+      });
   }
   const edgeKey = (edge: LinkEndpoints) =>
     `${edge.source.nodeId}\u0000${edge.source.port}\u0000${edge.target.nodeId}\u0000${edge.target.port}`;
@@ -136,6 +156,26 @@ export function diffWorkflowGraphs(
   };
 }
 
+function fieldChanges<Value>(
+  before: Readonly<Record<string, Value>>,
+  after: Readonly<Record<string, Value>>,
+): readonly DraftFieldChange<Value>[] {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])].flatMap(
+    (name) => {
+      const previous = Object.hasOwn(before, name) ? before[name] : undefined;
+      const current = Object.hasOwn(after, name) ? after[name] : undefined;
+      if (
+        previous === current ||
+        (previous !== undefined &&
+          current !== undefined &&
+          canonicalJson(previous) === canonicalJson(current))
+      )
+        return [];
+      return [{ name, before: previous, after: current }];
+    },
+  );
+}
+
 /** A For each's own setup. The steps inside it are compared as steps. */
 function ownSetup(node: WorkflowNode): unknown {
   if (node.structured === undefined) return undefined;
@@ -146,6 +186,7 @@ function ownSetup(node: WorkflowNode): unknown {
 function changedAspects(
   before: WorkflowNode,
   after: WorkflowNode,
+  { settings, mappings }: Pick<ChangedStep, 'settings' | 'mappings'>,
 ): StepChangeAspect[] {
   const aspects: StepChangeAspect[] = [];
   if (
@@ -157,13 +198,12 @@ function changedAspects(
     aspects.push('configVersion');
   if ((before.label ?? '') !== (after.label ?? '')) aspects.push('label');
   if (
-    !sameJson(before.config, after.config) ||
+    settings.length > 0 ||
     !sameJson(before.retry, after.retry) ||
     !sameJson(ownSetup(before), ownSetup(after))
   )
     aspects.push('setup');
-  if (!sameJson(before.inputMappings, after.inputMappings))
-    aspects.push('inputs');
+  if (mappings.length > 0) aspects.push('inputs');
   if (!sameJson(before.connectionRefs, after.connectionRefs))
     aspects.push('connections');
   if ((before.disabled ?? false) !== (after.disabled ?? false))

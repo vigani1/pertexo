@@ -83,6 +83,22 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
 
 export const HTTP_REQUEST_DEFINITION_REGISTRATION = Object.freeze({
   manifest: HTTP_REQUEST_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'method',
+        'timeoutMillis',
+        'maxRedirects',
+        'maxResponseBytes',
+        'inlineResponseBytes',
+        'pagination',
+        'returnErrorResponses',
+      ],
+      masked: ['headers', 'multipart'],
+      urls: ['url'],
+    },
+    inputs: { visible: [], masked: ['body'], additional: 'masked' },
+  } as const,
   configSchema: httpRequestConfigSchema,
   inputSchema: httpRequestInputSchema,
   outputSchema: httpRequestOutputSchema,

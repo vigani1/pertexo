@@ -37,6 +37,10 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   ...withInlineVersion(
     defineUtility({
       key: 'core.text',
+      assistantDisclosure: {
+        config: { visible: ['operation', 'all', 'length', 'ellipsis'] },
+        inputs: { visible: ['value', 'search', 'replacement', 'delimiter'] },
+      } as const,
       display: {
         name: 'Format text',
         description: 'Case, trim, replace, split or truncate text',
@@ -52,6 +56,19 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   ...withInlineVersion(
     defineUtility({
       key: 'core.number',
+      assistantDisclosure: {
+        config: {
+          visible: [
+            'operation',
+            'locale',
+            'grouping',
+            'minimumFractionDigits',
+            'maximumFractionDigits',
+            'currency',
+          ],
+        },
+        inputs: { visible: ['value'] },
+      } as const,
       display: {
         name: 'Format number',
         description: 'Format decimals, percentages and currency',
@@ -66,6 +83,10 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   ),
   defineUtility({
     key: 'core.crypto',
+    assistantDisclosure: {
+      config: { visible: ['operation', 'algorithm', 'encoding', 'length'] },
+      inputs: { visible: ['value'] },
+    } as const,
     display: {
       name: 'Crypto',
       description: 'Hash text or generate UUIDs and random IDs',
@@ -79,6 +100,10 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   }),
   defineUtility({
     key: 'core.hmac',
+    assistantDisclosure: {
+      config: { visible: ['algorithm', 'encoding'] },
+      inputs: { visible: ['value'] },
+    } as const,
     display: {
       name: 'HMAC signature',
       description: 'Sign text with an encrypted key',
@@ -93,6 +118,10 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   }),
   defineUtility({
     key: 'core.xml',
+    assistantDisclosure: {
+      config: { visible: ['operation'] },
+      inputs: { visible: ['value'] },
+    } as const,
     display: {
       name: 'Convert XML',
       description: 'Convert XML to JSON and back',
@@ -106,6 +135,10 @@ export const UTILITY_DEFINITIONS = Object.freeze([
   }),
   defineUtility({
     key: 'core.html',
+    assistantDisclosure: {
+      config: { visible: ['operation', 'selector', 'limit', 'attribute'] },
+      inputs: { visible: ['value'] },
+    } as const,
     display: {
       name: 'Extract HTML',
       description: 'Select text or attributes with CSS selectors',

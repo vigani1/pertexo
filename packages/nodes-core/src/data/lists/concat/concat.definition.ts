@@ -55,6 +55,10 @@ export const CORE_CONCAT_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_CONCAT_REGISTRATION = Object.freeze({
   manifest: CORE_CONCAT_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: [] },
+    inputs: { visible: ['items', 'otherItems'] },
+  } as const,
   configSchema: CORE_CONCAT_CONFIG_SCHEMA,
   inputSchema: CORE_CONCAT_INPUT_SCHEMA,
   outputSchema: CORE_CONCAT_OUTPUT_SCHEMA,

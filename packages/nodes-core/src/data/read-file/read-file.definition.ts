@@ -58,6 +58,19 @@ export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_READ_FILE_REGISTRATION = Object.freeze({
   manifest: CORE_READ_FILE_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'format',
+        'outputMode',
+        'delimiter',
+        'convertValues',
+        'sheet',
+        'headerRow',
+      ],
+    },
+    inputs: { visible: ['file'] },
+  } as const,
   configSchema: CORE_READ_FILE_CONFIG_SCHEMA,
   inputSchema: CORE_READ_FILE_INPUT_SCHEMA,
   outputSchema: CORE_READ_FILE_OUTPUT_SCHEMA,

@@ -47,6 +47,10 @@ export const CORE_CALL_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_CALL_REGISTRATION = Object.freeze({
   manifest: CORE_CALL_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['target'] },
+    inputs: { visible: ['input'] },
+  } as const,
   configSchema: CORE_CALL_CONFIG_SCHEMA,
   inputSchema: CORE_CALL_INPUT_SCHEMA,
   outputSchema: CORE_CALL_OUTPUT_SCHEMA,

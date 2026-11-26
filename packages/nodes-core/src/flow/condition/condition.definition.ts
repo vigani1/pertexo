@@ -49,6 +49,10 @@ export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_CONDITION_REGISTRATION = Object.freeze({
   manifest: CORE_CONDITION_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: [] },
+    inputs: { visible: ['condition'] },
+  } as const,
   configSchema: CORE_CONDITION_CONFIG_SCHEMA,
   inputSchema: CORE_CONDITION_INPUT_SCHEMA,
   outputSchema: CORE_CONDITION_OUTPUT_SCHEMA,

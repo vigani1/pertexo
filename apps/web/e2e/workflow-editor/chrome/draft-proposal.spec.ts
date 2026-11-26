@@ -5,6 +5,7 @@ import {
   type DraftProposalResult,
 } from '@pertexo/contracts';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import { browserDefinitions } from '../../../test/support/fixtures/node-catalog';
 import {
   addCsrfCookie,
   currentEtag,
@@ -97,7 +98,109 @@ test('explains when the draft exceeds the model request budget', async ({
   ).toBeVisible();
 });
 
-async function requestProposal(page: Page, result: DraftProposalResult) {
+test('shows field changes within the width of a phone', async ({
+  page,
+  context,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await addCsrfCookie(context);
+  const seeded = {
+    ...initial,
+    nodes: parseWorkflowGraphDraft(initial).nodes.map((node) =>
+      node.id === 'manual'
+        ? {
+            ...node,
+            label: 'Schedule',
+            definition: { key: 'core.schedule', version: 1 },
+            config: { kind: 'interval', intervalMinutes: 15 },
+          }
+        : {
+            ...node,
+            label: 'Set status',
+            inputMappings: { status: { kind: 'literal', value: 'waiting' } },
+          },
+    ),
+  };
+  const remote = remoteDraft(seeded);
+  await installEditorRoutes(page, remote, {
+    definitions: browserDefinitions(),
+    workflowName: 'Order status',
+  });
+  const base = {
+    workflowId,
+    revision: 1,
+    graph: parseWorkflowGraphDraft(seeded),
+    compatibility,
+    updatedAt: '2026-09-14T10:00:00.000Z',
+  };
+  await requestProposal(
+    page,
+    {
+      kind: 'inspected',
+      base,
+      draft: {
+        ...base,
+        graph: {
+          ...base.graph,
+          nodes: base.graph.nodes.map((node) =>
+            node.id === 'manual'
+              ? { ...node, config: { ...node.config, intervalMinutes: 60 } }
+              : {
+                  ...node,
+                  inputMappings: {
+                    status: { kind: 'literal', value: 'ready' },
+                  },
+                },
+          ),
+        },
+      },
+      representationTag: currentEtag(remote),
+      usage: {
+        kind: 'complete',
+        model: 'test',
+        inputTokens: 1,
+        outputTokens: 1,
+      },
+      validation: {
+        valid: true,
+        issues: [],
+        compatibility,
+        currentPublication: null,
+      },
+    },
+    'menu',
+  );
+  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+  for (const text of [
+    'intervalMinutes',
+    '15',
+    '60',
+    'status',
+    'waiting',
+    'ready',
+  ])
+    await expect(review.getByText(text, { exact: true })).toBeVisible();
+  expect(await review.evaluate((element) => element.scrollWidth)).toBe(
+    await review.evaluate((element) => element.clientWidth),
+  );
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-theme',
+      colorScheme,
+    );
+    await page.screenshot({
+      animations: 'disabled',
+      path: info.outputPath(`draft-settings-${colorScheme}.png`),
+    });
+  }
+});
+
+async function requestProposal(
+  page: Page,
+  result: DraftProposalResult,
+  from: 'toolbar' | 'menu' = 'toolbar',
+) {
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/proposal`,
     (route) =>
@@ -115,8 +218,13 @@ async function requestProposal(page: Page, result: DraftProposalResult) {
       }),
   );
   await page.goto(editorUrl);
+  if (from === 'menu')
+    await page.getByRole('button', { name: 'More workflow actions' }).click();
   await page
-    .getByRole('button', { name: 'Ask assistant', exact: true })
+    .getByRole(from === 'menu' ? 'menuitem' : 'button', {
+      name: 'Ask assistant',
+      exact: true,
+    })
     .click();
   const request = page.getByRole('dialog', {
     name: 'Describe your workflow change',

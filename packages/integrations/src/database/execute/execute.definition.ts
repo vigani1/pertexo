@@ -40,6 +40,21 @@ const manifest: NodeManifest = Object.freeze({
 
 export const DATABASE_DEFINITION_REGISTRATION = Object.freeze({
   manifest,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'timeoutMillis',
+        'maxRows',
+        'operation',
+        'sql',
+        'schema',
+        'table',
+        'key',
+        'keys',
+      ],
+    },
+    inputs: { visible: ['parameters', 'rows'] },
+  } as const,
   configSchema: databaseConfigSchema,
   inputSchema: databaseInputSchema,
   outputSchema: databaseOutputSchema,

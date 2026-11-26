@@ -7,6 +7,7 @@ export {
   diffWorkflowGraphs,
   graphSteps,
   type StepChangeAspect,
+  type DraftFieldChange,
   type NoteChange,
 } from './model/graph-diff';
 export { noteTextStart } from './model/note-text';

@@ -70,6 +70,10 @@ function agentRegistration(
 
   return Object.freeze({
     manifest,
+    assistantDisclosure: {
+      config: { visible: ['model', 'timeoutMillis'], masked: ['tool'] },
+      inputs: { visible: ['prompt', 'input', 'toolSchema', 'history'] },
+    } as const,
     configSchema,
     inputSchema: agentTurnInputSchema,
     outputSchema: agentTurnOutputSchema,
@@ -129,6 +133,10 @@ export const AGENT_REGISTRATIONS = [
   idBoundAgent,
   {
     ...idBoundAgent,
+    assistantDisclosure: {
+      config: { visible: ['model', 'timeoutMillis'], masked: ['tools'] },
+      inputs: { visible: ['prompt', 'input', 'history', 'tools'] },
+    } as const,
     configSchema: multiToolConfig,
     inputSchema: multiToolAgentTurnInputSchema,
     manifest: Object.freeze({

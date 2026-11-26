@@ -42,6 +42,19 @@ export const CORE_FORM_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_FORM_REGISTRATION = Object.freeze({
   manifest: CORE_FORM_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'coordination',
+        'title',
+        'instructions',
+        'thankYouMessage',
+        'redirectUrl',
+        'fields',
+      ],
+    },
+    inputs: { visible: ['values', 'submittedBy', 'submittedAt'] },
+  } as const,
   configSchema: CORE_FORM_CONFIG_SCHEMA,
   inputSchema: CORE_FORM_INPUT_SCHEMA,
   outputSchema: CORE_FORM_OUTPUT_SCHEMA,

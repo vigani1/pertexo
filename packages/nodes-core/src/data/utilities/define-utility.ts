@@ -5,7 +5,10 @@ import {
   type NodeDisplayMetadata,
   STORED_EXECUTION_VALUE_LIMITS,
 } from '@pertexo/node-sdk';
-import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
+import type {
+  AssistantDisclosure,
+  NodeDefinitionRegistration,
+} from '@pertexo/node-sdk/server';
 import type { ZodType } from 'zod';
 import {
   CORE_BOUNDED_JSON_POLICY,
@@ -18,6 +21,7 @@ export function defineUtility({
   key,
   display,
   configSchema,
+  assistantDisclosure,
   inputSchema,
   outputSchema,
   semantics,
@@ -26,6 +30,7 @@ export function defineUtility({
   key: string;
   display: NodeDisplayMetadata;
   configSchema: ZodType;
+  assistantDisclosure: AssistantDisclosure;
   inputSchema: ZodType;
   outputSchema: ZodType;
   semantics: readonly [string, ...string[]];
@@ -34,6 +39,7 @@ export function defineUtility({
   const identity = Object.freeze({ key, version: 1 });
   return Object.freeze({
     configSchema,
+    assistantDisclosure,
     inputSchema,
     outputSchema,
     manifest: Object.freeze({
