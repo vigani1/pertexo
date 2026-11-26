@@ -48,8 +48,8 @@ const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_TERMINATE_REGISTRATION = Object.freeze({
   manifest: CORE_TERMINATE_MANIFEST,
   assistantDisclosure: {
-    config: { visible: [] },
-    inputs: { visible: [], unlisted: 'visible' },
+    config: { visible: [], masked: [] },
+    inputs: { visible: [], masked: [], unlisted: 'visible' },
   } as const,
   configSchema: CORE_TERMINATE_CONFIG_SCHEMA,
   inputSchema: CORE_TERMINATE_INPUT_SCHEMA,

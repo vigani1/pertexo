@@ -45,8 +45,8 @@ const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_RUN_VALUES_REGISTRATION = Object.freeze({
   manifest: CORE_RUN_VALUES_MANIFEST,
   assistantDisclosure: {
-    config: { visible: [] },
-    inputs: { visible: ['values'] },
+    config: { visible: [], masked: [] },
+    inputs: { visible: ['values'], masked: [] },
   } as const,
   configSchema: CORE_RUN_VALUES_CONFIG_SCHEMA,
   inputSchema: CORE_RUN_VALUES_INPUT_SCHEMA,

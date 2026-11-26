@@ -59,7 +59,7 @@ export const CORE_APPROVAL_REGISTRATION = Object.freeze({
       ],
       masked: ['audience'],
     },
-    inputs: { visible: ['details'] },
+    inputs: { visible: ['details'], masked: [] },
   } as const,
   configSchema: CORE_APPROVAL_CONFIG_SCHEMA,
   inputSchema: CORE_APPROVAL_INPUT_SCHEMA,

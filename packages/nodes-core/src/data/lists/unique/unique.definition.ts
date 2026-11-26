@@ -57,8 +57,8 @@ const CORE_UNIQUE_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_UNIQUE_REGISTRATION = Object.freeze({
   manifest: CORE_UNIQUE_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['path', 'missing'] },
-    inputs: { visible: ['items'] },
+    config: { visible: ['path', 'missing'], masked: [] },
+    inputs: { visible: ['items'], masked: [] },
   } as const,
   configSchema: CORE_UNIQUE_CONFIG_SCHEMA,
   inputSchema: CORE_UNIQUE_INPUT_SCHEMA,

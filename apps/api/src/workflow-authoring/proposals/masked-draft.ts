@@ -2,7 +2,10 @@ import {
   PlatformNodeDefinitionUnavailableError,
   resolvePlatformNodeDefinition,
 } from '@pertexo/node-catalog';
-import type { AssistantDisclosure } from '@pertexo/node-sdk/server';
+import {
+  isMaskedAddress,
+  type AssistantDisclosure,
+} from '@pertexo/node-sdk/server';
 import {
   canonicalJson,
   type WorkflowGraph,
@@ -314,18 +317,12 @@ function fieldMask(
   value: unknown,
 ): string | undefined {
   if (fields?.visible.includes(key)) return undefined;
-  if (fields?.masked?.includes(key)) return key;
+  if (fields?.masked.includes(key)) return key;
   if (fields?.addresses?.includes(key))
-    return typeof value !== 'string' || urlHasProtectedMaterial(value)
-      ? key
-      : undefined;
+    return isMaskedAddress(value) ? key : undefined;
   if (fields?.unlisted === 'visible') return undefined;
   // Unknown keys can themselves contain private data from older or incomplete drafts.
   return fields?.unlisted === 'masked' ? key : opaqueField;
-}
-
-function urlHasProtectedMaterial(value: string): boolean {
-  return value.includes('?') || /:\/\/[^/?#]*@/u.test(value);
 }
 
 function hasProtectedValues(node: WorkflowNode): boolean {

@@ -23,6 +23,7 @@ export const DATABASE_POLL_DEFINITION_REGISTRATION = registerPollingDefinition({
         'intervalMinutes',
         'mode',
       ],
+      masked: [],
     },
   },
   connectionSlot: POSTGRES_CONNECTION_SLOT,

@@ -55,8 +55,9 @@ export const CORE_CREATE_FILE_REGISTRATION = Object.freeze({
   assistantDisclosure: {
     config: {
       visible: ['format', 'inputMode', 'delimiter', 'columns', 'sheetName'],
+      masked: [],
     },
-    inputs: { visible: ['data', 'pages'] },
+    inputs: { visible: ['data', 'pages'], masked: [] },
   } as const,
   configSchema: CORE_CREATE_FILE_CONFIG_SCHEMA,
   inputSchema: CORE_CREATE_FILE_INPUT_SCHEMA,

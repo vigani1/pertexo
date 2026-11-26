@@ -56,8 +56,8 @@ const CORE_BATCH_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_BATCH_REGISTRATION = Object.freeze({
   manifest: CORE_BATCH_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['size'] },
-    inputs: { visible: ['items'] },
+    config: { visible: ['size'], masked: [] },
+    inputs: { visible: ['items'], masked: [] },
   } as const,
   configSchema: CORE_BATCH_CONFIG_SCHEMA,
   inputSchema: CORE_BATCH_INPUT_SCHEMA,

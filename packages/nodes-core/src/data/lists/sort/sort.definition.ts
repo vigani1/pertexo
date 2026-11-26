@@ -57,8 +57,11 @@ const CORE_SORT_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_SORT_REGISTRATION = Object.freeze({
   manifest: CORE_SORT_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['path', 'valueType', 'direction', 'missing'] },
-    inputs: { visible: ['items'] },
+    config: {
+      visible: ['path', 'valueType', 'direction', 'missing'],
+      masked: [],
+    },
+    inputs: { visible: ['items'], masked: [] },
   } as const,
   configSchema: CORE_SORT_CONFIG_SCHEMA,
   inputSchema: CORE_SORT_INPUT_SCHEMA,

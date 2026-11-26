@@ -22,6 +22,7 @@ export const HTTP_POLL_DEFINITION_REGISTRATION = registerPollingDefinition({
   assistantDisclosure: {
     config: {
       visible: ['intervalMinutes', 'itemsPath', 'itemKeyPath'],
+      masked: [],
       addresses: ['url'],
     },
   },

@@ -66,9 +66,11 @@ export const configSchema = z.object({}).strict();
 
 export const objectSchema = z.record(z.string(), z.json());
 
-export function catalog(): ReturnType<typeof createNodeCatalog> {
+export function catalog(
+  definitionManifest: NodeManifest = manifest,
+): ReturnType<typeof createNodeCatalog> {
   return createNodeCatalog({
-    definitions: [manifest],
+    definitions: [definitionManifest],
     executors: [
       {
         abiVersion: 1,

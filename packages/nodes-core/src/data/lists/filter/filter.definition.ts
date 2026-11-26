@@ -57,8 +57,8 @@ const CORE_FILTER_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_FILTER_REGISTRATION = Object.freeze({
   manifest: CORE_FILTER_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['path', 'operator'] },
-    inputs: { visible: ['items', 'value'] },
+    config: { visible: ['path', 'operator'], masked: [] },
+    inputs: { visible: ['items', 'value'], masked: [] },
   } as const,
   configSchema: CORE_FILTER_CONFIG_SCHEMA,
   inputSchema: CORE_FILTER_INPUT_SCHEMA,

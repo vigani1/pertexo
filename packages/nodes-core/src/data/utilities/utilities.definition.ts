@@ -35,8 +35,11 @@ import {
 export const CORE_TEXT_REGISTRATION = defineUtility({
   key: 'core.text',
   assistantDisclosure: {
-    config: { visible: ['operation', 'all', 'length', 'ellipsis'] },
-    inputs: { visible: ['value', 'search', 'replacement', 'delimiter'] },
+    config: { visible: ['operation', 'all', 'length', 'ellipsis'], masked: [] },
+    inputs: {
+      visible: ['value', 'search', 'replacement', 'delimiter'],
+      masked: [],
+    },
   } as const,
   display: {
     name: 'Format text',
@@ -62,8 +65,9 @@ export const CORE_NUMBER_REGISTRATION = defineUtility({
         'maximumFractionDigits',
         'currency',
       ],
+      masked: [],
     },
-    inputs: { visible: ['value'] },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   display: {
     name: 'Format number',
@@ -80,8 +84,11 @@ export const CORE_NUMBER_REGISTRATION = defineUtility({
 export const CORE_CRYPTO_REGISTRATION = defineUtility({
   key: 'core.crypto',
   assistantDisclosure: {
-    config: { visible: ['operation', 'algorithm', 'encoding', 'length'] },
-    inputs: { visible: ['value'] },
+    config: {
+      visible: ['operation', 'algorithm', 'encoding', 'length'],
+      masked: [],
+    },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   display: {
     name: 'Crypto',
@@ -98,8 +105,8 @@ export const CORE_CRYPTO_REGISTRATION = defineUtility({
 export const CORE_HMAC_REGISTRATION = defineUtility({
   key: 'core.hmac',
   assistantDisclosure: {
-    config: { visible: ['algorithm', 'encoding'] },
-    inputs: { visible: ['value'] },
+    config: { visible: ['algorithm', 'encoding'], masked: [] },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   display: {
     name: 'HMAC signature',
@@ -117,8 +124,8 @@ export const CORE_HMAC_REGISTRATION = defineUtility({
 export const CORE_XML_REGISTRATION = defineUtility({
   key: 'core.xml',
   assistantDisclosure: {
-    config: { visible: ['operation'] },
-    inputs: { visible: ['value'] },
+    config: { visible: ['operation'], masked: [] },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   display: {
     name: 'Convert XML',
@@ -135,8 +142,11 @@ export const CORE_XML_REGISTRATION = defineUtility({
 export const CORE_HTML_REGISTRATION = defineUtility({
   key: 'core.html',
   assistantDisclosure: {
-    config: { visible: ['operation', 'selector', 'limit', 'attribute'] },
-    inputs: { visible: ['value'] },
+    config: {
+      visible: ['operation', 'selector', 'limit', 'attribute'],
+      masked: [],
+    },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   display: {
     name: 'Extract HTML',

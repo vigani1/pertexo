@@ -52,8 +52,8 @@ const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_MERGE_REGISTRATION = Object.freeze({
   manifest: CORE_MERGE_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['parallelNodeId', 'policy'] },
-    inputs: { visible: ['ledger', 'selectedBranchIds'] },
+    config: { visible: ['parallelNodeId', 'policy'], masked: [] },
+    inputs: { visible: ['ledger', 'selectedBranchIds'], masked: [] },
   } as const,
   configSchema: CORE_MERGE_CONFIG_SCHEMA,
   inputSchema: CORE_MERGE_INPUT_SCHEMA,

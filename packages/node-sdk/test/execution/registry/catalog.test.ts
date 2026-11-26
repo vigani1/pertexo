@@ -15,6 +15,7 @@ import {
 import {
   NodeExecutorFailure,
   createNodeRegistry,
+  type AssistantDisclosure,
 } from '../../../src/server.js';
 import {
   definition,
@@ -29,25 +30,74 @@ import {
 } from './registry.fixture.js';
 
 describe('node-sdk catalog contracts', () => {
-  it('rejects an assistant disclosure for a field outside the registered schema', () => {
-    expect(() =>
+  const withDisclosure = (
+    assistantDisclosure: AssistantDisclosure,
+    config: z.ZodType = configSchema,
+  ) => {
+    const configured = {
+      ...manifest,
+      configSchema: generateSchemaDocument(config),
+    };
+    return () =>
       createNodeRegistry({
-        catalog: catalog(),
+        catalog: catalog(configured),
         definitions: [
           {
-            manifest,
-            configSchema,
+            manifest: configured,
+            configSchema: config,
             inputSchema: objectSchema,
             outputSchema: objectSchema,
-            assistantDisclosure: {
-              config: { visible: ['unknownSetting'], masked: [] },
-              inputs: { visible: [], masked: [] },
-            },
+            assistantDisclosure,
           },
         ],
         executors: [executorRegistration()],
+      });
+  };
+  const openInputs = { visible: [], masked: [], unlisted: 'visible' } as const;
+
+  it('rejects an assistant disclosure for a field outside the registered schema', () => {
+    expect(
+      withDisclosure({
+        config: { visible: ['unknownSetting'], masked: [] },
+        inputs: openInputs,
       }),
     ).toThrow(/test\.echo@1.*unknownSetting/u);
+  });
+
+  it('rejects an assistant disclosure that names a field twice', () => {
+    expect(
+      withDisclosure(
+        {
+          config: { visible: ['url'], masked: [], addresses: ['url'] },
+          inputs: openInputs,
+        },
+        z.strictObject({ url: z.string() }),
+      ),
+    ).toThrow(/test\.echo@1.*repeated config field: url/u);
+  });
+
+  it('rejects an assistant disclosure that leaves a field unclassified', () => {
+    expect(
+      withDisclosure(
+        { config: { visible: [], masked: [] }, inputs: openInputs },
+        z.strictObject({ url: z.string() }),
+      ),
+    ).toThrow(/test\.echo@1.*does not classify the config field: url/u);
+  });
+
+  it('rejects unlisted fields on a closed schema and requires them on an open one', () => {
+    expect(
+      withDisclosure({
+        config: { visible: [], masked: [], unlisted: 'masked' },
+        inputs: openInputs,
+      }),
+    ).toThrow(/test\.echo@1.*unlisted config fields on a closed schema/u);
+    expect(
+      withDisclosure({
+        config: { visible: [], masked: [] },
+        inputs: { visible: [], masked: [] },
+      }),
+    ).toThrow(/test\.echo@1.*must classify unlisted inputs fields/u);
   });
 
   it('holds definition and executor keys to the identity key length', () => {

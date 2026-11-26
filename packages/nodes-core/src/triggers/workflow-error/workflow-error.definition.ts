@@ -44,8 +44,8 @@ const CORE_WORKFLOW_ERROR_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_WORKFLOW_ERROR_REGISTRATION = Object.freeze({
   manifest: CORE_WORKFLOW_ERROR_MANIFEST,
   assistantDisclosure: {
-    config: { visible: [] },
-    inputs: { visible: ['workflow', 'run', 'failedStep', 'error'] },
+    config: { visible: [], masked: [] },
+    inputs: { visible: ['workflow', 'run', 'failedStep', 'error'], masked: [] },
   } as const,
   configSchema: CORE_WORKFLOW_ERROR_CONFIG_SCHEMA,
   inputSchema: CORE_WORKFLOW_ERROR_INPUT_SCHEMA,

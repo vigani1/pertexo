@@ -6,8 +6,7 @@ export {
   type InlineNodeRegistry,
 } from './execution/registry.js';
 export {
-  assistantSchemaFields,
-  validateAssistantDisclosure,
+  isMaskedAddress,
   type AssistantDisclosure,
 } from './execution/assistant-disclosure.js';
 export {
