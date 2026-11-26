@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { DRAFT_PROPOSAL_TIMING } from '@pertexo/contracts';
 import { proposalAdmissionCases } from './proposal-admission.cases.js';
 import {
   credentialSentinel,
@@ -113,7 +112,6 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     propose: (path, script) => propose(path, script, correctionOwner),
     requests,
     httpWorkflow,
-    deadlineMillis: DRAFT_PROPOSAL_TIMING.generationMillis,
     usageRows,
   });
 

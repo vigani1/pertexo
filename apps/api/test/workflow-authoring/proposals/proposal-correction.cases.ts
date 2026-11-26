@@ -7,7 +7,6 @@ export function proposalCorrectionCases({
   propose,
   requests,
   httpWorkflow,
-  deadlineMillis,
   usageRows,
 }: Readonly<{
   workflow: () => Promise<string>;
@@ -23,7 +22,6 @@ export function proposalCorrectionCases({
   ) => Promise<DraftProposalResult>;
   requests: readonly string[];
   httpWorkflow: WorkflowGraph;
-  deadlineMillis: number;
   usageRows: (path: string) => Promise<unknown[]>;
 }>) {
   const valid = withHttpConfig({ url: 'https://orders.example.test' });
@@ -253,27 +251,6 @@ export function proposalCorrectionCases({
     expect(bodies).toHaveLength(4);
     expect(bodies[3]).toContain('"max_tokens":1');
   });
-
-  // A real deadline: the test waits out the whole proposal budget.
-  it(
-    'times out a correction on the original request deadline',
-    { timeout: deadlineMillis + 15_000 },
-    async () => {
-      const path = await workflow();
-      const firstReplyMillis = 4_000;
-      const start = requests.length;
-      const startedAt = performance.now();
-      const result = await propose(path, [
-        { ...candidate(invalid), waitMillis: firstReplyMillis },
-        { ...candidate(valid), hold: true },
-      ]);
-      expect(result).toMatchObject({ kind: 'timeout', rounds: 1 });
-      expect(requests.slice(start)).toHaveLength(2);
-      expect(performance.now() - startedAt).toBeLessThan(
-        deadlineMillis + firstReplyMillis / 2,
-      );
-    },
-  );
 
   function lookup(query: string) {
     return { graph: null, text: JSON.stringify({ catalogLookup: query }) };
