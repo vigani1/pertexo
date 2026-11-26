@@ -44,8 +44,8 @@ const CORE_FOR_EACH_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_FOR_EACH_REGISTRATION = Object.freeze({
   manifest: CORE_FOR_EACH_MANIFEST,
   assistantDisclosure: {
-    config: { visible: [] },
-    inputs: { visible: ['items'] },
+    config: { visible: [], masked: [] },
+    inputs: { visible: ['items'], masked: [] },
   } as const,
   configSchema: CORE_FOR_EACH_CONFIG_SCHEMA,
   inputSchema: CORE_FOR_EACH_INPUT_SCHEMA,

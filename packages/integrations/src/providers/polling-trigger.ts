@@ -75,7 +75,7 @@ export function registerPollingDefinition<Config extends z.ZodType>({
     configSchema,
     assistantDisclosure: {
       ...assistantDisclosure,
-      inputs: { visible: ['triggerId', 'nodeId', 'item'] },
+      inputs: { visible: ['triggerId', 'nodeId', 'item'], masked: [] },
     },
     inputSchema: pollEnvelope,
     outputSchema: pollEnvelope,

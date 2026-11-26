@@ -57,8 +57,9 @@ export const CLASSIFY_REGISTRATION = Object.freeze({
   assistantDisclosure: {
     config: {
       visible: ['model', 'timeoutMillis', 'maxOutputTokens', 'categories'],
+      masked: [],
     },
-    inputs: { visible: ['text'] },
+    inputs: { visible: ['text'], masked: [] },
   } as const,
   configSchema,
   inputSchema,

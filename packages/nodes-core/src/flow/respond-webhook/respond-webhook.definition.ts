@@ -41,7 +41,7 @@ const CORE_RESPOND_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_RESPOND_WEBHOOK_REGISTRATION = Object.freeze({
   manifest: CORE_RESPOND_WEBHOOK_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['bodyType', 'textContentType'] },
+    config: { visible: ['bodyType', 'textContentType'], masked: [] },
     inputs: { visible: ['statusCode'], masked: ['headers', 'body'] },
   } as const,
   configSchema: CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,

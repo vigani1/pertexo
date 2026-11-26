@@ -44,8 +44,8 @@ const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_MANUAL_REGISTRATION = Object.freeze({
   manifest: CORE_MANUAL_MANIFEST,
   assistantDisclosure: {
-    config: { visible: [] },
-    inputs: { visible: [], unlisted: 'visible' },
+    config: { visible: [], masked: [] },
+    inputs: { visible: [], masked: [], unlisted: 'visible' },
   } as const,
   configSchema: CORE_MANUAL_CONFIG_SCHEMA,
   inputSchema: CORE_MANUAL_INPUT_SCHEMA,

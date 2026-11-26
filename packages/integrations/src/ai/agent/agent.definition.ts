@@ -72,7 +72,10 @@ function agentRegistration(
     manifest,
     assistantDisclosure: {
       config: { visible: ['model', 'timeoutMillis'], masked: ['tool'] },
-      inputs: { visible: ['prompt', 'input', 'toolSchema', 'history'] },
+      inputs: {
+        visible: ['prompt', 'input', 'toolSchema', 'history'],
+        masked: [],
+      },
     } as const,
     configSchema,
     inputSchema: agentTurnInputSchema,
@@ -135,7 +138,7 @@ export const AGENT_REGISTRATIONS = [
     ...idBoundAgent,
     assistantDisclosure: {
       config: { visible: ['model', 'timeoutMillis'], masked: ['tools'] },
-      inputs: { visible: ['prompt', 'input', 'history', 'tools'] },
+      inputs: { visible: ['prompt', 'input', 'history', 'tools'], masked: [] },
     } as const,
     configSchema: multiToolConfig,
     inputSchema: multiToolAgentTurnInputSchema,

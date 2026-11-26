@@ -51,8 +51,8 @@ const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_SWITCH_REGISTRATION = Object.freeze({
   manifest: CORE_SWITCH_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['cases'] },
-    inputs: { visible: ['value'] },
+    config: { visible: ['cases'], masked: [] },
+    inputs: { visible: ['value'], masked: [] },
   } as const,
   configSchema: CORE_SWITCH_CONFIG_SCHEMA,
   inputSchema: CORE_SWITCH_INPUT_SCHEMA,

@@ -60,7 +60,7 @@ export const CORE_REQUEST_INPUT_REGISTRATION = Object.freeze({
       ],
       masked: ['audience'],
     },
-    inputs: { visible: ['details', 'prefill'] },
+    inputs: { visible: ['details', 'prefill'], masked: [] },
   } as const,
   configSchema: CORE_REQUEST_INPUT_CONFIG_SCHEMA,
   inputSchema: CORE_REQUEST_INPUT_INPUT_SCHEMA,

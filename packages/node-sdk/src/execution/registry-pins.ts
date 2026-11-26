@@ -23,7 +23,10 @@ import type {
   NodeRegistryOptions,
 } from './node-execution.types.js';
 import { NodeRegistryCompatibilityError } from './node-execution.errors.js';
-import { validateAssistantDisclosure } from './assistant-disclosure.js';
+import {
+  type AssistantDisclosure,
+  validateAssistantDisclosure,
+} from './assistant-disclosure.js';
 
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
   1,
@@ -32,6 +35,7 @@ const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
 
 export interface PinnedNodeDefinition {
   readonly manifest: NodeManifest;
+  readonly assistantDisclosure?: AssistantDisclosure;
   readonly configSchema: ZodType;
   readonly inputSchema: ZodType;
   readonly outputSchema: ZodType;
@@ -128,6 +132,9 @@ function validateDefinitionRegistration(
   validateAssistantDisclosure(registration);
   return {
     manifest: parsed,
+    ...(registration.assistantDisclosure === undefined
+      ? {}
+      : { assistantDisclosure: registration.assistantDisclosure }),
     configSchema: registration.configSchema,
     inputSchema: registration.inputSchema,
     outputSchema: registration.outputSchema,

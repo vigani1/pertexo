@@ -51,8 +51,8 @@ const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
 export const CORE_PARALLEL_REGISTRATION = Object.freeze({
   manifest: CORE_PARALLEL_MANIFEST,
   assistantDisclosure: {
-    config: { visible: ['branches', 'maxConcurrency'] },
-    inputs: { visible: [] },
+    config: { visible: ['branches', 'maxConcurrency'], masked: [] },
+    inputs: { visible: [], masked: [] },
   } as const,
   configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
   inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
