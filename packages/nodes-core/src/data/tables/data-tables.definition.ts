@@ -57,6 +57,13 @@ const DATA_TABLE_INPUT_SCHEMAS = {
   upsert: z.object({ values: dataTableValuesSchema }).strict(),
   delete: z.object({ query }).strict(),
 };
+const DATA_TABLE_ASSISTANT_INPUTS = {
+  find: ['query'],
+  insert: ['values'],
+  update: ['query', 'values'],
+  upsert: ['values'],
+  delete: ['query'],
+} as const;
 export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] = [
   ...DATA_TABLE_OPERATIONS.map((operation) => registerTable(operation, 1)),
   registerTable('find', FIND_ROWS_V2.version),
@@ -98,6 +105,16 @@ function registerTable(
   return {
     manifest,
     configSchema,
+    assistantDisclosure: {
+      config: {
+        visible: [
+          'table',
+          'columnBindings',
+          ...(version === FIND_ROWS_V2.version ? ['tableId'] : []),
+        ],
+      },
+      inputs: { visible: DATA_TABLE_ASSISTANT_INPUTS[operation] },
+    },
     inputSchema,
     outputSchema: dataTableResultSchema,
   };

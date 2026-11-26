@@ -27,7 +27,7 @@ import {
   webOrigin,
   webDirectory,
   webRequire,
-  editorJourneyPath,
+  editorJourneyArguments,
 } from './environment.js';
 import { fixtureState } from './state.js';
 import {
@@ -322,7 +322,7 @@ async function runEditorBrowserJourney(
           'test',
           '--config',
           'playwright.live.config.ts',
-          editorJourneyPath(scenario),
+          ...editorJourneyArguments(scenario),
         ],
         {
           cwd: webDirectory,

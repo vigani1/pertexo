@@ -333,5 +333,7 @@ it('reports a configuration version change even when setup values stay the same'
   expect(
     diffWorkflowGraphs(graph([before]), graph([after]), { ignoreLayout: true })
       .changed,
-  ).toEqual([{ before, after, aspects: ['configVersion'] }]);
+  ).toEqual([
+    { before, after, aspects: ['configVersion'], settings: [], mappings: [] },
+  ]);
 });

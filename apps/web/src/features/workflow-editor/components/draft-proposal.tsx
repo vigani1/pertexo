@@ -202,8 +202,9 @@ function ProposalRequest({
   return (
     <>
       <AssistantDisclosure destination={destination}>
-        The request includes your description, filtered draft structure and
-        relevant catalog definitions.
+        The request includes your description, draft structure, step settings
+        and input mappings, and relevant catalog definitions. Protected settings
+        and connections are masked.
       </AssistantDisclosure>
       <label className="grid gap-2 text-sm font-medium">
         What should the workflow do?

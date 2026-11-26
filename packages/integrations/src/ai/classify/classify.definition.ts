@@ -54,6 +54,12 @@ const manifest: NodeManifest = Object.freeze({
 
 export const CLASSIFY_REGISTRATION = Object.freeze({
   manifest,
+  assistantDisclosure: {
+    config: {
+      visible: ['model', 'timeoutMillis', 'maxOutputTokens', 'categories'],
+    },
+    inputs: { visible: ['text'] },
+  } as const,
   configSchema,
   inputSchema,
   outputSchema,

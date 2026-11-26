@@ -13,5 +13,15 @@ export const DATABASE_POLL_DEFINITION_REGISTRATION = registerPollingDefinition({
     description: 'Start a run for each new or updated PostgreSQL row',
   },
   configSchema: databasePollConfigSchema,
+  assistantConfig: {
+    visible: [
+      'schema',
+      'table',
+      'orderingColumn',
+      'keyColumn',
+      'intervalMinutes',
+      'mode',
+    ],
+  },
   connectionSlot: POSTGRES_CONNECTION_SLOT,
 });

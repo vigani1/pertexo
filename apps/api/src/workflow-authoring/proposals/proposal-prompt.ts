@@ -27,17 +27,36 @@ export const proposalAnswer = z
       .max(CATALOG_LOOKUP_QUERY_CHARACTERS)
       .describe('Search terms for a missing workflow step or integration.')
       .optional(),
+    maskedSetting: z
+      .literal(true)
+      .describe('The request only asks to change a protected setting.')
+      .optional(),
   })
   .refine(
-    ({ draft, catalogLookup }) =>
-      (draft === undefined) !== (catalogLookup === undefined),
+    ({ draft, catalogLookup, maskedSetting }) =>
+      [draft, catalogLookup, maskedSetting].filter(
+        (value) => value !== undefined,
+      ).length === 1,
   )
-  .meta({ oneOf: [{ required: ['draft'] }, { required: ['catalogLookup'] }] });
+  .meta({
+    oneOf: [
+      { required: ['draft'] },
+      { required: ['catalogLookup'] },
+      { required: ['maskedSetting'] },
+    ],
+  });
 const { $schema: _dialect, ...graphOutput } = z.toJSONSchema(proposalAnswer, {
   target: 'draft-7',
 });
 export const proposalAnswerSchema =
   boundedNodeJsonRecordSchema.parse(graphOutput);
+
+export function proposalRequestText(request: string) {
+  return request.replace(
+    /(\bBearer[ \t]+)[A-Za-z0-9._~+/=-]+/giu,
+    '$1[Redacted]',
+  );
+}
 
 export function proposalPrompt({
   currentDraft,
@@ -52,7 +71,8 @@ export function proposalPrompt({
 }>) {
   return [
     'Create or edit a workflow for the request. Return compact JSON of the form {"draft":{"nodes":[],"edges":[],"settings":{}}}, populated with the complete graph. Use step identities, versions, and settings from the catalog.',
-    'Reuse existing node and edge IDs exactly. Renaming a step changes its label only. Keep unrelated steps, links and positions, and copy every @existing placeholder exactly. Leave unknown settings unset and connectionRefs empty for new steps.',
+    'Reuse existing node and edge IDs exactly. Keep unrelated steps, links and positions. Settings and mappings with real values can be edited. On existing steps, copy placeholders (existing_setting, existing_mapping, @existing or @existing_connection) exactly, and never add or change protected fields such as HTTP headers or request bodies. Leave connectionRefs empty for new steps.',
+    'If the request only asks to change a protected setting, return {"maskedSetting":true}. The user must edit that setting in the editor. Leave unknown settings unset.',
     'New node shape: {"id":"step-id","label":"Step name","definition":{"key":"catalog key","version":1},"configVersion":1,"position":{"x":0,"y":0},"config":{},"inputMappings":{},"connectionRefs":{}}. Use the exact label requested. Give new nodes distinct positions.',
     'Edge shape: {"id":"link-id","source":{"nodeId":"source-id","port":"out"},"target":{"nodeId":"target-id","port":"in"}}. Use real node IDs and catalog ports. Use the default output for unmatched values.',
     'In inputMappings, keys are input fields from the step schema and values are sources: {"kind":"run_input","path":"$.<field>"}, {"kind":"node_output","nodeId":"<previous step id>","path":"$.<field>"}, or {"kind":"literal","value":"<requested value>"}. Use the source and field specified in the request. Leave mappings empty when the step needs no input.',

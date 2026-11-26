@@ -42,6 +42,17 @@ export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_WEBHOOK_REGISTRATION = Object.freeze({
   manifest: CORE_WEBHOOK_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'coordination',
+        'runInput',
+        'responseMode',
+        'responseWaitSeconds',
+      ],
+    },
+    inputs: { visible: [], additional: 'masked' },
+  } as const,
   configSchema: CORE_WEBHOOK_CONFIG_SCHEMA,
   inputSchema: CORE_WEBHOOK_INPUT_SCHEMA,
   outputSchema: CORE_WEBHOOK_OUTPUT_SCHEMA,

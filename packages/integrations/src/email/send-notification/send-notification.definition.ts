@@ -60,6 +60,13 @@ export const EMAIL_SEND_NOTIFICATION_MANIFEST: NodeManifest = Object.freeze({
 
 export const EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION = Object.freeze({
   manifest: EMAIL_SEND_NOTIFICATION_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['timeoutMillis'] },
+    inputs: {
+      visible: ['subject', 'text', 'attachments'],
+      masked: ['toEmail'],
+    },
+  } as const,
   configSchema: emailSendNotificationConfigSchema,
   inputSchema: emailSendNotificationInputSchema,
   outputSchema: emailSendNotificationOutputSchema,

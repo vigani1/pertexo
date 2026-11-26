@@ -15,12 +15,39 @@ import type {
   ProviderHttpRequest,
   ProviderHttpResponse,
 } from '@pertexo/integrations/server';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import {
+  assistantSchemaFields,
+  type NodeExecutionRuntime,
+} from '@pertexo/node-sdk/server';
 import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
+import { platformRegistry } from '../src/catalog.js';
 import { createPlatformNodeRegistry } from './platform-registry.fixture.js';
 
 describe('platform server registry composition', () => {
+  it('classifies every built-in setting and mapping explicitly', () => {
+    for (const [identity, registration] of platformRegistry().registrations) {
+      const { manifest, assistantDisclosure } = registration;
+      expect(assistantDisclosure, identity).toBeDefined();
+      if (assistantDisclosure === undefined) continue;
+      for (const [schema, fields] of [
+        [manifest.configSchema, assistantDisclosure.config],
+        [manifest.inputSchema, assistantDisclosure.inputs],
+      ] as const) {
+        const { names, additional } = assistantSchemaFields(schema);
+        expect(
+          [
+            ...fields.visible,
+            ...(fields.masked ?? []),
+            ...(fields.urls ?? []),
+          ].sort(),
+          identity,
+        ).toEqual([...names].sort());
+        expect(fields.additional !== undefined, identity).toBe(additional);
+      }
+    }
+  });
+
   it('builds one registry with dispatch-aware HTTP', async () => {
     const registry = createPlatformNodeRegistry({
       httpRequest: {

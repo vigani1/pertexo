@@ -55,6 +55,10 @@ export const CORE_TAKE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_TAKE_REGISTRATION = Object.freeze({
   manifest: CORE_TAKE_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['count'] },
+    inputs: { visible: ['items'] },
+  } as const,
   configSchema: CORE_TAKE_CONFIG_SCHEMA,
   inputSchema: CORE_TAKE_INPUT_SCHEMA,
   outputSchema: CORE_TAKE_OUTPUT_SCHEMA,

@@ -41,23 +41,37 @@ export const orderDraft = {
   ],
   settings: {},
 };
-export async function reviewAndApply(
+interface EvaluationRequest {
+  description: string;
+  inference: Awaited<ReturnType<typeof openModelProvider>>;
+  info: TestInfo;
+  path: string;
+  modelName: string;
+  allowPublicationIssues?: true;
+}
+
+export async function reviewAndApply(page: Page, options: EvaluationRequest) {
+  const before = await readEditorDraft(page, options.path);
+  const result = await requestProposal(page, options);
+  expect(result).toMatchObject({
+    kind: 'inspected',
+    ...(options.allowPublicationIssues ? {} : { validation: { valid: true } }),
+  });
+  expect(await readEditorDraft(page, options.path)).toEqual(before);
+  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+  await review.getByRole('button', { name: 'Apply to draft' }).click();
+  await expect(review).toBeHidden();
+  if (result.kind !== 'inspected')
+    throw new Error('Expected an inspected draft');
+  await expect
+    .poll(async () => (await readEditorDraft(page, options.path)).graph)
+    .toEqual(result.draft.graph);
+}
+
+export async function requestProposal(
   page: Page,
-  {
-    description,
-    inference,
-    info,
-    path,
-    modelName,
-  }: Readonly<{
-    description: string;
-    inference: Awaited<ReturnType<typeof openModelProvider>>;
-    info: TestInfo;
-    path: string;
-    modelName: string;
-  }>,
+  { description, inference, info, path, modelName }: EvaluationRequest,
 ) {
-  const before = await readEditorDraft(page, path);
   const dialog = await openProposal(page, description);
   const response = page.waitForResponse(
     (message) =>
@@ -90,19 +104,7 @@ export async function reviewAndApply(
     path: metricsPath,
     contentType: 'application/json',
   });
-  expect(result).toMatchObject({
-    kind: 'inspected',
-    validation: { valid: true },
-  });
-  expect(await readEditorDraft(page, path)).toEqual(before);
-  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
-  await review.getByRole('button', { name: 'Apply to draft' }).click();
-  await expect(review).toBeHidden();
-  if (result.kind !== 'inspected')
-    throw new Error('Expected an inspected draft');
-  await expect
-    .poll(async () => (await readEditorDraft(page, path)).graph)
-    .toEqual(result.draft.graph);
+  return result;
 }
 
 export async function checkRouting(
@@ -162,7 +164,7 @@ export async function openProposal(page: Page, description: string) {
     name: 'Describe your workflow change',
   });
   await expect(dialog).toContainText('model.provider.test');
-  await expect(dialog).toContainText('filtered draft structure');
+  await expect(dialog).toContainText('step settings and input mappings');
   await dialog.getByLabel('What should the workflow do?').fill(description);
   return dialog;
 }

@@ -57,6 +57,10 @@ export const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_VALIDATE_REGISTRATION = Object.freeze({
   manifest: CORE_VALIDATE_MANIFEST,
+  assistantDisclosure: {
+    config: { visible: ['rules'] },
+    inputs: { visible: [], additional: 'visible' },
+  } as const,
   configSchema: CORE_VALIDATE_CONFIG_SCHEMA,
   inputSchema: CORE_VALIDATE_INPUT_SCHEMA,
   outputSchema: CORE_VALIDATE_OUTPUT_SCHEMA,

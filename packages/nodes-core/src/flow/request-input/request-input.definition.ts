@@ -48,6 +48,20 @@ export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_REQUEST_INPUT_REGISTRATION = Object.freeze({
   manifest: CORE_REQUEST_INPUT_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: [
+        'coordination',
+        'title',
+        'instructions',
+        'fields',
+        'expiresAfterSeconds',
+        'onExpiry',
+      ],
+      masked: ['audience'],
+    },
+    inputs: { visible: ['details', 'prefill'] },
+  } as const,
   configSchema: CORE_REQUEST_INPUT_CONFIG_SCHEMA,
   inputSchema: CORE_REQUEST_INPUT_INPUT_SCHEMA,
   outputSchema: CORE_REQUEST_INPUT_OUTPUT_SCHEMA,

@@ -8,6 +8,67 @@ import type { WorkflowValidationTarget } from '@/features/workflow-publish/publi
 import { browserDefinitions } from '../../support/fixtures/node-catalog';
 import { compatibility, graph, node } from '../workflow-publish/model/fixture';
 
+it('shows the before and after values of changed settings and mappings', () => {
+  const before = node('http', 'http.request', {
+    label: 'Fetch orders',
+    config: { url: 'https://api.example.test/orders', method: 'GET' },
+    inputMappings: { region: { kind: 'literal', value: 'eu' } },
+  });
+  const base = {
+    workflowId: '00000000-0000-4000-8000-000000000001',
+    revision: 1,
+    graph: graph([before]),
+    compatibility,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  render(
+    <DraftProposalReview
+      graph={base.graph}
+      onFix={() => undefined}
+      result={{
+        kind: 'inspected',
+        base,
+        draft: {
+          ...base,
+          graph: graph([
+            {
+              ...before,
+              config: {
+                ...before.config,
+                url: 'https://api.example.test/v2/orders',
+              },
+              inputMappings: { region: { kind: 'literal', value: 'us' } },
+            },
+          ]),
+        },
+        representationTag: '"draft-1"',
+        usage: {
+          kind: 'complete',
+          model: 'test',
+          inputTokens: 1,
+          outputTokens: 1,
+        },
+        validation: {
+          valid: true,
+          issues: [],
+          compatibility,
+          currentPublication: null,
+        },
+      }}
+    />,
+  );
+  for (const value of [
+    'url',
+    'region',
+    'https://api.example.test/orders',
+    'https://api.example.test/v2/orders',
+    'eu',
+    'us',
+  ])
+    expect(screen.getByText(value, { exact: true })).toBeVisible();
+  expect(screen.queryByText('method')).toBeNull();
+});
+
 it('shows the catalog field title and selects the step when asked to fix an issue', async () => {
   const definition = browserDefinitions().find(
     (item) => item.definition.key === 'http.request',

@@ -52,6 +52,12 @@ export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
 
 export const CORE_CREATE_FILE_REGISTRATION = Object.freeze({
   manifest: CORE_CREATE_FILE_MANIFEST,
+  assistantDisclosure: {
+    config: {
+      visible: ['format', 'inputMode', 'delimiter', 'columns', 'sheetName'],
+    },
+    inputs: { visible: ['data', 'pages'] },
+  } as const,
   configSchema: CORE_CREATE_FILE_CONFIG_SCHEMA,
   inputSchema: CORE_CREATE_FILE_INPUT_SCHEMA,
   outputSchema: CORE_CREATE_FILE_OUTPUT_SCHEMA,

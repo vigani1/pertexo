@@ -43,6 +43,10 @@ const manifest: NodeManifest = Object.freeze({
 
 export const CALL_TOOL_REGISTRATION = Object.freeze({
   manifest,
+  assistantDisclosure: {
+    config: { visible: ['toolName', 'toolInputSchema'] },
+    inputs: { visible: [], additional: 'masked' },
+  } as const,
   configSchema: callToolConfigSchema,
   inputSchema: callToolInputSchema,
   outputSchema: callToolOutputSchema,

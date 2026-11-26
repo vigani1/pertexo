@@ -29,12 +29,16 @@ import {
   serializeWorkflowValidation,
 } from '../http/serializers.js';
 import { inspectProposalCandidate } from './inspect-proposal-candidate.js';
-import { projectDraftForModel } from './masked-draft.js';
+import {
+  projectDraftForModel,
+  protectedSettingRefusal,
+} from './masked-draft.js';
 import { expandProposalCatalog, proposalCatalog } from './proposal-catalog.js';
 import {
   proposalAnswer,
   proposalAnswerSchema,
   proposalPrompt,
+  proposalRequestText,
 } from './proposal-prompt.js';
 
 const PURPOSE = 'propose_draft';
@@ -99,11 +103,12 @@ export class ProposeDraftService {
     if (prepared.kind !== 'ready') return prepared;
     if (prepared.confirmation !== confirmation)
       return { kind: 'confirmation_changed' as const };
-    const catalog = proposalCatalog(this.catalog, request, draft.graphJson);
+    const requestText = proposalRequestText(request);
+    const catalog = proposalCatalog(this.catalog, requestText, draft.graphJson);
     const currentDraft = projectDraftForModel(draft.graphJson);
     const prompt = (query?: string) => {
       if (query === undefined)
-        return proposalPrompt({ currentDraft, catalog, request });
+        return proposalPrompt({ currentDraft, catalog, request: requestText });
       const { entries, found } = expandProposalCatalog(
         this.catalog,
         draft.graphJson,
@@ -113,7 +118,7 @@ export class ProposeDraftService {
       return proposalPrompt({
         currentDraft,
         catalog: entries,
-        request,
+        request: requestText,
         lookup: found ? 'found' : 'no_matches',
       });
     };
@@ -241,14 +246,16 @@ export class ProposeDraftService {
         return { result: candidate, rounds };
 
       const feedback = JSON.stringify({
-        previousGraph: turn.graph,
+        ...('previousGraph' in candidate
+          ? { previousGraph: candidate.previousGraph }
+          : {}),
         issues: candidate.feedback.map(({ path, code, message }) => ({
           path,
           code,
           message,
         })),
       });
-      correction = `\nFix the listed issues in the previous graph while retaining the requested changes. Return the complete corrected graph in draft.\n${feedback}`;
+      correction = `\nFix the listed issues while retaining the requested changes. Return the complete corrected graph in draft.\n${feedback}`;
       if (Buffer.byteLength(`${prompt}${correction}`) > PROPOSAL_PROMPT_BYTES)
         return { result: candidate, rounds };
       rounds += 1;
@@ -287,6 +294,11 @@ export class ProposeDraftService {
       const parsed = proposalAnswer.safeParse(answer);
       if (!parsed.success) return { kind: 'invalid_response' as const };
       const outputTokens = usage?.outputTokens ?? maxOutputTokens;
+      if (parsed.data.maskedSetting === true)
+        return {
+          kind: 'rejected' as const,
+          issues: [protectedSettingRefusal],
+        };
       return parsed.data.catalogLookup === undefined
         ? { kind: 'graph' as const, graph: parsed.data.draft, outputTokens }
         : {

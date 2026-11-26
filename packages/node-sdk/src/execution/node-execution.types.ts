@@ -1,4 +1,5 @@
 import type { GuardrailsDiagnostics } from './guardrails-diagnostics.js';
+import type { AssistantDisclosure } from './assistant-disclosure.js';
 import type { ModelUsage } from './attempt-diagnostics.js';
 import type { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import type { NodeCallbackRuntime } from '../callbacks/node-callback.types.js';
@@ -225,6 +226,7 @@ export interface InlineNodeRequest extends InlineNodeInvocation {
 
 export interface NodeDefinitionRegistration {
   readonly manifest: NodeManifest;
+  readonly assistantDisclosure?: AssistantDisclosure;
   readonly configSchema: ZodType;
   /** Optional manifest slots required by the parsed config. */
   readonly requiredConnectionsForConfig?: (

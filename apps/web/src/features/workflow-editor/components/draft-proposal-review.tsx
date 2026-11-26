@@ -8,10 +8,12 @@ import type {
   DraftProposalResult,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
+import type { ReactNode } from 'react';
 import {
   describeStepChange,
   diffWorkflowGraphs,
   graphSteps,
+  type DraftFieldChange,
 } from '@/features/workflow-drafts/public';
 
 type DraftNode = WorkflowGraphContract['nodes'][number];
@@ -69,7 +71,10 @@ function DraftChanges({
     const label = node.label?.trim();
     return label === undefined || label === '' ? node.definition.key : label;
   };
-  const groups = [
+  const groups: readonly {
+    label: string;
+    items: readonly { id: string; text: string; fields?: ReactNode }[];
+  }[] = [
     {
       label: 'Added',
       items: diff.added.map((node) => ({ id: node.id, text: name(node) })),
@@ -80,19 +85,42 @@ function DraftChanges({
     },
     {
       label: 'Changed',
-      items: diff.changed.map(({ before: previous, after: node, aspects }) => {
-        const details = [
-          describeStepChange(
-            aspects.filter((aspect) => aspect !== 'configVersion'),
-          ),
-          ...(aspects.includes('configVersion')
-            ? [
-                `Configuration version ${String(previous.configVersion)} → ${String(node.configVersion)}`,
-              ]
-            : []),
-        ].filter(Boolean);
-        return { id: node.id, text: [name(node), ...details].join(' · ') };
-      }),
+      items: diff.changed.map(
+        ({ before: previous, after: node, aspects, settings, mappings }) => {
+          const details = [
+            describeStepChange(
+              aspects.filter((aspect) => aspect !== 'configVersion'),
+            ),
+            ...(aspects.includes('configVersion')
+              ? [
+                  `Configuration version ${String(previous.configVersion)} → ${String(node.configVersion)}`,
+                ]
+              : []),
+          ].filter(Boolean);
+          return {
+            id: node.id,
+            text: [name(node), ...details].join(' · '),
+            fields: (
+              <>
+                <ChangedFields
+                  label="Settings"
+                  fields={settings}
+                  format={formatValue}
+                />
+                <ChangedFields
+                  label="Input mappings"
+                  fields={mappings}
+                  format={(mapping) =>
+                    formatValue(
+                      mapping?.kind === 'literal' ? mapping.value : mapping,
+                    )
+                  }
+                />
+              </>
+            ),
+          };
+        },
+      ),
     },
     { label: 'Links added', items: linkChanges(after, diff.addedLinks, name) },
     {
@@ -101,7 +129,10 @@ function DraftChanges({
     },
   ];
   return (
-    <section aria-labelledby="proposal-changes" className="grid gap-2 text-sm">
+    <section
+      aria-labelledby="proposal-changes"
+      className="grid min-w-0 gap-2 text-sm"
+    >
       <h3 id="proposal-changes" className="font-medium">
         Draft changes
       </h3>
@@ -111,8 +142,11 @@ function DraftChanges({
           <div key={label}>
             <h4 className="font-medium">{label}</h4>
             <ul className="text-muted-foreground">
-              {items.map(({ id, text }) => (
-                <li key={id}>{text}</li>
+              {items.map(({ id, text, fields }) => (
+                <li key={id} className="min-w-0 [overflow-wrap:anywhere]">
+                  {text}
+                  {fields}
+                </li>
               ))}
             </ul>
           </div>
@@ -130,6 +164,54 @@ function DraftChanges({
       ) : null}
     </section>
   );
+}
+
+function ChangedFields<Value>({
+  label,
+  fields,
+  format,
+}: Readonly<{
+  label: string;
+  fields: readonly DraftFieldChange<Value>[];
+  format: (value: Value | undefined) => string;
+}>) {
+  if (fields.length === 0) return null;
+  return (
+    <div className="my-2 grid min-w-0 gap-1.5 rounded-md border px-3 py-2">
+      <h5 className="text-xs font-medium text-muted-foreground">{label}</h5>
+      <dl className="grid min-w-0 gap-2">
+        {fields.map(({ name, before, after }) => (
+          <div key={name} className="grid min-w-0 gap-1">
+            <dt className="font-medium text-foreground">{name}</dt>
+            <dd className="grid min-w-0 gap-1 text-xs sm:grid-cols-2">
+              <ChangeValue label="Before" value={format(before)} />
+              <ChangeValue label="After" value={format(after)} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function ChangeValue({
+  label,
+  value,
+}: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="grid min-w-0 gap-0.5">
+      <span>{label}</span>
+      <code className="max-h-36 overflow-auto rounded-sm bg-muted px-1.5 py-0.5 whitespace-pre-wrap text-foreground [overflow-wrap:anywhere]">
+        {value}
+      </code>
+    </div>
+  );
+}
+
+function formatValue(value: unknown): string {
+  if (value === undefined) return 'Unset';
+  if (value === '') return 'Empty string';
+  return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
 function linkChanges(
