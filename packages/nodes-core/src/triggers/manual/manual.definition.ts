@@ -40,3 +40,10 @@ export const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_MANUAL_REGISTRATION = Object.freeze({
+  manifest: CORE_MANUAL_MANIFEST,
+  configSchema: CORE_MANUAL_CONFIG_SCHEMA,
+  inputSchema: CORE_MANUAL_INPUT_SCHEMA,
+  outputSchema: CORE_MANUAL_OUTPUT_SCHEMA,
+});

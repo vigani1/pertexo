@@ -48,3 +48,10 @@ export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_MERGE_REGISTRATION = Object.freeze({
+  manifest: CORE_MERGE_MANIFEST,
+  configSchema: CORE_MERGE_CONFIG_SCHEMA,
+  inputSchema: CORE_MERGE_INPUT_SCHEMA,
+  outputSchema: CORE_MERGE_OUTPUT_SCHEMA,
+});

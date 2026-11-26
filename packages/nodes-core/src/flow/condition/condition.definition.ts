@@ -46,3 +46,10 @@ export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_CONDITION_REGISTRATION = Object.freeze({
+  manifest: CORE_CONDITION_MANIFEST,
+  configSchema: CORE_CONDITION_CONFIG_SCHEMA,
+  inputSchema: CORE_CONDITION_INPUT_SCHEMA,
+  outputSchema: CORE_CONDITION_OUTPUT_SCHEMA,
+});

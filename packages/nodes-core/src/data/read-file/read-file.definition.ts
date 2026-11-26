@@ -55,3 +55,10 @@ export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_READ_FILE_REGISTRATION = Object.freeze({
+  manifest: CORE_READ_FILE_MANIFEST,
+  configSchema: CORE_READ_FILE_CONFIG_SCHEMA,
+  inputSchema: CORE_READ_FILE_INPUT_SCHEMA,
+  outputSchema: CORE_READ_FILE_OUTPUT_SCHEMA,
+});

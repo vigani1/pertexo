@@ -49,3 +49,10 @@ export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_CREATE_FILE_REGISTRATION = Object.freeze({
+  manifest: CORE_CREATE_FILE_MANIFEST,
+  configSchema: CORE_CREATE_FILE_CONFIG_SCHEMA,
+  inputSchema: CORE_CREATE_FILE_INPUT_SCHEMA,
+  outputSchema: CORE_CREATE_FILE_OUTPUT_SCHEMA,
+});

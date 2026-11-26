@@ -52,3 +52,10 @@ export const CORE_CONCAT_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_CONCAT_REGISTRATION = Object.freeze({
+  manifest: CORE_CONCAT_MANIFEST,
+  configSchema: CORE_CONCAT_CONFIG_SCHEMA,
+  inputSchema: CORE_CONCAT_INPUT_SCHEMA,
+  outputSchema: CORE_CONCAT_OUTPUT_SCHEMA,
+});

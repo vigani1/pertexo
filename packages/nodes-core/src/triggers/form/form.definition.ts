@@ -39,3 +39,10 @@ export const CORE_FORM_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_FORM_REGISTRATION = Object.freeze({
+  manifest: CORE_FORM_MANIFEST,
+  configSchema: CORE_FORM_CONFIG_SCHEMA,
+  inputSchema: CORE_FORM_INPUT_SCHEMA,
+  outputSchema: CORE_FORM_OUTPUT_SCHEMA,
+});

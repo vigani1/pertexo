@@ -45,3 +45,10 @@ export const CORE_APPROVAL_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_APPROVAL_REGISTRATION = Object.freeze({
+  manifest: CORE_APPROVAL_MANIFEST,
+  configSchema: CORE_APPROVAL_CONFIG_SCHEMA,
+  inputSchema: CORE_APPROVAL_INPUT_SCHEMA,
+  outputSchema: CORE_APPROVAL_OUTPUT_SCHEMA,
+});

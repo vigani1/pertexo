@@ -41,3 +41,10 @@ export const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_RUN_VALUES_REGISTRATION = Object.freeze({
+  manifest: CORE_RUN_VALUES_MANIFEST,
+  configSchema: CORE_RUN_VALUES_CONFIG_SCHEMA,
+  inputSchema: CORE_RUN_VALUES_INPUT_SCHEMA,
+  outputSchema: CORE_RUN_VALUES_OUTPUT_SCHEMA,
+});

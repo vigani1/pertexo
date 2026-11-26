@@ -52,3 +52,10 @@ export const CORE_BATCH_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_BATCH_REGISTRATION = Object.freeze({
+  manifest: CORE_BATCH_MANIFEST,
+  configSchema: CORE_BATCH_CONFIG_SCHEMA,
+  inputSchema: CORE_BATCH_INPUT_SCHEMA,
+  outputSchema: CORE_BATCH_OUTPUT_SCHEMA,
+});

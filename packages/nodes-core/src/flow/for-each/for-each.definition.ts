@@ -40,3 +40,10 @@ export const CORE_FOR_EACH_MANIFEST: NodeManifest = Object.freeze({
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
 });
+
+export const CORE_FOR_EACH_REGISTRATION = Object.freeze({
+  manifest: CORE_FOR_EACH_MANIFEST,
+  configSchema: CORE_FOR_EACH_CONFIG_SCHEMA,
+  inputSchema: CORE_FOR_EACH_INPUT_SCHEMA,
+  outputSchema: CORE_FOR_EACH_OUTPUT_SCHEMA,
+});

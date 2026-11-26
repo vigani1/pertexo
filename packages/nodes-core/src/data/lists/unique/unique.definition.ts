@@ -53,3 +53,10 @@ export const CORE_UNIQUE_MANIFEST: NodeManifest = Object.freeze({
     CORE_JSONATA_POLICY,
   ]),
 });
+
+export const CORE_UNIQUE_REGISTRATION = Object.freeze({
+  manifest: CORE_UNIQUE_MANIFEST,
+  configSchema: CORE_UNIQUE_CONFIG_SCHEMA,
+  inputSchema: CORE_UNIQUE_INPUT_SCHEMA,
+  outputSchema: CORE_UNIQUE_OUTPUT_SCHEMA,
+});
