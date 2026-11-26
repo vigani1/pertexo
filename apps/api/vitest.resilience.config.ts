@@ -16,9 +16,9 @@ export default defineConfig({
     ],
     fileParallelism: false,
     hookTimeout: 120_000,
-    include: [
-      'test/workflow-runs/events/stream.resilience.integration.test.ts',
-    ],
+    // Real-time waits too long for the integration lane: Redis outages under
+    // the event stream, and a proposal waiting out its whole deadline.
+    include: ['test/**/*.resilience.integration.test.ts'],
     maxWorkers: 1,
     testTimeout: 240_000,
   },
