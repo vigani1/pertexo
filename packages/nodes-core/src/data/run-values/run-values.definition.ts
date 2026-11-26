@@ -13,7 +13,7 @@ export const CORE_RUN_VALUES_DEFINITION = Object.freeze({
   key: 'core.run_values',
   version: 1,
 });
-export const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
+const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_RUN_VALUES_DEFINITION,
   family: 'transform',
   display: Object.freeze({

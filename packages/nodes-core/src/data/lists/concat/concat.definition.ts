@@ -21,7 +21,7 @@ const semantics = Object.freeze([
   ...COLLECTION_SEMANTICS,
   'Append otherItems after items, preserving order and duplicates; reject a combined length above the collection cap.',
 ] as const);
-export const CORE_CONCAT_MANIFEST: NodeManifest = Object.freeze({
+const CORE_CONCAT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CONCAT_DEFINITION,
   family: 'transform',
   display: Object.freeze({

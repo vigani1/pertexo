@@ -22,7 +22,7 @@ const semantics = Object.freeze([
   'Canonical JSON equality ignores object key order but preserves array order and scalar types. Keep the first item in original order.',
   'Missing keys fail or are explicitly skipped. Null is a real key; duplicate and missing-key counts remain separate. No cross-run state.',
 ] as const);
-export const CORE_UNIQUE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_UNIQUE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_UNIQUE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

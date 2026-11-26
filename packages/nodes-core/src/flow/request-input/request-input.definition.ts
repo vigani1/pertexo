@@ -18,7 +18,7 @@ export const CORE_REQUEST_INPUT_EXECUTOR = Object.freeze({
   key: 'core.request_input',
   version: 1,
 });
-export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
+const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_REQUEST_INPUT_DEFINITION,
   family: 'logic',
   display: Object.freeze({

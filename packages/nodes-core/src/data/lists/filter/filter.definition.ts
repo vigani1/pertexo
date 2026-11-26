@@ -22,7 +22,7 @@ const semantics = Object.freeze([
   'Equality is strict scalar equality; numeric comparisons require numbers and contains requires strings. No coercion or regular expressions.',
   'Missing fields never match comparisons; exists includes null and not_exists selects only missing paths. Kept items retain original order.',
 ] as const);
-export const CORE_FILTER_MANIFEST: NodeManifest = Object.freeze({
+const CORE_FILTER_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FILTER_DEFINITION,
   family: 'transform',
   display: Object.freeze({
