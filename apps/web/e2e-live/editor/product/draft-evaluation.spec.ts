@@ -1,5 +1,4 @@
 import { expect } from '@playwright/test';
-import { DRAFT_PROPOSAL_TIMING } from '@pertexo/contracts';
 import { test } from './account';
 import { model, modelReply, openModelProvider } from './model-provider';
 import {
@@ -18,12 +17,6 @@ import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { saveGraph } from '../callable/fixture';
 
 test.use({ accountGroup: 'evaluation' });
-// The live suite's own test budget, spent here on workspace and draft setup.
-const CASE_SETUP_MILLIS = 60_000;
-// A real model may use the whole proposal budget on top of that setup.
-test.describe.configure({
-  timeout: DRAFT_PROPOSAL_TIMING.requestMillis + CASE_SETUP_MILLIS,
-});
 
 const graph = orderDraft;
 const [manual, prepare] = graph.nodes;
