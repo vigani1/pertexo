@@ -8,7 +8,7 @@ import {
   orderDraft,
   reviewAndApply,
 } from './draft-assistant';
-import { key, model, openModelProvider } from './model-provider';
+import { key, model, modelReply, openModelProvider } from './model-provider';
 import {
   createEditorWorkflow,
   publishSingleStep,
@@ -188,14 +188,3 @@ test('looks up a missing routing step and runs both paths of the proposed workfl
   }
 });
 
-function modelReply(value: unknown) {
-  return {
-    choices: [
-      {
-        finish_reason: 'stop',
-        message: { content: JSON.stringify(value) },
-      },
-    ],
-    usage: { prompt_tokens: 20, completion_tokens: 10 },
-  };
-}
