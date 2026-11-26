@@ -42,7 +42,8 @@ const evaluationCases = [
   },
 ] as const;
 
-const header = 'Bearer evaluation-header-sentinel';
+const sentinel = 'evaluation-header-sentinel';
+const header = { 'X-Partner-Reference': sentinel };
 const status = (value: string) => ({
   ...prepare,
   inputMappings: { status: { kind: 'literal' as const, value } },
@@ -63,7 +64,7 @@ const initialUrl = 'https://api.example.test/orders';
 const changedUrl = 'https://api.example.test/v2/orders';
 const headerDraft = {
   ...graph,
-  nodes: [manual, request(initialUrl, { Authorization: header })],
+  nodes: [manual, request(initialUrl, header)],
 };
 const edits = [
   {
@@ -89,7 +90,7 @@ const edits = [
     seeded: headerDraft,
     expected: {
       ...graph,
-      nodes: [manual, request(changedUrl, { Authorization: header })],
+      nodes: [manual, request(changedUrl, header)],
     },
     reply: {
       draft: {
@@ -100,7 +101,7 @@ const edits = [
   },
   {
     kind: 'refuse-secret-change',
-    description: 'Change the Authorization header to Bearer new-token.',
+    description: 'Change the X-Partner-Reference header to new-token.',
     seeded: headerDraft,
     expected: headerDraft,
     reply: { maskedSetting: true },
@@ -240,20 +241,14 @@ test.describe('authoring evaluation with a real local model', () => {
             review.getByRole('button', { name: 'Apply to draft' }),
           ).toHaveCount(0);
         } else {
-          await reviewAndApply(page, {
-            ...options,
-            ...(kind === 'edit-url-keeps-secret'
-              ? { allowPublicationIssues: true }
-              : {}),
-          });
+          await reviewAndApply(page, options);
         }
         const { graph: applied } = await readEditorDraft(page, path);
         expect(applied).toEqual(expected);
         expect(JSON.stringify(applied)).not.toContain('new-token');
         expect(inference.calls.length).toBeGreaterThan(0);
-        const outbound = JSON.stringify(inference.calls);
-        expect(outbound).not.toContain('evaluation-header-sentinel');
-        expect(outbound).not.toContain('new-token');
+        // The request the user typed is theirs to send; saved values are not.
+        expect(JSON.stringify(inference.calls)).not.toContain(sentinel);
       } finally {
         await inference.close();
       }

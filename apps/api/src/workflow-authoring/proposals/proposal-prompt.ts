@@ -51,12 +51,12 @@ const { $schema: _dialect, ...graphOutput } = z.toJSONSchema(proposalAnswer, {
 export const proposalAnswerSchema =
   boundedNodeJsonRecordSchema.parse(graphOutput);
 
-export function proposalRequestText(request: string) {
-  return request.replace(
-    /(\bBearer[ \t]+)[A-Za-z0-9._~+/=-]+/giu,
-    '$1[Redacted]',
-  );
-}
+/** The answer to `maskedSetting`: the model declined, so nothing was changed. */
+export const protectedSettingRequested = {
+  path: '$',
+  code: 'protected_setting_requested',
+  message: 'Edit this protected setting in the editor.',
+} as const;
 
 export function proposalPrompt({
   currentDraft,

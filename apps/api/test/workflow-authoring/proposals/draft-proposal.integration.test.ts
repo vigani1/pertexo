@@ -301,13 +301,13 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     httpWorkflow,
   });
 
-  it('lets the model change an existing URL while preserving the saved authorization header', async () => {
+  it('lets the model change an existing URL while preserving the saved header', async () => {
     const path = await workflow();
     const original = {
       ...httpRequest,
       config: {
         url: 'https://api.example.test/orders',
-        headers: { Authorization: `Bearer ${settingSentinel}` },
+        headers: { 'X-Partner-Reference': settingSentinel },
       },
     };
     const seeded = { ...httpWorkflow, nodes: [manual, original] };
@@ -357,7 +357,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       ...httpRequest,
       config: {
         url: 'https://api.example.test/orders',
-        headers: { Authorization: `Bearer ${settingSentinel}` },
+        headers: { 'X-Partner-Reference': settingSentinel },
       },
     };
     const seeded = { ...httpWorkflow, nodes: [manual, original] };
@@ -375,7 +375,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
           ...original,
           config: {
             ...original.config,
-            headers: { Authorization: 'Bearer new-token' },
+            headers: { 'X-Partner-Reference': 'new-token' },
           },
           inputMappings: {
             body: { kind: 'literal', value: 'private-body-value' },
@@ -388,7 +388,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       path,
       [reply, reply, reply],
       owner,
-      'Change the Authorization header to Bearer new-token.',
+      'Change the X-Partner-Reference header to new-token.',
     );
     expect(result).toMatchObject({
       kind: 'rejected',
@@ -406,10 +406,51 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(requests.slice(start)).toHaveLength(3);
     expect(requests[start + 1]).toContain('masked_value_changed');
     expect(requests[start + 1]).toContain('masked_value_added');
-    for (const value of [settingSentinel, 'new-token', 'private-body-value']) {
+    // What the user typed is theirs to send, so only saved values are checked.
+    for (const value of [settingSentinel, 'private-body-value'])
       expect(requests.slice(start).join('\n')).not.toContain(value);
+    for (const value of [settingSentinel, 'new-token', 'private-body-value'])
       expect(JSON.stringify(result)).not.toContain(value);
-    }
+    const after = await draft(path);
+    expect(after.payload).toBe(before.payload);
+    expect(after.payload).not.toContain('new-token');
+    expect(after.payload).toContain(settingSentinel);
+  });
+
+  it('tells the user to edit a protected setting when the model declines to change it', async () => {
+    const path = await workflow();
+    const seeded = {
+      ...httpWorkflow,
+      nodes: [
+        manual,
+        {
+          ...httpRequest,
+          config: {
+            url: 'https://api.example.test/orders',
+            headers: { 'X-Partner-Reference': settingSentinel },
+          },
+        },
+      ],
+    };
+    const initial = await draft(path);
+    expect((await save(path, initial.headers.etag, seeded)).statusCode).toBe(
+      200,
+    );
+    const before = await draft(path);
+    const start = requests.length;
+    const result = await propose(
+      path,
+      [{ graph: null, text: JSON.stringify({ maskedSetting: true }) }],
+      owner,
+      'Change the X-Partner-Reference header to new-token.',
+    );
+    expect(result).toMatchObject({
+      kind: 'rejected',
+      issues: [{ code: 'protected_setting_requested', path: '$' }],
+      rounds: 0,
+    });
+    expect(requests.slice(start)).toHaveLength(1);
+    expect(requests[start]).not.toContain(settingSentinel);
     expect((await draft(path)).payload).toBe(before.payload);
   });
 

@@ -47,7 +47,6 @@ interface EvaluationRequest {
   info: TestInfo;
   path: string;
   modelName: string;
-  allowPublicationIssues?: true;
 }
 
 export async function reviewAndApply(page: Page, options: EvaluationRequest) {
@@ -55,7 +54,7 @@ export async function reviewAndApply(page: Page, options: EvaluationRequest) {
   const result = await requestProposal(page, options);
   expect(result).toMatchObject({
     kind: 'inspected',
-    ...(options.allowPublicationIssues ? {} : { validation: { valid: true } }),
+    validation: { valid: true },
   });
   expect(await readEditorDraft(page, options.path)).toEqual(before);
   const review = page.getByRole('dialog', { name: 'Review proposed draft' });

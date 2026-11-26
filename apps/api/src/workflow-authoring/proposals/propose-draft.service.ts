@@ -29,16 +29,13 @@ import {
   serializeWorkflowValidation,
 } from '../http/serializers.js';
 import { inspectProposalCandidate } from './inspect-proposal-candidate.js';
-import {
-  projectDraftForModel,
-  protectedSettingRefusal,
-} from './masked-draft.js';
+import { projectDraftForModel } from './masked-draft.js';
 import { expandProposalCatalog, proposalCatalog } from './proposal-catalog.js';
 import {
   proposalAnswer,
   proposalAnswerSchema,
   proposalPrompt,
-  proposalRequestText,
+  protectedSettingRequested,
 } from './proposal-prompt.js';
 
 const PURPOSE = 'propose_draft';
@@ -103,15 +100,14 @@ export class ProposeDraftService {
     if (prepared.kind !== 'ready') return prepared;
     if (prepared.confirmation !== confirmation)
       return { kind: 'confirmation_changed' as const };
-    const requestText = proposalRequestText(request);
-    const catalog = proposalCatalog(this.catalog, requestText, draft.graphJson);
+    const catalog = proposalCatalog(this.catalog, request, draft.graphJson);
     const currentDraft = projectDraftForModel(
       draft.graphJson,
       this.catalog.assistantDisclosure,
     );
     const prompt = (query?: string) => {
       if (query === undefined)
-        return proposalPrompt({ currentDraft, catalog, request: requestText });
+        return proposalPrompt({ currentDraft, catalog, request });
       const { entries, found } = expandProposalCatalog(
         this.catalog,
         draft.graphJson,
@@ -121,7 +117,7 @@ export class ProposeDraftService {
       return proposalPrompt({
         currentDraft,
         catalog: entries,
-        request: requestText,
+        request,
         lookup: found ? 'found' : 'no_matches',
       });
     };
@@ -300,7 +296,7 @@ export class ProposeDraftService {
       if (parsed.data.maskedSetting === true)
         return {
           kind: 'rejected' as const,
-          issues: [protectedSettingRefusal],
+          issues: [protectedSettingRequested],
         };
       return parsed.data.catalogLookup === undefined
         ? { kind: 'graph' as const, graph: parsed.data.draft, outputTokens }

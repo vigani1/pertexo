@@ -30,12 +30,6 @@ interface Issue {
   message: string;
 }
 
-export const protectedSettingRefusal = {
-  path: '$',
-  code: 'masked_value_changed',
-  message: 'Edit this protected setting in the editor.',
-} as const;
-
 export function projectDraftForModel(
   { notes: _notes, callable: _callable, ...graph }: WorkflowGraph,
   disclosureFor: DisclosureLookup,
