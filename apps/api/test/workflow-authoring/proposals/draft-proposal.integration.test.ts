@@ -1,32 +1,20 @@
-import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
-import { randomBytes, randomUUID } from 'node:crypto';
-import { createServer } from 'node:http';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  connectionResponseSchema,
-  DRAFT_PROPOSAL_TIMING,
-  draftProposalResultSchema,
-  workflowCreateResponseSchema,
-} from '@pertexo/contracts';
-import {
-  ConnectionEnvelopeEncryption,
-  parseAllowedPrivateNetworks,
-  type ConnectionSecretContext,
-} from '@pertexo/secrets/server';
-import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { DRAFT_PROPOSAL_TIMING } from '@pertexo/contracts';
 import { proposalAdmissionCases } from './proposal-admission.cases.js';
+import {
+  credentialSentinel,
+  useProposalApi,
+  type ProposalReply,
+} from './proposal-api.fixture.js';
 import { proposalCorrectionCases } from './proposal-correction.cases.js';
 import { proposalLookupCases } from './proposal-lookup.cases.js';
 import { proposalMaskingCases } from './proposal-masking.cases.js';
-import { createNodeProviderHttpClient } from '../../../src/platform/connections/http-client.js';
 import {
   betterAuthIntegrationEnabled,
   expectProblem,
-  useBetterAuthRealApi,
   type Browser,
 } from '../../support/better-auth/real-api.support.js';
 
-const credentialSentinel = 'proposal-credential-sentinel';
 const settingSentinel = 'proposal-step-setting-sentinel';
 const manual = {
   id: 'manual',
@@ -60,78 +48,8 @@ const configuredDraft = {
 };
 
 describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
-  const keys = createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
-    randomBytes(32),
-    'connection',
-  );
-  const http = createNodeProviderHttpClient({
-    allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
-  });
-  const api = useBetterAuthRealApi('draft_proposal', {
-    codeSettings: { ...DEFAULT_CODE_SETTINGS, enabled: false },
-    connections: {
-      config: { kmsKeyReference: 'local-inference', region: 'us-east-1' },
-      services: () => ({
-        encryption: { encryption: new ConnectionEnvelopeEncryption(keys) },
-        http,
-      }),
-    },
-  });
-  const requests: string[] = [];
-  let replies: {
-    graph: unknown;
-    text?: string;
-    outputTokens?: number;
-    waitMillis?: number;
-    hold?: boolean;
-  }[] = [];
-  const inference = createServer((request, response) => {
-    request.setEncoding('utf8');
-    let body = '';
-    request.on('data', (chunk: string) => {
-      body += chunk;
-    });
-    request.on('end', () => {
-      requests.push(body);
-      const reply = replies.shift();
-      if (
-        request.headers.authorization !== `Bearer ${credentialSentinel}` ||
-        reply === undefined
-      ) {
-        response.writeHead(401).end();
-        return;
-      }
-      if (reply.hold) return;
-      const { graph, text, outputTokens = 10 } = reply;
-      if (reply.waitMillis === undefined) {
-        sendReply();
-      } else {
-        const timer = setTimeout(sendReply, reply.waitMillis);
-        response.once('close', () => {
-          clearTimeout(timer);
-        });
-      }
-
-      function sendReply() {
-        response.setHeader('content-type', 'application/json');
-        response.end(
-          JSON.stringify({
-            choices: [
-              {
-                finish_reason: 'stop',
-                message: { content: text ?? JSON.stringify({ draft: graph }) },
-              },
-            ],
-            usage: {
-              prompt_tokens: 40,
-              completion_tokens: outputTokens,
-            },
-          }),
-        );
-      }
-    });
-  });
-
+  const proposals = useProposalApi('draft_proposal');
+  const { api, requests, newUser, workspaceFor, usageRows } = proposals;
   let owner: Browser;
   let member: Browser;
   let outsider: Browser;
@@ -146,9 +64,6 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   let maskingWorkspace: string;
 
   beforeAll(async () => {
-    await new Promise<void>((resolve) =>
-      inference.listen(0, '127.0.0.1', resolve),
-    );
     owner = (await newUser()).browser;
     const collaborator = await newUser();
     member = collaborator.browser;
@@ -169,63 +84,6 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     lookupWorkspace = (await workspaceFor(lookupOwner)).path;
     maskingOwner = (await newUser()).browser;
     maskingWorkspace = (await workspaceFor(maskingOwner)).path;
-  });
-
-  async function workspaceFor(browser: Browser) {
-    const root = await api.send('POST', '/v1/workspaces', {
-      browser,
-      headers: key(),
-      payload: {
-        name: 'Draft proposals',
-        slug: `proposals-${randomUUID().slice(0, 8)}`,
-      },
-    });
-    expect(root.statusCode, root.payload).toBe(201);
-    const { id } = root.json<{ id: string }>();
-    const path = `/v1/workspaces/${id}`;
-    const address = inference.address();
-    if (address === null || typeof address === 'string')
-      throw new Error('Inference listener unavailable');
-    const connection = await api.send('POST', `${path}/connections`, {
-      browser,
-      headers: key(),
-      payload: {
-        providerKey: 'ai',
-        name: 'Local model',
-        credential: {
-          type: 'model_api_key',
-          endpoint: 'vllm',
-          baseUrl: `http://127.0.0.1:${String(address.port)}/v1`,
-          apiKey: credentialSentinel,
-        },
-      },
-    });
-    expect(connection.statusCode, connection.payload).toBe(201);
-    const { id: connectionId } = connectionResponseSchema.parse(
-      connection.json(),
-    );
-    await api
-      .database()
-      .query(
-        "update app.connections set access_mode='restricted' where workspace_id=$1 and id=$2",
-        [id, connectionId],
-      );
-    const saved = await api.send('PUT', `${path}/assistant`, {
-      browser,
-      payload: { selection: { connectionId, model: 'local-test' } },
-    });
-    expect(saved.json()).toMatchObject({ kind: 'saved' });
-    return { path, id };
-  }
-
-  afterAll(async () => {
-    keys.close();
-    inference.closeAllConnections();
-    await new Promise<void>((resolve) =>
-      inference.close(() => {
-        resolve();
-      }),
-    );
   });
 
   it('refuses a caller who cannot read the workflow or use the selected connection', async () => {
@@ -515,70 +373,24 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(bodies.join('\n')).not.toContain(settingSentinel);
   });
 
-  async function newUser() {
-    const email = `proposal-${randomUUID()}@example.test`;
-    await api.signUp(email, '/workspaces');
-    const browser = await api.signIn(email);
-    const user = await api.send('GET', '/v1/users/me', { browser });
-    return { browser, id: user.json<{ id: string }>().id };
-  }
-
-  async function workflow(path = workspace, browser = owner) {
-    const result = await api.send('POST', `${path}/workflows`, {
-      browser,
-      headers: key(),
-      payload: { name: 'Order intake' },
-    });
-    expect(result.statusCode, result.payload).toBe(201);
-    return `${path}/workflows/${workflowCreateResponseSchema.parse(result.json()).workflow.id}`;
+  function workflow(path = workspace, browser = owner) {
+    return proposals.workflow(path, browser);
   }
 
   function draft(path: string, browser = owner) {
-    return api.send('GET', `${path}/draft`, { browser });
+    return proposals.draft(path, browser);
   }
 
   function save(path: string, etag: unknown, graph: unknown, browser = owner) {
-    expect(typeof etag).toBe('string');
-    return api.send('PUT', `${path}/draft`, {
-      browser,
-      headers: { 'If-Match': String(etag) },
-      payload: { graph },
-    });
+    return proposals.save(path, etag, graph, browser);
   }
 
-  async function usageRows(path: string) {
-    const retained = await api
-      .database()
-      .query<{ metadata: unknown }>(
-        "select metadata from app.usage_events where resource_id=$1 and category='assistant.model'",
-        [path.split('/').at(-1)],
-      );
-    return retained.rows.map(({ metadata }) => metadata);
-  }
-
-  async function propose(
+  function propose(
     path: string,
-    script: typeof replies,
+    script: ProposalReply[],
     browser = owner,
-    request = 'Start with a manual trigger and add an HTTP request.',
+    request?: string,
   ) {
-    replies = script;
-    const endpoint = `${path}/draft/proposal`;
-    const disclosure = await api.send('GET', endpoint, { browser });
-    expect(disclosure.statusCode, disclosure.payload).toBe(200);
-    const { confirmation } = disclosure.json<{ confirmation: string }>();
-    const result = await api.send('POST', endpoint, {
-      browser,
-      payload: {
-        confirmation,
-        request,
-      },
-    });
-    expect(result.statusCode, result.payload).toBe(200);
-    return draftProposalResultSchema.parse(result.json());
+    return proposals.propose(path, script, browser, request);
   }
 });
-
-function key() {
-  return { 'Idempotency-Key': randomUUID() };
-}
