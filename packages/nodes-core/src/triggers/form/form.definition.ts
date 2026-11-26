@@ -15,7 +15,7 @@ export const CORE_FORM_EXECUTOR = Object.freeze({
   key: 'core.form',
   version: 1,
 });
-export const CORE_FORM_MANIFEST: NodeManifest = Object.freeze({
+const CORE_FORM_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FORM_DEFINITION,
   family: 'trigger',
   display: Object.freeze({

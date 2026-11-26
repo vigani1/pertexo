@@ -16,7 +16,7 @@ export const CORE_WORKFLOW_ERROR_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_WORKFLOW_ERROR_MANIFEST: NodeManifest = Object.freeze({
+const CORE_WORKFLOW_ERROR_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WORKFLOW_ERROR_DEFINITION,
   family: 'trigger',
   display: Object.freeze({

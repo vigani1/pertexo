@@ -13,7 +13,7 @@ const CORE_RESPOND_WEBHOOK_DEFINITION = Object.freeze({
 export const CORE_RESPOND_WEBHOOK_EXECUTOR = Object.freeze({
   ...CORE_RESPOND_WEBHOOK_DEFINITION,
 });
-export const CORE_RESPOND_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
+const CORE_RESPOND_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_RESPOND_WEBHOOK_DEFINITION,
   family: 'output',
   display: Object.freeze({

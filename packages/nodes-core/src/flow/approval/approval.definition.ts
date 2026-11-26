@@ -18,7 +18,7 @@ export const CORE_APPROVAL_EXECUTOR = Object.freeze({
   key: 'core.approval',
   version: 1,
 });
-export const CORE_APPROVAL_MANIFEST: NodeManifest = Object.freeze({
+const CORE_APPROVAL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_APPROVAL_DEFINITION,
   family: 'logic',
   display: Object.freeze({

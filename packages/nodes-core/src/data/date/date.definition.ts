@@ -23,7 +23,7 @@ const semantics = Object.freeze([
   'UTC instant must stay in years 0000 through 9999; The to_iso operation uses UTC and three fractional digits; zoned ISO preserves the same instant with its actual offset. Invalid-day rollover, leap seconds and local-time inference are forbidden.',
   'to_iso accepts epoch milliseconds, plain dates and offset timestamps alike.',
 ] as const);
-export const CORE_DATE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_DATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_DATE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

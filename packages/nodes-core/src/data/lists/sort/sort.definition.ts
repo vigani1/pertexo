@@ -22,7 +22,7 @@ const semantics = Object.freeze([
   'Sort is stable. Numeric keys compare numerically and text keys by UTF-16 code-unit order; present non-null keys must match the declared type.',
   'Missing and null keys keep their original relative order in the chosen first/last bucket, independent of ascending/descending direction.',
 ] as const);
-export const CORE_SORT_MANIFEST: NodeManifest = Object.freeze({
+const CORE_SORT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SORT_DEFINITION,
   family: 'transform',
   display: Object.freeze({

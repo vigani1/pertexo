@@ -23,7 +23,7 @@ const semantics = Object.freeze([
   'Groups have scalar keys and first-seen order. Missing/null numbers or absent group keys fail or skip; wrong types always fail.',
   'Empty ungrouped input produces one null-key zero-count/sum group with null min/max/average. Empty grouped input produces no groups.',
 ] as const);
-export const CORE_SUMMARIZE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_SUMMARIZE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SUMMARIZE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

@@ -26,7 +26,7 @@ const CORE_VALIDATE_RUNTIME_SEMANTICS = Object.freeze([
   'Validate mismatch is a successful typed result; the output never echoes the observed input value.',
 ] as const);
 
-export const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_VALIDATE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

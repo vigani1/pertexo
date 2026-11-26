@@ -20,7 +20,7 @@ const CORE_READ_FILE_DEFINITION = Object.freeze({
 export const CORE_READ_FILE_EXECUTOR = Object.freeze({
   ...CORE_READ_FILE_DEFINITION,
 });
-export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_READ_FILE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

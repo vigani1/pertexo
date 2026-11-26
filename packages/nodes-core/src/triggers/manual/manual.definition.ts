@@ -16,7 +16,7 @@ export const CORE_MANUAL_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
+const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_MANUAL_DEFINITION,
   family: 'trigger',
   display: Object.freeze({

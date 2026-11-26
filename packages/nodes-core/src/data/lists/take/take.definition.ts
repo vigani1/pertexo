@@ -21,7 +21,7 @@ const semantics = Object.freeze([
   ...COLLECTION_SEMANTICS,
   'Keep the first count items in original order; never mutate the input.',
 ] as const);
-export const CORE_TAKE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_TAKE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_TAKE_DEFINITION,
   family: 'transform',
   display: Object.freeze({

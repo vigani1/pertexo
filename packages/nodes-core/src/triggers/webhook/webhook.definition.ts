@@ -15,7 +15,7 @@ export const CORE_WEBHOOK_EXECUTOR = Object.freeze({
   key: 'core.webhook',
   version: 1,
 });
-export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
+const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WEBHOOK_DEFINITION,
   family: 'trigger',
   display: Object.freeze({

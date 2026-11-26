@@ -20,7 +20,7 @@ export const CORE_TERMINATE_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
+const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_TERMINATE_DEFINITION,
   family: 'output',
   display: Object.freeze({

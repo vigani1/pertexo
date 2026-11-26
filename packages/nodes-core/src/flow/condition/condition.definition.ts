@@ -19,7 +19,7 @@ export const CORE_CONDITION_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
+const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CONDITION_DEFINITION,
   family: 'logic',
   display: Object.freeze({

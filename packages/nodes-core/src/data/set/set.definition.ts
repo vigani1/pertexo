@@ -16,7 +16,7 @@ export const CORE_SET_DEFINITION = Object.freeze({
 });
 export const CORE_SET_EXECUTOR = Object.freeze({ key: 'core.set', version: 1 });
 
-export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
+const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SET_DEFINITION,
   family: 'transform',
   display: Object.freeze({

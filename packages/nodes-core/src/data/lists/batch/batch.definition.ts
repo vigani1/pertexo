@@ -21,7 +21,7 @@ const semantics = Object.freeze([
   ...COLLECTION_SEMANTICS,
   'Return ordered arrays of at most size items; the last batch may be smaller. No iteration or execution is started.',
 ] as const);
-export const CORE_BATCH_MANIFEST: NodeManifest = Object.freeze({
+const CORE_BATCH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_BATCH_DEFINITION,
   family: 'transform',
   display: Object.freeze({
