@@ -39,11 +39,11 @@ describe('platform server registry composition', () => {
           [
             ...fields.visible,
             ...(fields.masked ?? []),
-            ...(fields.urls ?? []),
+            ...(fields.addresses ?? []),
           ].sort(),
           identity,
         ).toEqual([...names].sort());
-        expect(fields.additional !== undefined, identity).toBe(additional);
+        expect(fields.unlisted !== undefined, identity).toBe(additional);
       }
     }
   });

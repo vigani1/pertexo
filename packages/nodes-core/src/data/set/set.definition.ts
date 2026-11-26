@@ -48,7 +48,7 @@ export const CORE_SET_REGISTRATION = Object.freeze({
   manifest: CORE_SET_MANIFEST,
   assistantDisclosure: {
     config: { visible: [] },
-    inputs: { visible: [], additional: 'visible' },
+    inputs: { visible: [], unlisted: 'visible' },
   } as const,
   configSchema: CORE_SET_CONFIG_SCHEMA,
   inputSchema: CORE_SET_INPUT_SCHEMA,

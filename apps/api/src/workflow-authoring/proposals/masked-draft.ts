@@ -315,13 +315,13 @@ function fieldMask(
 ): string | undefined {
   if (fields?.visible.includes(key)) return undefined;
   if (fields?.masked?.includes(key)) return key;
-  if (fields?.urls?.includes(key))
+  if (fields?.addresses?.includes(key))
     return typeof value !== 'string' || urlHasProtectedMaterial(value)
       ? key
       : undefined;
-  if (fields?.additional === 'visible') return undefined;
+  if (fields?.unlisted === 'visible') return undefined;
   // Unknown keys can themselves contain private data from older or incomplete drafts.
-  return fields?.additional === 'masked' ? key : opaqueField;
+  return fields?.unlisted === 'masked' ? key : opaqueField;
 }
 
 function urlHasProtectedMaterial(value: string): boolean {

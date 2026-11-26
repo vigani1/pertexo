@@ -39,7 +39,7 @@ export const CORE_CODE_REGISTRATION = Object.freeze({
   manifest: CORE_CODE_MANIFEST,
   assistantDisclosure: {
     config: { visible: ['language', 'code', 'timeoutSeconds'] },
-    inputs: { visible: [], additional: 'visible' },
+    inputs: { visible: [], unlisted: 'visible' },
   } as const,
   configSchema: CORE_CODE_CONFIG_SCHEMA,
   inputSchema: CORE_CODE_INPUT_SCHEMA,

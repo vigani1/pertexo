@@ -51,7 +51,7 @@ export const CORE_WEBHOOK_REGISTRATION = Object.freeze({
         'responseWaitSeconds',
       ],
     },
-    inputs: { visible: [], additional: 'masked' },
+    inputs: { visible: [], unlisted: 'masked' },
   } as const,
   configSchema: CORE_WEBHOOK_CONFIG_SCHEMA,
   inputSchema: CORE_WEBHOOK_INPUT_SCHEMA,
