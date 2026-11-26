@@ -142,6 +142,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   let admissionWorkspace: string;
   let lookupOwner: Browser;
   let lookupWorkspace: string;
+  let maskingOwner: Browser;
+  let maskingWorkspace: string;
 
   beforeAll(async () => {
     await new Promise<void>((resolve) =>
@@ -165,6 +167,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     admissionWorkspace = (await workspaceFor(admissionOwner)).path;
     lookupOwner = (await newUser()).browser;
     lookupWorkspace = (await workspaceFor(lookupOwner)).path;
+    maskingOwner = (await newUser()).browser;
+    maskingWorkspace = (await workspaceFor(maskingOwner)).path;
   });
 
   async function workspaceFor(browser: Browser) {
@@ -303,10 +307,11 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   });
 
   proposalMaskingCases({
-    workflow: () => workflow(),
-    propose: (path, script, request) => propose(path, script, owner, request),
-    draft: (path) => draft(path),
-    save: (path, etag, graph) => save(path, etag, graph),
+    workflow: () => workflow(maskingWorkspace, maskingOwner),
+    propose: (path, script, request) =>
+      propose(path, script, maskingOwner, request),
+    draft: (path) => draft(path, maskingOwner),
+    save: (path, etag, graph) => save(path, etag, graph, maskingOwner),
     requests,
     manual,
     httpRequest,
