@@ -88,7 +88,11 @@ describe('model catalog admission', () => {
         .success,
     ).toBe(false);
     expect(
-      configSchema.safeParse({ model, mode: 'text', maxOutputTokens: 4_097 })
+      configSchema.safeParse({ model, mode: 'text', maxOutputTokens: 16_384 })
+        .success,
+    ).toBe(true);
+    expect(
+      configSchema.safeParse({ model, mode: 'text', maxOutputTokens: 16_385 })
         .success,
     ).toBe(false);
     expect(inputSchema.safeParse({ prompt: 'mapped' }).success).toBe(true);

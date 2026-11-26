@@ -8,7 +8,7 @@ import type {
 } from '@pertexo/core/authoring';
 import { WorkflowRunNotFoundError } from '@pertexo/core/runs';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { runModelOnce } from '@pertexo/integrations/server';
+import { MODEL_LIMITS, runModelOnce } from '@pertexo/integrations/server';
 import {
   boundedNodeJsonRecordSchema,
   type ModelUsage,
@@ -28,7 +28,6 @@ import {
   type ModelRates,
 } from '../assistant-inference.js';
 
-const EXPLANATION_MAX_OUTPUT_TOKENS = 900;
 const PURPOSE = 'explain_run';
 const outputSchema = z.toJSONSchema(explanationModelAnswerSchema, {
   target: 'draft-7',
@@ -113,7 +112,9 @@ export class ExplanationService {
           mode: 'structured',
           model,
           outputSchema: answerSchema,
-          maxOutputTokens: EXPLANATION_MAX_OUTPUT_TOKENS,
+          // A reasoning model thinks before it answers, and the thinking
+          // counts as output, so a short answer still needs the full ceiling.
+          maxOutputTokens: MODEL_LIMITS.maxOutputTokens,
         },
         purpose: PURPOSE,
         prompt,

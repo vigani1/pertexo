@@ -214,9 +214,9 @@ export function proposalCorrectionCases({
     const path = await workflow();
     const start = requests.length;
     const result = await propose(path, [
-      { ...lookup('HTTP request'), outputTokens: 4_096 },
-      { ...candidate(invalid), outputTokens: 4_096 },
-      { ...candidate(invalidUrl), outputTokens: 4_096 },
+      { ...lookup('HTTP request'), outputTokens: 16_384 },
+      { ...candidate(invalid), outputTokens: 16_384 },
+      { ...candidate(invalidUrl), outputTokens: 16_384 },
       candidate(valid),
     ]);
     expect(result).toMatchObject({
@@ -226,20 +226,20 @@ export function proposalCorrectionCases({
         valid: false,
         issues: [{ path: '$.nodes.request.config.url' }],
       },
-      usage: { outputTokens: 12_288 },
+      usage: { outputTokens: 49_152 },
     });
     const bodies = requests.slice(start);
     expect(bodies).toHaveLength(3);
-    for (const body of bodies) expect(body).toContain('"max_tokens":4096');
+    for (const body of bodies) expect(body).toContain('"max_tokens":16384');
   });
 
   it('gives the last call only the output tokens that remain', async () => {
     const path = await workflow();
     const start = requests.length;
     const result = await propose(path, [
-      { ...lookup('HTTP request'), outputTokens: 4_096 },
-      { ...candidate(invalid), outputTokens: 4_095 },
-      { ...candidate(invalidUrl), outputTokens: 4_096 },
+      { ...lookup('HTTP request'), outputTokens: 16_384 },
+      { ...candidate(invalid), outputTokens: 16_383 },
+      { ...candidate(invalidUrl), outputTokens: 16_384 },
       { ...candidate(valid), outputTokens: 1 },
     ]);
     expect(result).toMatchObject({
@@ -249,7 +249,7 @@ export function proposalCorrectionCases({
     });
     const bodies = requests.slice(start);
     expect(bodies).toHaveLength(4);
-    expect(bodies[3]).toContain('"max_tokens":1');
+    expect(bodies[3]).toContain('"max_tokens":1,');
   });
 
   function lookup(query: string) {
