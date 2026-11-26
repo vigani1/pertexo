@@ -9,7 +9,7 @@ import {
   type WorkflowAuthoringStore,
 } from '@pertexo/core/authoring';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { runModelOnce } from '@pertexo/integrations/server';
+import { MODEL_LIMITS, runModelOnce } from '@pertexo/integrations/server';
 import type { ModelUsage } from '@pertexo/node-sdk';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
@@ -39,7 +39,10 @@ import {
 } from './proposal-prompt.js';
 
 const PURPOSE = 'propose_draft';
-const PROPOSAL_MAX_OUTPUT_TOKENS = 4_096;
+// A reasoning model's thinking counts as output, so every call the proposal
+// may make can spend a full answer.
+const PROPOSAL_OUTPUT_TOKENS =
+  (PROPOSAL_CORRECTION_ROUNDS + 1) * MODEL_LIMITS.maxOutputTokens;
 const PROPOSAL_PROMPT_BYTES = 24_576;
 
 type ProposalCaller = AssistantCaller & { workflowId: string };
@@ -200,18 +203,18 @@ export class ProposeDraftService {
     if (Buffer.byteLength(prompt) > PROPOSAL_PROMPT_BYTES)
       return { result: { kind: 'request_too_large' as const }, rounds: 0 };
     let rounds = 0;
-    let maxOutputTokens = PROPOSAL_MAX_OUTPUT_TOKENS;
+    let remainingOutputTokens = PROPOSAL_OUTPUT_TOKENS;
     let lastCandidate: CandidateInspection | undefined;
     let correction = '';
     let lookupUsed = false;
     for (;;) {
       const turn = await this.modelTurn(prepared, `${prompt}${correction}`, {
         ...budget,
-        maxOutputTokens,
+        remainingOutputTokens,
       });
       if (turn.kind === 'catalog_lookup') {
-        maxOutputTokens -= turn.outputTokens;
-        if (lookupUsed || maxOutputTokens <= 0)
+        remainingOutputTokens -= turn.outputTokens;
+        if (lookupUsed || remainingOutputTokens <= 0)
           return {
             result: lastCandidate ?? { kind: 'invalid_response' as const },
             rounds,
@@ -235,10 +238,10 @@ export class ProposeDraftService {
 
       const candidate = await inspect(turn.graph);
       lastCandidate = candidate;
-      maxOutputTokens -= turn.outputTokens;
+      remainingOutputTokens -= turn.outputTokens;
       if (
         rounds === PROPOSAL_CORRECTION_ROUNDS ||
-        maxOutputTokens <= 0 ||
+        remainingOutputTokens <= 0 ||
         !('feedback' in candidate) ||
         candidate.feedback.length === 0
       )
@@ -268,10 +271,14 @@ export class ProposeDraftService {
       deadlineAt,
       signal,
       usages,
-      maxOutputTokens,
-    }: ProposalBudget & { readonly maxOutputTokens: number },
+      remainingOutputTokens,
+    }: ProposalBudget & { readonly remainingOutputTokens: number },
   ) {
     let usage: ModelUsage | undefined;
+    const maxOutputTokens = Math.min(
+      remainingOutputTokens,
+      MODEL_LIMITS.maxOutputTokens,
+    );
     try {
       if (signal.aborted) return { kind: 'timeout' as const };
       const answer = await runModelOnce({
@@ -280,7 +287,8 @@ export class ProposeDraftService {
           mode: 'structured',
           model: prepared.model,
           outputSchema: proposalAnswerSchema,
-          timeoutMillis: DRAFT_PROPOSAL_TIMING.generationMillis,
+          // The proposal deadline still bounds every call.
+          timeoutMillis: MODEL_LIMITS.maxTimeoutMillis,
           maxOutputTokens,
         },
         prompt,
