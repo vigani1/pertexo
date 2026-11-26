@@ -50,7 +50,7 @@
   "apps/api/test/workspaces/purge-discovery.integration.test.ts": 1,
   "apps/api/test/workspaces/suspended-browsing.integration.test.ts": 1,
   "apps/api/vitest.integration.config.ts": 2,
-  "apps/api/vitest.sse-resilience.config.ts": 2,
+  "apps/api/vitest.resilience.config.ts": 2,
   "apps/cli/test/wait-deadline.test.ts": 1,
   "apps/code-runner/vitest.config.ts": 1,
   "apps/ops/test/main-process.integration.test.ts": 1,

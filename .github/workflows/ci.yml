@@ -324,7 +324,7 @@ jobs:
           WORKER_TRANSPORT_RESILIENCE=true WORKFLOW_COORDINATOR_INLINE_STEPS=true \
             pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           API_SSE_RESILIENCE_INTEGRATION=true \
-            pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
+            pnpm --filter @pertexo/api exec vitest run --config vitest.resilience.config.ts
       - name: Worker integration tests with inline execution
         if: matrix.group == 'worker'
         env:
