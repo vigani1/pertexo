@@ -4,7 +4,7 @@ import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_INPUT_SCHEMA,
 } from '../src/index.js';
-import { CORE_SCHEDULE_MANIFEST } from '../src/triggers/schedule/schedule.definition.js';
+import { CORE_SCHEDULE_REGISTRATION } from '../src/triggers/schedule/schedule.definition.js';
 
 describe('core Schedule trigger contract', () => {
   it.each([
@@ -75,7 +75,7 @@ describe('core Schedule trigger contract', () => {
   });
 
   it('publishes the runtime-only cron semantics omitted by JSON Schema', () => {
-    expect(CORE_SCHEDULE_MANIFEST.configSchema).toMatchObject({
+    expect(CORE_SCHEDULE_REGISTRATION.manifest.configSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [
         expect.stringContaining('canonical non-fixed-offset IANA timezone'),
       ],

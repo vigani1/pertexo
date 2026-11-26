@@ -4,7 +4,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { CORE_CODE_CONFIG_SCHEMA } from '../../../src/index.js';
-import { CORE_CODE_MANIFEST } from '../../../src/data/code/code.definition.js';
+import { CORE_CODE_REGISTRATION } from '../../../src/data/code/code.definition.js';
 import { createCoreNodeRegistry } from '../../../src/server.js';
 
 const identity = { key: 'core.code', version: 1 };
@@ -70,7 +70,7 @@ describe('Code execution capability', () => {
     ).toBe(false);
   });
   it('is safe and delegates to the worker capability without evaluating source', async () => {
-    expect(CORE_CODE_MANIFEST.retryClass).toBe('safe');
+    expect(CORE_CODE_REGISTRATION.manifest.retryClass).toBe('safe');
     const f = fixture();
     expect(await f.run({ code: 'while(true) {}', timeoutSeconds: 2 })).toEqual({
       kind: 'succeeded',

@@ -20,7 +20,7 @@ export const CORE_SWITCH_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
+const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SWITCH_DEFINITION,
   family: 'logic',
   display: Object.freeze({

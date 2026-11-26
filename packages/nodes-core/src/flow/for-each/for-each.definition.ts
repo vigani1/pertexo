@@ -16,7 +16,7 @@ export const CORE_FOR_EACH_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_FOR_EACH_MANIFEST: NodeManifest = Object.freeze({
+const CORE_FOR_EACH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FOR_EACH_DEFINITION,
   family: 'logic',
   display: Object.freeze({

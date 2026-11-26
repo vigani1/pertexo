@@ -1,6 +1,13 @@
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { withInlineVersion } from './inline-definition.js';
-import { UTILITY_DEFINITIONS } from '../data/utilities/utilities.definition.js';
+import {
+  CORE_CRYPTO_REGISTRATION,
+  CORE_HMAC_REGISTRATION,
+  CORE_HTML_REGISTRATION,
+  CORE_NUMBER_REGISTRATION,
+  CORE_TEXT_REGISTRATION,
+  CORE_XML_REGISTRATION,
+} from '../data/utilities/utilities.definition.js';
 import { DATA_TABLE_DEFINITIONS } from '../data/tables/data-tables.definition.js';
 import { CORE_RUN_VALUES_REGISTRATION } from '../data/run-values/run-values.definition.js';
 import { CORE_CREATE_FILE_REGISTRATION } from '../data/create-file/create-file.definition.js';
@@ -38,7 +45,12 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
     CORE_RUN_VALUES_REGISTRATION,
     CORE_CREATE_FILE_REGISTRATION,
     ...DATA_TABLE_DEFINITIONS,
-    ...UTILITY_DEFINITIONS,
+    ...withInlineVersion(CORE_TEXT_REGISTRATION),
+    ...withInlineVersion(CORE_NUMBER_REGISTRATION),
+    CORE_CRYPTO_REGISTRATION,
+    CORE_HMAC_REGISTRATION,
+    CORE_XML_REGISTRATION,
+    CORE_HTML_REGISTRATION,
     CORE_CODE_REGISTRATION,
     CORE_RESPOND_WEBHOOK_REGISTRATION,
     CORE_REQUEST_INPUT_REGISTRATION,

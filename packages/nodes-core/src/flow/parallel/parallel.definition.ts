@@ -17,7 +17,7 @@ export const CORE_PARALLEL_EXECUTOR = Object.freeze({
   version: 1,
 });
 
-export const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
+const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_PARALLEL_DEFINITION,
   family: 'logic',
   display: Object.freeze({
