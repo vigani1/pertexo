@@ -1,4 +1,5 @@
 import { DRAFT_PROPOSAL_TIMING } from '@pertexo/contracts';
+import { MODEL_LIMITS } from '@pertexo/integrations/server';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useProposalApi } from './proposal-api.fixture.js';
@@ -6,6 +7,14 @@ import {
   betterAuthIntegrationEnabled,
   type Browser,
 } from '../../support/better-auth/real-api.support.js';
+
+const { generationMillis } = DRAFT_PROPOSAL_TIMING;
+// Long enough that a correction given a fresh deadline, cut only by its own
+// model timeout, would end well after the original deadline.
+const firstReplyMillis =
+  generationMillis - MODEL_LIMITS.maxTimeoutMillis + 10_000;
+// How late the timeout may answer once the deadline has passed.
+const SETTLE_MILLIS = 5_000;
 
 const manual = {
   id: 'manual',
@@ -52,7 +61,6 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposal deadline', () => {
 
   it('times out a correction on the original request deadline', async () => {
     const path = await proposals.workflow(workspace, owner);
-    const firstReplyMillis = 4_000;
     const start = proposals.requests.length;
     const startedAt = performance.now();
     const url = 'https://orders.example.test';
@@ -70,7 +78,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposal deadline', () => {
     expect(result).toMatchObject({ kind: 'timeout', rounds: 1 });
     expect(proposals.requests.slice(start)).toHaveLength(2);
     expect(performance.now() - startedAt).toBeLessThan(
-      DRAFT_PROPOSAL_TIMING.generationMillis + firstReplyMillis / 2,
+      generationMillis + SETTLE_MILLIS,
     );
   });
 });
