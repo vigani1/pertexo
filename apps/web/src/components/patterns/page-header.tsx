@@ -16,6 +16,8 @@ export function PageHeader({ className, ...props }: ComponentProps<'header'>) {
   );
 }
 
+const HEADING_TAGS = { 1: 'h1', 2: 'h2' } as const;
+
 /**
  * The page's title. Beside a detail that owns the page's title (list and
  * detail), the list's title steps down to a second-level heading.
@@ -25,7 +27,7 @@ export function PageHeaderTitle({
   level = 1,
   ...props
 }: ComponentProps<'h1'> & Readonly<{ level?: 1 | 2 }>) {
-  const Heading = level === 1 ? 'h1' : 'h2';
+  const Heading = HEADING_TAGS[level];
   return (
     <Heading
       data-slot="page-header-title"
