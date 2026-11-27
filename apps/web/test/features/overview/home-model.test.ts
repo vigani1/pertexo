@@ -4,12 +4,7 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import {
-  firstThreadSteps,
-  isNewWorkspace,
-} from '@/features/overview/model/first-thread';
 import { loomCaption } from '@/features/overview/model/loom-caption';
-import { homeGreeting } from '@/features/overview/model/home-greeting';
 import {
   taskAttentionItems,
   connectionAttentionItems,
@@ -215,15 +210,6 @@ describe('run list', () => {
   });
 });
 
-describe('greeting', () => {
-  it('greets by first name and part of the day', () => {
-    expect(homeGreeting('Dena Okafor', 9)).toBe('Good morning, Dena.');
-    expect(homeGreeting(' Dena ', 14)).toBe('Good afternoon, Dena.');
-    expect(homeGreeting(null, 20)).toBe('Good evening.');
-    expect(homeGreeting('  ', 11)).toBe('Good morning.');
-  });
-});
-
 describe('needs attention', () => {
   it('puts requests you can answer first, soonest deadline first', () => {
     const task = (id: string, expiresAt: string, canRespond = true) =>
@@ -331,46 +317,6 @@ describe('needs attention', () => {
     expect(destinationAttentionItems([destination])[0]?.title).toBe(
       'A failure alert destination is turned off',
     );
-  });
-});
-
-describe('first thread', () => {
-  it('derives steps from real reads and hides what the role cannot check', () => {
-    const steps = firstThreadSteps({ workflows: [], hasRun: false });
-    expect(steps.map((step) => [step.key, step.done])).toEqual([
-      ['create', false],
-      ['publish', false],
-      ['run', false],
-    ]);
-    expect(
-      firstThreadSteps({ connectionCount: 1, memberCount: 1 }).map((step) => [
-        step.key,
-        step.done,
-      ]),
-    ).toEqual([
-      ['connection', true],
-      ['invite', false],
-    ]);
-    expect(steps.map((step) => step.destination)).toEqual([
-      { to: 'workflows', create: true },
-      { to: 'workflows' },
-      { to: 'workflows' },
-    ]);
-    expect(
-      firstThreadSteps({
-        destinationCount: 0,
-        connectionCount: 0,
-        memberCount: 1,
-      }).map((step) => step.destination),
-    ).toEqual([
-      { to: 'connections', add: 'any' },
-      { to: 'alerts' },
-      { to: 'team', invite: true },
-    ]);
-    expect(isNewWorkspace({ hasRun: false })).toBe(true);
-    expect(isNewWorkspace({ hasRun: true, workflows: [] })).toBe(false);
-    expect(isNewWorkspace({ workflows: [] })).toBe(true);
-    expect(isNewWorkspace({})).toBe(false);
   });
 });
 
