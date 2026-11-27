@@ -35,7 +35,7 @@ with a test-owned Compose project and service ports.
   checks.
 - [Frontend architecture](ARCHITECTURE.md) explains browser state, save and run
   protocols, and [Weft](ARCHITECTURE.md#weft-design-system).
-- Account → Profile → Appearance sets System, Light or Dark for this browser.
+- Settings → Account → Appearance sets System, Light or Dark for this browser.
   See the [appearance plan](../../docs/feature-plans/36-light-theme.md) for how
   the preference is applied and stored.
 

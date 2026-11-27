@@ -787,10 +787,8 @@ and storage CORS.
   the loading orb fades in place instead. Canvases draw 30 frames a second and
   pause off-screen and in hidden tabs; a visible window without focus keeps
   moving.
-- The legacy aurora uses huge `150vmax` layers and blur: preserve the
-  appearance, not that unmeasured cost. Bound effects to their container;
-  provide static border and opaque glass fallbacks. No animated glow on every
-  canvas node.
+- The ambient glow is bounded to the entry screen and holds still under reduced
+  motion. Floating surfaces provide static border and opaque glass fallbacks.
 - Inspect intended states at desktop/narrow widths, keyboard-only and reduced
   motion; compare with old design screenshots. Keep readable prose
   sentence-case, technical mono/uppercase for metadata, and visible non-glow
@@ -820,16 +818,15 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Tokens and type
 
-F36 adds a browser-local appearance choice in Account → Profile. System is the
-default; Light and Dark are explicit overrides. The workspace sidebar has a
-one-press light/dark switch, and the account menu, command palette and phone
-More sheet offer the full choice; all use the same owner
-(`components/patterns/appearance/`). `lib/appearance/bootstrap.ts` is the single
-owner of persistence, system changes, tab synchronization and resolved theme.
-Vite embeds its self-contained initializer synchronously in the HTML head,
-before first paint; the React hook subscribes to the same instance. No
-account/workspace API or server state is mirrored. Blocked storage retains a
-choice in memory and explains that it cannot survive closing the tab.
+Settings → Account → Appearance offers System, Light and Dark for this browser.
+The workspace rail's appearance control, the command palette and the phone More
+sheet use the same owner (`components/patterns/appearance/`).
+`lib/appearance/bootstrap.ts` is the single owner of persistence, system
+changes, tab synchronization and resolved theme. Vite embeds its self-contained
+initializer synchronously in the HTML head, before first paint; the React hook
+subscribes to the same instance. No account/workspace API or server state is
+mirrored. Blocked storage retains a choice in memory and explains that it cannot
+survive closing the tab.
 
 Dark and Cyanotype use the same semantic token names in `styles/globals.css`.
 The light page sits on blue grid paper. Neutral surface tiers run from well to
@@ -840,10 +837,10 @@ colour and a soft tint. Depth comes from raised and sunken shadows, and selected
 objects use the selection ring. The light palette uses soft shadows and inset
 hairlines.
 
-- Bricolage Grotesque leads the display (60 px), title (40 px), figure (30 px)
-  and section heading (19 px). Inter is the interface face (14 px body, 13 px
-  small text, 12.5 px metadata). JetBrains Mono carries tabular values and short
-  IDs at 12 px and labels at 11 px.
+- Bricolage Grotesque leads the display (60 px), title (40 px) and section
+  heading (19 px). Inter is the interface face (14 px body, 13 px small text,
+  12.5 px metadata). JetBrains Mono carries tabular values and short IDs at 12
+  px and labels at 11 px.
 - Radii grow with the surface (6, 8, 10, 12, 14, 18 and 20 px). Quick state
   changes take 150 ms, movement 240 ms and entry 320 ms.
 - Lens glass is for floating surfaces. Menus and popovers use a denser mix,
@@ -856,9 +853,9 @@ hairlines.
 Features map their own enums to a `StatusTone` in their `model/` (for example
 `features/workflows/model/state.ts`). Never colour a status ad hoc.
 
-The 20 px mark always accompanies a word or carries an accessible name when the
-word appears elsewhere. Running moves when motion is allowed. The other eight
-terminals stay still.
+The 20 px mark is decorative alongside a status word. A mark conveying a status
+on its own has an accessible name. Running moves when motion is allowed. The
+other eight terminals stay still.
 
 | State           | Terminal              |
 | --------------- | --------------------- |
@@ -887,30 +884,30 @@ minimum.
 One implementation per concept; features compose these rather than restyling
 their own:
 
-| Concept        | Where                                                                                     | Use                                                                                                                                                                                                                                                                                                                               |
-| -------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Field          | `components/ui/field.tsx`                                                                 | `LabelledField` (label, optional label action, trailing control and live feedback; links hint and message), `FieldControl` holds a control and anything inside its edges                                                                                                                                                          |
-| Deadline       | `components/patterns/dates/deadline-field.tsx`, `components/ui/calendar.tsx`              | `DeadlineField` for the Run and Replay lenses: None, In 1 hour, In 1 day or Pick a time, where a date (typed, or from a `Calendar` lens with past days disabled) and a 24-hour time are read on the person's clock with their time zone named. Never the browser's native picker; its value is local `datetime-local`-shaped text |
-| Date           | `components/patterns/dates/date-input.tsx`                                                | `DateInput` for a calendar day inside a `LabelledField` (form date fields, table date cells): typed `YYYY-MM-DD` or picked from a `Calendar` lens. Never the browser's native picker; the value is the typed text, which callers validate                                                                                         |
-| Validation     | `components/ui/use-field-validation.ts`                                                   | `useFieldValidation`: the only message timing (on submit, then live until fixed; focus first invalid; server `errors[].path`); `useFieldValues` is the thin values-and-rules layer for plain text forms                                                                                                                           |
-| Confirmation   | `components/patterns/actions/confirm-dialog.tsx`                                          | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `DialogActions` owns Cancel, confirm, pending and error; custom footers remain for other flows                                                                                                             |
-| Pending button | `components/ui/progress-button.tsx`                                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                                                                                                                                                        |
-| Rename         | `components/patterns/actions/inline-rename.tsx`                                           | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                                                                                                                                                        |
-| Disclosure     | `components/ui/disclosure.tsx`                                                            | `Disclosure`: the one "show more": the app's chevron turning as it opens on the native disclosure (find-in-page and keyboard keep working), quiet/strong/link tones, a framed look, and `lazy` for folds that read data. Never a raw `<details>`                                                                                  |
-| Row divider    | `styles/globals.css` (`row-divider`)                                                      | Lists whose rows highlight on hover: an inset hairline above each row, hidden on the hovered or focused row and the next, so a rounded hover never crosses a line. Never `divide-y` or row borders with a hover background                                                                                                        |
-| Copy           | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts`                 | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard                                                                                                                                      |
-| Notice         | `components/patterns/notices/inline-notice.tsx`                                           | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes                                                                                                                                                |
-| Stale data     | `components/patterns/states/stale-line.tsx`                                               | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                                                                                                                                                         |
-| Lists          | `components/patterns/lists/load-more.tsx`, `components/ui/skeleton.tsx`                   | `LoadMore` (next page, retry, one failure line); `Skeleton` and `SkeletonThread` primitives; `SkeletonRows` and `SkeletonLines` in `components/patterns/states/loading.tsx`                                                                                                                                                       |
-| Recent log     | `components/patterns/lists/recent-log.tsx`                                                | `RecentLog` (heading, note, loading rows, one failure owner, empty sentence, "Load older", optional day groups) and `RecentLogEntry` (glyph, words, action, time) for trigger logs, the audit ledger and promotion history                                                                                                        |
-| Query states   | `components/patterns/states/query-view.tsx`                                               | `QueryView`: the one owner of a read's states: `loading`, a first-read failure (`error` slot, `FailedReadState` or `InlineFailedRead`), `StaleLine` over kept data, `empty`, and access loss hiding data                                                                                                                          |
-| Clock          | `lib/use-now.ts`, `lib/use-countdown.ts`, `lib/format-time.ts`                            | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24"                                                                                                                                    |
-| Canvas         | `lib/canvas-scene.ts`, `lib/use-canvas-renderer.ts`                                       | `CanvasScene` (sized, cleared, token colours) for the Core, sign-in threads, Loom and loading wave; the hook owns the loop                                                                                                                                                                                                        |
-| Status colour  | `components/patterns/status/status-mark.tsx`, `components/patterns/status/status-tone.ts` | `StatusMark` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                                        |
-| Pagination     | `lib/api/pagination.ts`                                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
-| Setting        | `components/patterns/settings/row.tsx`                                                    | `SettingsGroup` and `SettingRow` keep the value and editor inline. The shared disclosure holds any additional rules.                                                                                                                                                                                                              |
-| Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); plain grouped words and a knot for the open page when there is room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |
-| Day range      | `components/patterns/dates/day-range-form.tsx`                                            | `DayRangeForm`: presets and a calendar in the person’s time zone, shared by the Runs and Audit log time filters                                                                                                                                                                                                                   |
+| Concept         | Where                                                                        | Use                                                                                                                                                                                                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Field           | `components/ui/field.tsx`                                                    | `LabelledField` (label, optional label action, trailing control and live feedback; links hint and message), `FieldControl` holds a control and anything inside its edges                                                                                                                                                          |
+| Deadline        | `components/patterns/dates/deadline-field.tsx`, `components/ui/calendar.tsx` | `DeadlineField` for the Run and Replay lenses: None, In 1 hour, In 1 day or Pick a time, where a date (typed, or from a `Calendar` lens with past days disabled) and a 24-hour time are read on the person's clock with their time zone named. Never the browser's native picker; its value is local `datetime-local`-shaped text |
+| Date            | `components/patterns/dates/date-input.tsx`                                   | `DateInput` for a calendar day inside a `LabelledField` (form date fields, table date cells): typed `YYYY-MM-DD` or picked from a `Calendar` lens. Never the browser's native picker; the value is the typed text, which callers validate                                                                                         |
+| Validation      | `components/ui/use-field-validation.ts`                                      | `useFieldValidation`: the only message timing (on submit, then live until fixed; focus first invalid; server `errors[].path`); `useFieldValues` is the thin values-and-rules layer for plain text forms                                                                                                                           |
+| Confirmation    | `components/patterns/actions/confirm-dialog.tsx`                             | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `DialogActions` owns Cancel, confirm, pending and error; custom footers remain for other flows                                                                                                             |
+| Pending button  | `components/ui/progress-button.tsx`                                          | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                                                                                                                                                        |
+| Rename          | `components/patterns/actions/rename/inline.tsx`                              | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                                                                                                                                                        |
+| Disclosure      | `components/ui/disclosure.tsx`                                               | `Disclosure`: the one "show more": the app's chevron turning as it opens on the native disclosure (find-in-page and keyboard keep working), quiet/strong/link tones, a framed look, and `lazy` for folds that read data. Never a raw `<details>`                                                                                  |
+| List and detail | `components/patterns/lists/list-detail.tsx`                                  | `ListDetail` shows the list beside the selected item when space allows. Below about 900 px it shows one view at a time with a back link from the item.                                                                                                                                                                            |
+| Rows            | `components/patterns/lists/row.tsx`                                          | `Row` owns the inset hairline, hover and selected lifts. `RowList` aligns the text with its surroundings. The list defines its columns.                                                                                                                                                                                           |
+| Copy            | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts`    | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard                                                                                                                                      |
+| Notice          | `components/patterns/notices/inline-notice.tsx`                              | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes                                                                                                                                                |
+| Stale data      | `components/patterns/states/stale-line.tsx`                                  | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                                                                                                                                                         |
+| Lists           | `components/patterns/lists/load-more.tsx`, `components/ui/skeleton.tsx`      | `LoadMore` (next page, retry, one failure line); `Skeleton` and `SkeletonThread` primitives; `SkeletonRows` and `SkeletonLines` in `components/patterns/states/loading.tsx`                                                                                                                                                       |
+| Recent log      | `components/patterns/lists/recent-log.tsx`                                   | `RecentLog` (heading, note, loading rows, one failure owner, empty sentence, "Load older", optional day groups) and `RecentLogEntry` (glyph, words, action, time) for trigger logs, the audit ledger and promotion history                                                                                                        |
+| Query states    | `components/patterns/states/query-view.tsx`                                  | `QueryView`: the one owner of a read's states: `loading`, a first-read failure (`error` slot, `FailedReadState` or `InlineFailedRead`), `StaleLine` over kept data, `empty`, and access loss hiding data                                                                                                                          |
+| Clock           | `lib/hooks/use-now.ts`, `lib/hooks/use-countdown.ts`, `lib/format/time.ts`   | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24"                                                                                                                                    |
+| Canvas          | `lib/canvas-scene.ts`, `lib/hooks/use-canvas-renderer.ts`                    | `CanvasScene` (sized, cleared, token colours) for the Core, sign-in threads, Loom and loading wave; the hook owns the loop                                                                                                                                                                                                        |
+| Pagination      | `lib/api/pagination.ts`                                                      | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
+| Setting         | `components/patterns/settings/row.tsx`                                       | `SettingsGroup` and `SettingRow` keep the value and editor inline. The shared disclosure holds any additional rules.                                                                                                                                                                                                              |
+| Settings rail   | `features/workspaces/components/shell/settings-rail.tsx`                     | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); plain grouped words and a knot for the open page when there is room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |
+| Day range       | `components/patterns/dates/day-range-form.tsx`                               | `DayRangeForm`: presets and a calendar in the person’s time zone, shared by the Runs and Audit log time filters                                                                                                                                                                                                                   |
 
 The Loom uses Canvas for drawing and native SVG links over the plotted runs for
 pointer and keyboard navigation. Both share the run geometry. Focus has a
@@ -931,18 +928,20 @@ action), `PageHeader` (title, mono meta line, actions), `CommandPalette`,
 sits on the page, never in a framed box; in the shell the state reads from the
 left, a full screen centres it), thread illustrations. The Core's particles grow
 in number with its size and each is capped in size, so a large Core (sign-in)
-stays fine-grained. Other libraries (`lib`): `format-time.ts` (all
+stays fine-grained. Other libraries (`lib`): `format/time.ts` (all
 date/time/duration text — no feature-local `Intl.DateTimeFormat`;
 `formatDateTimeInZone` reads a time on a named clock with its zone name;
 `formatShortTime` is the locale's time to the minute, “Saved 14:31” and the
 stale line, while `formatClock` keeps seconds for logs; durations have one
 compact style, `0.12s`, `4.2s`, `1m 12s`, `2h 05m`, and relative times the
-narrow one, `3m ago`), `format-bytes.ts` (byte sizes for files and payloads),
-`format-initials.ts`, `api/api-error-copy.ts` (generic read/command failure
+narrow one, `3m ago`), `format/bytes.ts` (byte sizes for files and payloads),
+`format/initials.ts`, `api/error-copy.ts` (generic read/command failure
 sentences, uncertain outcome, forbidden, rate-limit and support reference
-helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
+helpers), `hooks/use-prefers-reduced-motion.ts`, `hooks/use-online-status.ts`.
 
-The inbox's new-failure notice uses an anchored Base UI toast manager
+Toasts and the Inbox arrival use the same `NoticeTimer` in
+`components/patterns/notices/notice-timer.tsx`. The inbox's new-failure notice
+uses an anchored Base UI toast manager
 (`features/inbox/components/arrivals/listener.tsx`). A thread links the notice
 to the Inbox destination. The ring around Close shows time left and pauses while
 the notice is hovered or focused. It stays off the Inbox page. Failures arriving

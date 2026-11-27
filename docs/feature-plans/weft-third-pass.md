@@ -92,39 +92,37 @@ proposal, shown in a side panel).
 
 ## Slices
 
-The slices land in four PRs (1–4, 5–6, 7–9, 10), each with auto-merge on and a
-fresh review alongside. Work never waits for a PR: the next batch starts on a
-local branch from the previous one and is replayed onto main when its PR
-opens.
+The slices were implemented in four PRs (1–4, 5–6, 7–9, 10). Checkboxes
+track implementation. Release verification follows the PR checks.
 
-- [ ] 1. **Tokens.** Retune `styles/globals.css` to the Weft values for dark
+- [x] 1. **Tokens.** Retune `styles/globals.css` to the Weft values for dark
   and light; add the missing roles (live and its text colour, waiting, the soft
   intent tints, the three selection layers, raised and sunken shadows); align
   the type scale, radii and motion durations. Replace raw colours and
   light-only overrides in components with tokens. Update §11.
-- [ ] 2. **Status marks.** One `StatusMark` used by every status glyph (runs,
+- [x] 2. **Status marks.** One `StatusMark` used by every status glyph (runs,
   steps, inbox, connections, triggers, versions); remove the others.
-- [ ] 3. **Shell.** The rail in the real order with its badges and the 40 px
+- [x] 3. **Shell.** The rail in the real order with its badges and the 40 px
   Core; the Settings word list; the phone bar. Same on every page.
-- [ ] 4. **Controls.** Button, tab, filter, toggle, checkbox, radio and field
+- [x] 4. **Controls.** Button, tab, filter, toggle, checkbox, radio and field
   states as on the Components sheet; inline notice; arriving notices from the
   Inbox with the time-left ring; the date picker; drawers for create and edit.
   Remove every dropdown inside a sentence.
-- [ ] 5. **Core flow.** Home (needs you, the last hour into the Core),
+- [x] 5. **Core flow.** Home (needs you, the last hour into the Core),
   Workflows (one quiet line each, failure ticks), Runs (7-day strip, grouped by
   day, plain durations), a failed run, Inbox and the approval with what each
   answer does.
-- [ ] 6. **Canvas.** Header with the five tabs, lanes, results under steps, the
+- [x] 6. **Canvas.** Header with the five tabs, lanes, results under steps, the
   running step's halo, the assistant as a side panel with one proposal, AI
   steps.
-- [ ] 7. **Workflow tabs and workspace.** Triggers, Versions (with published
+- [x] 7. **Workflow tabs and workspace.** Triggers, Versions (with published
   by), Workflow settings, Connections (lines only for the selected one, many
   users), Data tables, Team (groups, search, invite drawer).
-- [ ] 8. **Settings.** General, Usage, Alerts, Audit log (calendar), Account,
+- [x] 8. **Settings.** General, Usage, Alerts, Audit log (calendar), Account,
   Notifications, API tokens, Promotion, SSO.
-- [ ] 9. **Entry and system pages.** Sign-in, workspace picker, public form,
+- [x] 9. **Entry and system pages.** Sign-in, workspace picker, public form,
   command palette, not found and error pages.
-- [ ] 10. **Phone and light audit.** Every page at 390 px and in light mode;
+- [x] 10. **Phone and light audit.** Every page at 390 px and in light mode;
   fix what the audit finds.
 
 The faster Core (particles drawn on the GPU in one call, Canvas 2D kept as the
