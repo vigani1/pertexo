@@ -107,6 +107,22 @@ export const workspaceScreens: readonly Screen[] = [
     ready: heading('Promotion'),
   },
   { name: 'sso', path: `${root}/settings/sso`, ready: heading(/sign-on/u) },
+  {
+    name: 'sign-in',
+    path: '/login',
+    signedOut: true,
+    ready: (page) => page.getByRole('button', { name: /Sign in/u }).first(),
+  },
+  {
+    name: 'workspaces',
+    path: '/workspaces',
+    ready: (page) => page.getByText('Control Operations').first(),
+  },
+  {
+    name: 'not-found',
+    path: `${root}/nowhere`,
+    ready: (page) => page.getByRole('link', { name: /home/iu }).first(),
+  },
 ];
 
 const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
