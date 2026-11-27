@@ -1,84 +1,50 @@
 import { usageCapacityQueryOptions } from '@/features/usage/data/usage.queries';
-
 import { parseUsageSearch } from '@/features/usage/usage-routing.public';
-
 import { createApiClient } from '@/lib/api/client';
-
 import { act, screen, waitFor } from '@testing-library/react';
-
 import userEvent from '@testing-library/user-event';
-
-import { HttpResponse, http } from 'msw';
-
+import { HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-
-import {
-  apiBase,
-  coldStart,
-  fixtureIds,
-  fixtureStatistics,
-} from '../../../support/fixtures/run';
-
-import { mockServer } from '../../../support/mock-server';
-
+import { coldStart, fixtureIds } from '../../../support/fixtures/run';
+import { fixtureUsageTrends } from '../../../support/fixtures/usage-trends';
 import { renderLoadedApp } from '../../../support/render-app';
-
 import { capacity, install, path } from './fixture';
+
+const refreshRuns = () =>
+  userEvent.click(screen.getByRole('button', { name: 'Refresh runs per day' }));
 
 describe('workspace Usage', () => {
   it.each([401, 403, 404, 409])(
-    'forgets every activity window after %s and recovers only with fresh success',
+    'forgets runs per day after %s and recovers only with fresh success',
     async (denial) => {
-      install();
       let status = 200;
       let fresh = false;
-      mockServer.use(
-        http.get(`${apiBase}/run-statistics`, ({ request }) => {
-          const query = new URL(request.url).searchParams;
-          if (query.get('breakdown') !== 'workflow')
-            return HttpResponse.json(fixtureStatistics());
+      install({
+        trendsResponse: () => {
+          const trends = fixtureUsageTrends('30d', fixtureIds.workflow);
+          const busiest = trends.busiest.map((item) => ({
+            ...item,
+            workflowName: fresh ? 'Fresh activity' : 'Old activity',
+          }));
           return status === 200
-            ? HttpResponse.json(
-                fixtureStatistics({
-                  window: query.get('window') ?? '24h',
-                  workflows: [
-                    {
-                      workflowId: fixtureIds.workflow,
-                      workflowName: fresh ? 'Fresh activity' : 'Old activity',
-                      total: 8,
-                    },
-                  ],
-                }),
-              )
+            ? HttpResponse.json({ ...trends, busiest })
             : new HttpResponse(null, { status });
-        }),
-      );
+        },
+      });
       const { router } = await renderLoadedApp(path);
       await screen.findByText('Old activity', {}, coldStart);
-      await userEvent.click(screen.getByRole('button', { name: '6 hours' }));
-      await screen.findByText('Old activity');
       status = 503;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh recent runs' }),
-      );
+      await refreshRuns();
       await screen.findByText(/Couldn’t refresh. Showing results/u);
       expect(screen.getByText('Old activity')).toBeVisible();
       status = denial;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh recent runs' }),
-      );
+      await refreshRuns();
       await waitFor(() =>
         expect(screen.queryByText('Old activity')).not.toBeInTheDocument(),
       );
       status = 503;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh recent runs' }),
-      );
-      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
-      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: '24 hours' }));
-      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
-      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
+      await refreshRuns();
+      await screen.findByText('Runs per day couldn’t be loaded. Try again.');
       await act(() =>
         router.navigate({
           to: '/w/$workspaceId/settings',
@@ -89,22 +55,21 @@ describe('workspace Usage', () => {
         router.navigate({
           to: '/w/$workspaceId/settings/usage',
           params: { workspaceId: fixtureIds.workspace },
-          search: { window: '6h' },
+          search: { period: '30d' },
         }),
       );
-      await screen.findByText('Recent runs couldn’t be loaded. Try again.');
+      await screen.findByText('Runs per day couldn’t be loaded. Try again.');
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
       expect(screen.getByText('8 PB', { selector: 'span' })).toBeVisible();
       status = 200;
       fresh = true;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh recent runs' }),
-      );
+      await refreshRuns();
       expect(await screen.findByText('Fresh activity')).toBeVisible();
       expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
     },
   );
-  it('recovers the failed capacity panel independently', async () => {
+
+  it('recovers the failed capacity read on its own', async () => {
     let failing = true;
     install({
       capacityResponse: () =>
@@ -114,51 +79,45 @@ describe('workspace Usage', () => {
     });
     await renderLoadedApp(path);
     await screen.findByText(
-      'Current capacity couldn’t be loaded. Try again.',
+      'Room left couldn’t be loaded. Try again.',
       {},
       coldStart,
     );
-    expect(screen.getByText('Daily intake')).toBeVisible();
+    expect(screen.getByText('Order intake')).toBeVisible();
     failing = false;
     await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh current capacity' }),
+      screen.getByRole('button', { name: 'Refresh room left' }),
     );
     expect(await screen.findByText('8 PB', { selector: 'span' })).toBeVisible();
   });
-  it('sanitizes unsupported windows without introducing calendar ranges', () => {
-    expect(parseUsageSearch({ window: '30d' })).toEqual({ window: '24h' });
-    expect(parseUsageSearch({ window: '1h', timezone: 'UTC' })).toEqual({
-      window: '1h',
+
+  it('keeps only the periods the server summarises', () => {
+    expect(parseUsageSearch({ period: '7d' })).toEqual({ period: '30d' });
+    expect(parseUsageSearch({ period: '90d', timezone: 'UTC' })).toEqual({
+      period: '90d',
     });
   });
-  it('retains current capacity when activity fails and recovers activity independently', async () => {
-    install();
+
+  it('keeps room left when runs per day fail, and recovers them on their own', async () => {
     let failing = true;
-    mockServer.use(
-      http.get(`${apiBase}/run-statistics`, ({ request }) => {
-        const query = new URL(request.url).searchParams;
-        if (query.get('breakdown') !== 'workflow')
-          return HttpResponse.json(fixtureStatistics());
-        return failing
+    install({
+      trendsResponse: () =>
+        failing
           ? new HttpResponse(null, { status: 503 })
-          : HttpResponse.json(fixtureStatistics({ workflows: [] }));
-      }),
-    );
+          : HttpResponse.json(fixtureUsageTrends('30d', fixtureIds.workflow)),
+    });
     await renderLoadedApp(path);
     await screen.findByText(
-      'Recent runs couldn’t be loaded. Try again.',
+      'Runs per day couldn’t be loaded. Try again.',
       {},
       coldStart,
     );
     expect(screen.getByText('8 PB', { selector: 'span' })).toBeVisible();
     failing = false;
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh recent runs' }),
-    );
-    expect(
-      await screen.findByText('No workflow runs in this window.'),
-    ).toBeVisible();
+    await refreshRuns();
+    expect(await screen.findByText('Order intake')).toBeVisible();
   });
+
   it('scopes capacity snapshots by identity and workspace with visible-only polling', () => {
     const apiClient = createApiClient({
       fetch,

@@ -30,18 +30,20 @@ describe('workspace settings', () => {
     );
     await renderLoadedApp(`/w/${workspaceId}/settings`);
     expect(
-      await screen.findByRole('heading', { name: 'Workspace' }),
+      await screen.findByRole('heading', { name: 'How it’s known' }),
     ).toBeVisible();
     expect(screen.getAllByText('Control Operations').length).toBeGreaterThan(0);
     expect(screen.getByText('control-operations')).toBeVisible();
-    expect(screen.getByText('You’re an Owner here.')).toBeVisible();
     const access = within(screen.getByRole('region', { name: 'Your access' }));
-    expect(access.getByText(/You’re an Owner\. Everything/)).toBeVisible();
+    expect(
+      access.getByRole('heading', { name: 'You’re an Owner' }),
+    ).toBeVisible();
+    expect(access.getByText(/^Everything, including renaming/u)).toBeVisible();
     expect(
       access.getByText('Someone who manages members can change your role.'),
     ).toBeVisible();
     expect(
-      access.queryByRole('link', { name: 'Compare every role on Team' }),
+      access.queryByRole('link', { name: 'Compare roles on Team' }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /^Copy workspace ID / }),

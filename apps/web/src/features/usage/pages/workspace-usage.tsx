@@ -1,46 +1,28 @@
 import { isWorkspaceBrowsable } from '@/features/workspaces/public';
 import { Link } from '@tanstack/react-router';
-import { ChartLineIcon } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button-variants';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import {
-  PageHeader,
-  PageHeaderActions,
-  PageHeaderMeta,
-  PageHeaderTitle,
-} from '@/components/patterns/page-header';
+import { USAGE_TREND_PERIOD_DAYS } from '@pertexo/workflow-model';
+import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
 import { formatShortTime } from '@/lib/format/time';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { CurrentCapacity } from '../components/current-capacity';
-import { RetainedActivity } from '../components/retained-activity';
+import { DailyChart } from '../components/trends/daily-chart';
+import { WorkflowRankings } from '../components/trends/rankings';
 import { UsageSnapshot } from '../components/usage-snapshot';
 import {
-  usageActivityQueryOptions,
   usageCapacityQueryOptions,
+  usageTrendsQueryOptions,
 } from '../data/usage.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
 import { parseUsageSearch, type UsageSearch } from '../model/usage-search';
-
-const windows = {
-  '1h': '1 hour',
-  '6h': '6 hours',
-  '24h': '24 hours',
-  '7d': '7 days',
-} as const;
-
-const windowPhrases: Readonly<Record<keyof typeof windows, string>> = {
-  '1h': 'in the last hour',
-  '6h': 'in the last 6 hours',
-  '24h': 'in the last 24 hours',
-  '7d': 'in the last 7 days',
-};
 
 /** The older of two snapshot times: the page is only as fresh as that. */
 function olderOf(...times: readonly (string | undefined)[]) {
@@ -49,6 +31,11 @@ function olderOf(...times: readonly (string | undefined)[]) {
     .sort((left, right) => Date.parse(left) - Date.parse(right))[0];
 }
 
+/**
+ * What ran in the workspace and how much room is left: storage and runs at
+ * once in two sentences, one chart of runs per day, and the busiest
+ * workflows.
+ */
 export function UsagePage({
   apiClient,
   user,
@@ -71,13 +58,8 @@ export function UsagePage({
     ...usageCapacityQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadCapacity,
   });
-  const activity = useQuery({
-    ...usageActivityQueryOptions(
-      apiClient,
-      user.id,
-      workspace.id,
-      search.window,
-    ),
+  const trends = useQuery({
+    ...usageTrendsQueryOptions(apiClient, user.id, workspace.id, search.period),
     enabled: canReadRuns,
   });
   // Do not retain forbidden figures on permission/state loss, even if Query has a previous snapshot.
@@ -85,53 +67,38 @@ export function UsagePage({
     canReadCapacity && !isReadAccessLost(capacity.error)
       ? capacity.data
       : undefined;
-  const activityData =
-    canReadRuns && !isReadAccessLost(activity.error)
-      ? activity.data
-      : undefined;
-  const asOf = olderOf(capacityData?.asOf, activityData?.asOf);
+  const trendData =
+    canReadRuns && !isReadAccessLost(trends.error) ? trends.data : undefined;
+  const asOf = olderOf(capacityData?.asOf, trendData?.asOf);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-190 flex-col gap-6">
       <PageHeader>
         <div>
           <PageHeaderTitle>Usage</PageHeaderTitle>
-          {asOf === undefined ? null : (
-            <PageHeaderMeta>
-              <span>
-                as of <time dateTime={asOf}>{formatShortTime(asOf)}</time>
-              </span>
-            </PageHeaderMeta>
-          )}
-          <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-            What this workspace is using right now, and how many runs started
-            recently.
+          <p className="mt-3 text-meta text-subtle-foreground">
+            What ran in {workspace.name} and how much room is left.
+            {asOf === undefined ? null : (
+              <>
+                {' '}
+                <span className="font-mono">
+                  as of <time dateTime={asOf}>{formatShortTime(asOf)}</time>
+                </span>
+              </>
+            )}
           </p>
         </div>
-        {canReadRuns ? (
-          <PageHeaderActions>
-            <Link
-              className={buttonVariants({ variant: 'outline' })}
-              to="/w/$workspaceId/settings/usage/trends"
-              params={{ workspaceId: workspace.id }}
-              search={{ period: '30d' }}
-            >
-              <ChartLineIcon aria-hidden="true" data-icon="inline-start" />
-              View trends
-            </Link>
-          </PageHeaderActions>
-        ) : null}
       </PageHeader>
       <div className="flex flex-col">
         {canReadCapacity ? (
           <UsageSnapshot
-            title="Current capacity"
-            description="What’s running, waiting to start and stored right now."
+            title="Room left"
+            description="What’s stored and running right now."
             query={capacity}
           >
             {(snapshot) => <CurrentCapacity snapshot={snapshot} />}
           </UsageSnapshot>
         ) : (
-          <SettingsSection title="Current capacity">
+          <SettingsSection title="Room left">
             <Notice>
               {!isWorkspaceBrowsable(workspace)
                 ? 'Current capacity isn’t available for a workspace being deleted.'
@@ -141,40 +108,59 @@ export function UsagePage({
         )}
         {canReadRuns ? (
           <UsageSnapshot
-            title="Recent runs"
-            description="Runs that started in the chosen window, by where they stand now."
+            title="Runs per day"
+            description={`Over ${String(USAGE_TREND_PERIOD_DAYS[search.period])} UTC days. Today is partial; test runs are left out.`}
             controls={
               <ToggleGroup
-                aria-label="Activity window"
-                value={[search.window]}
+                aria-label="Range"
+                value={[search.period]}
                 onValueChange={(values) => {
                   if (values[0] !== undefined)
-                    onSearchChange(parseUsageSearch({ window: values[0] }));
+                    onSearchChange(parseUsageSearch({ period: values[0] }));
                 }}
               >
-                {Object.entries(windows).map(([value, label]) => (
-                  <ToggleGroupItem key={value} value={value}>
-                    {label}
-                  </ToggleGroupItem>
-                ))}
+                <ToggleGroupItem value="30d">30 days</ToggleGroupItem>
+                <ToggleGroupItem value="90d">90 days</ToggleGroupItem>
               </ToggleGroup>
             }
-            query={activity}
+            query={trends}
           >
-            {(snapshot) => (
-              <RetainedActivity
-                snapshot={snapshot}
-                windowPhrase={windowPhrases[search.window]}
-                workspaceId={workspace.id}
-                canReadWorkflowNames={workspace.capabilities.includes(
-                  'workflow:read',
-                )}
-              />
+            {(data) => (
+              <div className="flex flex-col gap-5">
+                <p>
+                  <span className="font-mono text-xl">
+                    {data.total.toLocaleString(FORMAT_LOCALE)}
+                  </span>{' '}
+                  <span className="text-muted-foreground">runs</span>
+                </p>
+                <DailyChart snapshot={data} />
+                <p className="text-meta text-subtle-foreground">
+                  A red cap is the failed share of that day.{' '}
+                  <Link
+                    to="/w/$workspaceId/settings/usage/trends"
+                    params={{ workspaceId: workspace.id }}
+                    search={{ period: search.period }}
+                    className="inline-link"
+                  >
+                    Durations and failures by workflow
+                  </Link>
+                </p>
+              </div>
             )}
           </UsageSnapshot>
         ) : (
-          <SettingsSection title="Recent runs">
-            <Notice>You need access to runs to see recent runs.</Notice>
+          <SettingsSection title="Runs per day">
+            <Notice>You need access to runs to see how many ran.</Notice>
+          </SettingsSection>
+        )}
+        {trendData === undefined ? null : (
+          <SettingsSection title="By workflow">
+            <WorkflowRankings
+              items={trendData.busiest}
+              metric="runs"
+              workspaceId={workspace.id}
+              canOpen={workspace.capabilities.includes('workflow:read')}
+            />
           </SettingsSection>
         )}
       </div>

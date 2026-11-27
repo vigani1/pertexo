@@ -3,7 +3,7 @@ import type {
   WorkspaceLifecycleChangeResponse,
 } from '@pertexo/contracts';
 import { useState, type ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
@@ -19,16 +19,7 @@ export function DangerZone({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  return (
-    <SettingsSection
-      title="Danger zone"
-      description="Changes to the whole workspace that are hard to undo. Each one asks you to confirm first."
-    >
-      <div className="flex flex-col gap-6 rounded-xl border border-destructive/25 p-5">
-        {children}
-      </div>
-    </SettingsSection>
-  );
+  return <SettingsGroup title="Hard to undo">{children}</SettingsGroup>;
 }
 /**
  * One action in the danger zone: what it does, with its button beside it on
@@ -44,13 +35,7 @@ export function DangerAction({
   children: ReactNode;
 }>) {
   return (
-    <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <div className="max-w-xl">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      <div className="flex">{children}</div>
-    </div>
+    <SettingRow title={title} description={description} action={children} />
   );
 }
 const COMPLETED: Readonly<Record<LifecycleChange, string>> = {

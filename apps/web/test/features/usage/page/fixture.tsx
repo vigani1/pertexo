@@ -3,11 +3,10 @@ import { HttpResponse, http } from 'msw';
 import {
   apiBase,
   fixtureIds,
-  fixtureStatistics,
   fixtureWorkspace,
   identityHandlers,
-  statisticsHandler,
 } from '../../../support/fixtures/run';
+import { fixtureUsageTrends } from '../../../support/fixtures/usage-trends';
 import { mockServer } from '../../../support/mock-server';
 export const path = `/w/${fixtureIds.workspace}/settings/usage`;
 
@@ -47,6 +46,7 @@ export function install(
     state?: string;
     snapshot?: unknown;
     capacityResponse?: () => Response;
+    trendsResponse?: () => Response;
   }> = {},
 ) {
   let reads = 0;
@@ -75,25 +75,19 @@ export function install(
         HttpResponse.json(options.snapshot ?? capacity)
       );
     }),
-    statisticsHandler(
-      (query) =>
-        fixtureStatistics({
-          window: query.get('window') ?? '24h',
-          byStatus: { succeeded: 6, failed: 2 },
-          ...(query.get('breakdown') === 'workflow'
-            ? {
-                workflows: [
-                  {
-                    workflowId: fixtureIds.workflow,
-                    workflowName: 'Daily intake',
-                    total: 8,
-                  },
-                ],
-              }
-            : {}),
-        }),
-      seen,
-    ),
+    http.get(`${apiBase}/usage-trends`, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      seen.push(query);
+      return (
+        options.trendsResponse?.() ??
+        HttpResponse.json(
+          fixtureUsageTrends(
+            query.get('period') === '90d' ? '90d' : '30d',
+            fixtureIds.workflow,
+          ),
+        )
+      );
+    }),
     http.get(`${apiBase}/runs`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
     ),

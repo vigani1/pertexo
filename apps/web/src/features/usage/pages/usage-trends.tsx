@@ -54,7 +54,7 @@ export function UsageTrendsPage({
             className="mt-2 inline-block text-sm underline underline-offset-4"
             to="/w/$workspaceId/settings/usage"
             params={{ workspaceId: workspace.id }}
-            search={{ window: '24h' }}
+            search={{ period }}
           >
             Current usage
           </Link>

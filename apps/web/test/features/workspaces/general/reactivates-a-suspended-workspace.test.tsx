@@ -127,7 +127,7 @@ describe('reactivating a workspace', () => {
     await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     expect(
-      await screen.findByRole('heading', { name: 'Workspace' }),
+      await screen.findByRole('heading', { name: 'How it’s known' }),
     ).toBeVisible();
     expect(
       await screen.findByRole('button', { name: /^Copy workspace ID / }),

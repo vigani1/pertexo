@@ -1,11 +1,6 @@
 import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import type { UsageTrendPeriod } from '@pertexo/contracts';
 import { queryOptions } from '@tanstack/react-query';
-import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts';
-import {
-  loomStatisticsQueryOptions,
-  workflowRunKeys,
-} from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getUsageCapacity, getUsageTrends } from './usage.api';
 import { forgetDeniedSnapshots } from '@/lib/api/read-denial';
@@ -34,40 +29,6 @@ export function usageCapacityQueryOptions(
     },
     staleTime: QUERY_FRESHNESS.recent,
     refetchInterval: QUERY_POLLING.status,
-    refetchIntervalInBackground: false,
-  });
-}
-
-export function usageActivityQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  window: WorkflowRunStatisticsWindow,
-) {
-  const options = loomStatisticsQueryOptions(
-    apiClient,
-    userId,
-    workspaceId,
-    window,
-  );
-  const read = options.queryFn;
-  if (read === undefined)
-    throw new Error('Usage activity requires a statistics reader');
-  return queryOptions({
-    ...options,
-    queryFn: async (context) => {
-      try {
-        return await read(context);
-      } catch (error: unknown) {
-        await forgetDeniedSnapshots(
-          context.client,
-          [...workflowRunKeys.scope(userId, workspaceId), 'statistics'],
-          options.queryKey,
-          error,
-        );
-        throw error;
-      }
-    },
     refetchIntervalInBackground: false,
   });
 }

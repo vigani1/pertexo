@@ -101,7 +101,7 @@ function AttentionLink({
       <Link
         to="/w/$workspaceId/settings/usage"
         params={params}
-        search={{ window: '24h' }}
+        search={{ period: '30d' }}
         {...look}
       ></Link>
     );
