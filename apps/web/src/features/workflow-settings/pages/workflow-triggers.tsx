@@ -14,7 +14,7 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/patterns/states/empty';
-import { PollingSection } from '../components/triggers/polling-section';
+import { PollingSection } from '../components/triggers/polling-rows';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import { SettingsSection } from '@/components/patterns/settings/section';
