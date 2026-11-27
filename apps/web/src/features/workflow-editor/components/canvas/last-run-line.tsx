@@ -7,8 +7,8 @@ import type { LastRunOverlay } from '../../model/canvas/last-run';
 
 /**
  * The line above the canvas that says which run the results under the
- * steps come from, links to it and hides or shows them. Nothing before a
- * workflow's first run.
+ * steps come from, links to it and hides or shows them (from 640px; a
+ * phone reads and runs). Nothing before a workflow's first run.
  */
 export function LastRunLine({
   overlay,
@@ -24,7 +24,7 @@ export function LastRunLine({
   const { run } = overlay;
   const look = describeRunStatus({ status: run.status });
   return (
-    <p className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-caption text-subtle-foreground">
+    <p className="pointer-events-auto flex min-w-0 items-center gap-x-3 font-mono text-caption whitespace-nowrap text-subtle-foreground">
       <StatusMark tone={look.tone}>
         {look.label} · last run {formatClock(run.createdAt)}
       </StatusMark>
@@ -42,7 +42,7 @@ export function LastRunLine({
       </Link>
       <button
         type="button"
-        className="rounded-xs hover:text-foreground focus-ring"
+        className="rounded-xs hover:text-foreground focus-ring max-sm:hidden"
         onClick={onToggle}
       >
         {shown ? 'Hide results' : 'Show results'}
