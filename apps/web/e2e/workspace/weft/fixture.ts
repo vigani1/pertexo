@@ -1,6 +1,7 @@
 import type { Page } from '../../support/fixtures';
 import {
   editorUrl,
+  user,
   workflowId,
   workspaceId,
 } from '../../workflow-editor/support';
@@ -8,6 +9,8 @@ import { installPolishRoutes } from '../polish-layout-fixture';
 import {
   connectionUsage,
   connections,
+  invitations,
+  members,
   tableQuotas,
   tableRows,
   tables,
@@ -70,6 +73,12 @@ async function installWorkspaceDataRoutes(page: Page) {
   );
   await page.route(`${workspaceApi}/data-tables/*/rows/query`, (route) =>
     route.fulfill({ json: tableRows }),
+  );
+  await page.route(`${workspaceApi}/members?**`, (route) =>
+    route.fulfill({ json: members(user.id) }),
+  );
+  await page.route(`${workspaceApi}/invitations?**`, (route) =>
+    route.fulfill({ json: invitations }),
   );
   await page.route(`${workspaceApi}/connections?**`, (route) =>
     route.fulfill({ json: { items: connections, nextCursor: null } }),

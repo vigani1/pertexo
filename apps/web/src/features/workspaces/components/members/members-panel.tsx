@@ -28,19 +28,21 @@ type MembersQuery = UseInfiniteQueryResult<
   InfiniteData<WorkspaceMembersResponse>
 >;
 
-/** The Members tab: everyone with access, loaded page by page. */
+/** Everyone with access, grouped by role and loaded page by page. */
 export function MembersPanel({
   apiClient,
   user,
   workspace,
   query,
   members,
+  search,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   query: MembersQuery;
   members: readonly WorkspaceMember[];
+  search: string;
 }>) {
   return (
     <div className="flex flex-col gap-3">
@@ -69,6 +71,7 @@ export function MembersPanel({
             user={user}
             workspace={workspace}
             members={members}
+            search={search}
           />
         )}
       </QueryView>
