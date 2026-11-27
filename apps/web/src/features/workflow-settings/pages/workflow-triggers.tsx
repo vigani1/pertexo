@@ -98,26 +98,30 @@ function NoTriggers({
   // The tab's first content sits right under the hub bar, like the Versions
   // tab's empty state: no divider above it.
   return (
-    <Empty className="border-t-0 py-2">
-      <EmptyTitle>
-        {published ? 'This version has no trigger' : 'Nothing is published yet'}
-      </EmptyTitle>
-      <EmptyDescription>
-        {published
-          ? 'Runs start only when someone runs the workflow. To start them on their own, add a Webhook, Schedule or Form step in Build, then publish.'
-          : 'Triggers come from the published version. Add a trigger step in Build, then publish.'}
-      </EmptyDescription>
+    <>
+      <Empty className="border-t-0 py-2">
+        <EmptyTitle>
+          {published
+            ? 'This version has no trigger'
+            : 'Nothing is published yet'}
+        </EmptyTitle>
+        <EmptyDescription>
+          {published
+            ? 'Runs start only when someone runs the workflow. To start them on their own, add a Webhook, Schedule or Form step in Build, then publish.'
+            : 'Triggers come from the published version. Add a trigger step in Build, then publish.'}
+        </EmptyDescription>
+        <EmptyActions>
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId"
+            params={{ workspaceId, workflowId }}
+            className={buttonVariants({ variant: 'primary' })}
+          >
+            Open Build
+          </Link>
+        </EmptyActions>
+      </Empty>
       {published ? <WaysIn /> : null}
-      <EmptyActions>
-        <Link
-          to="/w/$workspaceId/workflows/$workflowId"
-          params={{ workspaceId, workflowId }}
-          className={buttonVariants({ variant: 'primary' })}
-        >
-          Open Build
-        </Link>
-      </EmptyActions>
-    </Empty>
+    </>
   );
 }
 
