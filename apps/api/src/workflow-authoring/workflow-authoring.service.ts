@@ -309,6 +309,10 @@ export class ListWorkflowVersionsService {
       async () => {
         await authorizeWorkflowRead(input, this.authorization);
         const page = await this.persistence.listVersions({
+          ...(input.additions?.publishedBy === true &&
+          input.actor.kind === 'user'
+            ? { includePublisher: true }
+            : {}),
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,
           actorId: input.actor.actorId,

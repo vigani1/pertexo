@@ -12,6 +12,7 @@ import {
   delegatedWorkspaceRoleSchema,
 } from './membership.js';
 import { z } from 'zod';
+import { workspacePeopleSearchSchema } from './people.js';
 import {
   DISPLAY_NAME_MAX_CHARACTERS,
   EMAIL_ADDRESS_LIMITS,
@@ -264,6 +265,7 @@ export const workspaceMembersResponseSchema = responseSchema(
 );
 export const workspaceMembersQuerySchema = z
   .object({
+    q: workspacePeopleSearchSchema.optional(),
     limit: z.coerce
       .number()
       .int()

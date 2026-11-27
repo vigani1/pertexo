@@ -39,6 +39,18 @@ describe('DayRangeForm', () => {
     expect(onApply).toHaveBeenCalledWith('2026-09-17', '2026-09-17');
   });
 
+  it('extends a single day after the picker is reopened', async () => {
+    const onApply = vi.fn<(from: string, to: string) => undefined>();
+    render(
+      <DayRangeForm
+        initial={{ from: '2026-09-18', to: '2026-09-18' }}
+        onApply={onApply}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: day(12) }));
+    expect(onApply).toHaveBeenCalledWith('2026-09-12', '2026-09-18');
+  });
+
   it('applies one tapped day at once, then extends it with a second tap', async () => {
     const onApply = vi.fn<(from: string, to: string) => undefined>();
     render(<DayRangeForm onApply={onApply} />);

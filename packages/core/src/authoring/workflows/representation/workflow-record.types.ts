@@ -43,7 +43,5 @@ export type WorkflowDraftRecord = Readonly<
 export type WorkflowVersionRecord = Readonly<
   Omit<typeof workflowVersions.$inferSelect, 'graphJson' | 'executableJson'> & {
     graphJson: WorkflowGraph;
-    // The publisher's current display name, read with the version.
-    publisherName: string;
   }
 >;

@@ -158,7 +158,9 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       workflowSummaryHandler('Order intake', null),
       http.get(`${workflowApi}/versions`, () =>
         HttpResponse.json({
-          items: published ? [versionBody(versionId, savedGraph)] : [],
+          items: published
+            ? [{ ...versionBody(versionId, savedGraph), publishedBy: null }]
+            : [],
           nextCursor: null,
         }),
       ),
@@ -192,10 +194,13 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       to: '/w/$workspaceId/workflows/$workflowId/versions',
       params: { workspaceId, workflowId },
     });
-    const thread = await screen.findByRole('list', {
-      name: 'Published versions',
+    const thread = await screen.findByRole('navigation', { name: 'Versions' });
+    const publishedVersion = within(thread).getByRole('button', {
+      name: /^v1/u,
     });
-    expect(within(thread).getByRole('listitem')).toHaveTextContent('v1');
+    expect(publishedVersion).toBeVisible();
+    expect(publishedVersion).toHaveTextContent('A former member');
+    expect(within(thread).getByRole('link', { name: /^Draft/u })).toBeVisible();
   });
   it('stops publishing when the saved draft has issues and lists them', async () => {
     let publishes = 0;

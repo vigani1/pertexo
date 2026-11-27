@@ -182,9 +182,9 @@ async function verifyPollingJourney(
         lastErrorCode: null,
       });
     await page.goto(`${workflowUrl}/triggers`);
-    const card = page
-      .getByRole('region', { name: source, exact: true })
-      .getByRole('article');
+    const card = page.getByRole('article', {
+      name: new RegExp(`^${source}:`, 'u'),
+    });
     await expect(card.getByText('Healthy', { exact: true })).toBeVisible({
       timeout: 30_000,
     });
@@ -192,6 +192,16 @@ async function verifyPollingJourney(
       card.getByRole('heading', { name: 'Watch feed' }),
     ).toBeVisible();
     await expect(card.getByText('Next check')).toBeVisible();
+
+    const publication = workflowSummaryResponseSchema.parse(
+      await (await page.request.get(path)).json(),
+    );
+    const trigger = publication.workflow.pollingTriggers?.find(
+      ({ nodeId }) => nodeId === triggerId,
+    );
+    if (trigger === undefined)
+      throw new Error('Materialized polling trigger missing');
+    await expect(card).toHaveAttribute('id', trigger.id);
 
     async function runs() {
       const response = await page.request.get(

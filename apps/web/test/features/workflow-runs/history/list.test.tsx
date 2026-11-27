@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 
+import { formatCalendarDay } from '@/lib/format/time';
+
 import userEvent from '@testing-library/user-event';
 
 import { HttpResponse, http } from 'msw';
@@ -107,6 +109,23 @@ describe('workspace runs', () => {
       expect(latest(requests).get('after')).toBeNull();
     });
     expect(router.state.location.search).toMatchObject({ range: 'custom' });
+    const yesterday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 1,
+    );
+    await event.keyboard('{ArrowLeft}');
+    await event.click(
+      screen.getByRole('button', {
+        name: new RegExp(formatCalendarDay(yesterday), 'u'),
+      }),
+    );
+    await waitFor(() => {
+      expect(latest(requests).get('createdAtFrom')).toBe(
+        yesterday.toISOString().replace('.000Z', '.000000Z'),
+      );
+      expect(latest(requests).get('createdAtBefore')).toBe(localBefore);
+    });
 
     await event.click(
       screen.getByRole('button', { name: 'Remove filter Status: Succeeded' }),

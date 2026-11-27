@@ -1,15 +1,26 @@
 import { z } from 'zod';
+import { responseSchema } from '../shared/response-schema.js';
 
 /** A page of workflows: its opaque cursor and how many workflows it holds. */
-export const WORKFLOW_PAGE_LIMITS = Object.freeze({
+const WORKFLOW_PAGE_LIMITS = Object.freeze({
   cursorCharacters: 512,
   items: 100,
 });
 
-export const workflowCursorSchema = z
+const workflowCursorSchema = z
   .string()
   .min(1)
   .max(WORKFLOW_PAGE_LIMITS.cursorCharacters);
+
+/** A page of workflows, or of their versions, with the cursor to the next. */
+export function workflowPageSchema<Item extends z.ZodType>(item: Item) {
+  return z
+    .object({
+      items: z.array(item).max(WORKFLOW_PAGE_LIMITS.items),
+      nextCursor: workflowCursorSchema.nullable(),
+    })
+    .apply(responseSchema);
+}
 
 const workflowPageLimitSchema = z.coerce
   .number()

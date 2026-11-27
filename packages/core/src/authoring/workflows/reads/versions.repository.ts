@@ -1,8 +1,13 @@
 import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { workflows, workflowVersions } from '@pertexo/database/schema';
+import {
+  users,
+  workspaceMemberships,
+  workflows,
+  workflowVersions,
+} from '@pertexo/database/schema';
 import {
   projectVersion,
   versionProjection,
@@ -49,6 +54,12 @@ export async function workflowExists(
   return visible.length === 1;
 }
 
+type VersionRow = Pick<
+  typeof workflowVersions.$inferSelect,
+  keyof typeof versionProjection
+> &
+  Readonly<{ publisherName?: string | null }>;
+
 /** Newest first before the cursor, one past `limit` so a next page shows. */
 export async function readVersionPage(
   client: PoolClient,
@@ -56,11 +67,45 @@ export async function readVersionPage(
   {
     limit,
     beforeVersionNumber,
-  }: Readonly<{ limit: number; beforeVersionNumber: number | null }>,
-) {
+    includePublisher,
+    canReadMembers,
+  }: Readonly<{
+    limit: number;
+    beforeVersionNumber: number | null;
+    includePublisher: boolean;
+    canReadMembers: boolean;
+  }>,
+): Promise<VersionRow[]> {
   const workflowId = input.workflowId;
-  const result = await drizzle(client)
-    .select(versionProjection)
+  const db = drizzle(client);
+  const publisher = db
+    .select({ name: users.displayName })
+    .from(workspaceMemberships)
+    .innerJoin(
+      users,
+      and(
+        eq(users.id, workspaceMemberships.userId),
+        eq(users.status, 'active'),
+      ),
+    )
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workflowVersions.workspaceId),
+        eq(workspaceMemberships.userId, workflowVersions.publishedBy),
+        inArray(workspaceMemberships.status, ['active', 'suspended']),
+      ),
+    );
+  return db
+    .select({
+      ...versionProjection,
+      ...(includePublisher
+        ? {
+            publisherName: canReadMembers
+              ? sql<string | null>`(${publisher})`
+              : sql<null>`null`,
+          }
+        : {}),
+    })
     .from(workflowVersions)
     .where(
       and(
@@ -77,5 +122,4 @@ export async function readVersionPage(
     .orderBy(desc(workflowVersions.versionNumber))
     .limit(limit + 1)
     .catch(rethrowQueryFailure);
-  return result;
 }

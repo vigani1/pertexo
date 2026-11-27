@@ -1,5 +1,8 @@
 import { Controller, UseInterceptors } from '@nestjs/common';
-import { SCHEDULE_FIRE_TIME_DEFAULT_COUNT } from '@pertexo/contracts';
+import {
+  SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+  SCHEDULE_FIRE_WINDOW_MS,
+} from '@pertexo/contracts';
 import {
   scheduleRoutes as routes,
   type RouteInput,
@@ -56,6 +59,9 @@ export class ScheduleManagementController {
       ...params,
       actorId: caller.actor.actorId,
       count: query.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+      ...(query.window === undefined
+        ? {}
+        : { windowMs: SCHEDULE_FIRE_WINDOW_MS }),
     });
   }
 

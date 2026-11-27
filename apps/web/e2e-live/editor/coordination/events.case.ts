@@ -3,6 +3,7 @@ import {
   webhookIngressResponseSchema,
   webhookTriggerListResponseSchema,
   workflowRunListResponseSchema,
+  workflowRunStatisticsResponseSchema,
 } from '@pertexo/contracts';
 import { expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
@@ -70,6 +71,10 @@ test('coordinates all three real signed webhook policies with visible history', 
       .toBe('configuration_required');
     await page.goto(`${editorUrl}/triggers`);
     await page
+      .locator('summary')
+      .filter({ hasText: /^Manage$/u })
+      .click();
+    await page
       .getByRole('button', { name: 'Create endpoint', exact: true })
       .click();
     const dialog = page.getByRole('dialog', {
@@ -129,8 +134,13 @@ test('coordinates all three real signed webhook policies with visible history', 
     for (const run of (await read()).items)
       await waitForRun(page, workspaceId, run.id, 'succeeded');
     await page.reload();
+    const webhook = page.getByRole('article', { name: /^Webhook:/u });
+    await webhook
+      .locator('summary')
+      .filter({ hasText: /^Manage$/u })
+      .click();
     await expect(
-      page
+      webhook
         .getByText(
           mode === 'debounce' ? 'Replaced by a newer event' : 'Started',
           { exact: true },
@@ -141,14 +151,21 @@ test('coordinates all three real signed webhook policies with visible history', 
       path: temporaryTestPath(`pertexo-f25-${mode}-history.png`),
       animations: 'disabled',
     });
-    await page.goto(`/w/${workspaceId}/settings/usage?window=24h`);
+    const statistics = await page.request.get(
+      `/v1/workspaces/${workspaceId}/run-statistics?window=24h&breakdown=workflow`,
+    );
+    expect(statistics.ok()).toBe(true);
+    const activity = workflowRunStatisticsResponseSchema.parse(
+      await statistics.json(),
+    );
+    expect(activity.window.coordinatedTriggerEvents).toBe(
+      { deduplicate: 2, debounce: 4, throttle: 6 }[mode],
+    );
+    await page.goto(`/w/${workspaceId}/settings/usage`);
     await expect(
-      page.getByText(
-        new RegExp(
-          `${{ deduplicate: '2', debounce: '4', throttle: '6' }[mode]} events matched up by trigger coordination`,
-          'u',
-        ),
-      ),
+      page.getByRole('region', { name: 'Runs per day' }).getByRole('img', {
+        name: /Daily runs by outcome, UTC/u,
+      }),
     ).toBeVisible();
   }
 });

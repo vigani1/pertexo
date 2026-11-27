@@ -33,11 +33,14 @@ export function workspaceMembersInfiniteQueryOptions(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
+  q = '',
 ) {
+  const key = workspaceMemberKeys.list(userId, workspaceId);
   return infiniteQueryOptions({
-    queryKey: workspaceMemberKeys.list(userId, workspaceId),
+    queryKey: q === '' ? key : [...key, { q }],
     queryFn: ({ pageParam, signal }) =>
       getWorkspaceMembersPage(apiClient, workspaceId, {
+        ...(q === '' ? {} : { q }),
         ...(pageParam === null ? {} : { after: pageParam }),
         signal,
       }),

@@ -120,6 +120,11 @@ test('signed acceptance replay produces two immutable runs and one actual contro
   );
   await page
     .getByRole('article', { name: 'Webhook: Signed input', exact: true })
+    .locator('summary')
+    .filter({ hasText: /^Manage$/u })
+    .click();
+  await page
+    .getByRole('article', { name: 'Webhook: Signed input', exact: true })
     .getByRole('button', { name: 'Create endpoint', exact: true })
     .click();
   const provisionKey = (await provision).headers()['idempotency-key'];

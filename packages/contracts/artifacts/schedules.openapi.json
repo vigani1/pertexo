@@ -500,7 +500,7 @@
         ],
         "additionalProperties": true
       },
-      "ScheduleFireTimesResponse": {
+      "ScheduleWindowFireTimesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
@@ -510,7 +510,7 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "items": {
-            "maxItems": 10,
+            "maxItems": 1441,
             "type": "array",
             "items": {
               "type": "object",
@@ -611,6 +611,40 @@
           "config"
         ],
         "additionalProperties": false
+      },
+      "ScheduleFireTimesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "items": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "scheduledAt"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "observedAt",
+          "items"
+        ],
+        "additionalProperties": true
       },
       "ScheduleManagementCommandRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1137,15 +1171,25 @@
               "minimum": 1,
               "maximum": 10
             }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "const": "day"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Upcoming fire times of a published schedule",
+            "description": "Upcoming fire times of a published schedule. With window=day, includes all fires in the next 24 hours in addition to the requested count.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleFireTimesResponse"
+                  "$ref": "#/components/schemas/ScheduleWindowFireTimesResponse"
                 }
               }
             }

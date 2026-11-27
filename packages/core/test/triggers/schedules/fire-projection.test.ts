@@ -18,7 +18,7 @@ function project(
     recurrence,
     new Date(anchorAt),
     new Date(observedAt),
-    count,
+    { count },
   ).map((instant) => instant.toISOString());
 }
 
@@ -163,12 +163,9 @@ describe('schedule fire-time projection', () => {
   it('rejects stored recurrences and timestamps the scheduler would reject', () => {
     const recurrence = cron('0 9 * * *', 'Europe/Paris');
     expect(() =>
-      projectScheduleOccurrences(
-        recurrence,
-        new Date(Number.NaN),
-        new Date(),
-        1,
-      ),
+      projectScheduleOccurrences(recurrence, new Date(Number.NaN), new Date(), {
+        count: 1,
+      }),
     ).toThrow(TypeError);
   });
 });

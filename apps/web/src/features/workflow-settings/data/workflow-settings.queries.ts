@@ -4,7 +4,10 @@ import { readWallClock } from '@/lib/wall-clock';
 import { MAX_TIMER_MS } from '@/lib/timer';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { getAllWorkflowVersions } from '@/features/workflow-versions/workflow-versions-queries.public';
+import {
+  getAllWorkflowVersions,
+  getWorkflowVersionHistory,
+} from '@/features/workflow-versions/workflow-versions-queries.public';
 import {
   getFailureNotificationPolicy,
   getScheduleNextRuns,
@@ -137,7 +140,7 @@ export function webhookDeliveriesInfiniteQueryOptions({
   });
 }
 
-/** The next three times a published schedule fires; under its schedule key. */
+/** A published schedule’s next fire times, including those due today. */
 export function scheduleNextRunsQueryOptions({
   apiClient,
   userId,
@@ -207,7 +210,7 @@ export function scheduleOccurrencesInfiniteQueryOptions({
   });
 }
 
-/** Every published version, newest first. */
+/** Every published version for graph and trigger reads. */
 export function workflowVersionsQueryOptions(
   apiClient: ApiClient,
   userId: string,
@@ -216,8 +219,25 @@ export function workflowVersionsQueryOptions(
 ) {
   return queryOptions({
     queryKey: workflowSettingsKeys.versions(userId, workspaceId, workflowId),
+    queryFn: ({ signal }) =>
+      getAllWorkflowVersions(apiClient, workspaceId, workflowId, signal),
+  });
+}
+
+/** Every published version, newest first, with its visible publisher. */
+export function workflowVersionHistoryQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowSettingsKeys.versions(userId, workspaceId, workflowId),
+      'history',
+    ] as const,
     queryFn: async ({ signal }) => {
-      const response = await getAllWorkflowVersions(
+      const response = await getWorkflowVersionHistory(
         apiClient,
         workspaceId,
         workflowId,

@@ -174,14 +174,14 @@ export const workflowVersionsRoute = createRoute({
   pendingComponent: WorkflowHubPending,
   path: 'versions',
   loader: async ({ context }) => {
-    const { workflowVersionsQueryOptions } =
+    const { workflowVersionHistoryQueryOptions } =
       await import('@/features/workflow-settings/workflow-settings-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
     warmPrefetches(context, [
       queryClient.query(
-        workflowVersionsQueryOptions(
+        workflowVersionHistoryQueryOptions(
           apiClient,
           user.id,
           workspace.id,

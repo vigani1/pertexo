@@ -7,22 +7,13 @@ export type MemberGroup = Readonly<{
 }>;
 
 /**
- * Members grouped by role, most powerful first, keeping only those whose
- * name or email holds the search. Empty groups are left out.
+ * Members grouped by role, most powerful first. Empty groups are left out.
  */
 export function groupMembers(
   members: readonly WorkspaceMember[],
-  search: string,
 ): readonly MemberGroup[] {
-  const needle = search.trim().toLocaleLowerCase();
-  const matching = members.filter(
-    (member) =>
-      needle === '' ||
-      member.displayName.toLocaleLowerCase().includes(needle) ||
-      member.email.toLocaleLowerCase().includes(needle),
-  );
   return WORKSPACE_ROLES.map((role) => ({
     role,
-    members: matching.filter((member) => member.role === role),
+    members: members.filter((member) => member.role === role),
   })).filter((group) => group.members.length > 0);
 }

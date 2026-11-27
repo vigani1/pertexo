@@ -28,7 +28,7 @@ const team = [
 
 it('groups members by role, most powerful first, and leaves out empty roles', () => {
   expect(
-    groupMembers(team, '').map((group) => [
+    groupMembers(team).map((group) => [
       group.role,
       group.members.map((each) => each.displayName),
     ]),
@@ -38,18 +38,4 @@ it('groups members by role, most powerful first, and leaves out empty roles', ()
     ['builder', ['Sami Haddad']],
     ['viewer', ['Mei Chen']],
   ]);
-});
-
-it('keeps only members whose name or email holds the search, ignoring case', () => {
-  expect(
-    groupMembers(team, '  SAMI ').flatMap((group) =>
-      group.members.map((each) => each.displayName),
-    ),
-  ).toEqual(['Sami Haddad']);
-  expect(
-    groupMembers(team, 'iris@').flatMap((group) =>
-      group.members.map((each) => each.displayName),
-    ),
-  ).toEqual(['Iris Lund']);
-  expect(groupMembers(team, 'nobody')).toEqual([]);
 });

@@ -155,7 +155,19 @@ for (const width of [375, 1280])
         kind === 'connection'
           ? `/w/${workspaceId}/connections?connection=${workflowId}`
           : `/w/${workspaceId}/workflows`;
-      await page.goto(path);
+      if (kind === 'connection' && width === 375) {
+        await page.goto(`/w/${workspaceId}/connections`);
+        const row = page.getByRole('button', { name: /^Incident Slack,/u });
+        await row.focus();
+        await page.keyboard.press('Enter');
+        const back = page.getByRole('button', { name: 'All connections' });
+        await expect(back).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(row).toBeFocused();
+        await page.keyboard.press('Enter');
+      } else {
+        await page.goto(path);
+      }
       if (kind === 'connection')
         await page.getByRole('button', { name: 'Share', exact: true }).click();
       else {
@@ -166,10 +178,10 @@ for (const width of [375, 1280])
           .getByRole('menuitem', { name: 'Share…', exact: true })
           .click();
       }
-      const dialog = page.getByRole('dialog', {
-        name: kind === 'connection' ? 'Incident Slack' : 'Share Operations',
-        exact: true,
-      });
+      const dialog =
+        kind === 'connection'
+          ? page.getByRole('article', { name: 'Incident Slack', exact: true })
+          : page.getByRole('dialog', { name: 'Share Operations', exact: true });
       await dialog.getByText('Only people you choose', { exact: true }).click();
       await dialog
         .getByRole('button', { name: 'Add Jane', exact: true })

@@ -114,6 +114,7 @@ export class ListAccessibleWorkspacesService {
 }
 
 export type ListWorkspaceMembersInput = Readonly<{
+  q?: string;
   actor: ActorContext;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
   routeWorkspaceId: string;
@@ -155,6 +156,7 @@ export class ListWorkspaceMembersService {
           {
             ...(input.limit === undefined ? {} : { limit: input.limit }),
             ...(after === undefined ? {} : { after }),
+            ...(input.q === undefined ? {} : { q: input.q }),
           },
         );
         return {

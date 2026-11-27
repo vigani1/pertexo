@@ -51,6 +51,11 @@ async function publishedWebhook(page: Page) {
   await page.goto(`${editorUrl}/triggers`);
   await page
     .getByRole('article', { name: `Webhook: ${STEP}`, exact: true })
+    .locator('summary')
+    .filter({ hasText: /^Manage$/u })
+    .click();
+  await page
+    .getByRole('article', { name: `Webhook: ${STEP}`, exact: true })
     .getByRole('button', { name: 'Create endpoint', exact: true })
     .click();
   const reveal = page.getByRole('dialog', {
@@ -142,6 +147,10 @@ test('a publish keeps a live webhook answering on the new version, with its hist
     name: `Webhook: ${STEP}`,
     exact: true,
   });
+  await card
+    .locator('summary')
+    .filter({ hasText: /^Manage$/u })
+    .click();
   await expect(
     card.getByRole('button', { name: 'Create endpoint', exact: true }),
   ).toBeHidden();

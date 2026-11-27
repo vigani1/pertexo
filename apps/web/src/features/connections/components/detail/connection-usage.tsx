@@ -44,7 +44,7 @@ export function ConnectionUsage({
     <section aria-labelledby="used-by" className="flex flex-col gap-2">
       <RuleHeading
         id="used-by"
-        className="text-lead"
+        appearance="compact"
         {...(workflows.length === 0 ? {} : { count: workflows.length })}
       >
         Used by
@@ -84,6 +84,7 @@ export function ConnectionUsage({
                     workspaceId={scope.workspaceId}
                     connectionName={connectionName}
                     workflows={workflows}
+                    complete={!usage.hasNextPage}
                   />
                 ) : null}
               </>
@@ -231,15 +232,17 @@ function WorkflowLink({
   );
 }
 
-/** Every workflow that uses it, searchable by workflow or step name. */
+/** Loaded usage, searchable by workflow or step name. */
 function AllWorkflows({
   workspaceId,
   connectionName,
   workflows,
+  complete,
 }: Readonly<{
   workspaceId: string;
   connectionName: string;
   workflows: readonly WorkflowUsage[];
+  complete: boolean;
 }>) {
   const describeStep = useStepDescriptions();
   const [query, setQuery] = useState('');
@@ -252,6 +255,9 @@ function AllWorkflows({
         describeStep(key).name.toLocaleLowerCase().includes(needle),
       ),
   );
+  const heading = complete
+    ? `All ${String(workflows.length)} workflows`
+    : `${String(workflows.length)} workflows loaded`;
   return (
     <section
       id="all-workflows"
@@ -263,7 +269,7 @@ function AllWorkflows({
           id="all-workflows-heading"
           className="font-heading text-section font-semibold"
         >
-          All {String(workflows.length)} workflows
+          {heading}
         </h3>
         <SearchInput
           className="w-full sm:w-70"
@@ -277,10 +283,14 @@ function AllWorkflows({
       </div>
       {matching.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
-          No workflow or step matches “{query.trim()}”.
+          No {complete ? '' : 'loaded '}workflow or step matches “{query.trim()}
+          ”.
+          {complete
+            ? null
+            : ' Load more published versions to continue searching.'}
         </p>
       ) : (
-        <RowList aria-label={`All workflows using ${connectionName}`}>
+        <RowList aria-label={`${heading} using ${connectionName}`}>
           {matching.map((workflow) => (
             <Row
               key={workflow.workflowId}

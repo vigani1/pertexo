@@ -1,6 +1,6 @@
 import { openTrigger } from './triggers/fixture';
 import { HttpResponse, http } from 'msw';
-import { within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { localTimeZone } from '@/lib/format/time';
@@ -101,6 +101,56 @@ describe('schedule run history in words', () => {
 });
 
 describe('schedule card on the Triggers tab', () => {
+  it('shows each hourly occurrence in the day window and retries a failed read', async () => {
+    installQueries();
+    const now = Date.now();
+    const hourMs = 60 * 60_000;
+    const requests: URLSearchParams[] = [];
+    let failing = true;
+    mockServer.use(
+      http.get(nextRunsPath, ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        requests.push(query);
+        if (failing)
+          return HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Unavailable',
+              status: 503,
+              code: 'internal.unavailable',
+            },
+            { status: 503 },
+          );
+        const count = query.get('window') === 'day' ? 24 : 3;
+        return HttpResponse.json({
+          observedAt: new Date(now).toISOString(),
+          items: Array.from({ length: count }, (_, i) => ({
+            scheduledAt: new Date(now + (i + 0.5) * hourMs).toISOString(),
+          })),
+        });
+      }),
+    );
+    await renderLoadedApp(triggersPath);
+    const strip = await screen.findByRole('region', { name: 'Next 24 hours' });
+    const retry = await within(strip).findByRole('button', { name: 'Retry' });
+    expect(
+      within(strip).queryByText('No schedule runs in the next 24 hours.'),
+    ).not.toBeInTheDocument();
+    failing = false;
+    await userEvent.click(retry);
+    const list = await within(strip).findByRole('list', {
+      name: 'Next 24 hours',
+    });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(24);
+    expect(requests.at(-1)?.get('window')).toBe('day');
+    const card = await scheduleCard();
+    expect(
+      within(
+        await within(card).findByRole('list', { name: 'Next runs' }),
+      ).getAllByRole('listitem'),
+    ).toHaveLength(3);
+  });
+
   it('lists the next three runs the scheduler reports', async () => {
     installQueries();
     await renderLoadedApp(triggersPath);
@@ -207,12 +257,21 @@ describe('schedule card on the Triggers tab', () => {
     await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     expect(
-      await within(card).findByText('Next runs couldn’t be loaded. Try again.'),
+      await within(card).findByRole('link', {
+        name: 'Check upcoming schedule runs',
+      }),
+    ).toHaveAttribute('href', '#upcoming-runs');
+    expect(
+      within(card).queryByRole('button', { name: 'Retry' }),
+    ).not.toBeInTheDocument();
+    const strip = screen.getByRole('region', { name: 'Next 24 hours' });
+    expect(
+      within(strip).getByText(
+        'Upcoming schedule runs couldn’t be loaded. Try again.',
+      ),
     ).toBeVisible();
     failing = false;
-    await userEvent
-      .setup()
-      .click(within(card).getByRole('button', { name: 'Retry' }));
+    await userEvent.click(within(strip).getByRole('button', { name: 'Retry' }));
     expect(
       await within(card).findByRole('list', { name: 'Next runs' }),
     ).toBeVisible();

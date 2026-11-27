@@ -2,7 +2,7 @@ import { useConnectionDefinitions } from '@/features/catalog/public';
 import { useConnectionSharingEditor } from '../../data/sharing.mutations';
 import { ConnectionSharingPanel } from '../connection-sharing';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LockIcon } from 'lucide-react';
 import type { ConnectionResponse } from '@pertexo/contracts';
@@ -217,14 +217,6 @@ function DetailBody({
       permissions.canTest &&
       connection.status !== 'revoked' ? (
         <>
-          <ConnectionTestPanel
-            provider={connection.providerKey}
-            authType={connection.authType}
-            test={test}
-            onRun={(request) => {
-              test.run(connection, request);
-            }}
-          />
           <Button
             type="button"
             variant="ghost"
@@ -234,6 +226,14 @@ function DetailBody({
           >
             Back to details
           </Button>
+          <ConnectionTestPanel
+            provider={connection.providerKey}
+            authType={connection.authType}
+            test={test}
+            onRun={(request) => {
+              test.run(connection, request);
+            }}
+          />
         </>
       ) : null}
       {mode === 'sharing' && permissions.canManage ? (
@@ -261,11 +261,13 @@ function ConnectionDetailSession({
   connectionId,
   placeholder,
   permissions,
+  onCloseLockChange,
 }: Readonly<{
   scope: ConnectionMutationScope;
   connectionId: string;
   placeholder: ConnectionResponse | undefined;
   permissions: ConnectionPermissions;
+  onCloseLockChange: (locked: boolean) => void;
 }>) {
   const definitions = useConnectionDefinitions();
   const [mode, setMode] = useState<Mode>('overview');
@@ -278,6 +280,12 @@ function ConnectionDetailSession({
       setMode('overview');
     },
   );
+  useLayoutEffect(() => {
+    onCloseLockChange(sharing.closeLocked);
+    return () => {
+      onCloseLockChange(false);
+    };
+  }, [onCloseLockChange, sharing.closeLocked]);
   const detail = useQuery({
     ...connectionDetailQueryOptions(
       scope.apiClient,
@@ -357,6 +365,7 @@ export function ConnectionDetail(
     connectionId: string;
     placeholder: ConnectionResponse | undefined;
     permissions: ConnectionPermissions;
+    onCloseLockChange: (locked: boolean) => void;
   }>,
 ) {
   return (

@@ -75,7 +75,7 @@ export class ScheduleManagementService {
 
   /** ADR 048: when a published schedule fires next, by the scheduler's rules. */
   public nextRuns(
-    input: TriggerReadInput & Readonly<{ count: number }>,
+    input: TriggerReadInput & Readonly<{ count: number; windowMs?: number }>,
   ): Promise<ScheduleFireTimesResponse> {
     return this.telemetry.measure('schedule.next_runs', async () => {
       return publicFireTimes(await this.database.nextFireTimes(input));

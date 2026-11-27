@@ -30,10 +30,14 @@ it('names who published a version only when the reader asks for it', async () =>
   const published = version();
   const plain = await serializeWorkflowVersions([published], null);
   expect(plain.items[0]).not.toHaveProperty('publishedBy');
-  const named = await serializeWorkflowVersions([published], null, {
-    graphDigest: false,
-    publishedBy: true,
-  });
+  const named = await serializeWorkflowVersions(
+    [{ ...published, publisherName: 'Mira Builder' }],
+    null,
+    {
+      graphDigest: false,
+      publishedBy: true,
+    },
+  );
   expect(named.items[0]?.publishedBy).toEqual({
     id: published.publishedBy,
     displayName: 'Mira Builder',

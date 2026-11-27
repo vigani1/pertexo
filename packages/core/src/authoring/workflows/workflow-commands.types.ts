@@ -140,6 +140,7 @@ export type WorkflowPage = Readonly<{
   nextCursor?: Readonly<{ positionAt: string; id: string }>;
 }>;
 export type ListWorkflowVersionsInput = Readonly<{
+  includePublisher?: boolean;
   workspaceId: string;
   workflowId: string;
   actorId: string;
@@ -148,7 +149,7 @@ export type ListWorkflowVersionsInput = Readonly<{
   beforeVersionNumber?: number;
 }>;
 export type WorkflowVersionPage = Readonly<{
-  items: readonly WorkflowVersionRecord[];
+  items: readonly (WorkflowVersionRecord & { publisherName?: string | null })[];
   nextCursor?: Readonly<{ beforeVersionNumber: number }>;
 }>;
 export type PublishWorkflowResult = Readonly<{

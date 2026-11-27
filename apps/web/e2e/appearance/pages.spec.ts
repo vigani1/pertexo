@@ -14,7 +14,10 @@ const pages = [
   ['settings/promotion', 'Promotion'],
   ['data-tables', 'Data tables'],
   ['workflows/dddddddd-dddd-4ddd-8ddd-dddddddddddd/comments', 'Comments'],
-  ['workflows/dddddddd-dddd-4ddd-8ddd-dddddddddddd/versions', 'Versions'],
+  [
+    'workflows/dddddddd-dddd-4ddd-8ddd-dddddddddddd/versions',
+    'Nothing published yet',
+  ],
   ['workflows/dddddddd-dddd-4ddd-8ddd-dddddddddddd/runs', 'Runs'],
 ] as const;
 

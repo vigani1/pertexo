@@ -238,7 +238,7 @@ test('runs, shows a revoked grant, and reconnects without editing the workflow',
   await page
     .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
     .click();
-  const lens = page.locator('[data-slot="sheet-content"]');
+  const lens = page.getByRole('article', { name, exact: true });
   await expect(
     lens.getByText('Needs reauthorization', { exact: true }),
   ).toBeVisible();
@@ -347,7 +347,7 @@ test('a viewer and a builder see no Connect or Edit settings; a builder can pick
     await member
       .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
       .click();
-    const lens = member.locator('[data-slot="sheet-content"]');
+    const lens = member.getByRole('article', { name, exact: true });
     await expect(lens.getByText(name, { exact: true })).toBeVisible();
     for (const button of ['Connect', 'Reconnect', 'Edit settings'])
       await expect(lens.getByRole('button', { name: button })).toHaveCount(0);

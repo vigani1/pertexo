@@ -119,8 +119,12 @@ export function UsagePage({
                     onSearchChange(parseUsageSearch({ period: values[0] }));
                 }}
               >
-                <ToggleGroupItem value="30d">30 days</ToggleGroupItem>
-                <ToggleGroupItem value="90d">90 days</ToggleGroupItem>
+                <ToggleGroupItem value="30d">
+                  {USAGE_TREND_PERIOD_DAYS['30d']} days
+                </ToggleGroupItem>
+                <ToggleGroupItem value="90d">
+                  {USAGE_TREND_PERIOD_DAYS['90d']} days
+                </ToggleGroupItem>
               </ToggleGroup>
             }
             query={trends}
@@ -135,7 +139,7 @@ export function UsagePage({
                 </p>
                 <DailyChart snapshot={data} />
                 <p className="text-meta text-subtle-foreground">
-                  A red cap is the failed share of that day.{' '}
+                  Red shows failed and timed-out runs.{' '}
                   <Link
                     to="/w/$workspaceId/settings/usage/trends"
                     params={{ workspaceId: workspace.id }}

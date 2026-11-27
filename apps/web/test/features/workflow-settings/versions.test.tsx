@@ -262,7 +262,7 @@ describe('workflow versions tab', () => {
     await openRestore();
     // One published version has nothing to compare against.
     expect(
-      screen.queryByRole('button', { name: 'Compare versions' }),
+      screen.queryByRole('button', { name: /^Compare/u }),
     ).not.toBeInTheDocument();
     expect(await screen.findByText('Draft restored from v1')).toBeVisible();
     await waitFor(() => {

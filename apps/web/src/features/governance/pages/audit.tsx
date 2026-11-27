@@ -81,7 +81,7 @@ export function AuditPage({
         <Notice tone="warning">{downloadError}</Notice>
       )}
       <AuditFilters
-        key={JSON.stringify(filters)}
+        key={filters.person ?? ''}
         filters={filters}
         {...(actionWords === undefined ? {} : { actionWords })}
         onApply={onFilter}

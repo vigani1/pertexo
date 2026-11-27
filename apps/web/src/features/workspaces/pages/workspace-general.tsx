@@ -63,7 +63,7 @@ export function WorkspaceGeneralPage({
           <h1 className="mt-1 font-display text-4xl leading-tight wrap-anywhere sm:text-display">
             {workspace.name}
           </h1>
-          <p className="mt-2 font-mono text-caption text-subtle-foreground">
+          <p className="mt-2 font-mono text-caption wrap-anywhere text-subtle-foreground">
             {workspace.slug} · {workspace.id.slice(0, 8)}… · created{' '}
             <time
               dateTime={workspace.createdAt}

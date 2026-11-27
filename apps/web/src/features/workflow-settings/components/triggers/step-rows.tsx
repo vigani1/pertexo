@@ -14,11 +14,13 @@ export function StepTriggerRows({
   versions,
   publishedVersionId,
   form,
+  formsPaused,
   onFailure,
 }: Readonly<{
   versions: readonly WorkflowVersionResponse[] | undefined;
   publishedVersionId: string | null | undefined;
   form: boolean;
+  formsPaused: boolean;
   onFailure: boolean;
 }>) {
   const steps = (key: string) =>
@@ -33,7 +35,13 @@ export function StepTriggerRows({
               icon={<StepTile step={describeStep('core.form')} />}
               name={step.name}
               kind="Form · starts a run each time someone submits it. Its link, fields and who may submit are set on the step in Build."
-              state={<StatusMark tone="success">On</StatusMark>}
+              state={
+                formsPaused ? (
+                  <StatusMark tone="off">Paused</StatusMark>
+                ) : (
+                  <StatusMark tone="success">On</StatusMark>
+                )
+              }
             />
           ))
         : null}

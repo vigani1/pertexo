@@ -1,4 +1,4 @@
-import { http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -47,6 +47,9 @@ describe('directory-managed team access', () => {
     expect(
       row.queryByRole('button', { name: 'Actions for Directory Builder' }),
     ).not.toBeInTheDocument();
+    const roles = screen.getByText('Compare roles', { selector: 'summary' });
+    expect(screen.getByRole('table')).not.toBeVisible();
+    await userEvent.click(roles);
     expect(screen.getByRole('table')).toBeVisible();
   });
   it('handles adoption during an open role review without claiming the owner lost permission', async () => {
@@ -93,4 +96,33 @@ describe('directory-managed team access', () => {
     expect(router.state.location.pathname).toBe(`/w/${workspaceId}/team`);
     expect(screen.queryByText(/Your role changed/u)).not.toBeInTheDocument();
   });
+});
+
+it('finds a match beyond the first page without loading other member pages', async () => {
+  const later = member(firstMemberId, 'Directory Builder', 'builder');
+  const queries: URLSearchParams[] = [];
+  mockServer.use(
+    ...identityHandlers(ownerWorkspace),
+    noInvitations(),
+    http.get(`${api}/members`, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      queries.push(query);
+      return HttpResponse.json(
+        query.get('q') === 'DIRECTORY BUILDER'
+          ? { items: [later], nextCursor: null }
+          : {
+              items: [member(userId, 'Workspace Owner', 'owner')],
+              nextCursor: 'next-members',
+            },
+      );
+    }),
+  );
+  await renderLoadedApp(`/w/${workspaceId}/team`);
+  expect(await screen.findByText('Workspace Owner')).toBeVisible();
+  await userEvent.type(
+    screen.getByRole('searchbox', { name: 'Find a member by name or email' }),
+    'DIRECTORY BUILDER',
+  );
+  expect(await screen.findByText(later.displayName)).toBeVisible();
+  expect(queries.every((query) => !query.has('after'))).toBe(true);
 });

@@ -18,6 +18,52 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
   beforeEach(resetAuthenticatedWorkflowLifecycleHTTPCommandsFixture);
 
   afterEach(cleanAuthenticatedWorkflowLifecycleHTTPCommandsFixture);
+  it('hides a former publisher from an owner who can read current members', async () => {
+    const { application, ids, workspaceId, builderUserId } = fixture;
+    const owner = await fixture.login('owner');
+    const versionId = randomUUID();
+    await fixture.withOwner((client) =>
+      client.query(
+        `insert into app.workflow_versions
+         (id, workspace_id, workflow_id, version_number, graph_json, checksum, executable_json, published_by)
+       select $1, workspace_id, workflow_id, version_number+1, graph_json, checksum, executable_json, $2
+        from app.workflow_versions where id=$3`,
+        [versionId, builderUserId, ids.publishedVersion],
+      ),
+    );
+    const read = () =>
+      application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/${workspaceId}/workflows/${ids.published}/versions?include=publishedBy`,
+        headers: { cookie: owner.cookieHeader },
+      });
+    const visible = await read();
+    expect(visible.statusCode, visible.body).toBe(200);
+    expect(visible.json()).toMatchObject({
+      items: [
+        {
+          id: versionId,
+          publishedBy: { id: builderUserId, displayName: 'Lifecycle builder' },
+        },
+        { id: ids.publishedVersion },
+      ],
+    });
+    await fixture.withOwner((client) =>
+      client.query(
+        "update app.workspace_memberships set status='removed' where workspace_id=$1 and user_id=$2",
+        [workspaceId, builderUserId],
+      ),
+    );
+    const removed = await read();
+    expect(removed.statusCode, removed.body).toBe(200);
+    expect(removed.json()).toMatchObject({
+      items: [
+        { id: versionId, publishedBy: null },
+        { id: ids.publishedVersion },
+      ],
+    });
+  });
+
   it('requires authentication and CSRF for each lifecycle command', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');
@@ -502,6 +548,7 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
     expect(history.nextCursor).toBeNull();
     const named = await read(
       `${base}/${ids.published}/versions?include=publishedBy`,
+      owner,
     );
     expect(named.statusCode, named.body).toBe(200);
     expect(
@@ -512,6 +559,13 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
         id: fixture.ownerUserId,
         displayName: 'Lifecycle owner',
       },
+    });
+    const hiddenPublisher = await read(
+      `${base}/${ids.published}/versions?include=publishedBy`,
+    );
+    expect(hiddenPublisher.statusCode, hiddenPublisher.body).toBe(200);
+    expect(hiddenPublisher.json()).toMatchObject({
+      items: [{ id: ids.publishedVersion, publishedBy: null }],
     });
     expect((await read(`${base}/${ids.unpublished}/versions`)).json()).toEqual({
       items: [],
