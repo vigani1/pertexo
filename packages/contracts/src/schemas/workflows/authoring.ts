@@ -1,7 +1,10 @@
 import { pollingTriggerHealthSchema } from '../triggers/polling.js';
 import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
+import {
+  DISPLAY_NAME_MAX_CHARACTERS,
+  RESOURCE_NAME_MAX_LENGTH,
+} from '@pertexo/workflow-model';
 import {
   WORKFLOW_PAGE_LIMITS,
   workflowCursorSchema,
@@ -253,6 +256,13 @@ export const workflowVersionResponseSchema = responseSchema(
       graphDigest: workflowGraphDigestSchema.optional(),
       checksum: workflowExecutableChecksumSchema,
       publishedAt: z.iso.datetime(),
+      publishedBy: z
+        .object({
+          id: z.uuid(),
+          displayName: z.string().max(DISPLAY_NAME_MAX_CHARACTERS),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 );

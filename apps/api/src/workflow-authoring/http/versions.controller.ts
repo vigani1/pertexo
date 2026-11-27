@@ -65,7 +65,10 @@ export class WorkflowVersionsController {
     return this.listVersions.execute({
       ...context,
       workflowId: route.workflowId,
-      includeGraphDigest: input.include === 'graphDigest',
+      additions: {
+        graphDigest: input.include?.includes('graphDigest') === true,
+        publishedBy: input.include?.includes('publishedBy') === true,
+      },
       ...(input.versionId === undefined ? {} : { versionId: input.versionId }),
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),

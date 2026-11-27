@@ -15,11 +15,30 @@ it('returns the export review identity on draft and immutable version reads', as
     await portableGraphDigest(source.graphJson),
   );
   const published = version();
-  const versions = await serializeWorkflowVersions([published], null, true);
+  const versions = await serializeWorkflowVersions([published], null, {
+    graphDigest: true,
+    publishedBy: false,
+  });
   expect(versions.items[0]).toHaveProperty(
     'graphDigest',
     await portableGraphDigest(published.graphJson),
   );
+  expect(versions.items[0]).not.toHaveProperty('publishedBy');
+});
+
+it('names who published a version only when the reader asks for it', async () => {
+  const published = version();
+  const plain = await serializeWorkflowVersions([published], null);
+  expect(plain.items[0]).not.toHaveProperty('publishedBy');
+  const named = await serializeWorkflowVersions([published], null, {
+    graphDigest: false,
+    publishedBy: true,
+  });
+  expect(named.items[0]?.publishedBy).toEqual({
+    id: published.publishedBy,
+    displayName: 'Mira Builder',
+  });
+  expect(named.items[0]).not.toHaveProperty('graphDigest');
 });
 
 it('omits run summaries unless the credential permits run reads', () => {

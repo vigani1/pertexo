@@ -500,6 +500,19 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
     expect(history.items[0]).not.toHaveProperty('workspaceId');
     expect(history.items[0]).not.toHaveProperty('publishedBy');
     expect(history.nextCursor).toBeNull();
+    const named = await read(
+      `${base}/${ids.published}/versions?include=publishedBy`,
+    );
+    expect(named.statusCode, named.body).toBe(200);
+    expect(
+      named.json<{ items: Record<string, unknown>[] }>().items[0],
+    ).toMatchObject({
+      id: ids.publishedVersion,
+      publishedBy: {
+        id: fixture.ownerUserId,
+        displayName: 'Lifecycle owner',
+      },
+    });
     expect((await read(`${base}/${ids.unpublished}/versions`)).json()).toEqual({
       items: [],
       nextCursor: null,
