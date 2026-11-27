@@ -122,7 +122,7 @@ describe('home details', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
-      { name: 'Needs attention' },
+      { name: 'Needs you' },
       coldStart,
     );
     expect(

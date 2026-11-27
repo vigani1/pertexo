@@ -74,7 +74,7 @@ export function RunLoom({
           height={height}
           nowMs={nowMs}
         />
-        <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] flex w-[56px] flex-col items-center justify-center gap-1 @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
+        <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] flex w-[56px] items-center justify-center @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
           <CoreOrb
             state={model.liveCount > 0 ? 'live' : 'idle'}
             energy={coreEnergy(model.liveCount)}
@@ -84,7 +84,7 @@ export function RunLoom({
                 : 'size-12 @min-[640px]:size-28'
             }
           />
-          <p className="font-mono text-caption font-semibold text-accent-foreground/90 @max-[639px]:hidden">
+          <p className="absolute inset-x-0 bottom-0 text-center font-mono text-caption font-semibold text-glint @max-[639px]:hidden">
             {String(model.liveCount)} running
           </p>
         </div>

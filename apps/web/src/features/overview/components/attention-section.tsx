@@ -1,9 +1,12 @@
+import { tasksQueryOptions } from '@/features/pending-tasks/pending-tasks-queries.public';
+import { shownData } from '@/lib/api/error-copy';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { attentionRunsQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  taskAttentionItems,
   connectionAttentionItems,
   destinationAttentionItems,
   runAttentionItems,
@@ -32,6 +35,17 @@ export function AttentionSection({
     ...attentionRunsQueryOptions(apiClient, userId, workspace.id),
     enabled: can('run:read'),
   });
+  const requests = useInfiniteQuery({
+    ...tasksQueryOptions(
+      { apiClient, userId, workspaceId: workspace.id },
+      {
+        kind: 'all',
+        view: 'mine',
+        status: 'pending',
+      },
+    ),
+    enabled: can('run:read'),
+  });
   const workflows = useInfiniteQuery({
     ...workflowsInfiniteQueryOptions(apiClient, userId, workspace.id),
     enabled: can('workflow:read'),
@@ -39,12 +53,15 @@ export function AttentionSection({
   const setup = useSetupReads({ apiClient, userId, workspace });
   const { connections, destinations } = setup;
   const reads: BlockQuery[] = [
-    ...(can('run:read') ? [runs] : []),
+    ...(can('run:read') ? [runs, requests] : []),
     ...(can('workflow:read') ? [workflows] : []),
     ...(setup.canReadConnections ? [connections] : []),
     ...(setup.canReadDestinations ? [destinations] : []),
   ];
   const items = [
+    ...taskAttentionItems(
+      shownData(requests)?.pages.flatMap((page) => page.items) ?? [],
+    ),
     ...(runs.data === undefined
       ? []
       : runAttentionItems(

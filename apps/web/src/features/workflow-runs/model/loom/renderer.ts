@@ -332,15 +332,40 @@ export class LoomRenderer extends CanvasScene {
     const context = this.context;
     const palette = this.#palette;
     const { core } = layout;
-    const targetX = core.x - core.radius * 0.8;
-    context.globalCompositeOperation = 'lighter';
+    const targetX = core.x - core.radius * 0.18;
     tips.forEach(([x, y], index) => {
-      const curve = [x, y, x + 60, y, targetX - 80, core.y, targetX, core.y];
-      context.strokeStyle = rgba(palette.live, 0.12);
+      const bend = (targetX - x) * 0.48;
+      const curve = [
+        x,
+        y,
+        x + bend,
+        y,
+        targetX - bend,
+        core.y,
+        targetX,
+        core.y,
+      ];
+      const fade = context.createLinearGradient(x, 0, targetX, 0);
+      fade.addColorStop(0, rgba(palette.live, 0.75));
+      // Full strength up to the Core's shell, then gone before its centre.
+      const shell = Math.min(
+        1,
+        Math.max(0, (core.x - core.radius - x) / (targetX - x)),
+      );
+      fade.addColorStop(shell, rgba(palette.live, 0.5));
+      fade.addColorStop(1, rgba(palette.live, 0));
+      context.strokeStyle = fade;
       context.lineWidth = 1;
       context.beginPath();
       context.moveTo(x, y);
-      context.bezierCurveTo(x + 60, y, targetX - 80, core.y, targetX, core.y);
+      context.bezierCurveTo(
+        x + bend,
+        y,
+        targetX - bend,
+        core.y,
+        targetX,
+        core.y,
+      );
       context.stroke();
       const progress = (timeSeconds * 0.5 + index * 0.37) % 1;
       const [px, py] = bezierPoint(curve, progress);
@@ -359,7 +384,6 @@ export class LoomRenderer extends CanvasScene {
       context.arc(x, y, 11 * pulse, 0, Math.PI * 2);
       context.fill();
     });
-    context.globalCompositeOperation = 'source-over';
   }
 }
 

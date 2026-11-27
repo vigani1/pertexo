@@ -53,7 +53,7 @@ describe('workspace home', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
-      { name: 'Needs attention' },
+      { name: 'Needs you' },
       coldStart,
     );
     const retry = await within(attention).findByRole('button', {
@@ -126,7 +126,7 @@ describe('workspace home', () => {
     });
     expect(failedReads).toBe(3);
   });
-  it('shows a single all-clear line when nothing needs attention', async () => {
+  it('leaves Needs you out when nothing needs anyone', async () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       workflowHandlers(),
@@ -134,13 +134,13 @@ describe('workspace home', () => {
     );
 
     await renderLoadedApp(`/w/${workspaceId}`);
-    const attention = await screen.findByRole(
-      'region',
-      { name: 'Needs attention' },
-      coldStart,
-    );
-    expect(await within(attention).findByText('All clear.')).toBeVisible();
-    expect(within(attention).getByText('Nothing needs you.')).toBeVisible();
+    await screen.findByRole('heading', { name: 'Recently changed' }, coldStart);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('region', { name: 'Needs you' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText('All clear.')).not.toBeInTheDocument();
   });
   it('lists unhealthy triggers and connections to reconnect with their fixes', async () => {
     mockServer.use(
@@ -181,7 +181,7 @@ describe('workspace home', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
-      { name: 'Needs attention' },
+      { name: 'Needs you' },
       coldStart,
     );
     expect(

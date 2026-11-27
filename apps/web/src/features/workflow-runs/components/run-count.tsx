@@ -1,4 +1,3 @@
-import { cn } from '@/lib/class-names';
 import {
   StatusMark,
   type StatusTone,
@@ -6,25 +5,28 @@ import {
 import type { RunStatistics } from '../data/statistics.queries';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
-/** One exact count in a page header's mono line, e.g. "3 running". */
+/**
+ * One exact count in a page header's mono line, e.g. "3 running". Colour
+ * means attention, so a zero is plain ink with no mark.
+ */
 export function RunCount({
   tone,
   count,
   label,
 }: Readonly<{ tone: StatusTone; count: number; label: string }>) {
+  const words = (
+    <span className="text-subtle-foreground">
+      <b className="font-medium text-foreground">
+        {count.toLocaleString(FORMAT_LOCALE)}
+      </b>{' '}
+      {label}
+    </span>
+  );
+  if (count === 0)
+    return <span className="font-mono text-meta leading-none">{words}</span>;
   return (
-    <StatusMark tone={tone} still={count === 0} className="font-mono">
-      <span className="text-subtle-foreground">
-        <b
-          className={cn(
-            'font-medium',
-            count === 0 ? 'text-subtle-foreground' : 'text-foreground',
-          )}
-        >
-          {count.toLocaleString(FORMAT_LOCALE)}
-        </b>{' '}
-        {label}
-      </span>
+    <StatusMark tone={tone} className="font-mono">
+      {words}
     </StatusMark>
   );
 }
