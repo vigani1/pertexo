@@ -1,4 +1,5 @@
 import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { at, invoiceGraph } from './core-flow-invoice-graph';
 import { fixtureRun, fixtureStatistics } from '../../test/support/fixtures/run';
 import type { Page } from '../support/fixtures';
 import { workflowListBody } from '../workflows/list-support';
@@ -7,7 +8,6 @@ import {
   workflowVersionsBody,
 } from '../workflows/read-projections';
 import {
-  currentEtag,
   installEditorRoutes,
   remoteDraft,
   workflowId,
@@ -21,7 +21,7 @@ import {
 // screenshot shows the states the core-flow pages are designed around.
 
 export const failedRunId = '20000000-0000-4000-8000-000000000001';
-export const liveRunId = '20000000-0000-4000-8000-000000000002';
+const liveRunId = '20000000-0000-4000-8000-000000000002';
 export const approvalId = '20000000-0000-4000-8000-000000000003';
 const versionId = '20000000-0000-4000-8000-000000000004';
 const syncWorkflowId = '20000000-0000-4000-8000-000000000005';
@@ -29,76 +29,12 @@ const remindersWorkflowId = '20000000-0000-4000-8000-000000000007';
 const secondApprovalId = '20000000-0000-4000-8000-000000000006';
 
 const minute = 60_000;
-const at = (minutesAgo: number) =>
-  new Date(Date.now() - minutesAgo * minute).toISOString();
 
-function latestVersions() {
-  const byKey = new Map<string, number>();
-  for (const { definition } of platformBrowserNodeDefinitionCatalog()
-    .definitions)
-    byKey.set(
-      definition.key,
-      Math.max(byKey.get(definition.key) ?? 0, definition.version),
-    );
-  return byKey;
-}
-
-function node(
-  id: string,
-  key: string,
-  label: string,
-  x: number,
-  y: number,
-  config: Record<string, unknown> = {},
-) {
-  return {
-    id,
-    label,
-    definition: { key, version: latestVersions().get(key) ?? 1 },
-    position: { x, y },
-    configVersion: 1,
-    config,
-    inputMappings: {},
-    connectionRefs: {},
-  };
-}
-
-function edge(source: string, target: string, port = 'out') {
-  return {
-    id: `${source}-${port}-${target}`,
-    source: { nodeId: source, port },
-    target: { nodeId: target, port: 'in' },
-  };
-}
-
-/** New invoice → Check payload → Over 5,000? → approval or ERP → receipt. */
-export function invoiceGraph() {
-  return {
-    nodes: [
-      node('intake', 'core.manual', 'New invoice', 0, 200),
-      node('check', 'core.validate', 'Check payload', 300, 200),
-      node('over', 'core.condition', 'Over 5,000?', 600, 200),
-      node('approve', 'core.approval', 'Finance approval', 900, 40),
-      node('erp', 'http.request', 'Post to ERP', 1200, 200),
-      node('receipt', 'email.send_notification', 'Send receipt', 1500, 200),
-    ],
-    edges: [
-      edge('intake', 'check'),
-      edge('check', 'over'),
-      edge('over', 'approve', 'true'),
-      edge('over', 'erp', 'false'),
-      edge('approve', 'erp', 'approved'),
-      edge('erp', 'receipt'),
-    ],
-    settings: {},
-  };
-}
-
+/** `took`: started this many minutes ago, for this many seconds. */
 function nodeRun(
   nodeId: string,
   status: string,
-  startedMinutesAgo: number,
-  seconds: number,
+  [startedMinutesAgo, seconds]: readonly [number, number],
   extra: Record<string, unknown> = {},
 ) {
   const startedAt = at(startedMinutesAgo);
@@ -149,11 +85,11 @@ const liveRun = run(liveRunId, 'running', 1);
 
 function failedNodes() {
   return [
-    nodeRun('intake', 'succeeded', 19, 0.02),
-    nodeRun('check', 'succeeded', 19, 0.05),
-    nodeRun('over', 'succeeded', 19, 0.01),
-    nodeRun('erp', 'succeeded', 19, 2.6),
-    nodeRun('receipt', 'failed', 18.5, 0.4, {
+    nodeRun('intake', 'succeeded', [19, 0.02]),
+    nodeRun('check', 'succeeded', [19, 0.05]),
+    nodeRun('over', 'succeeded', [19, 0.01]),
+    nodeRun('erp', 'succeeded', [19, 2.6]),
+    nodeRun('receipt', 'failed', [18.5, 0.4], {
       currentAttemptNumber: 3,
       safeErrorCode: 'provider.unavailable',
       errorSummary: 'Resend answered 503 Service Unavailable.',
@@ -163,10 +99,10 @@ function failedNodes() {
 
 function liveNodes() {
   return [
-    nodeRun('intake', 'succeeded', 1, 0.02),
-    nodeRun('check', 'succeeded', 1, 0.05),
-    nodeRun('over', 'succeeded', 1, 0.01),
-    nodeRun('erp', 'running', 0.5, 0),
+    nodeRun('intake', 'succeeded', [1, 0.02]),
+    nodeRun('check', 'succeeded', [1, 0.05]),
+    nodeRun('over', 'succeeded', [1, 0.01]),
+    nodeRun('erp', 'running', [0.5, 0]),
   ];
 }
 
@@ -243,7 +179,7 @@ export async function installCoreFlowRoutes(
   const runs = options.live === true ? [liveRun, failedRun] : [failedRun];
   await page.route('**/v1/workspaces/*/runs?**', (route) => {
     const status = new URL(route.request().url()).searchParams.get('status');
-    route.fulfill({
+    void route.fulfill({
       json: {
         items: runs.filter((item) => status === null || item.status === status),
         nextCursor: null,
@@ -401,70 +337,4 @@ function workflowList() {
       updatedAt: at(60),
     }),
   ];
-}
-
-const compatibility = {
-  compatible: true,
-  fingerprint: `wf-compat:sha256:${'0'.repeat(64)}`,
-  issues: [],
-};
-
-/**
- * The assistant's one proposal for the invoice workflow: after Send receipt,
- * a Slack step posts to #finance. Answers the disclosure read and the
- * request with it.
- */
-export async function installAssistantProposal(page: Page) {
-  const graph = invoiceGraph();
-  const base = {
-    workflowId,
-    revision: 1,
-    graph,
-    compatibility,
-    updatedAt: at(5),
-  };
-  const draft = {
-    ...base,
-    graph: {
-      ...graph,
-      nodes: [
-        ...graph.nodes,
-        node('slack', 'slack.send_message', 'Post to #finance', 1800, 200),
-      ],
-      edges: [...graph.edges, edge('receipt', 'slack')],
-    },
-  };
-  await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/proposal`,
-    (route) =>
-      route.fulfill({
-        json:
-          route.request().method() === 'GET'
-            ? {
-                kind: 'ready',
-                connectionName: 'Workspace AI',
-                host: 'models.example.test',
-                model: 'reasoning-large',
-                confirmation: 'confirmed',
-              }
-            : {
-                kind: 'inspected',
-                base,
-                draft,
-                representationTag: currentEtag(remoteDraft(graph)),
-                usage: {
-                  kind: 'complete',
-                  model: 'reasoning-large',
-                  inputTokens: 1,
-                  outputTokens: 1,
-                },
-                validation: {
-                  valid: true,
-                  issues: [],
-                  compatibility,
-                  currentPublication: null,
-                },
-              },
-      }),
-  );
 }
