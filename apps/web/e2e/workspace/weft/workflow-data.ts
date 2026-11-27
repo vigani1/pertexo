@@ -113,13 +113,19 @@ export const webhooks = {
   ],
 };
 
-function schedule(
-  id: string,
-  nodeId: string,
-  recurrence: unknown,
-  next: string,
-  last: string | null,
-) {
+function schedule({
+  id,
+  nodeId,
+  recurrence,
+  next,
+  last,
+}: Readonly<{
+  id: string;
+  nodeId: string;
+  recurrence: unknown;
+  next: string;
+  last: string | null;
+}>) {
   return {
     id,
     workflowId,
@@ -139,24 +145,24 @@ function schedule(
 
 export const schedules = {
   items: [
-    schedule(
-      '50000000-0000-4000-8000-000000000002',
-      'schedule-node',
-      {
+    schedule({
+      id: '50000000-0000-4000-8000-000000000002',
+      nodeId: 'schedule-node',
+      recurrence: {
         kind: 'cron',
         expression: '0 7 * * 1-5',
         timezone: 'Europe/Berlin',
       },
-      at(16.5),
-      at(-7.5),
-    ),
-    schedule(
-      '50000000-0000-4000-8000-000000000003',
-      'weekly-node',
-      { kind: 'interval', intervalMinutes: 360 },
-      at(3.2),
-      at(-2.8),
-    ),
+      next: at(16.5),
+      last: at(-7.5),
+    }),
+    schedule({
+      id: '50000000-0000-4000-8000-000000000003',
+      nodeId: 'weekly-node',
+      recurrence: { kind: 'interval', intervalMinutes: 360 },
+      next: at(3.2),
+      last: at(-2.8),
+    }),
   ],
 };
 
