@@ -3,8 +3,7 @@ import { UnavailableDataTable } from '../components/unavailable';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { shownData } from '@/lib/api/error-copy';
 import { isAdministrativeRole } from '@pertexo/policy';
-import { useState } from 'react';
-import { ArrowLeftIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
@@ -12,7 +11,6 @@ import type {
   DataTableDefinition,
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { tablesQuery } from '../data/tables.queries';
 import type { TableScope } from '../data/tables.api';
@@ -22,13 +20,14 @@ import { DataTableRows } from '../components/rows/table-rows';
 import { EditTableColumns } from '../components/columns/dialog';
 import { RemoveDataTable } from '../components/remove';
 import {
-  TablePageActions,
-  TableCapacity,
-  TableCollection,
+  TableActions,
+  TableList,
+  WorkspaceTableActions,
 } from '../components/overview';
+import { ListDetail } from '@/components/patterns/lists/list-detail';
+import { formatCount } from '@/lib/format/count';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { formatByteLength } from '@/lib/format/bytes';
-import { ColumnChip, UsageMeter } from '../components/column-type';
 type TableDialog = 'create' | 'limits' | 'remove' | 'columns';
 export function DataTablesPage({
   scope,
@@ -49,71 +48,67 @@ export function DataTablesPage({
   const admin = editable && isAdministrativeRole(workspace.role);
   // Definitions a refresh says are no longer readable leave the page.
   const data = shownData(query);
-  const table = data?.tables.find((item) => item.id === tableId);
+  // Wide screens show the first table until one is chosen.
+  const shownId = tableId ?? data?.tables[0]?.id;
+  const table = data?.tables.find((item) => item.id === shownId);
   const unavailable = data?.unavailableTables?.find(
     (item) => item.id === tableId,
   );
   const quotas = data?.quotas;
   return (
-    <div className="flex min-w-0 max-w-7xl flex-col gap-6">
+    <div className="flex min-w-0 max-w-300 flex-col gap-10">
       <PageHeader>
-        {tableId === undefined ? (
+        <div className="flex flex-col gap-3">
           <PageHeaderTitle>Data tables</PageHeaderTitle>
-        ) : (
-          <div className="flex min-w-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Back to all tables"
-              onClick={() => {
-                onOpen(undefined);
-              }}
-            >
-              <ArrowLeftIcon aria-hidden="true" />
-            </Button>
-            <PageHeaderTitle className="wrap-anywhere">
-              {table?.name ?? unavailable?.name ?? 'Data table'}
-            </PageHeaderTitle>
-          </div>
-        )}
-        <TablePageActions
-          detail={tableId !== undefined}
-          editable={editable}
-          admin={admin}
-          table={table}
-          onDialog={setDialog}
-        />
-      </PageHeader>
-      {tableId === undefined ? (
-        <>
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-[60ch] text-sm text-muted-foreground">
             Small lookups and saved state your workflows read and write. Keep
             secrets in Connections; an exported workflow names its tables but
             never carries their rows.
           </p>
-          <TableCapacity quotas={quotas} />
-        </>
-      ) : null}
-      <QueryView query={query} resource="Data tables" />
-      {tableId === undefined ? (
-        <TableCollection
-          tables={data?.tables}
-          unavailableTables={data?.unavailableTables}
-          rowLimit={quotas?.rowLimit}
-          workspaceId={workspace.id}
-        />
-      ) : null}
-      {tableId !== undefined && data !== undefined ? (
-        <TableDetail
-          unavailableName={unavailable?.name}
-          scope={scope}
-          table={table}
-          quotas={quotas}
-          pending={query.isPending}
+        </div>
+        <WorkspaceTableActions
           editable={editable}
+          admin={admin}
+          onDialog={setDialog}
         />
-      ) : null}
+      </PageHeader>
+      <QueryView query={query} resource="Data tables" />
+      {data === undefined ? null : (
+        <ListDetail
+          showing={tableId === undefined ? 'list' : 'detail'}
+          backLabel="All tables"
+          onBack={() => {
+            onOpen(undefined);
+          }}
+          className="min-[56.25rem]:grid-cols-[16.25rem_minmax(0,1fr)] min-[56.25rem]:gap-12"
+          list={
+            <TableList
+              tables={data.tables}
+              unavailableTables={data.unavailableTables}
+              quotas={quotas}
+              selectedId={shownId}
+              workspaceId={workspace.id}
+            />
+          }
+          detail={
+            shownId === undefined && unavailable === undefined ? null : (
+              <TableDetail
+                unavailableName={unavailable?.name}
+                scope={scope}
+                table={table}
+                quotas={quotas}
+                pending={query.isPending}
+                editable={editable}
+                actions={
+                  table === undefined || !editable ? null : (
+                    <TableActions onDialog={setDialog} />
+                  )
+                }
+              />
+            )
+          }
+        />
+      )}
       <TableDialogs
         scope={scope}
         table={table}
@@ -134,6 +129,7 @@ function TableDetail({
   quotas,
   pending,
   editable,
+  actions,
 }: Readonly<{
   scope: TableScope;
   table: DataTableDefinition | undefined;
@@ -141,6 +137,7 @@ function TableDetail({
   quotas: DataTablesResponse['quotas'] | undefined;
   pending: boolean;
   editable: boolean;
+  actions: ReactNode;
 }>) {
   if (unavailableName !== undefined)
     return <UnavailableDataTable name={unavailableName} />;
@@ -151,55 +148,43 @@ function TableDetail({
       </Notice>
     );
   return (
-    <>
-      {/* The table's shape: its typed columns, then how full it is. */}
-      <section
-        aria-label="Columns and capacity"
-        className="flex flex-col gap-3"
-      >
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {table.columns.map((column) => (
-            <ColumnChip
-              key={column.name}
-              column={column}
-              isKey={column.name === table.keyColumn}
-            />
-          ))}
-        </div>
-        <div className="flex max-w-xl min-w-0 items-center gap-3 text-xs text-muted-foreground">
-          <span className="shrink-0 font-mono tabular-nums">
+    <section
+      aria-labelledby="table-name"
+      className="flex min-w-0 flex-col gap-6"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2
+            id="table-name"
+            className="font-heading text-2xl font-semibold wrap-anywhere"
+          >
+            {table.name}
+          </h2>
+          <p className="mt-1.5 font-mono text-caption text-subtle-foreground">
             {table.rowCount.toLocaleString(FORMAT_LOCALE)}
             {quotas === undefined
               ? ''
-              : ` / ${quotas.rowLimit.toLocaleString(FORMAT_LOCALE)}`}{' '}
-            rows
-          </span>
-          {quotas === undefined ? null : (
-            <UsageMeter
-              used={table.rowCount}
-              limit={quotas.rowLimit}
-              label="Rows used"
-              className="min-w-16 flex-1"
-            />
-          )}
-          <span className="shrink-0 font-mono">
-            {formatByteLength(table.storedBytes)}
-          </span>
+              : ` of ${quotas.rowLimit.toLocaleString(FORMAT_LOCALE)}`}{' '}
+            rows · {formatCount(table.columns.length, 'column')} ·{' '}
+            {formatByteLength(table.storedBytes)} ·{' '}
+            {table.keyColumn === null
+              ? 'no unique key'
+              : `unique by ${table.keyColumn}`}
+          </p>
+          <p className="mt-1 text-meta text-subtle-foreground">
+            {table.keyColumn === null ? 'Rows can repeat. ' : ''}Each row fits{' '}
+            {formatByteSize(DATA_TABLE_LIMITS.rowBytes)}.
+          </p>
         </div>
-        <p className="text-xs text-subtle-foreground">
-          {table.keyColumn === null
-            ? 'No unique key: rows can repeat.'
-            : `Rows are unique by ${table.keyColumn}.`}{' '}
-          Each row fits {formatByteSize(DATA_TABLE_LIMITS.rowBytes)}.
-        </p>
-      </section>
+        {actions}
+      </div>
       <DataTableRows
         key={table.id}
         scope={scope}
         table={table}
         editable={editable}
       />
-    </>
+    </section>
   );
 }
 function TableDialogs({

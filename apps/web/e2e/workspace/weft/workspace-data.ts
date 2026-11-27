@@ -78,3 +78,87 @@ export const connectionUsage = {
   })),
   nextCursor: null,
 };
+
+function table(
+  index: number,
+  name: string,
+  keyColumn: string | null,
+  rowCount: number,
+  columns: readonly (readonly [string, 'text' | 'number' | 'boolean'])[],
+) {
+  return {
+    id: id(5, index),
+    name,
+    columns: columns.map(([column, type]) => ({
+      id: column,
+      name: column,
+      type,
+      required: column === keyColumn,
+    })),
+    keyColumn,
+    hasRemovedColumns: false,
+    rowCount,
+    storedBytes: rowCount * 240,
+    revision: 1,
+  };
+}
+
+export const tables = [
+  table(1, 'Restock thresholds', 'sku', 412, [
+    ['sku', 'text'],
+    ['product', 'text'],
+    ['on_hand', 'number'],
+    ['reorder_qty', 'number'],
+    ['active', 'boolean'],
+  ]),
+  table(2, 'Invoice ledger', null, 8640, [
+    ['invoice', 'text'],
+    ['amount', 'number'],
+  ]),
+  table(3, 'Supplier contacts', 'supplier_id', 38, [
+    ['supplier_id', 'text'],
+    ['email', 'text'],
+  ]),
+  table(4, 'Partner endpoints', 'partner_id', 21, [
+    ['partner_id', 'text'],
+    ['url', 'text'],
+  ]),
+  table(5, 'Holiday calendar', 'date', 14, [
+    ['date', 'text'],
+    ['name', 'text'],
+  ]),
+];
+
+export const tableQuotas = {
+  tableLimit: 20,
+  columnLimit: 20,
+  rowLimit: 10000,
+  byteLimit: 52428800,
+  tableCount: tables.length,
+  storedBytes: tables.reduce((sum, item) => sum + item.storedBytes, 0),
+};
+
+const products = [
+  'Oat milk 1 L',
+  'Espresso beans',
+  'Paper cups',
+  'Lids',
+  'Napkins',
+  'Sugar sticks',
+];
+
+export const tableRows = {
+  rows: products.map((product, index) => ({
+    id: id(4, index + 1),
+    values: {
+      sku: `SKU-${String(1040 + index)}`,
+      product,
+      on_hand: 40 + index * 17,
+      reorder_qty: 120,
+      active: index !== 3,
+    },
+    revision: 1,
+  })),
+  affected: products.length,
+  hasMore: false,
+};
