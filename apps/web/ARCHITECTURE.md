@@ -749,13 +749,20 @@ and storage CORS.
   one later, load it only with the owning feature. The vendor React Flow
   stylesheet is separate from hand-written application styling.
 
-- Extend a small semantic vocabulary: surface tiers, text levels, border levels,
-  focus, selected/active state, success/warning/error, glass/glow and motion
-  duration. Reuse Tailwind spacing/radius scales; do not copy hundreds of
-  aliases.
-- Separate visual accent from semantic status. Cyan glow is not by itself
-  “success”. Maintain text/icon labels and contrast on actual translucent
-  layers.
+- Colour means attention. Ground, ink and hairlines carry everyday content.
+  Success uses ink. Cyan signals live work and fills the main action in dark
+  mode. Red, violet and amber belong to marks, error codes and soft notice
+  tints. Use hairlines up to 1.5 px. Selection lifts the background and keyboard
+  focus draws a ring.
+- Primitives live in `components/ui/`. Domain-free compositions live in
+  `components/patterns/<area>/`. Give each piece one home and keep feature rules
+  in its model and formatting in `lib/format/`. Use variants for visual
+  differences and `className` for layout.
+- Start with one column. Use list and detail where people step through many
+  items, drawers for create and edit, and dialogs for irreversible confirms.
+  Long lists show five and offer “Show all N”, with search above 20. Put choices
+  in fields and filters. Date presets sit beside the calendar and a day takes
+  one click to pick. Core threads fade inside its shell.
 - Use CVA for deliberate component variants, `cn` for composition, children and
   slots for layout. Avoid boolean combinations such as `isGlass/isGlow/isSmall`.
   A pending button composes a spinner/label and disabled behavior.
@@ -824,56 +831,25 @@ before first paint; the React hook subscribes to the same instance. No
 account/workspace API or server state is mirrored. Blocked storage retains a
 choice in memory and explains that it cannot survive closing the tab.
 
-Neutral surfaces use `surface-ink` and `recess-ink`, with shared shadows, canvas
-ground, scrim and glass tokens. Light follows the Radix light-scale roles (sage
-neutrals, cyan brand, violet waiting, jade/red/amber status): a near-white
-ground (`background`, sage 2), surfaces a step lighter (`card`), hairline
-borders (sage 6–8) for structure and shadows only on what floats. Text uses the
-step-11/12 inks; drawings (the Core, the sign-in threads, the Loom's live
-threads, the loading wave and the ambient glow) use the saturated step-9 solids
-through `core-live`, `core-glint` and `core-accent`, because light borrowed from
-the dark theme washes out on white. Light mirrors dark's single cyan light: one
-cyan glow from the top-right and a cyan Core, with violet only where it means
-waiting, never a multi-hue wash. Never a mid-grey ground. `useCanvasRenderer`
-recreates decorative scenes when the resolved theme changes, including
-reduced-motion scenes. Particle compositing is additive in dark and ordinary in
-light, where the Core draws crisp beads with a faint glow: finer beads on a
-large Core, stronger ones on a small one. Both React Flow views follow the same
-resolved choice. Provider brand marks and alpha masks are not theme inks.
+Dark and Cyanotype use the same semantic token names in `styles/globals.css`.
+The light page sits on blue grid paper. Neutral surface tiers run from well to
+ground, card and raised. The three selection layers lift interactions with
+different amounts of ink. The live drawing colour and its readable text colour
+(`glint`) have separate roles. Waiting, warning and failure each have a mark
+colour and a soft tint. Depth comes from raised and sunken shadows, and selected
+objects use the selection ring. The light palette uses soft shadows and inset
+hairlines.
 
-- Keep semantic colour tokens in both palettes. Dark values include: `success`
-  #8fe3c0, `warning` #f3c677, `raised` #212428, `subtle-foreground` #7f8b8e,
-  `border-strong`. Cyan means brand, focus and _live work_ — never success.
-- Things people press are calmer than live work: `action` (a softer cyan,
-  `oklch(0.82 0.11 205)`, with `action-hover` and `action-foreground`) fills
-  primary buttons, checked controls, the current tab and the calendar day, and
-  is the focus `ring`; it never glows. The full `primary` cyan stays for live
-  edges, selection on the canvas, running counts and the Core. Inputs have a
-  neutral border (`control-border`); focus draws a soft ring, not a glow.
-- Radii: `sm` 6px, `md` 10px, `lg` 14px, `xl` 18px. Easing: `ease-unspool`.
-- Display type: Bricolage Grotesque at a condensed width, self-hosted from
-  `@fontsource-variable/bricolage-grotesque/standard.css` (optical size, width
-  and weight axes; the `opsz`-only file has no width axis). The one
-  `font-display` utility sets it (weight 620, `font-stretch` 76%, `opsz` 72) for
-  page titles (`PageHeaderTitle`), the run sentence, the sign-in headline and
-  wordmark, day headers, system-state titles, the hub bar name and lens titles
-  (`SheetTitle`, `DialogTitle`, `AuthLensTitle`). Smaller titles relax it with
-  `--display-width` and `--display-optical-size` (lens titles use 84% and 24)
-  instead of adding variants. `font-heading` stays for small section headings.
-  Inter for interface text; JetBrains Mono for instruments (times, durations,
-  counts, short IDs) with tabular figures.
-- Glass: everything that floats is one material in three weights. Chrome (spine,
-  bars, inspectors, dialogs, sheets, ⌘K) uses `lens` (`--glass-background`,
-  62%). Popups that open over rows (menus, selects, popovers, toasts and the
-  new-failure notice) use `popup-lens` (`--glass-popup`, 70%) with a harder
-  blur, so the page shows through as colour and light, never as text. Tooltips
-  stay nearly solid. Dialogs and sheets sit on a `scrim` that dims and blurs the
-  page instead of blacking it out. With `prefers-reduced-transparency` or no
-  backdrop blur, every weight falls back to a solid surface.
-- Textures: `warp` (page background threads), `weave` (canvas and run maps),
-  `ambient` (two aurora blobs: they drift behind sign-in and boot and hold still
-  in the workspace and hub, `ambient-still`). All decorative layers are
-  `aria-hidden` and hold still under reduced motion.
+- Bricolage Grotesque leads the display (60 px), title (40 px), figure (30 px)
+  and section heading (19 px). Inter is the interface face (14 px body, 13 px
+  small text, 12.5 px metadata). JetBrains Mono carries tabular values and short
+  IDs at 12 px and labels at 11 px.
+- Radii grow with the surface (6, 8, 10, 12, 14, 18 and 20 px). Quick state
+  changes take 150 ms, movement 240 ms and entry 320 ms.
+- Lens glass is for floating surfaces. Menus and popovers use a denser mix,
+  tooltips a solid surface, and drawers and dialogs sit on a scrim. Reduced
+  transparency and browsers without backdrop blur use solid surfaces. The canvas
+  uses the weave texture in both themes.
 
 #### Status language
 
