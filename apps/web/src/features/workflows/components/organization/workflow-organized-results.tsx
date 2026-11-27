@@ -211,7 +211,7 @@ function SelectedWorkflowTools({
     >
       <span
         aria-hidden="true"
-        className="mr-1 size-2.5 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_18%,transparent)]"
+        className="mr-1 size-2.5 shrink-0 rounded-full bg-action ring-2 ring-action-soft"
       />
       <span
         className="mr-2 text-sm whitespace-nowrap text-foreground"

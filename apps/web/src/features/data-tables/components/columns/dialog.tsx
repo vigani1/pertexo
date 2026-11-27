@@ -6,12 +6,12 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useTableCommand } from '../../data/tables.mutations';
 import type { TableScope } from '../../data/tables.api';
 import { TableCommandFeedback } from '../command-feedback';
@@ -75,18 +75,18 @@ export function EditTableColumns({
   const idleSubmitLabel =
     intent.kind === 'remove' ? 'Confirm delete column' : 'Save column changes';
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent className="max-w-2xl">
-        <DialogTitle>Edit columns</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>Edit columns</SheetTitle>
+        <SheetDescription>
           {base.name} · Renaming preserves workflow bindings. Deleting removes
           stored cells and makes bound workflow steps require review.
-        </DialogDescription>
+        </SheetDescription>
         <div className="mt-5 grid gap-5">
           <ColumnChoices base={base} locked={locked} onChoose={choose} />
           <form
@@ -109,7 +109,7 @@ export function EditTableColumns({
               <Notice tone="warning">{error}</Notice>
             )}
             <TableCommandFeedback command={command} />
-            <DialogFooter>
+            <SheetFooter>
               <Button
                 type="button"
                 variant="ghost"
@@ -121,11 +121,11 @@ export function EditTableColumns({
               <Button type="submit" variant="primary" disabled={locked}>
                 {command.pending ? 'Saving…' : idleSubmitLabel}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

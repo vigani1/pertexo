@@ -1,3 +1,4 @@
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type {
@@ -144,15 +145,6 @@ function WaysIn() {
           key={way.name}
           className="flex items-center gap-3 border-t border-border py-2.5 text-sm first:border-t-0"
         >
-          <span
-            aria-hidden="true"
-            className={cn(
-              'size-2.5 shrink-0 rounded-full',
-              way.on
-                ? 'bg-action shadow-[0_0_8px_var(--action)]'
-                : 'border border-surface-ink/20',
-            )}
-          />
           {/* Phones stack the sentence under its name, not beside it. */}
           <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
             <span className="font-medium sm:w-24 sm:shrink-0">{way.name}</span>
@@ -160,14 +152,9 @@ function WaysIn() {
               {way.detail}
             </span>
           </span>
-          <span
-            className={cn(
-              'shrink-0 text-xs',
-              way.on ? 'text-action' : 'text-subtle-foreground',
-            )}
-          >
+          <StatusMark tone={way.on ? 'success' : 'off'}>
             {way.on ? 'On' : 'Not added'}
-          </span>
+          </StatusMark>
         </li>
       ))}
     </ul>

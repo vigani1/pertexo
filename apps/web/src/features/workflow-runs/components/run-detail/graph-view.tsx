@@ -54,7 +54,6 @@ interface RunEdgeData extends Record<string, unknown> {
 type RunNode = Node<RunNodeData, 'runNode'>;
 type NodeSize = Readonly<{ width: number; height: number }>;
 type RunEdge = Edge<RunEdgeData, 'runEdge'>;
-// Each step on the overview map in its status colour, as on the tiles.
 const toneFill: Readonly<Record<StatusTone, string>> = {
   live: 'var(--primary)',
   queued: 'color-mix(in srgb, var(--secondary) 70%, transparent)',
@@ -73,7 +72,6 @@ const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
 
 /** Below this zoom, step names get too small to read. */
 const READABLE_ZOOM = 0.72;
-// Fitting never shrinks names below readable; a larger run pans instead.
 const FIT_OPTIONS = {
   padding: 0.12,
   maxZoom: 1,
@@ -176,7 +174,6 @@ export function RunGraphView({
     () => projectRunGraph(graph, rows, describeStep),
     [graph, rows, describeStep],
   );
-  // Hidden until the first fit, so the map never jumps into place.
   const [fitted, setFitted] = useState(false);
   const { theme } = useAppearance();
   const phone = useMediaQuery(PHONE_MEDIA_QUERY);
@@ -364,7 +361,6 @@ function WorkflowRunEdge({
         {...marker}
         className={cn(
           '!stroke-[1.5]',
-          // A path the run didn't take is dashed and quiet.
           (data?.skipped ?? false)
             ? '![stroke-dasharray:4_5] !stroke-graph-link'
             : (edgeStrokeClass[tone] ?? '!stroke-graph-link'),

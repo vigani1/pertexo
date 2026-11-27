@@ -7,10 +7,7 @@ export function Empty({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="empty"
-      className={cn(
-        'flex min-h-56 flex-col items-start justify-center gap-3 border-t border-border py-12',
-        className,
-      )}
+      className={cn('flex flex-col items-start gap-2.5 py-7', className)}
       {...props}
     />
   );
@@ -30,7 +27,7 @@ export function EmptyTitle({ className, ...props }: ComponentProps<'h2'>) {
   return (
     <h2
       data-slot="empty-title"
-      className={cn('text-2xl font-semibold', className)}
+      className={cn('font-heading text-section font-semibold', className)}
       {...props}
     />
   );

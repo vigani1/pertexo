@@ -68,7 +68,7 @@ function ExpiryTimeline({
           </span>
         ))}
         <span
-          className="absolute left-2 top-[9px] h-[3px] rounded-full bg-secondary shadow-[0_0_8px_color-mix(in_srgb,var(--secondary)_45%,transparent)] transition-[width] duration-300 ease-unspool motion-reduce:transition-none"
+          className="absolute left-2 top-[9px] h-[3px] rounded-full bg-secondary ring-1 ring-waiting-soft transition-[width] duration-300 ease-unspool motion-reduce:transition-none"
           style={{ width: `calc((100% - 1rem) * ${String(share)})` }}
         />
         {continues ? (
@@ -77,7 +77,7 @@ function ExpiryTimeline({
             style={{ left: end }}
           />
         ) : null}
-        <span className="absolute top-[4.5px] left-[calc(0.5rem-6px)] size-3 rounded-full border-2 border-secondary bg-card" />
+        <span className="absolute top-[4.5px] left-[calc(0.5rem-6px)] size-3 rounded-full border border-secondary bg-card" />
         <span
           className={cn(
             'absolute top-[2.5px] grid size-4 -translate-x-1/2 place-items-center rounded-full bg-card transition-[left] duration-300 ease-unspool motion-reduce:transition-none',

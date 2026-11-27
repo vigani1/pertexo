@@ -188,7 +188,7 @@ export function TableCollection({
             <Link
               to="/w/$workspaceId/data-tables/$tableId"
               params={{ workspaceId, tableId: item.id }}
-              className="group flex h-full min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-4 outline-none transition-colors duration-150 hover:border-surface-ink/14 hover:bg-surface-ink/[0.04] focus-ring motion-reduce:transition-none"
+              className="group flex h-full min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-select p-4 outline-none transition-colors duration-150 hover:border-surface-ink/14 hover:bg-select focus-ring motion-reduce:transition-none"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <TableSwatch columns={item.columns} rowCount={item.rowCount} />

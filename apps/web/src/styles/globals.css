@@ -40,6 +40,16 @@
   --text-section: 1.1875rem;
   --text-figure: 1.875rem;
   --text-hero: 3.75rem;
+  /* Provider artwork keeps its brand ink across palettes. */
+  --color-brand-google-blue: #4285f4;
+  --color-brand-google-green: #34a853;
+  --color-brand-google-yellow: #fbbc05;
+  --color-brand-google-red: #ea4335;
+  --color-brand-microsoft-red: #f35325;
+  --color-brand-microsoft-green: #81bc06;
+  --color-brand-microsoft-blue: #05a6f0;
+  --color-brand-microsoft-yellow: #ffba08;
+
   --color-ground-deep: var(--ground-deep);
   --color-well: var(--well);
   --color-live: var(--live);
@@ -378,43 +388,6 @@
   }
 }
 
-/* Neon: the one primary action per screen, and a chosen day. A bright
-   neon edge with a glow either side of it and only a faint cyan inside,
-   near-white words: an outline found at a glance, never a slab. The edge is
-   an inset ring, not the border, which controls keep transparent. */
-@utility neon {
-  color: var(--foreground);
-  background-color: transparent;
-  /* A round control (a calendar day) sets its own wash through these. */
-  background-image: var(
-    --neon-wash,
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--primary) 11%, transparent),
-      color-mix(in oklab, var(--primary) 5%, transparent)
-    )
-  );
-  box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--primary) 88%, transparent),
-    inset 0 0 12px -4px color-mix(in oklab, var(--primary) 50%, transparent),
-    0 0 18px -6px color-mix(in oklab, var(--primary) 65%, transparent);
-
-  &:hover:where(:not(:disabled, [aria-disabled='true'])) {
-    background-image: var(
-      --neon-wash-hover,
-      linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--primary) 17%, transparent),
-        color-mix(in oklab, var(--primary) 9%, transparent)
-      )
-    );
-    box-shadow:
-      inset 0 0 0 1px var(--primary),
-      inset 0 0 14px -4px color-mix(in oklab, var(--primary) 65%, transparent),
-      0 0 24px -4px color-mix(in oklab, var(--primary) 80%, transparent);
-  }
-}
-
 /* Menus, selects, popovers, toasts and tooltips: the same glass as a lens,
    denser and blurred harder because they open over busy rows, so the page
    shows through as colour and light, never as text. Same edges as a lens.
@@ -474,8 +447,8 @@
   border-color: var(--control-border);
   color: var(--foreground);
   transition:
-    border-color 150ms,
-    box-shadow 150ms;
+    border-color var(--duration-quick),
+    box-shadow var(--duration-quick);
 
   &::placeholder {
     color: var(--subtle-foreground);
@@ -487,7 +460,7 @@
       [aria-invalid='true'],
       :has([aria-invalid='true'])
     ) {
-    border-color: color-mix(in srgb, var(--surface-ink) 17%, transparent);
+    border-color: var(--border-strong);
   }
   &:focus-visible {
     border-color: color-mix(in oklch, var(--ring) 60%, transparent);
@@ -767,9 +740,8 @@
     }
   }
 
-  /* A new failure: a thread leaves the Inbox icon and stops at a cross, where
-     the notice unfurls. Leaving, the notice folds, the cross goes and the
-     thread winds back into the icon. The root's fade ends last, because Base
+  /* An arriving notice follows a thread from Inbox. The notice folds and
+     the thread winds back into the icon. The root's fade ends last, because Base
      UI removes the notice once the root's own animation finishes. */
   [data-slot='inbox-arrival'][data-ending-style] {
     animation: arrival-leave 440ms linear forwards;
@@ -811,19 +783,10 @@
     stroke-dasharray: 1;
   }
 
-  .arrival-cross {
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-
   @media (prefers-reduced-motion: no-preference) {
     .arrival-thread {
       --thread-length: 1;
       animation: entry-thread-draw 300ms var(--ease-unspool) backwards;
-    }
-
-    .arrival-cross {
-      animation: arrival-snag 420ms var(--ease-unspool) 260ms backwards;
     }
 
     .arrival-card {
@@ -844,10 +807,6 @@
 
     [data-ending-style][data-swiped] .arrival-card {
       animation: none;
-    }
-
-    [data-ending-style] .arrival-cross {
-      animation: arrival-unsnag 120ms ease-in 120ms forwards;
     }
 
     [data-ending-style] .arrival-thread {
@@ -886,7 +845,7 @@
      so they must not catch clicks. */
   body:has([data-slot='sheet-content'][data-side='right'])
     [data-slot='toast-viewport'] {
-    --toast-right: calc(min(26rem, 100vw - 1.5rem) + 1.75rem);
+    --toast-right: calc(min(27.5rem, 100vw - 1.5rem) + 1.75rem);
   }
 
   body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
@@ -1024,23 +983,6 @@
 @keyframes thread-timer {
   to {
     width: 0;
-  }
-}
-
-@keyframes arrival-snag {
-  from {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  60% {
-    transform: scale(1.25);
-  }
-}
-
-@keyframes arrival-unsnag {
-  to {
-    opacity: 0;
-    transform: scale(0.5);
   }
 }
 
@@ -1348,4 +1290,94 @@
 
 @utility core-home-paint {
   background-image: radial-gradient(circle, var(--live-soft), transparent 70%);
+}
+
+@utility skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--select-raised) 30%,
+    var(--select-strong) 50%,
+    var(--select-raised) 70%
+  );
+  background-size: 300% 100%;
+  @variant motion-loop {
+    animation:
+      skeleton-in var(--duration-move) ease-out var(--skeleton-wait, 150ms)
+        backwards,
+      status-run 1.6s linear infinite;
+  }
+}
+
+@property --notice-time-left {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 100%;
+}
+
+@utility notice-timer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--subtle-foreground) var(--notice-time-left),
+    var(--border) 0
+  );
+  mask-image: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 1.5px),
+    black calc(100% - 1px)
+  );
+
+  @variant motion-loop {
+    animation: notice-time-left var(--notice-timeout) linear forwards;
+  }
+
+  [data-expanded] & {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes notice-time-left {
+  to {
+    --notice-time-left: 0%;
+  }
+}
+
+@utility thread-dashes {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--subtle-foreground) 0 3px,
+    transparent 3px 7px
+  );
+}
+
+@utility canvas-shade {
+  background-image: radial-gradient(
+    ellipse at 55% 40%,
+    transparent 30%,
+    color-mix(in srgb, var(--background) 85%, transparent) 90%
+  );
+}
+
+@utility validation-thread-paint {
+  background-image: linear-gradient(
+    90deg,
+    transparent calc(100% - 8rem),
+    var(--live-faint) calc(100% - 2.4rem),
+    var(--live-line) calc(100% - 0.16rem),
+    transparent
+  );
+}
+
+@utility canvas-note-paint {
+  background-color: color-mix(in srgb, var(--note-accent) 5%, var(--card));
+}
+
+@utility canvas-note-ink {
+  color: var(--note-accent);
+}
+
+@utility drop-shadow-live {
+  filter: drop-shadow(var(--live-glow));
 }

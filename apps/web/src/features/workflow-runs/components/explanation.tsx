@@ -7,13 +7,13 @@ import type { z } from 'zod';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/error-copy';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
@@ -58,21 +58,21 @@ export function RunExplanation({
   }
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         void changeOpen(next);
       }}
     >
-      <DialogTrigger
+      <SheetTrigger
         render={<Button variant="outline" size="sm" className="self-start" />}
       >
         Explain failed run
-      </DialogTrigger>
-      <DialogContent>
-        <DialogTitle>
+      </SheetTrigger>
+      <SheetContent variant="form">
+        <SheetTitle>
           {explained ? 'Run explanation' : 'Explain failed run'}
-        </DialogTitle>
+        </SheetTitle>
         <ExplanationBody
           report={report}
           destination={destination}
@@ -89,10 +89,10 @@ export function RunExplanation({
           </p>
         ) : null}
         <ExplanationFeedback error={error} outcome={failure} />
-        <DialogFooter className="mt-5">
-          <DialogClose render={<Button variant="outline" />}>
+        <SheetFooter className="mt-5">
+          <SheetClose render={<Button variant="outline" />}>
             {explained ? 'Close' : 'Cancel'}
-          </DialogClose>
+          </SheetClose>
           {canSend ? (
             <Button
               disabled={pending}
@@ -105,9 +105,9 @@ export function RunExplanation({
               Send to model
             </Button>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -2,11 +2,11 @@ import { useId, useState } from 'react';
 import type { WebhookManagementCommandResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { webhookAddress } from '../../../model/triggers/endpoint-key';
 import { CopyField } from '../../copy-field';
@@ -22,11 +22,11 @@ function RevealContent({
   const storedId = useId();
   return (
     <>
-      <DialogTitle>Store these now</DialogTitle>
-      <DialogDescription>
+      <SheetTitle>Store these now</SheetTitle>
+      <SheetDescription>
         Pertexo shows them once. Keep them in your secrets manager — you can
         rotate them later, but you can’t see them again.
-      </DialogDescription>
+      </SheetDescription>
       <div className="mt-5 flex flex-col gap-4">
         {credentials.endpointKey === undefined ? null : (
           <>
@@ -81,12 +81,12 @@ export function SecretRevealDialog({
   onDone: () => void;
 }>) {
   return (
-    <Dialog open={credentials !== undefined} disablePointerDismissal>
-      <DialogContent className="max-w-xl">
+    <Sheet open={credentials !== undefined} disablePointerDismissal>
+      <SheetContent variant="form">
         {credentials === undefined ? null : (
           <RevealContent credentials={credentials} onDone={onDone} />
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

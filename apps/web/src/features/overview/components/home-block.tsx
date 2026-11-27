@@ -1,3 +1,4 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ReactNode } from 'react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
@@ -27,9 +28,7 @@ export function HomeBlock({
   return (
     <section aria-labelledby={headingId} className="min-w-0">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 id={headingId} className="font-sans text-sm font-semibold">
-          {title}
-        </h2>
+        <RuleHeading id={headingId}>{title}</RuleHeading>
         {actions}
       </div>
       <HomeBlockBody title={title} state={state}>

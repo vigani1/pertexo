@@ -8,7 +8,6 @@ import {
   formatElapsedTime,
   formatRelativeTime,
 } from '@/lib/format/time';
-import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { cn } from '@/lib/class-names';
 import type { TaskScope } from '../data/tasks.api';
 import {
@@ -39,21 +38,15 @@ export function TaskRow({
   const blocked = waiting ? blockedLabel(task.blockedReason) : undefined;
   const when = waiting ? task.expiresAt : (task.completedAt ?? task.createdAt);
   return (
-    <li className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 rounded-lg px-3 py-4 transition-colors hover:bg-surface-ink/[0.035] motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]">
+    <li className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 rounded-lg px-3 py-4 transition-colors hover:bg-select motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]">
       <span
         aria-hidden="true"
         className={cn(
-          'mt-0.5 grid size-8 place-items-center rounded-full border transition-colors',
-          yours
-            ? 'border-action/60 bg-action/[0.07] shadow-[0_0_0_4px_color-mix(in_srgb,var(--action)_10%,transparent)]'
-            : 'border-border bg-surface-ink/[0.02]',
+          'mt-0.5 grid size-8 place-items-center rounded-sm transition-colors',
+          yours ? 'bg-select-raised' : undefined,
         )}
       >
-        {timedOut ? (
-          <TimedOutGlyph className="text-warning" />
-        ) : (
-          <StatusMark display="mark" tone={tone} />
-        )}
+        <StatusMark display="mark" tone={tone} />
       </span>
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">

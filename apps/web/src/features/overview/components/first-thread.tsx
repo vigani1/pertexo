@@ -1,3 +1,4 @@
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Link } from '@tanstack/react-router';
 import { ArrowRightIcon, PlayIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -121,7 +122,7 @@ export function FirstThread({
     <section
       aria-labelledby="first-thread-title"
       className={cn(
-        'rounded-xl border border-surface-ink/6 bg-linear-to-b from-surface-ink/[0.02] to-transparent',
+        'rounded-xl border border-surface-ink/6 bg-linear-to-b from-select to-transparent',
         compact ? 'p-4 sm:p-5' : 'p-5 sm:p-7',
       )}
     >
@@ -141,7 +142,7 @@ export function FirstThread({
         Read the first-workflow guide
       </GuideLink>
       {firstRun === undefined ? null : (
-        <div className="mt-5 flex flex-col items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col items-start gap-2 rounded-lg bg-select-raised p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
             <span className="font-semibold">See a run in about a minute.</span>{' '}
             <span className="text-muted-foreground">
@@ -151,7 +152,7 @@ export function FirstThread({
           </p>
           <ProgressButton
             type="button"
-            variant="primary"
+            variant="default"
             pending={firstRun.starting}
             pendingLabel="Setting it up…"
             icon={<PlayIcon aria-hidden="true" data-icon="inline-start" />}
@@ -163,40 +164,19 @@ export function FirstThread({
         </div>
       )}
       <ol
-        className={cn(
-          'relative flex flex-col pl-7',
-          compact ? 'mt-4 gap-3' : 'mt-6 gap-5',
-        )}
+        className={cn('flex flex-col', compact ? 'mt-4 gap-3' : 'mt-6 gap-5')}
       >
-        <span
-          aria-hidden="true"
-          className="absolute top-2 bottom-2 left-[0.4rem] w-0.5 rounded-full bg-surface-ink/8"
-        />
         {steps.map((step) => (
-          <li key={step.key} className="relative">
-            <span
-              aria-hidden="true"
-              className={cn(
-                'absolute top-1 -left-7 size-3.5 rounded-full border-2',
-                step.done
-                  ? 'border-success bg-success shadow-[0_0_0_4px_color-mix(in_srgb,var(--success)_15%,transparent)]'
-                  : 'border-surface-ink/20 bg-background',
-              )}
-            />
+          <li key={step.key}>
             <div className="flex flex-wrap items-baseline gap-x-2">
               <StepLink
                 destination={step.destination}
                 workspaceId={workspaceId}
                 label={step.label}
               />
-              <span
-                className={cn(
-                  'text-xs',
-                  step.done ? 'text-success' : 'text-subtle-foreground',
-                )}
-              >
+              <StatusMark tone={step.done ? 'success' : 'off'}>
                 {step.done ? 'Done' : 'To do'}
-              </span>
+              </StatusMark>
             </div>
             <p className="mt-0.5 text-sm text-muted-foreground">{step.hint}</p>
           </li>

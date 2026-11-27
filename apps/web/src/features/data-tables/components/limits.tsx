@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel as Label } from '@/components/ui/field';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useTableCommand } from '../data/tables.mutations';
 import type { TableScope } from '../data/tables.api';
@@ -51,18 +51,18 @@ export function DataTableLimits({
     { key: 'megabytes', label: 'Workspace storage (MB)', max: 1024 },
   ] as const;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>Data table limits</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>Data table limits</SheetTitle>
+        <SheetDescription>
           {sentenceStart(ADMINISTRATORS)} can raise these bounded defaults.
           Limits cannot be below current use.
-        </DialogDescription>
+        </SheetDescription>
         <form
           className="mt-5 grid gap-4"
           onSubmit={(event) => {
@@ -103,7 +103,7 @@ export function DataTableLimits({
           ))}
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="ghost"
@@ -115,9 +115,9 @@ export function DataTableLimits({
             <Button type="submit" variant="primary" disabled={locked}>
               Save limits
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

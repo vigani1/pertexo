@@ -1,11 +1,10 @@
-import type { CSSProperties } from 'react';
+import { NoticeTimer } from '@/components/patterns/notices/notice-timer';
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { Toast } from '@base-ui/react/toast';
 import { Link } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import { formatElapsedTime } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
@@ -21,13 +20,12 @@ import { useArrivalSwipe } from './use-swipe';
 const strokeProps = {
   fill: 'none',
   stroke: 'currentColor',
-  strokeWidth: 1.8,
+  strokeWidth: 1,
   strokeLinecap: 'round',
 } as const;
 
 /**
- * The thread that leaves the Inbox icon and stops at a cross, where the
- * notice unfurls. It is Base UI's arrow, so it stays on the icon even when
+ * The thread that leaves the Inbox icon and reaches the notice as it opens. It is Base UI's arrow, so it stays on the icon even when
  * the notice shifts to fit the screen.
  */
 function Snag({
@@ -51,13 +49,9 @@ function Snag({
           {...strokeProps}
         >
           <path
-            d={`M0 8H${String(gap - 14)}`}
+            d={`M0 8H${String(gap)}`}
             pathLength={1}
-            className="arrival-thread"
-          />
-          <path
-            d={`M${String(gap - 11)} 4l8 8M${String(gap - 3)} 4l-8 8`}
-            className="arrival-cross"
+            className="arrival-thread text-subtle-foreground"
           />
         </svg>
       ) : (
@@ -67,11 +61,10 @@ function Snag({
           {...strokeProps}
         >
           <path
-            d={`M8 ${String(gap)}V14`}
+            d={`M8 ${String(gap)}V0`}
             pathLength={1}
-            className="arrival-thread"
+            className="arrival-thread text-subtle-foreground"
           />
-          <path d="M4 3l8 8M12 3l-8 8" className="arrival-cross" />
         </svg>
       )}
     </Toast.Arrow>
@@ -81,7 +74,7 @@ function Snag({
 /**
  * The arrival notice: what failed, how often and where, with the way to the
  * run, or to the inbox when several workflows failed at once. Its timer is a
- * thread that pauses while the notice is hovered or focused. Swiping it
+ * ring that pauses while the notice is hovered or focused. Swiping it
  * toward the Inbox dismisses it, like the close button; it stays unread.
  */
 export function InboxArrivalCard({
@@ -106,7 +99,7 @@ export function InboxArrivalCard({
   );
   if (data === undefined) return null;
   const view = describeInboxArrival(data.threads);
-  const tone = statusToneText[view.tone];
+
   const timeout = toast.timeout ?? 0;
   return (
     <Toast.Root
@@ -120,7 +113,7 @@ export function InboxArrivalCard({
       )}
     >
       {data.side === undefined ? null : (
-        <Snag side={data.side} className={tone} />
+        <Snag side={data.side} className="text-subtle-foreground" />
       )}
       <div
         data-side={data.side}
@@ -129,12 +122,12 @@ export function InboxArrivalCard({
         <div className="arrival-content">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  'font-mono text-caption tracking-wide uppercase',
-                  tone,
-                )}
-              >
+              <p className="flex items-center gap-2 text-meta text-muted-foreground">
+                <StatusMark
+                  display="mark"
+                  tone={view.tone}
+                  aria-hidden="true"
+                />
                 {view.kicker}
                 {view.thread === undefined ? null : (
                   <>
@@ -156,10 +149,11 @@ export function InboxArrivalCard({
               aria-label="Dismiss notification"
               className={cn(
                 buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-                '-mt-1 -mr-2',
+                'relative -mt-1 -mr-2 rounded-full',
               )}
             >
               <XIcon aria-hidden="true" />
+              <NoticeTimer key={data.sequence} timeout={timeout} />
             </Toast.Close>
           </div>
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -170,11 +164,11 @@ export function InboxArrivalCard({
                   // A fixed row whose order never changes.
                   key={index}
                   tone={mark}
-                  className={cn('size-3.5', statusToneText[mark])}
+                  className="mr-1"
                 />
               ))}
               {view.more === 0 ? null : (
-                <span className={cn('ml-1.5 font-mono text-caption', tone)}>
+                <span className="ml-1.5 font-mono text-caption text-muted-foreground">
                   +{view.more}
                 </span>
               )}
@@ -203,20 +197,6 @@ export function InboxArrivalCard({
             )}
           </div>
         </div>
-        {timeout > 0 ? (
-          <span
-            key={data.sequence}
-            aria-hidden="true"
-            style={
-              { '--toast-timeout': `${String(timeout)}ms` } as CSSProperties
-            }
-            className={cn(
-              'absolute bottom-1.5 left-4 h-0.5 w-[calc(100%-2rem)] rounded-full bg-current opacity-70',
-              'animate-[thread-timer_var(--toast-timeout)_linear_forwards] group-data-expanded/arrival:[animation-play-state:paused] motion-reduce:animate-none',
-              tone,
-            )}
-          />
-        ) : null}
       </div>
     </Toast.Root>
   );

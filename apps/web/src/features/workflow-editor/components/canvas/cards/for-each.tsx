@@ -98,7 +98,7 @@ export function ForEachNodeCard({
         </div>
         <div
           data-for-each-body
-          className="relative rounded-md border border-dashed border-secondary/35 bg-secondary/[0.04]"
+          className="relative rounded-md border border-dashed border-secondary/35 bg-waiting-soft"
           style={{
             marginInline: LOOP_FRAME.inset,
             width: body.width,

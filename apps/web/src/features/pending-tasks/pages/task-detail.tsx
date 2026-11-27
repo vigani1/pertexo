@@ -65,7 +65,7 @@ export function TaskDetailPage({
             {/* The brief: what the workflow asks, then what it knows. */}
             <section
               aria-label="What is being asked"
-              className="flex flex-col gap-6 border-l-2 border-action/40 pl-5"
+              className="flex flex-col gap-6 border-l border-border pl-5"
             >
               {task.instructions === '' ? null : (
                 <p className="text-lg whitespace-pre-wrap break-words">
@@ -80,7 +80,7 @@ export function TaskDetailPage({
               </p>
             </section>
             {task.kind !== 'approval' || task.output === null ? null : (
-              <section className="flex items-start gap-4 rounded-xl border border-border bg-surface-ink/[0.02] p-5">
+              <section className="flex items-start gap-4 rounded-xl border border-border bg-select p-5">
                 <span
                   aria-hidden="true"
                   className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border border-border"
@@ -144,10 +144,7 @@ function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
   if (timedOut !== undefined)
     return (
       <>
-        <span className="inline-flex items-center gap-1.5 text-label leading-none font-semibold text-warning">
-          <TimedOutGlyph />
-          {timedOut}
-        </span>
+        <StatusMark tone="attention">{timedOut}</StatusMark>
         {due}
       </>
     );

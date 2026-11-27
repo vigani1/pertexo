@@ -5,7 +5,7 @@ import type { StepPresentation } from '../model/steps/registry';
 // Family colours: trigger cyan, action ice, logic lavender, transform mint,
 // output neutral. The tile is decorative; the step name carries meaning.
 const tileVariants = cva(
-  'grid shrink-0 place-items-center shadow-[inset_0_0_0_1px_var(--tile-ring)]',
+  'grid shrink-0 place-items-center inset-ring inset-ring-(--tile-ring)',
   {
     variants: {
       family: {

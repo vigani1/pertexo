@@ -5,19 +5,18 @@ import {
   StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 
 export type NoticeTone = 'info' | 'success' | 'warning' | 'destructive';
 
 const noticeVariants = cva(
-  'flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm leading-snug text-foreground',
+  'flex items-start gap-3 rounded-lg px-3.5 py-3 text-label leading-snug text-muted-foreground',
   {
     variants: {
       tone: {
-        info: 'border-border bg-surface-ink/[0.03]',
-        success: 'border-success/25 bg-success/6',
-        warning: 'border-warning/25 bg-warning/6',
-        destructive: 'border-destructive/30 bg-destructive/8',
+        info: 'bg-select-raised',
+        success: 'bg-select-raised',
+        warning: 'bg-warn-soft',
+        destructive: 'bg-fail-soft',
       },
     },
   },
@@ -59,17 +58,17 @@ export function Notice({
       role={role}
       data-slot="notice"
       data-tone={tone}
-      className={cn(noticeVariants({ tone }), className)}
+      className={cn(
+        noticeVariants({ tone }),
+        thread === 'waiting' && 'bg-waiting-soft',
+        className,
+      )}
       {...props}
     >
-      <StatusMark
-        display="mark"
-        tone={thread}
-        className={cn('mt-px', statusToneText[thread])}
-      />
+      <StatusMark display="mark" tone={thread} className="mt-1" />
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
         {title === undefined ? null : (
-          <div className="font-semibold">{title}</div>
+          <div className="font-semibold text-foreground">{title}</div>
         )}
         {children === undefined ? null : (
           <div className={cn(title !== undefined && 'text-muted-foreground')}>

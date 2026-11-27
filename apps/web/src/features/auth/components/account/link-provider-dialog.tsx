@@ -1,4 +1,4 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import {
   authenticationProviderSchema,
   type AccountSecurityLinkStartRequest,
@@ -7,11 +7,11 @@ import {
 import { useState, type SyntheticEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError, isSessionExpired } from '@/lib/api/error';
@@ -176,17 +176,17 @@ export function LinkProviderDialog({
   }
 
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open) close();
       }}
     >
-      <DialogContent aria-busy={pending || undefined}>
-        <DialogTitle>Add a sign-in method</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form" aria-busy={pending || undefined}>
+        <SheetTitle>Add a sign-in method</SheetTitle>
+        <SheetDescription>
           {`Confirm it’s you, then we send you to the provider to connect it. Both steps need to finish within ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`}
-        </DialogDescription>
+        </SheetDescription>
         {target === undefined ? (
           <div className="mt-6">
             <SocialProviderGrid
@@ -228,7 +228,7 @@ export function LinkProviderDialog({
             {failure === undefined ? null : (
               <Notice tone="destructive">{failure}</Notice>
             )}
-            <DialogFooter className="mt-2">
+            <SheetFooter className="mt-2">
               <Button type="button" variant="ghost" onClick={close}>
                 Cancel
               </Button>
@@ -241,11 +241,11 @@ export function LinkProviderDialog({
               >
                 Continue to {providerName(target)}
               </ProgressButton>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

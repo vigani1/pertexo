@@ -8,7 +8,7 @@ import type {
 } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -61,9 +61,8 @@ export function DirectoryPeople({
       <div className="grid gap-4 sm:grid-cols-2">
         <LabelledField id={`${id}-search`} label="Find a directory person">
           {(control) => (
-            <Input
+            <SearchInput
               {...control}
-              type="search"
               maxLength={320}
               value={search}
               onChange={(event) => {

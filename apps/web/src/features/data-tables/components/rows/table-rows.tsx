@@ -80,7 +80,7 @@ export function DataTableRows({
       />
       <TableCommandFeedback command={command} />
       <QueryView query={rows} resource="Rows" loading={null} />
-      <div className="min-w-0 overflow-hidden rounded-xl border border-surface-ink/8 bg-surface-ink/[0.015]">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-surface-ink/8 bg-select">
         {/* Relative keeps hidden labels inside the scroller, not past the page. */}
         <RowsGrid
           table={table}

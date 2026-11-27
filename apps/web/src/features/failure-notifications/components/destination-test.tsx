@@ -1,11 +1,11 @@
 import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
 import {
-  DialogFooter,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  SheetFooter,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useState } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { TestThread } from '@/features/connections/connections-views.public';
@@ -98,14 +98,14 @@ export function DestinationTest({
           />
         )}
       </div>
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogTitle>Send a test alert</DialogTitle>
-          <DialogDescription>
+      <Sheet open={confirming} onOpenChange={setConfirming}>
+        <SheetContent variant="form">
+          <SheetTitle>Send a test alert</SheetTitle>
+          <SheetDescription>
             Send one real test message to {label}? It will say that no workflow
             failed.
-          </DialogDescription>
-          <DialogFooter className="mt-6">
+          </SheetDescription>
+          <SheetFooter className="mt-6">
             <Button
               type="button"
               variant="outline"
@@ -118,9 +118,9 @@ export function DestinationTest({
             <Button type="button" variant="primary" onClick={send}>
               Send test
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

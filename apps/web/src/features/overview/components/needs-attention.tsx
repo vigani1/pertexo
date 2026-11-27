@@ -1,3 +1,10 @@
+import { useId, useState } from 'react';
+import { SearchInput } from '@/components/ui/input';
+import {
+  COLLAPSED_LIST_COUNT,
+  SEARCH_LIST_THRESHOLD,
+  ShowAll,
+} from '@/components/patterns/lists/show-all';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -5,9 +12,6 @@ import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { AttentionAction, AttentionItem } from '../model/needs-attention';
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';
-
-/** How many items Needs attention shows before "… more not shown". */
-export const NEEDS_ATTENTION_LIMIT = 6;
 
 function ActionLink({
   action,
@@ -77,7 +81,17 @@ export function NeedsAttention({
   moreFailedRuns: boolean;
   moreWorkflows?: boolean;
 }>) {
-  const shown = items.slice(0, NEEDS_ATTENTION_LIMIT);
+  const listId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLocaleLowerCase();
+  const filtered =
+    needle === ''
+      ? items
+      : items.filter((item) =>
+          `${item.title} ${item.detail}`.toLocaleLowerCase().includes(needle),
+        );
+  const shown = expanded ? filtered : filtered.slice(0, COLLAPSED_LIST_COUNT);
   const canReadRuns = workspace.capabilities.includes('run:read');
   return (
     <HomeBlock
@@ -97,8 +111,17 @@ export function NeedsAttention({
         ) : undefined
       }
     >
-      {shown.length === 0 ? (
-        <div className="flex items-center gap-3 border-t border-surface-ink/6 py-3.5">
+      {expanded && items.length > SEARCH_LIST_THRESHOLD ? (
+        <SearchInput
+          aria-label="Search items needing attention"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+          }}
+        />
+      ) : null}
+      {items.length === 0 ? (
+        <div className="flex items-center gap-3 row-divider py-3.5">
           <StatusMark
             display="mark"
             tone={moreWorkflows ? 'attention' : 'success'}
@@ -115,11 +138,11 @@ export function NeedsAttention({
           </p>
         </div>
       ) : (
-        <ul aria-label="Needs attention" className="flex flex-col">
+        <ul id={listId} aria-label="Needs attention" className="flex flex-col">
           {shown.map((item) => (
             <li
               key={item.key}
-              className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-surface-ink/6 py-3"
+              className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 row-divider py-3"
             >
               <StatusMark display="mark" tone={item.tone} />
               <div className="min-w-0">
@@ -154,14 +177,23 @@ export function NeedsAttention({
           </Link>
         </p>
       ) : null}
-      {items.length > NEEDS_ATTENTION_LIMIT || moreFailedRuns ? (
-        <p className="border-t border-surface-ink/6 pt-2 text-xs text-subtle-foreground">
-          {items.length > NEEDS_ATTENTION_LIMIT
-            ? `${String(items.length - NEEDS_ATTENTION_LIMIT)} more not shown. `
-            : ''}
-          {moreFailedRuns
-            ? 'Counting the latest 100 problem runs of each kind.'
-            : ''}
+      {items.length > 0 && shown.length === 0 ? (
+        <p className="py-3 text-muted-foreground">
+          No items match your search.
+        </p>
+      ) : null}
+      <ShowAll
+        count={items.length}
+        controls={listId}
+        expanded={expanded}
+        onExpandedChange={(next) => {
+          setExpanded(next);
+          if (!next) setSearch('');
+        }}
+      />
+      {moreFailedRuns ? (
+        <p className="border-t border-border pt-2 text-xs text-subtle-foreground">
+          Counting the latest 100 problem runs of each kind.
         </p>
       ) : null}
     </HomeBlock>

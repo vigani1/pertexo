@@ -53,7 +53,7 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-caption font-bold text-background shadow-[0_0_0_3px_var(--background)]"
+      className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-caption font-bold text-background ring-2 ring-background"
     >
       {count}
     </span>
@@ -214,8 +214,7 @@ export function PortRows({
                 port === 'false' || port === 'default'
                   ? '!border-secondary'
                   : undefined,
-                timedOut &&
-                  '!border-warning !shadow-[0_0_8px_color-mix(in_srgb,var(--warning)_45%,transparent)]',
+                timedOut && '!border-warning !ring-1 !ring-warn-soft',
               )}
             />
           </li>

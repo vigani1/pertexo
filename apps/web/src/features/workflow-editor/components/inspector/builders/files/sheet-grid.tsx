@@ -212,7 +212,7 @@ function SheetRow({
       className={cn(
         'col-span-full grid grid-cols-subgrid',
         header &&
-          'bg-action/[0.07] font-semibold text-accent-foreground shadow-[inset_0_-1.5px_0_color-mix(in_srgb,var(--action)_55%,transparent)]',
+          'bg-action-soft font-semibold text-accent-foreground shadow-selection',
       )}
     >
       <span
@@ -239,7 +239,7 @@ function SheetRow({
                 aria-hidden="true"
                 className={cn(
                   'h-1.5 rounded-full',
-                  header ? 'bg-action/20' : 'bg-surface-ink/[0.07]',
+                  header ? 'bg-action/20' : 'bg-select-raised',
                   index < 3 ? width : 'w-0',
                 )}
               />

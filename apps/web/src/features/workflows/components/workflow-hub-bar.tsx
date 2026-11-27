@@ -205,7 +205,7 @@ export function WorkflowHubBar({
               // Horizontal overflow keeps one fixed-height row, including Comments.
               'shrink-0 rounded-sm px-2 py-2 text-center text-label font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
               link.tab === activeTab &&
-                'bg-action/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]',
+                'bg-action/10 text-accent-foreground inset-ring inset-ring-action-line',
             )}
           >
             {link.label}

@@ -7,7 +7,7 @@ import { cn } from '@/lib/class-names';
 import { PatternGlyph } from '../pattern-glyph';
 
 const CARD =
-  'group/pattern w-full rounded-lg border border-border bg-surface-ink/[0.02] text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-ring disabled:pointer-events-none disabled:opacity-60 motion-reduce:transition-none';
+  'group/pattern w-full rounded-lg border border-border bg-select text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-live-soft focus-ring disabled:pointer-events-none disabled:opacity-60 motion-reduce:transition-none';
 
 // The example with nothing to set up leads: it's the quickest first success.
 const ORDERED = [

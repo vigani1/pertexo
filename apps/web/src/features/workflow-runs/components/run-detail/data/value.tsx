@@ -4,13 +4,13 @@ import {
   type BranchPorts,
 } from '../../../model/step-inspection/branch-output';
 import {
-  DialogFooter,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  SheetFooter,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   InlineFailedRead,
   QueryView,
@@ -81,22 +81,22 @@ function InlineValue({
         </div>
       </div>
       <JsonTree value={value} label={title} className="max-h-72" />
-      <Dialog open={expanded} onOpenChange={setExpanded}>
-        <DialogContent className="max-w-3xl">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{summary}</DialogDescription>
+      <Sheet open={expanded} onOpenChange={setExpanded}>
+        <SheetContent variant="form">
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>{summary}</SheetDescription>
           <JsonTree
             value={value}
             label={title}
             className="mt-4 max-h-[60svh]"
           />
-          <DialogFooter className="mt-4">
-            <DialogClose render={<Button type="button" variant="ghost" />}>
+          <SheetFooter className="mt-4">
+            <SheetClose render={<Button type="button" variant="ghost" />}>
               Close
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

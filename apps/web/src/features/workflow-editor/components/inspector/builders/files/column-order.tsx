@@ -64,7 +64,7 @@ export function ColumnOrder({
         {columns.map((name, index) => (
           <li
             key={name}
-            className="flex min-h-9 min-w-0 items-center gap-2 rounded-md border border-surface-ink/7 bg-surface-ink/[0.025] py-0.5 pr-0.5 pl-2"
+            className="flex min-h-9 min-w-0 items-center gap-2 rounded-md border border-surface-ink/7 bg-select py-0.5 pr-0.5 pl-2"
           >
             <span
               aria-hidden="true"

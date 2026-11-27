@@ -2,11 +2,11 @@ import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { RenameForm } from '@/components/patterns/actions/rename/form';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../model/rename';
@@ -48,7 +48,7 @@ export function WorkflowRenameDialog({
   });
   const locked = command.pending;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (open || locked) return;
@@ -56,12 +56,12 @@ export function WorkflowRenameDialog({
         onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>Rename workflow</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>Rename workflow</SheetTitle>
+        <SheetDescription>
           The new name shows wherever this workflow appears, including its past
           runs. Versions, triggers and runs stay as they are.
-        </DialogDescription>
+        </SheetDescription>
         <RenameForm
           className="mt-5 max-w-none"
           command={command}
@@ -74,7 +74,7 @@ export function WorkflowRenameDialog({
           }}
           value={{ name: current.name, revision: current.nameRevision }}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

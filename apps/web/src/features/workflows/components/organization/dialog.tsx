@@ -1,14 +1,14 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { AudienceMoveReview } from './folders/audience-review';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { WorkflowOrganizationOutcomes } from './outcomes';
@@ -24,25 +24,25 @@ export function WorkflowOrganizationDialog(props: Props) {
     editor;
   const { workspace, onClose } = props;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>
+      <SheetContent variant="form">
+        <SheetTitle>
           Organize{' '}
           {pluralWord(
             selected.length,
             'workflow',
             `${String(selected.length)} workflows`,
           )}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           Only these explicitly selected workflows are changed. Folder and tag
           changes do not publish, run or reorder workflows.
-        </DialogDescription>
+        </SheetDescription>
         <div className="mt-5 flex flex-col gap-5">
           {command.denied ? null : (
             <ul
@@ -91,8 +91,8 @@ export function WorkflowOrganizationDialog(props: Props) {
           </p>
           <OrganizationRecoveryActions editor={editor} onClose={onClose} />
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 function OrganizationEditForm({
@@ -172,7 +172,7 @@ function OrganizationRecoveryActions({
 }>) {
   const { command, tags, preparing, locked, refresh } = editor;
   return (
-    <DialogFooter>
+    <SheetFooter>
       <Button variant="ghost" disabled={locked} onClick={onClose}>
         Close
       </Button>
@@ -203,6 +203,6 @@ function OrganizationRecoveryActions({
           {'Refresh for a new change'}
         </ProgressButton>
       )}
-    </DialogFooter>
+    </SheetFooter>
   );
 }

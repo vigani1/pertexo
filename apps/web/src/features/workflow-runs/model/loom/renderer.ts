@@ -310,6 +310,7 @@ export class LoomRenderer extends CanvasScene {
         context.stroke();
         return;
       }
+      case 'off':
       case 'canceled':
         context.clearRect(x - 5, y - 3, 3, 6);
         return;

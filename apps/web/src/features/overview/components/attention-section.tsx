@@ -11,7 +11,8 @@ import {
   workflowAttentionItems,
 } from '../model/needs-attention';
 import { mergedBlockState, type BlockQuery } from '../model/home-block-state';
-import { NEEDS_ATTENTION_LIMIT, NeedsAttention } from './needs-attention';
+import { NeedsAttention } from './needs-attention';
+import { COLLAPSED_LIST_COUNT } from '@/components/patterns/lists/show-all';
 import { useRunFailures } from '../hooks/use-run-failures';
 import { useSetupReads } from '../hooks/use-setup-reads';
 
@@ -68,7 +69,7 @@ export function AttentionSection({
     userId,
     workspace,
     runIds: items
-      .slice(0, NEEDS_ATTENTION_LIMIT)
+      .slice(0, COLLAPSED_LIST_COUNT)
       .flatMap((item) =>
         item.action?.kind === 'run' ? [item.action.runId] : [],
       ),

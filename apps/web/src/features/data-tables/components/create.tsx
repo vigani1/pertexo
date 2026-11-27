@@ -14,12 +14,12 @@ import { FieldLabel as Label } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useTableCommand } from '../data/tables.mutations';
 import type { TableScope } from '../data/tables.api';
 import { TableChoice } from './choice';
@@ -65,18 +65,18 @@ export function CreateDataTable({
     setError(undefined);
   }
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>New data table</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>New data table</SheetTitle>
+        <SheetDescription>
           Small shared datasets for your workflows. Column types stay fixed
           after creation.
-        </DialogDescription>
+        </SheetDescription>
         <form
           className="mt-5 flex flex-col gap-4"
           onSubmit={(event) => {
@@ -147,7 +147,7 @@ export function CreateDataTable({
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="ghost"
@@ -159,10 +159,10 @@ export function CreateDataTable({
             <Button type="submit" variant="primary" disabled={locked}>
               {command.pending ? 'Creating…' : 'Create table'}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -36,7 +36,7 @@ export function settingsGroups(
 ): readonly SettingsGroup[] {
   const allowed = (destinations: readonly SettingsDestination[]) =>
     destinations.filter((destination) => canOpenPlace(workspace, destination));
-  return [
+  const groups: SettingsGroup[] = [
     {
       label: 'Workspace',
       destinations: allowed([
@@ -62,5 +62,6 @@ export function settingsGroups(
         WORKSPACE_PLACES.sso,
       ]),
     },
-  ].filter((group) => group.destinations.length > 0);
+  ];
+  return groups.filter((group) => group.destinations.length > 0);
 }

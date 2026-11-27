@@ -1,9 +1,9 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import type { WorkspaceVariableUsageResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ function UsageProgress({
         role="progressbar"
         aria-label="Workflows checked"
         aria-valuetext={sentence}
-        className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
+        className="relative h-1 overflow-hidden rounded-full bg-select-raised"
       >
         <span
           className="absolute inset-0 rounded-full bg-action/80 data-checking:animate-pulse motion-reduce:animate-none"
@@ -222,18 +222,18 @@ export function VariableUsageDialog({
   onRemove?: () => void;
 }>) {
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[85dvh] overflow-y-auto">
+      <SheetContent variant="form" className="max-h-[85dvh] overflow-y-auto">
         <div className="mb-4 flex flex-col gap-2">
-          <DialogTitle>References to {name}</DialogTitle>
-          <DialogDescription>
+          <SheetTitle>References to {name}</SheetTitle>
+          <SheetDescription>
             Check current uses before changing this shared name.
-          </DialogDescription>
+          </SheetDescription>
         </div>
         <Button
           type="button"
@@ -249,7 +249,7 @@ export function VariableUsageDialog({
           name={name}
           {...(onRemove === undefined ? {} : { onRemove })}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

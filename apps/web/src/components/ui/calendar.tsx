@@ -47,12 +47,14 @@ export function Calendar({
   min,
   max,
   range,
+  markedDays,
   onSelect,
 }: Readonly<{
   value: LocalDate | undefined;
   min?: LocalDate;
   max?: LocalDate;
   range?: Readonly<{ from?: LocalDate; to?: LocalDate }>;
+  markedDays?: ReadonlySet<LocalDate> | undefined;
   onSelect: (day: LocalDate) => void;
 }>) {
   const headingId = useId();
@@ -154,7 +156,7 @@ export function Calendar({
       <CalendarGrid
         headingId={headingId}
         focused={focused}
-        selection={{ value, min, max, range, today }}
+        selection={{ value, min, max, range, today, markedDays }}
         days={days}
         onKeyDown={onKeyDown}
         onSelect={(day) => {
@@ -172,6 +174,7 @@ type CalendarSelection = Readonly<{
   max: LocalDate | undefined;
   range: Readonly<{ from?: LocalDate; to?: LocalDate }> | undefined;
   today: LocalDate;
+  markedDays: ReadonlySet<LocalDate> | undefined;
 }>;
 
 function outsideBounds(
@@ -196,7 +199,7 @@ function CalendarGrid({
   onKeyDown: (event: KeyboardEvent<HTMLTableElement>) => void;
   onSelect: (day: LocalDate) => void;
 }>) {
-  const { value, range, today } = selection;
+  const { value, range, today, markedDays } = selection;
   const chosen = (day: LocalDate) =>
     day === value || day === range?.from || day === range?.to;
   const between = (day: LocalDate) =>
@@ -246,22 +249,7 @@ function CalendarGrid({
               return (
                 <td
                   key={day}
-                  className={cn(
-                    'relative p-0 text-center',
-                    // The range is one band across the week, rounded where
-                    // it starts, ends or wraps to the next row.
-                    onBand !== undefined &&
-                      "before:absolute before:inset-y-0.5 before:bg-action/14 before:content-['']",
-                    onBand === 'middle' && 'before:inset-x-0',
-                    onBand === 'start' && 'before:right-0 before:left-1/2',
-                    onBand === 'end' && 'before:right-1/2 before:left-0',
-                    onBand === 'middle' &&
-                      column === 0 &&
-                      'before:left-1 before:rounded-l-full',
-                    onBand === 'middle' &&
-                      column === week.length - 1 &&
-                      'before:right-1 before:rounded-r-full',
-                  )}
+                  className={rangeCellClass(onBand, column, week.length)}
                 >
                   <button
                     ref={(element) => {
@@ -271,30 +259,29 @@ function CalendarGrid({
                     type="button"
                     tabIndex={day === focused ? 0 : -1}
                     disabled={outsideBounds(day, selection)}
-                    aria-label={formatCalendarDay(date)}
+                    aria-label={`${formatCalendarDay(date)}${markedDays?.has(day) ? ' (has runs)' : ''}`}
                     aria-pressed={chosen(day)}
                     aria-current={isToday ? 'date' : undefined}
                     className={cn(
-                      'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-label tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
-                      outside && 'text-subtle-foreground',
-                      isToday && !chosen(day) && 'text-accent-foreground',
+                      'relative mx-auto grid h-8 w-full max-w-10 place-items-center rounded-sm border border-transparent font-mono text-caption tabular-nums text-muted-foreground outline-none transition-colors focus-ring disabled:pointer-events-none disabled:opacity-45 pointer-coarse:min-h-10 motion-reduce:transition-none',
+                      outside && 'text-subtle-foreground opacity-50',
+                      isToday &&
+                        !chosen(day) &&
+                        'border-border-strong font-semibold text-foreground',
                       onBand === 'middle' && 'text-foreground',
                       chosen(day)
-                        ? // Opaque under the wash, so the band stops at its
-                          // edge; lit from its centre, like a small orb.
-                          'neon bg-popover [--neon-wash:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_18%,transparent),color-mix(in_oklab,var(--primary)_6%,transparent)_72%)] [--neon-wash-hover:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_26%,transparent),color-mix(in_oklab,var(--primary)_10%,transparent)_72%)] font-semibold'
-                        : 'hover:border-surface-ink/12 hover:bg-surface-ink/[0.06]',
+                        ? 'bg-action font-semibold text-action-foreground'
+                        : 'hover:bg-select-raised',
                     )}
                     onClick={() => {
                       onSelect(day);
                     }}
                   >
                     {date.getDate()}
-                    {isToday ? (
-                      // Today: a bead of light under the number.
+                    {markedDays?.has(day) ? (
                       <span
                         aria-hidden="true"
-                        className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
+                        className="absolute bottom-1 left-1/2 size-0.75 -translate-x-1/2 rounded-full bg-current"
                       />
                     ) : null}
                   </button>
@@ -305,5 +292,24 @@ function CalendarGrid({
         ))}
       </tbody>
     </table>
+  );
+}
+
+function rangeCellClass(
+  band: 'start' | 'middle' | 'end' | undefined,
+  column: number,
+  daysInWeek: number,
+) {
+  return cn(
+    'relative p-0 text-center',
+    band !== undefined &&
+      "before:absolute before:inset-y-0.5 before:bg-action-soft before:content-['']",
+    band === 'start' && 'before:right-0 before:left-1/2',
+    band === 'end' && 'before:right-1/2 before:left-0',
+    band === 'middle' && [
+      'before:inset-x-0',
+      column === 0 && 'before:left-1 before:rounded-l-full',
+      column === daysInWeek - 1 && 'before:right-1 before:rounded-r-full',
+    ],
   );
 }

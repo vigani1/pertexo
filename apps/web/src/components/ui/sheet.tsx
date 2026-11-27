@@ -11,18 +11,22 @@ export const SheetTrigger = SheetPrimitive.Trigger;
 export const SheetClose = SheetPrimitive.Close;
 
 const sheetContentVariants = cva(
-  'lens fixed z-50 flex flex-col text-sm text-popover-foreground outline-none transition-[transform,opacity] duration-300 ease-unspool data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
+  'lens fixed z-50 flex flex-col text-sm text-popover-foreground outline-none transition-[transform,opacity] duration-(--duration-enter) ease-unspool data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
   {
     variants: {
+      variant: {
+        default: '',
+        form: 'overflow-y-auto overscroll-contain p-6 [&_[data-slot=sheet-title]]:pr-9',
+      },
       side: {
         right:
-          'inset-y-3 right-3 w-[min(26rem,calc(100vw-1.5rem))] rounded-xl data-ending-style:translate-x-8 data-starting-style:translate-x-8',
-        left: 'inset-y-3 left-3 w-[min(21rem,calc(100vw-1.5rem))] rounded-xl data-ending-style:-translate-x-8 data-starting-style:-translate-x-8',
+          'inset-y-3 right-3 w-[min(27.5rem,calc(100vw-1.5rem))] rounded-2xl max-[600px]:inset-0 max-[600px]:w-full max-[600px]:rounded-none data-ending-style:translate-x-8 data-starting-style:translate-x-8',
+        left: 'inset-y-3 left-3 w-[min(21rem,calc(100vw-1.5rem))] rounded-2xl max-[600px]:inset-0 max-[600px]:w-full max-[600px]:rounded-none data-ending-style:-translate-x-8 data-starting-style:-translate-x-8',
         bottom:
-          'inset-x-2 bottom-2 max-h-[85svh] rounded-xl data-ending-style:translate-y-8 data-starting-style:translate-y-8',
+          'inset-x-2 bottom-2 max-h-[85svh] rounded-2xl max-[600px]:inset-x-0 max-[600px]:bottom-0 max-[600px]:rounded-b-none data-ending-style:translate-y-8 data-starting-style:translate-y-8',
       },
     },
-    defaultVariants: { side: 'right' },
+    defaultVariants: { side: 'right', variant: 'default' },
   },
 );
 
@@ -31,20 +35,21 @@ export function SheetContent({
   className,
   children,
   side,
+  variant,
   ...props
 }: SheetPrimitive.Popup.Props & VariantProps<typeof sheetContentVariants>) {
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
+      <SheetPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity duration-(--duration-enter) data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side ?? 'right'}
-        className={cn(sheetContentVariants({ side }), className)}
+        className={cn(sheetContentVariants({ side, variant }), className)}
         {...props}
       >
         {children}
         <SheetPrimitive.Close
-          aria-label="Close"
+          aria-label={variant === 'form' ? 'Dismiss drawer' : 'Close'}
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
             'absolute top-4 right-4',

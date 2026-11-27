@@ -8,7 +8,7 @@ import {
 import type { WorkflowFolder, WorkflowTag } from '@pertexo/contracts';
 import { workflowOrganizationNameQuerySchema } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
@@ -45,10 +45,9 @@ export function OrganizationNameFilter({
       error={error}
     >
       {(control) => (
-        <Input
+        <SearchInput
           {...control}
           ref={filterRef}
-          type="search"
           name="query"
           placeholder="Search workflows…"
           autoComplete="off"

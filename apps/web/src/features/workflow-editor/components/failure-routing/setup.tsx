@@ -6,11 +6,11 @@ import type {
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import {
@@ -95,7 +95,7 @@ export function FailureSetup({
           </Button>
         </div>
       )}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={setOpen}>
         {open ? (
           <HandlerChoices
             graph={graph}
@@ -112,7 +112,7 @@ export function FailureSetup({
             }}
           />
         ) : null}
-      </Dialog>
+      </Sheet>
     </Field>
   );
 }
@@ -138,14 +138,14 @@ function HandlerChoices({
     [graph, source.id, definitions],
   );
   return (
-    <DialogContent className="max-h-[85svh] overflow-y-auto">
+    <SheetContent variant="form" className="max-h-[85svh] overflow-y-auto">
       <div className="flex flex-col gap-2">
-        <DialogTitle>Follow a failure link</DialogTitle>
-        <DialogDescription>
+        <SheetTitle>Follow a failure link</SheetTitle>
+        <SheetDescription>
           Choose an available handler for {stepTitle(source)}, or add a step.
           Handlers are separate sequential paths and can end in Stop run. They
           cannot join the normal path.
-        </DialogDescription>
+        </SheetDescription>
       </div>
       <div className="flex flex-col gap-2">
         {targets.map((target) => (
@@ -192,6 +192,6 @@ function HandlerChoices({
       >
         Add handler step…
       </Button>
-    </DialogContent>
+    </SheetContent>
   );
 }

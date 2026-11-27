@@ -99,7 +99,7 @@ export function WorkflowEdge({
           d={path}
           fill="none"
           aria-hidden="true"
-          className="pointer-events-none stroke-accent-foreground [stroke-dasharray:2_14] [stroke-width:2] drop-shadow-[0_0_4px_var(--primary)] motion-safe:animate-[editor-edge-flow_1s_linear_infinite]"
+          className="pointer-events-none stroke-accent-foreground [stroke-dasharray:2_14] [stroke-width:2] drop-shadow-live motion-safe:animate-[editor-edge-flow_1s_linear_infinite]"
         />
       ) : null}
       {weaveOrder === null ? null : (
@@ -113,7 +113,7 @@ export function WorkflowEdge({
               '--weave-delay': `${String(weaveOrder * WEAVE_STEP_MS + 120)}ms`,
             } as CSSProperties
           }
-          className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-[0_0_6px_var(--primary)] motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
+          className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-live motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
         />
       )}
       {failure || timedOut ? (

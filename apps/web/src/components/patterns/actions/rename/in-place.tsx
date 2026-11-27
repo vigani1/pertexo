@@ -7,7 +7,7 @@ import { useRenameDraft } from './use-draft';
 import { RenameOutcome } from './outcome';
 /** A key you could press instead: Enter saves, Escape lets go. */
 const KEYCAP =
-  'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-micro leading-none shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
+  'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-micro leading-none shadow-sunken outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
 /**
  * The name edited where it stands. It lifts onto a glass plate, the same
  * size and face, written on a thread that draws in under it; Save and
@@ -115,7 +115,7 @@ export function RenameInPlace({
               disabled={busy}
               className={cn(
                 KEYCAP,
-                'border-action/40 bg-action/[0.08] text-action hover:border-action/70',
+                'border-action/40 bg-action-soft text-action hover:border-action/70',
               )}
             >
               <RenameSaveIcon pending={busy} accepted={rename.accepted} />
@@ -128,7 +128,7 @@ export function RenameInPlace({
                 disabled={command.pending}
                 className={cn(
                   KEYCAP,
-                  'border-border-strong bg-surface-ink/[0.04] text-muted-foreground hover:text-foreground',
+                  'border-border-strong bg-select text-muted-foreground hover:text-foreground',
                 )}
                 onClick={rename.close}
               >

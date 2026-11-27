@@ -40,7 +40,7 @@ export function GuardrailsModelSetup({
   const connection = connections.find(({ id }) => id === connectionId);
   const modeId = fieldControlId(form.nodeId, 'guardrails-model-mode');
   return (
-    <fieldset className="flex min-w-0 flex-col gap-3 border-l-2 border-border pl-3">
+    <fieldset className="flex min-w-0 flex-col gap-3 border-l border-border pl-3">
       <legend className="mb-2 text-sm font-semibold">Model review</legend>
       <ConnectionSlot
         requirement={MODEL_AUTH_TYPE}

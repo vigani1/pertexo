@@ -8,7 +8,7 @@ export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden border-b border-border',
+        'flex min-w-0 items-center gap-1 overflow-x-auto p-0.5',
         className,
       )}
       {...props}
@@ -16,18 +16,14 @@ export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
   );
 }
 
-// A glowing cyan thread marks the active tab. It sits inside the list: the
-// list scrolls sideways on phones, which clips anything below its border. The
-// focus ring is drawn inside the tab for the same reason.
+export const tabTileClass =
+  "inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-sm px-3 text-label font-medium whitespace-nowrap text-subtle-foreground outline-none -outline-offset-2 transition-colors hover:bg-select hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-active:bg-select-raised data-active:text-foreground data-active:inset-ring data-active:inset-ring-border pointer-coarse:min-h-10 [&_svg:not([class*='size-'])]:size-4 aria-[current=page]:bg-select-raised aria-[current=page]:text-foreground aria-[current=page]:inset-ring aria-[current=page]:inset-ring-border";
+
 export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
-      className={cn(
-        "relative inline-flex max-sm:min-h-[var(--control-min-size,2.75rem)] items-center gap-1.5 rounded-sm px-1.5 py-2.5 text-sm font-medium whitespace-nowrap text-subtle-foreground -outline-offset-2 transition-colors hover:text-foreground focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground [&_svg:not([class*='size-'])]:size-4",
-        'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-action after:opacity-0 after:transition-opacity data-active:after:opacity-100',
-        className,
-      )}
+      className={cn(tabTileClass, className)}
       {...props}
     />
   );

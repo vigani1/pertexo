@@ -62,9 +62,9 @@ export function FileDrop({
         choose(event.dataTransfer.files);
       }}
       className={cn(
-        'relative flex min-h-28 min-w-0 items-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface-ink/[0.015] p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring motion-reduce:transition-none',
-        !disabled && 'hover:border-action/60 hover:bg-action/[0.04]',
-        dragging && 'border-action bg-action/[0.06]',
+        'relative flex min-h-28 min-w-0 items-center gap-3 rounded-xl border border-dashed border-border-strong bg-select p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring motion-reduce:transition-none',
+        !disabled && 'hover:border-action/60 hover:bg-action-soft',
+        dragging && 'border-action bg-action-soft',
         disabled && 'opacity-50',
         className,
       )}

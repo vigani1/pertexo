@@ -7,7 +7,7 @@ import {
 } from '../../model/run-strip';
 
 const TICK_CLASS: Readonly<Record<StatusTone, string>> = {
-  live: 'bg-primary shadow-[0_0_6px_var(--primary)] motion-safe:animate-blink',
+  live: 'bg-primary shadow-live motion-safe:animate-blink',
   queued: 'bg-secondary',
   waiting: 'bg-secondary',
   success: 'bg-success/75',

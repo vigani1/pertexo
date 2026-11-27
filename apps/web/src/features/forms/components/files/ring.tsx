@@ -66,7 +66,7 @@ export function UploadRing({ phase }: Readonly<{ phase: UploadPhase }>) {
                 <path
                   d={strand}
                   pathLength={26}
-                  className="[stroke-dasharray:4_22] drop-shadow-[0_0_3px_currentColor] motion-loop:animate-thread-flow"
+                  className="[stroke-dasharray:4_22] drop-shadow-live motion-loop:animate-thread-flow"
                 />
               ) : null}
             </g>

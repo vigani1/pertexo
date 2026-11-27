@@ -65,7 +65,7 @@ function Tile({
   tone?: 'success' | 'failure' | undefined;
 }>) {
   return (
-    <div className="rounded-md border border-surface-ink/6 bg-surface-ink/[0.02] px-3 py-2">
+    <div className="rounded-md border border-surface-ink/6 bg-select px-3 py-2">
       <p className="text-caption text-subtle-foreground">{label}</p>
       <p
         className={cn(
@@ -131,7 +131,7 @@ function RecentRun({
       <Link
         to="/w/$workspaceId/runs/$runId"
         params={{ workspaceId, runId: run.runId }}
-        className="flex items-start gap-2.5 rounded-md px-2 py-1.5 outline-none transition-colors hover:bg-surface-ink/[0.04] focus-ring motion-reduce:transition-none"
+        className="flex items-start gap-2.5 rounded-md px-2 py-1.5 outline-none transition-colors hover:bg-select focus-ring motion-reduce:transition-none"
       >
         <StatusMark display="mark" tone={look.tone} className="mt-0.5" />
         <span className="min-w-0 flex-1">

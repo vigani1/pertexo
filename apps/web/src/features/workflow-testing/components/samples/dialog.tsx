@@ -1,4 +1,4 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { stepSampleSourceSchema } from '@pertexo/contracts';
@@ -6,11 +6,11 @@ import type { SampleDialogSource } from '../../model/step-samples';
 import { SampleContent } from './content';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { SampleScope } from '../../data/samples/step-samples.api';
@@ -54,21 +54,21 @@ export function PinSampleDialog({
     }
   }
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && (!locked || command.expired)) onClose();
       }}
     >
-      <DialogContent className="flex flex-col gap-4">
+      <SheetContent variant="form" className="flex flex-col gap-4">
         <div>
-          <DialogTitle>
+          <SheetTitle>
             {source === 'view' ? 'Pinned output' : 'Pin sample output'}
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             Shared with people who can see run data. Editor tests use this
             output without calling the step. Published runs always run for real.
-          </DialogDescription>
+          </SheetDescription>
         </div>
         <SampleContent
           query={query}
@@ -80,7 +80,7 @@ export function PinSampleDialog({
         {parseError === undefined && command.error === undefined ? null : (
           <Notice tone="destructive">{parseError ?? command.error}</Notice>
         )}
-        <DialogFooter>
+        <SheetFooter>
           <Button
             variant="outline"
             disabled={locked && !command.expired}
@@ -106,8 +106,8 @@ export function PinSampleDialog({
               Pin output
             </ProgressButton>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

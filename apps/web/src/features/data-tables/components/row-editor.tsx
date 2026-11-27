@@ -15,12 +15,12 @@ import {
   type FieldValidation,
 } from '@/components/ui/use-field-validation';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useTableCommand } from '../data/tables.mutations';
 import type { TableScope, TableCommand } from '../data/tables.api';
 import {
@@ -54,20 +54,20 @@ export function TableRowEditor({
   });
   const locked = command.pending || command.uncertain;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>{row === undefined ? 'Add row' : 'Edit row'}</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>{row === undefined ? 'Add row' : 'Edit row'}</SheetTitle>
+        <SheetDescription>
           {table.name} ·{' '}
           {row === undefined
             ? 'All required fields need a value.'
             : `Editing revision ${String(row.revision)}. Your edits are kept if the row changes.`}
-        </DialogDescription>
+        </SheetDescription>
         {schemaChanged ? (
           <Notice tone="warning">
             Columns changed while this form was open. Your values are kept.
@@ -144,7 +144,7 @@ export function TableRowEditor({
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="ghost"
@@ -160,10 +160,10 @@ export function TableRowEditor({
             >
               {command.pending ? 'Saving…' : 'Save row'}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

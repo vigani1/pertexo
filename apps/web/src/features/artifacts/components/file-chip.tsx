@@ -43,12 +43,12 @@ function FileGlyph({
       >
         <path
           d="M5 .75h11.25L25.25 9.75V27a4.25 4.25 0 0 1-4.25 4.25H5A4.25 4.25 0 0 1 .75 27V5A4.25 4.25 0 0 1 5 .75Z"
-          className="fill-[color-mix(in_srgb,currentColor_9%,transparent)] stroke-[color-mix(in_srgb,currentColor_38%,transparent)]"
+          className="fill-current/9 stroke-current/38"
           strokeWidth="1.5"
         />
         <path
           d="M16.25.75V6a3.75 3.75 0 0 0 3.75 3.75h5.25"
-          className="fill-[color-mix(in_srgb,currentColor_16%,transparent)] stroke-[color-mix(in_srgb,currentColor_38%,transparent)]"
+          className="fill-current/16 stroke-current/38"
           strokeWidth="1.5"
           strokeLinejoin="round"
         />

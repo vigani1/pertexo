@@ -1,11 +1,11 @@
 import { isWorkspaceBrowsable } from '@/features/workspaces/public';
 import {
-  DialogFooter,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  SheetFooter,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import type { ComponentProps } from 'react';
 import type {
   WorkflowExportRequest,
@@ -32,7 +32,7 @@ type WorkflowExportDialogProps = Readonly<{
   source: WorkflowExportRequest['source'];
   allowed?: boolean;
   onClose: () => void;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus?: ComponentProps<typeof SheetContent>['finalFocus'];
 }>;
 
 export function WorkflowExportDialog(props: WorkflowExportDialogProps) {
@@ -80,22 +80,23 @@ function WorkflowExportSession({
     void model.exportReviewed(onClose);
   }
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent
+      <SheetContent
+        variant="form"
         finalFocus={finalFocus}
         className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
       >
-        <DialogTitle>Export workflow</DialogTitle>
-        <DialogDescription>
+        <SheetTitle>Export workflow</SheetTitle>
+        <SheetDescription>
           {denied
             ? 'Access changed. The reviewed source has been cleared.'
             : `Review the exact saved source of “${workflow.name}” before downloading it.`}
-        </DialogDescription>
+        </SheetDescription>
         {denied ? null : (
           <ExportSourceReview
             review={review}
@@ -109,7 +110,7 @@ function WorkflowExportSession({
             {error}
           </Notice>
         )}
-        <DialogFooter className="mt-5">
+        <SheetFooter className="mt-5">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -133,9 +134,9 @@ function WorkflowExportSession({
           >
             Download workflow JSON
           </ProgressButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

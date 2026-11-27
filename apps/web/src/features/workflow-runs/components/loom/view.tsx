@@ -64,7 +64,7 @@ export function RunLoom({
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="@container relative overflow-hidden rounded-xl border border-surface-ink/6 bg-linear-to-b from-surface-ink/[0.018] to-transparent transition-[height] duration-300 ease-out motion-reduce:transition-none"
+        className="@container relative overflow-hidden rounded-xl border border-surface-ink/6 bg-linear-to-b from-select to-transparent transition-[height] duration-300 ease-out motion-reduce:transition-none"
         style={{ height }}
       >
         <LoomCanvas model={model} label={summary} />

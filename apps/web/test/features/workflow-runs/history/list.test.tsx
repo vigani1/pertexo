@@ -86,11 +86,10 @@ describe('workspace runs', () => {
     });
 
     await event.click(screen.getByRole('button', { name: 'When: Any time' }));
-    // Today, twice: a range of just that day.
+    // One click selects a range of just that day.
     const today = await screen.findByRole('button', { current: 'date' });
     await event.click(today);
-    expect(screen.getByText(/Now pick the last day/u)).toBeVisible();
-    await event.click(today);
+    expect(today).toHaveAttribute('aria-pressed', 'true');
     await event.click(screen.getByRole('button', { name: 'Apply range' }));
     const now = new Date();
     const localFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate())

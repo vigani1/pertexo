@@ -7,12 +7,12 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from '@/components/ui/sheet';
 import {
   useEditorStore,
   useEditorStoreApi,
@@ -112,7 +112,7 @@ export function TableColumnNames({
           removed.
         </p>
       ) : null}
-      <Dialog
+      <Sheet
         open={open}
         onOpenChange={setOpen}
         onOpenChangeComplete={(next) => {
@@ -120,13 +120,13 @@ export function TableColumnNames({
         }}
       >
         {review === undefined ? null : (
-          <DialogContent finalFocus={returnFocus}>
-            <DialogTitle>Review column names</DialogTitle>
-            <DialogDescription>
+          <SheetContent variant="form" finalFocus={returnFocus}>
+            <SheetTitle>Review column names</SheetTitle>
+            <SheetDescription>
               Change this draft’s input and output field names to the current
               table names. Each field stays linked to the same column. Published
               versions keep their names.
-            </DialogDescription>
+            </SheetDescription>
             <ul
               className="my-4 grid gap-1 text-sm"
               aria-label="Field name changes"
@@ -154,9 +154,9 @@ export function TableColumnNames({
               </Notice>
             ) : null}
             <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <DialogClose render={<Button variant="outline" />}>
+              <SheetClose render={<Button variant="outline" />}>
                 Cancel
-              </DialogClose>
+              </SheetClose>
               <Button
                 type="button"
                 disabled={!form.editable || stale}
@@ -167,9 +167,9 @@ export function TableColumnNames({
                   : 'Use the new name'}
               </Button>
             </div>
-          </DialogContent>
+          </SheetContent>
         )}
-      </Dialog>
+      </Sheet>
     </>
   );
 }

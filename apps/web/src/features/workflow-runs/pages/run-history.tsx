@@ -140,6 +140,7 @@ export function RunHistoryPage({
       {canRead ? (
         <>
           <RunFilters
+            runs={runs}
             search={search}
             onSearchChange={onSearchChange}
             {...(workflowName === undefined ? {} : { workflowName })}
