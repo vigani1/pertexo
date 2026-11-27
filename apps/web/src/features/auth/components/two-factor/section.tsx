@@ -3,7 +3,7 @@ import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { AccountSection } from '../account/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { useAccountSecurityRefresh } from '../../data/account-security/account-security.mutations';
 import { TwoFactorSetupDialog } from './setup-dialog';
 import type { TwoFactorAction } from '../../data/two-factor/two-factor.mutations';
@@ -40,7 +40,8 @@ export function AccountTwoFactorSection({
     (method) => method.kind === 'password',
   );
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="Two-factor sign-in"
       description="An authenticator code after your password. Your SSO or social provider manages its own verification."
     >
@@ -109,7 +110,7 @@ export function AccountTwoFactorSection({
           onComplete={() => void refreshAndClose()}
         />
       )}
-    </AccountSection>
+    </SettingRow>
   );
 }
 

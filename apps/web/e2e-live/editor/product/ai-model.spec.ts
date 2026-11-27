@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../../../e2e/workflow-editor/actions';
 import {
   nodeTestExecuteAcceptedResponseSchema,
   workflowRunStartResponseSchema,
@@ -190,7 +191,8 @@ async function expectInvalidOutputSchemaBlocksPublish(
   await schema.blur();
   await expect(schema).toHaveAttribute('aria-invalid', 'false');
   await validation;
-  await page.locator('#editor-issues-chip').click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: /issue/iu }).click();
   await expect(page.locator('#editor-issues-lens')).toContainText(issueCopy);
   await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Publish v1', exact: true });

@@ -59,7 +59,7 @@ export function AuditPage({
         <div>
           <PageHeaderTitle>Audit log</PageHeaderTitle>
           <PageHeaderMeta>
-            <span>Who changed what in this workspace</span>
+            <span>Who changed what in {workspace.name}</span>
           </PageHeaderMeta>
         </div>
         <PageHeaderActions>

@@ -7,7 +7,7 @@ import {
   type FederationSettings,
 } from '@pertexo/contracts';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import {
   Select,
@@ -31,7 +31,8 @@ type OrganizationWorkspacesProps = Readonly<{
 export function OrganizationWorkspaces(props: OrganizationWorkspacesProps) {
   const model = useOrganizationWorkspaces(props);
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Linked workspaces"
       description="The control workspace owner manages organization sign-in. Linking another workspace delegates its directory membership policy here; you must currently own both workspaces."
     >
@@ -165,7 +166,7 @@ export function OrganizationWorkspaces(props: OrganizationWorkspacesProps) {
           <CommandFeedback command={model.command} />
         </form>
       ) : null}
-    </SettingsSection>
+    </SettingRow>
   );
 }
 

@@ -1,7 +1,7 @@
-import { tabTileClass } from '@/components/ui/tabs';
+import { WorkflowHubTabs, type WorkflowHubTab } from './workflow-hub-tabs';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { Link, useNavigate, type LinkProps } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeftIcon, EllipsisIcon, MessageSquareIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
@@ -23,57 +23,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
-
-export type WorkflowHubTab =
-  'build' | 'runs' | 'triggers' | 'versions' | 'comments' | 'settings';
-
-type TabLink = Readonly<{
-  tab: WorkflowHubTab;
-  label: string;
-  to: Extract<
-    LinkProps['to'],
-    | '/w/$workspaceId/workflows/$workflowId'
-    | '/w/$workspaceId/workflows/$workflowId/runs'
-    | '/w/$workspaceId/workflows/$workflowId/triggers'
-    | '/w/$workspaceId/workflows/$workflowId/versions'
-    | '/w/$workspaceId/workflows/$workflowId/settings'
-    | '/w/$workspaceId/workflows/$workflowId/comments'
-  >;
-}>;
-
-function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
-  const tabs: TabLink[] = [
-    {
-      tab: 'build',
-      label: 'Build',
-      to: '/w/$workspaceId/workflows/$workflowId',
-    },
-  ];
-  if (workspace.capabilities.includes('run:read'))
-    tabs.push({
-      tab: 'runs',
-      label: 'Runs',
-      to: '/w/$workspaceId/workflows/$workflowId/runs',
-    });
-  tabs.push(
-    {
-      tab: 'triggers',
-      label: 'Triggers',
-      to: '/w/$workspaceId/workflows/$workflowId/triggers',
-    },
-    {
-      tab: 'versions',
-      label: 'Versions',
-      to: '/w/$workspaceId/workflows/$workflowId/versions',
-    },
-    {
-      tab: 'settings',
-      label: 'Settings',
-      to: '/w/$workspaceId/workflows/$workflowId/settings',
-    },
-  );
-  return tabs;
-}
 
 /** Below Tailwind's sm breakpoint, where the page's own controls fold away. */
 const PHONE_MEDIA_QUERY = '(max-width: 39.999rem)';
@@ -111,12 +60,12 @@ export function WorkflowHubBar({
     presence?: ReactNode;
     detail?: ReactNode;
     actions?: ReactNode;
-    mobileActions?: ReactNode;
+    overflowActions?: ReactNode;
   }>;
 }>) {
   const { apiClient, userId, workspace, workflowId } = scope;
 
-  const { glyph, presence, detail, actions, mobileActions } = slots;
+  const { glyph, presence, detail, actions, overflowActions } = slots;
 
   const secondaryActions =
     workflow === undefined ? null : (
@@ -127,15 +76,28 @@ export function WorkflowHubBar({
         workspace={workspace}
         workflow={workflow}
         blocked={duplicateBlocked}
-        mobileActions={mobileActions}
+        compact={activeTab === 'build'}
+        overflowActions={overflowActions}
         overflowRef={overflowRef}
       />
     );
   return (
     // Keep room for the identity before fitting tabs and actions beside it.
     // Intermediate widths put the tabs on their own row instead of squeezing saves.
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-0 rounded-xl px-2 py-1 sm:gap-y-1 sm:py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
-      <div className="flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0">
+    <header
+      className={cn(
+        'lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-0 rounded-xl px-2 py-1 sm:gap-y-1 sm:py-2',
+        activeTab === 'build'
+          ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]'
+          : 'min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]',
+      )}
+    >
+      <div
+        className={cn(
+          'flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0',
+          activeTab === 'build' && 'xl:min-w-0',
+        )}
+      >
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId: workspace.id }}
@@ -195,7 +157,7 @@ export function WorkflowHubBar({
               buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
               // A phone keeps its row for the name and save state; Comments
               // waits in ⋯ there.
-              'max-sm:hidden',
+              activeTab === 'build' ? 'hidden' : 'max-sm:hidden',
             )}
           >
             <MessageSquareIcon aria-hidden="true" />
@@ -203,23 +165,11 @@ export function WorkflowHubBar({
           {actions === undefined ? secondaryActions : null}
         </div>
       </div>
-      <nav
-        aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto p-0.5 min-[1728px]:order-none min-[1728px]:w-auto"
-      >
-        {hubTabs(workspace).map((link) => (
-          <Link
-            key={link.tab}
-            to={link.to}
-            params={{ workspaceId: workspace.id, workflowId }}
-            activeOptions={{ exact: true }}
-            aria-current={link.tab === activeTab ? 'page' : undefined}
-            className={cn(tabTileClass, 'px-2 sm:px-3')}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+      <WorkflowHubTabs
+        activeTab={activeTab}
+        workspace={workspace}
+        workflowId={workflowId}
+      />
       <div
         className={cn(
           'flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end',
@@ -240,7 +190,8 @@ function HubSecondaryActions({
   workspace,
   workflow,
   blocked,
-  mobileActions,
+  compact,
+  overflowActions,
   overflowRef,
 }: Readonly<{
   apiClient: ApiClient;
@@ -248,7 +199,8 @@ function HubSecondaryActions({
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   blocked: boolean;
-  mobileActions: ReactNode;
+  compact: boolean;
+  overflowActions: ReactNode;
   overflowRef: RefObject<HTMLButtonElement | null> | undefined;
 }>) {
   const [dialog, setDialog] = useState<'export' | 'cases' | 'duplicate'>();
@@ -269,7 +221,7 @@ function HubSecondaryActions({
     finalFocus,
     // Below 2xl these three fold into the ⋯ menu, so a laptop-width header
     // keeps its actions on the name's row instead of a row of their own.
-    triggerClassName: 'hidden 2xl:inline-flex',
+    triggerClassName: compact ? 'hidden' : 'hidden 2xl:inline-flex',
   };
   return (
     <>
@@ -279,7 +231,8 @@ function HubSecondaryActions({
           aria-label="More workflow actions"
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-            'shrink-0 2xl:hidden',
+            'shrink-0',
+            !compact && '2xl:hidden',
           )}
         >
           <EllipsisIcon />
@@ -305,7 +258,7 @@ function HubSecondaryActions({
                 </DropdownMenuItem>
               </>
             ) : null}
-            {phone ? (
+            {phone || compact ? (
               <DropdownMenuItem
                 onClick={() =>
                   void navigate({
@@ -333,10 +286,10 @@ function HubSecondaryActions({
           </DropdownMenuGroup>
           {/* The page's own controls join the menu only on phones; hidden
               items would still take arrow-key turns, so they aren't rendered. */}
-          {mobileActions === undefined || !phone ? null : (
+          {overflowActions === undefined ? null : (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuGroup>{mobileActions}</DropdownMenuGroup>
+              <DropdownMenuGroup>{overflowActions}</DropdownMenuGroup>
             </>
           )}
         </DropdownMenuContent>

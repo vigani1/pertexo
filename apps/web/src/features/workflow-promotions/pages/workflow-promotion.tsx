@@ -21,7 +21,7 @@ import type {
   WorkflowPromotionPreviewRequest,
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 
@@ -103,7 +103,8 @@ export function WorkflowPromotionPage({
             onChange={clearReview}
           />
           {snapshot.target?.status === 'available' && !paused ? (
-            <SettingsSection
+            <SettingRow
+              layout="section"
               title={`Promote to ${snapshot.target.name}`}
               description="Select exact published versions, check target setup and review the differences before applying."
             >
@@ -182,7 +183,7 @@ export function WorkflowPromotionPage({
               {command.data === undefined ? null : (
                 <PromotionResult result={command.data} />
               )}
-            </SettingsSection>
+            </SettingRow>
           ) : null}
           <PromotionHistory scope={scope} />
         </div>
@@ -255,7 +256,8 @@ function LinkedPromotionTarget({
     <>
       {' '}
       <PromotionLink workspaceName={workspaceName} target={snapshot.target} />
-      <SettingsSection
+      <SettingRow
+        layout="section"
         title="Linked workspaces"
         description="Send reviewed workflows from here to another workspace, such as production. Values and secrets stay where they are."
       >
@@ -265,7 +267,7 @@ function LinkedPromotionTarget({
           disabled={disabled}
           onChange={onChange}
         />
-      </SettingsSection>
+      </SettingRow>
     </>
   );
 }

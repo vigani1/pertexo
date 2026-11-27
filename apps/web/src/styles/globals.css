@@ -102,6 +102,7 @@
   --color-ring: var(--ring);
 
   --shadow-node: var(--node-shadow);
+  --shadow-node-issue: var(--node-issue-shadow);
   --shadow-lens: var(--lens-shadow);
 
   --radius-xs: 0.375rem;
@@ -195,6 +196,7 @@
   --core-waiting: var(--waiting);
   --core-succeeded: var(--muted-foreground);
   --node-shadow: var(--raised-shadow);
+  --node-issue-shadow: 0 0 0 1px var(--fail-soft);
   --glass-fallback: var(--card);
   --glass-popup-fallback: var(--card);
   --tooltip-background: var(--card);
@@ -1075,12 +1077,6 @@
   }
 }
 
-@keyframes workflow-node-scan {
-  to {
-    background-position: 240% 0;
-  }
-}
-
 /* entry slice */
 @keyframes entry-core-fade {
   to {
@@ -1368,7 +1364,8 @@
 }
 
 @utility canvas-note-paint {
-  background-color: color-mix(in srgb, var(--note-accent) 5%, var(--card));
+  background-color: var(--card);
+  background-image: linear-gradient(var(--note-tint), var(--note-tint));
 }
 
 @utility canvas-note-ink {

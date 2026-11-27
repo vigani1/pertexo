@@ -2,7 +2,11 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { findCanvas, pressSave } from '../../support/fixtures/editor-actions';
+import {
+  findCanvas,
+  pressSave,
+  openWorkflowMenu,
+} from '../../support/fixtures/editor-actions';
 import { graphWithMappingNodes } from '../../support/fixtures/editor-graph';
 import {
   editorHandlers,
@@ -38,7 +42,12 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const user = userEvent.setup();
     await findCanvas();
-    await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
+    await user.click(
+      screen.getByRole('button', { name: 'More workflow actions' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'Workflow contract' }),
+    );
     const dialog = within(
       screen.getByRole('dialog', { name: 'Workflow contract' }),
     );
@@ -62,7 +71,12 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath, { strict: true });
     const user = userEvent.setup();
     await findCanvas();
-    await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
+    await user.click(
+      screen.getByRole('button', { name: 'More workflow actions' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'Workflow contract' }),
+    );
     const dialog = within(
       screen.getByRole('dialog', { name: 'Workflow contract' }),
     );
@@ -111,7 +125,9 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
         result: { kind: 'run_input', path: '$.customer' },
       });
     });
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(
+      (await openWorkflowMenu(user)).getByRole('menuitem', { name: /^Undo/u }),
+    );
     pressSave();
     await waitFor(() => {
       expect(saved?.callable).toBeUndefined();
@@ -128,7 +144,12 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const user = userEvent.setup();
     await findCanvas();
-    await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
+    await user.click(
+      screen.getByRole('button', { name: 'More workflow actions' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'Workflow contract' }),
+    );
     const dialog = within(
       screen.getByRole('dialog', { name: 'Workflow contract' }),
     );
@@ -150,7 +171,12 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
         screen.queryByRole('dialog', { name: 'Workflow contract' }),
       ).toBeNull();
     });
-    await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
+    await user.click(
+      screen.getByRole('button', { name: 'More workflow actions' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'Workflow contract' }),
+    );
     expect(
       screen.getByRole('checkbox', { name: 'Declare a callable contract' }),
     ).not.toBeChecked();

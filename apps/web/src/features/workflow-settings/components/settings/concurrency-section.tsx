@@ -7,7 +7,7 @@ import type {
   AccessibleWorkspace,
   WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
-import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingDetails } from '@/components/patterns/settings/details';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -55,11 +55,9 @@ function ConcurrencyProblem({
 function ConcurrencyEditor({
   settings,
   scope,
-  onSaved,
 }: Readonly<{
   settings: WorkflowConcurrencySettings;
   scope: Scope;
-  onSaved: () => void;
 }>) {
   const [draft, setDraft] = useState<
     Readonly<{
@@ -87,7 +85,6 @@ function ConcurrencyEditor({
   const saved = () => {
     setDraft(undefined);
     notifications.success({ title: 'Concurrency settings saved' });
-    onSaved();
   };
   async function submit() {
     if (
@@ -200,13 +197,12 @@ function ConcurrencyPolicy({
   settings: WorkflowConcurrencySettings;
   scope: Scope;
 }>) {
-  const [editing, setEditing] = useState(false);
   const canUpdate =
     scope.workspace.status === 'active' &&
     scope.workspace.capabilities.includes('workflow:update');
   return (
     <div className="flex flex-col gap-5">
-      <SettingSentence
+      <SettingDetails
         summary={
           <>
             {limitSummary(settings)}
@@ -215,19 +211,9 @@ function ConcurrencyPolicy({
               : ' Your role or the workspace’s state doesn’t allow changing it.'}
           </>
         }
-        editing={editing}
-        onEditingChange={setEditing}
         {...(canUpdate
           ? {
-              editor: (
-                <ConcurrencyEditor
-                  settings={settings}
-                  scope={scope}
-                  onSaved={() => {
-                    setEditing(false);
-                  }}
-                />
-              ),
+              editor: <ConcurrencyEditor settings={settings} scope={scope} />,
             }
           : {})}
         rules={

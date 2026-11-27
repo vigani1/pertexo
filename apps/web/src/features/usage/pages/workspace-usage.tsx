@@ -7,7 +7,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { USAGE_TREND_PERIOD_DAYS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
@@ -98,13 +98,13 @@ export function UsagePage({
             {(snapshot) => <CurrentCapacity snapshot={snapshot} />}
           </UsageSnapshot>
         ) : (
-          <SettingsSection title="Room left">
+          <SettingRow layout="section" title="Room left">
             <Notice>
               {!isWorkspaceBrowsable(workspace)
                 ? 'Current capacity isn’t available for a workspace being deleted.'
                 : 'You need access to runs and files to see capacity.'}
             </Notice>
-          </SettingsSection>
+          </SettingRow>
         )}
         {canReadRuns ? (
           <UsageSnapshot
@@ -153,19 +153,19 @@ export function UsagePage({
             )}
           </UsageSnapshot>
         ) : (
-          <SettingsSection title="Runs per day">
+          <SettingRow layout="section" title="Runs per day">
             <Notice>You need access to runs to see how many ran.</Notice>
-          </SettingsSection>
+          </SettingRow>
         )}
         {trendData === undefined ? null : (
-          <SettingsSection title="By workflow">
+          <SettingRow layout="section" title="By workflow">
             <WorkflowRankings
               items={trendData.busiest}
               metric="runs"
               workspaceId={workspace.id}
               canOpen={workspace.capabilities.includes('workflow:read')}
             />
-          </SettingsSection>
+          </SettingRow>
         )}
       </div>
     </div>

@@ -34,11 +34,16 @@ function PageNotFound() {
   const { workspace } = useWorkspaceScope();
   const openSearch = useOpenCommandPalette();
   return (
-    <SystemState>
+    <SystemState className="max-w-2xl">
       <SystemStateArt>
         <LooseThread />
       </SystemStateArt>
-      <SystemStateTitle>This page doesn’t exist</SystemStateTitle>
+      <p className="font-mono text-meta text-muted-foreground">
+        404 · The thread ends here
+      </p>
+      <SystemStateTitle className="sm:text-hero">
+        This page doesn’t exist
+      </SystemStateTitle>
       <SystemStateDescription>
         This address doesn’t lead anywhere in {workspace.name}. Go home, or
         search for what you were looking for.

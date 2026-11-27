@@ -49,8 +49,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     useRef<Readonly<{ id: string; x: number; y: number }>>(undefined);
 
   const visibleArea = useCallback(
-    (reserveInspector = false) =>
-      readCanvasArea(containerRef.current, reserveInspector),
+    () => readCanvasArea(containerRef.current),
     [containerRef],
   );
 
@@ -61,9 +60,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       animate,
       readable = false,
     }: Readonly<{ animate: boolean; readable?: boolean | undefined }>) => {
-      // Selecting the first step opens the inspector. Keep nearby steps
-      // clear of its footprint in the initial frame.
-      const area = visibleArea(readable);
+      const area = visibleArea();
       const nodes = flow
         .getNodes()
         .filter((node) => node.parentId === undefined);
@@ -180,18 +177,12 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   return fit;
 }
 
-function readCanvasArea(
-  container: HTMLElement | null,
-  reserveInspector: boolean,
-): Box | undefined {
+function readCanvasArea(container: HTMLElement | null): Box | undefined {
   if (container === null) return undefined;
   const canvas = container.getBoundingClientRect();
   if (canvas.width === 0 || canvas.height === 0) return undefined;
   const covers = [...document.querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`)]
-    .filter(
-      (element) =>
-        reserveInspector || getComputedStyle(element).visibility === 'visible',
-    )
+    .filter((element) => getComputedStyle(element).visibility === 'visible')
     .map((element) => element.getBoundingClientRect());
   return uncoveredArea(canvas, covers);
 }

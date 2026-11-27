@@ -15,7 +15,7 @@ const disclosureVariants = cva('', {
 });
 
 const summaryVariants = cva(
-  'flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-sm outline-none select-none focus-ring [&::-webkit-details-marker]:hidden',
+  'flex w-fit pointer-coarse:min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-sm outline-none select-none focus-ring [&::-webkit-details-marker]:hidden',
   {
     variants: {
       size: { xs: 'text-xs', sm: 'text-sm' },

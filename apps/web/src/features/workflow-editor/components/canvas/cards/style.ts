@@ -10,7 +10,7 @@ import { formatCount } from '@/lib/format/count';
 // Looks and words every step card shares, whatever its shape.
 
 export const handleClass =
-  '!size-2.5 !border-[1.5px] !border-primary !bg-background !shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_50%,transparent)]';
+  '!size-2.5 !border-[1.5px] !border-primary !bg-background !shadow-selection';
 
 /**
  * A step's presentation, the title on its card and the type under it, with
@@ -70,14 +70,10 @@ export function cardClassName(
   className?: string,
 ): string {
   return cn(
-    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card bg-[linear-gradient(160deg,color-mix(in_srgb,var(--surface-ink)_5.5%,transparent),color-mix(in_srgb,var(--surface-ink)_1.5%,transparent))] px-3 py-2.5 text-card-foreground shadow-node transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
+    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card px-3 py-2.5 text-card-foreground shadow-node transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
     NODE_FOCUS_RING,
-    state.hasIssues &&
-      'border-destructive/50 shadow-[0_0_0_1px_color-mix(in_srgb,var(--destructive)_20%,transparent),0_0_26px_-6px_color-mix(in_srgb,var(--destructive)_45%,transparent)]',
-    state.selected &&
-      'border-primary/55 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_25%,transparent),0_0_30px_-4px_color-mix(in_srgb,var(--primary)_35%,transparent)]',
-    state.selected &&
-      'after:pointer-events-none after:absolute after:inset-[-1px] after:rounded-[inherit] after:border after:border-transparent after:bg-[linear-gradient(90deg,transparent,var(--primary),transparent)_border-box] after:bg-[length:240%_100%] after:[mask-composite:exclude] after:[mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] motion-safe:after:animate-[workflow-node-scan_3s_linear_infinite]',
+    state.hasIssues && 'border-destructive/50 shadow-node-issue',
+    state.selected && 'border-action-line shadow-selection',
     (state.running ?? false) &&
       'border-live-line node-live motion-loop:animate-node-live',
     (state.disabled || (state.passedBy ?? false)) && 'opacity-55',

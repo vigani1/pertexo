@@ -11,6 +11,7 @@ import {
 } from '@pertexo/workflow-model';
 import { formatByteSize } from '@pertexo/node-sdk';
 import { useState } from 'react';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { Button } from '@/components/ui/button';
 import { Disclosure } from '@/components/ui/disclosure';
 import { formatCount } from '@/lib/format/count';
@@ -133,7 +134,12 @@ function AgentToolList({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold">Agent tools</h3>
+        <RuleHeading
+          appearance="compact"
+          count={`${String(tools.length)} of ${String(AGENT_TOOL_LIMITS.tools)}`}
+        >
+          Agent tools
+        </RuleHeading>
         <ul className="flex flex-wrap gap-2" aria-label="Agent tools">
           {listed.map((tool, indexInList) => {
             const choice = configuredAgentTool(
@@ -227,7 +233,7 @@ function AgentToolSetup({
   const toolId = fieldControlId(form.nodeId, 'agent-tool');
   const toolSchemas = agentToolSchemas(schema);
   return (
-    <fieldset className="flex min-w-0 flex-col gap-4 border-l border-border pl-3">
+    <fieldset className="flex min-w-0 flex-col gap-4">
       <legend className="mb-3 text-sm font-semibold">Tool setup</legend>
       <Field>
         <FieldLabel htmlFor={toolId}>Agent tool</FieldLabel>

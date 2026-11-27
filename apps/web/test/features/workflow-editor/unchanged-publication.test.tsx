@@ -2,7 +2,10 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { findCanvas } from '../../support/fixtures/editor-actions';
+import {
+  findCanvas,
+  openWorkflowMenu,
+} from '../../support/fixtures/editor-actions';
 import { graphWithNumericConfig } from '../../support/fixtures/editor-graph';
 import {
   compatibility,
@@ -111,7 +114,10 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
     setup(versionId, true, etagB);
     await renderLoadedApp(editorPath, { strict: true });
     await findCanvas();
-    await screen.findByRole('button', { name: '1 issue' });
+    const event = userEvent.setup();
+    const menu = await openWorkflowMenu(event);
+    await menu.findByRole('menuitem', { name: '1 issue' });
+    await event.keyboard('{Escape}');
     expect(
       screen.getByRole('button', { name: 'Publish v3' }),
     ).not.toHaveAttribute('aria-disabled', 'true');

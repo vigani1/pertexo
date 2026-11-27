@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WorkspaceAutoPauseSettings } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingDetails } from '@/components/patterns/settings/details';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -17,11 +17,9 @@ import { CommandProblem } from './auto-pause-fields';
 function WorkspaceDefaultForm({
   settings,
   scope,
-  onSaved,
 }: Readonly<{
   settings: WorkspaceAutoPauseSettings;
   scope: Scope;
-  onSaved: () => void;
 }>) {
   const [draft, setDraft] = useState<
     Readonly<{
@@ -62,7 +60,6 @@ function WorkspaceDefaultForm({
     ) {
       setDraft(undefined);
       notifications.success({ title: 'Workspace auto-pause default saved' });
-      onSaved();
     }
   }
   return (
@@ -117,7 +114,6 @@ export function WorkspaceDefault({
 }: Readonly<{
   scope: Scope;
 }>) {
-  const [editing, setEditing] = useState(false);
   const query = useQuery(
     workspaceAutoPauseQueryOptions(
       scope.apiClient,
@@ -132,24 +128,14 @@ export function WorkspaceDefault({
       failure={settingsReadFailure}
     >
       {(settings) => (
-        <SettingSentence
+        <SettingDetails
           summary={
             <>
               Across the workspace, a workflow without its own number pauses
               after <b>{settings.threshold} failures in a row</b>.
             </>
           }
-          editing={editing}
-          onEditingChange={setEditing}
-          editor={
-            <WorkspaceDefaultForm
-              settings={settings}
-              scope={scope}
-              onSaved={() => {
-                setEditing(false);
-              }}
-            />
-          }
+          editor={<WorkspaceDefaultForm settings={settings} scope={scope} />}
         />
       )}
     </QueryView>

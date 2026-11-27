@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   addStepButton,
+  openStepList,
+  openWorkflowMenu,
   findCanvas,
 } from '../../support/fixtures/editor-actions';
 import {
@@ -68,7 +70,8 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     ).toBeVisible();
     expect(publishes).toBe(0);
     await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
-    await event.click(screen.getByRole('button', { name: /1 issue/u }));
+    const menu = await openWorkflowMenu(event);
+    await event.click(menu.getByRole('menuitem', { name: /1 issue/u }));
     expect(
       await screen.findByText(
         /This check describes a different draft; check again/u,
@@ -119,6 +122,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     const app = await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });
@@ -132,9 +136,12 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(validations).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/Edited since/u)).toBeNull();
 
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     expect(screen.getByText('Edited since v1')).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Run' }));
+    await event.click(
+      screen.getByRole('button', { name: 'Test and run actions' }),
+    );
     // Starts at once: no input to confirm for a run with nothing to fill in.
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),
@@ -182,6 +189,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     });
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });
@@ -231,6 +239,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });
@@ -244,8 +253,9 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     ).toBeDisabled();
     expect(publishes).toBe(0);
     await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
+    const menu = await openWorkflowMenu(event);
     expect(
-      await screen.findByRole('button', { name: '2 issues' }),
+      await menu.findByRole('menuitem', { name: '2 issues' }),
     ).toBeVisible();
   });
   it('summarises the changes against the live version and names the next version', async () => {
@@ -326,6 +336,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });

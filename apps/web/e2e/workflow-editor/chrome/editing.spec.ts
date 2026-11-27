@@ -111,7 +111,7 @@ test('edits, autosaves, and preserves both drafts during a two-tab conflict', as
   await installEditorRoutes(page, remote);
   await installEditorRoutes(second, remote);
   await Promise.all([page.goto(editorUrl), second.goto(editorUrl)]);
-  await addStep(page, /Set fields/u).click();
+  await (await addStep(page, /Set fields/u)).click();
   await expect(page.getByText('Unsaved')).toBeVisible();
   await expect
     .poll(() => remote.graph.nodes.length, { timeout: 4_000 })
@@ -120,7 +120,7 @@ test('edits, autosaves, and preserves both drafts during a two-tab conflict', as
   await page.reload();
   await expect(page.locator('.react-flow__node')).toHaveCount(1);
 
-  await addStep(second, /Set fields/u).click();
+  await (await addStep(second, /Set fields/u)).click();
   const conflict = second.getByRole('region', { name: 'Draft conflict' });
   await expect(conflict).toContainText('Changed elsewhere (revision 2)', {
     timeout: 4_000,
@@ -156,7 +156,7 @@ test(
     await expect(canvas).toBeVisible();
     await panels.getByRole('button', { name: 'Add step' }).focus();
     await page.keyboard.press('Enter');
-    const add = addStep(page, /Set fields/u);
+    const add = await addStep(page, /Set fields/u);
     await expect(add).toBeVisible();
     await add.focus();
     await page.keyboard.press('Enter');

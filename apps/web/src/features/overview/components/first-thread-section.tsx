@@ -57,6 +57,11 @@ export function FirstThreadSection({
       workspaceId={workspace.id}
       firstRun={firstRun}
       compact={compact}
+      folded={
+        facts.workflows?.some(
+          (workflow) => workflow.publishedVersionId !== null,
+        ) ?? false
+      }
     />
   );
 }

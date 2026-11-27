@@ -5,7 +5,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { FederationSection } from '../../model/federation-search';
 import { DirectoryPanel } from '../directory/panel';
 import type { FederationSettings } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { OrganizationWorkspaces } from './workspaces';
 import { CreateDomain } from '../domains/create';
@@ -78,7 +78,8 @@ export function OrganizationPanel({
             organization={organization}
             editable={editable}
           />
-          <SettingsSection
+          <SettingRow
+            layout="section"
             title="Verified domains"
             description="DNS ownership is required before a domain can use organization sign-in. Enable and test a provider before requiring SSO."
           >
@@ -102,7 +103,7 @@ export function OrganizationPanel({
                 }
               />
             ) : null}
-          </SettingsSection>
+          </SettingRow>
           <Providers
             scope={scope}
             organization={organization}

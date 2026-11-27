@@ -12,10 +12,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { IssuesChip } from './validation/issues-chip';
 import { PublishedStamp } from './publication/published-stamp';
 import { RunInputDialog } from './run-submission/input-dialog';
-import { PublishedRunAction } from './run-submission/published-action';
+import { PublishedRunMenuItems } from './run-submission/published-action';
 import type { WorkflowIssuesView } from '../model/validation/issues-state';
 import { emptyDraftHint } from '../model/publication/readiness';
 import type { WorkflowValidationTarget } from '../model/validation/target';
@@ -94,13 +93,11 @@ function EditedSinceNote({
  * latest version (or that there is none) and the workflow are known.
  */
 /**
- * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
- * one filled action, Publish vN. Each opens its own lens; the published stamp
- * follows a successful publish. The issues lens is the editor's to place, so
- * whether it's open comes from the editor.
+ * The Build tab’s Test and Run control and Publish action. The published
+ * stamp follows a successful publish.
  */
 type WorkflowCommandActionsProps = Readonly<{
-  testAction?: ReactNode;
+  renderTestAction: (runItems: ReactNode) => ReactNode;
   renderFeedback: (feedback: ReactNode) => ReactNode;
   commandSession: WorkflowCommandSession;
   onPublished: (receipt: PublicationReceipt) => void;
@@ -121,8 +118,6 @@ type WorkflowCommandActionsProps = Readonly<{
   }>;
   validation: Readonly<{
     issues: WorkflowIssuesView;
-    issuesOpen: boolean;
-    onIssuesOpenChange: (open: boolean) => void;
     onFix: (target: WorkflowValidationTarget) => void;
   }>;
 }>;
@@ -133,30 +128,25 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
   return (
     <>
       <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-1">
-        <IssuesChip
-          state={model.issues}
-          emptyHint={model.emptyHint}
-          open={model.issuesOpen}
-          onOpenChange={model.onIssuesOpenChange}
-        />
-        {model.testAction}
-        <PublishedRunAction
-          form={model.liveIsForm}
-          canRun={model.canRun}
-          submission={model.runSubmission}
-          published={model.workflow === undefined || model.everPublished}
-          loading={model.liveVersion.isFetching}
-          onRunNow={() => {
-            void model.runNow();
-          }}
-          onRunWithInput={() => {
-            model.setRunOpen(true);
-          }}
-          scope={{
-            workspaceId: model.workspace.id,
-            workflowId: model.workflowId,
-          }}
-        />
+        {model.renderTestAction(
+          model.canRun || model.liveIsForm ? (
+            <PublishedRunMenuItems
+              form={model.liveIsForm}
+              canRun={model.canRun}
+              submission={model.runSubmission}
+              published={model.everPublished}
+              loading={model.liveVersion.isFetching}
+              onRunNow={() => void model.runNow()}
+              onRunWithInput={() => {
+                model.setRunOpen(true);
+              }}
+              scope={{
+                workspaceId: model.workspace.id,
+                workflowId: model.workflowId,
+              }}
+            />
+          ) : null,
+        )}
         {model.receipt === undefined ? null : (
           <EditedSinceNote receipt={model.receipt} draft={model.draft} />
         )}
@@ -272,7 +262,7 @@ function useWorkflowCommandActions({
   renderFeedback,
   commandSession,
   onPublished,
-  testAction,
+  renderTestAction,
   scope,
   snapshot,
   validation,
@@ -287,7 +277,7 @@ function useWorkflowCommandActions({
     savedDraftCurrent = false,
   } = snapshot;
 
-  const { issues, issuesOpen, onIssuesOpenChange, onFix } = validation;
+  const { issues, onFix } = validation;
 
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] = useState<
@@ -334,9 +324,7 @@ function useWorkflowCommandActions({
   return {
     issues,
     emptyHint,
-    issuesOpen,
-    onIssuesOpenChange,
-    testAction,
+    renderTestAction,
     liveIsForm,
     canRun,
     workspace,

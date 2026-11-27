@@ -44,7 +44,10 @@ test('authors a callable contract with keyboard controls and validates standalon
     'Customer contract',
   );
   await addSingleStep(page, path, /Manual/u, 'Customer input');
-  const contract = page.getByRole('button', {
+  await page
+    .getByRole('button', { name: 'More workflow actions', exact: true })
+    .press('Enter');
+  const contract = page.getByRole('menuitem', {
     name: 'Workflow contract',
     exact: true,
   });

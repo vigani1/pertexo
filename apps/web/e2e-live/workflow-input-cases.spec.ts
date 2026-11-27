@@ -173,7 +173,9 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   if (original === undefined) throw new Error('Created case missing');
   expect(original.revision).toBeGreaterThanOrEqual(3);
   await manager.getByRole('button', { name: 'Close input cases' }).click();
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

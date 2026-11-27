@@ -46,30 +46,20 @@ export const test = base.extend({
   },
 });
 
-/**
- * Opens a workflow test action: from the split Test workflow button, or on
- * phones (below `sm`) from the editor's ⋯ menu, where the split button hides.
- */
+/** Choose a draft test or a secondary action in Test and run. */
 export async function chooseTestAction(
   page: Page,
   action: 'Test workflow' | 'Run all tests' | 'Test history',
 ) {
-  if ((page.viewportSize()?.width ?? 1280) < 640)
-    await page
-      .getByRole('button', { name: 'More workflow actions', exact: true })
-      .click();
-  else if (action === 'Test workflow') {
-    await page
-      .getByRole('button', { name: 'Test workflow', exact: true })
-      .click();
+  if (action === 'Test workflow') {
+    await page.getByRole('button', { name: action, exact: true }).click();
     return;
-  } else
-    await page
-      .getByRole('button', { name: 'More test actions', exact: true })
-      .click();
+  }
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page.getByRole('menuitem', { name: action, exact: true }).click();
 }
-
 /**
  * Saves a dialog with Enter after its focused control was removed. The dialog
  * restores focus over the next frame, so wait until Save is actionable or the

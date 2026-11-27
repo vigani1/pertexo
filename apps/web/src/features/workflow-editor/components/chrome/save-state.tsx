@@ -141,14 +141,14 @@ function InlineAction({
     <span
       title={title}
       className={cn(
-        'inline-flex min-w-0 flex-wrap items-center gap-1',
+        'inline-flex min-w-0 items-center gap-1',
         tone === 'warning' ? 'text-warning' : 'text-destructive',
       )}
     >
-      <span>{label} ·</span>
+      <span className="min-w-0">{label} ·</span>
       <button
         type="button"
-        className="inline-flex shrink-0 items-center underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-ring pointer-coarse:min-h-10"
+        className="inline-flex shrink-0 items-center underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-ring pointer-coarse:min-h-10 pointer-coarse:min-w-10"
         onClick={onClick}
         aria-describedby={
           title === undefined ? undefined : SAVE_FAILURE_REASON_ID

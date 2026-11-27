@@ -68,7 +68,7 @@ function afterFirstRun() {
 describe('Getting started and the timeline in plain words', () => {
   it.each([
     ['a new workspace', newWorkspace, '0 of 4 done.'],
-    ['after the first run', afterFirstRun, '3 of 4 done.'],
+    ['after the first run', afterFirstRun, '3 of 4 done · Continue'],
   ] as const)(
     'names no system insides on Home for %s, and every task is a link into the workspace',
     async (_when, install, progress) => {
@@ -79,7 +79,11 @@ describe('Getting started and the timeline in plain words', () => {
         { name: 'Getting started' },
         coldStart,
       );
-      await within(section).findByText(progress, { exact: false });
+      const displayedProgress = await within(section).findByText(progress, {
+        exact: false,
+      });
+      if (install === afterFirstRun)
+        await userEvent.setup().click(displayedProgress);
       expect(internalWords(document.body.textContent)).toEqual([]);
 
       const tasks = within(section).getAllByRole('listitem');

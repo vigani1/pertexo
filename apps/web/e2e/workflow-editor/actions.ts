@@ -1,18 +1,29 @@
 import { expect, type Page } from '@playwright/test';
-import { FOLDED_WORKFLOW_ACTIONS } from './support';
 export async function openWorkflowAction(page: Page, name: string) {
-  const width = page.viewportSize()?.width ?? 1280;
-  if (width < (FOLDED_WORKFLOW_ACTIONS.has(name) ? 1536 : 640)) {
-    await page
-      .getByRole('button', { name: 'More workflow actions', exact: true })
-      .click();
-    await page.getByRole('menuitem', { name, exact: true }).click();
-  } else {
-    await page.getByRole('button', { name, exact: true }).click();
-  }
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name, exact: true }).click();
 }
 
-export function addStep(page: Page, name: RegExp) {
+export async function openWorkflowMenu(page: Page) {
+  await page
+    .getByRole('button', { name: 'More workflow actions', exact: true })
+    .click();
+}
+
+export async function openStepPalette(page: Page) {
+  const palette = page.getByRole('complementary', { name: 'Add a step' });
+  if (await palette.getByRole('searchbox').isVisible()) return;
+  await page
+    .getByRole('button', {
+      name:
+        (page.viewportSize()?.width ?? 1280) < 1024 ? 'Add step' : 'Show steps',
+      exact: true,
+    })
+    .click();
+}
+
+export async function addStep(page: Page, name: RegExp) {
+  await openStepPalette(page);
   return page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name });

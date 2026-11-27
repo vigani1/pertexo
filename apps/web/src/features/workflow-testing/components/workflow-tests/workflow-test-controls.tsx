@@ -1,4 +1,5 @@
-import { ChevronDownIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ChevronDownIcon, PlayIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
@@ -15,52 +16,53 @@ function testBusy(tests: WorkflowTests) {
 }
 
 /**
- * Test workflow, split: the button tests this draft once, and its menu holds
- * Run all tests and Test history, so neither needs a bar of its own.
+ * Test the current draft, or open all the ways to test and run this workflow.
  */
 export function WorkflowTestButton({
   tests,
-  className,
-}: Readonly<{ tests: WorkflowTests; className?: string }>) {
-  if (!tests.enabled) return null;
+  runItems = null,
+}: Readonly<{ tests: WorkflowTests; runItems?: ReactNode }>) {
+  if (!tests.enabled && runItems === null) return null;
   return (
-    <div className={cn('inline-flex', className)}>
-      <Button
-        variant="outline"
-        size="sm"
-        className="rounded-r-none"
-        disabled={testBusy(tests)}
-        onClick={() => void tests.prepare()}
-      >
-        Test workflow
-      </Button>
+    <div className="inline-flex">
+      {!tests.enabled ? null : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-r-none"
+          disabled={testBusy(tests)}
+          aria-label="Test workflow"
+          onClick={() => void tests.prepare()}
+        >
+          <PlayIcon aria-hidden="true" />
+          Test
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label="More test actions"
-          className={cn(
-            buttonVariants({ variant: 'outline', size: 'icon-sm' }),
-            '-ml-px rounded-l-none',
-          )}
+          aria-label="Test and run actions"
+          className={
+            tests.enabled
+              ? cn(
+                  buttonVariants({ variant: 'outline', size: 'icon-sm' }),
+                  '-ml-px rounded-l-none',
+                )
+              : buttonVariants({ variant: 'outline', size: 'sm' })
+          }
         >
-          <ChevronDownIcon />
+          {tests.enabled ? null : 'Run'}
+          <ChevronDownIcon aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <WorkflowTestMenuItems tests={tests} withTest={false} />
+          {tests.enabled ? <WorkflowTestMenuItems tests={tests} /> : null}
+          {runItems}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
 }
 
-/**
- * The test actions as menu items: in the split button's menu, and on phones
- * in the editor's ⋯ menu, where Test workflow joins them.
- */
-export function WorkflowTestMenuItems({
-  tests,
-  withTest = true,
-}: Readonly<{ tests: WorkflowTests; withTest?: boolean }>) {
-  if (!tests.enabled) return null;
+function WorkflowTestMenuItems({ tests }: Readonly<{ tests: WorkflowTests }>) {
   const suiteActionsBlocked =
     tests.blocked ||
     tests.suites.preparing ||
@@ -68,14 +70,6 @@ export function WorkflowTestMenuItems({
     tests.start.pending;
   return (
     <>
-      {withTest ? (
-        <DropdownMenuItem
-          disabled={testBusy(tests)}
-          onClick={() => void tests.prepare()}
-        >
-          Test workflow
-        </DropdownMenuItem>
-      ) : null}
       <DropdownMenuItem
         disabled={suiteActionsBlocked}
         onClick={() => void tests.suites.prepare()}

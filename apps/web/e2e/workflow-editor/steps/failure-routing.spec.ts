@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../actions';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect, test } from '../../support/fixtures';
@@ -103,10 +104,8 @@ for (const viewport of [
       .getByRole('button', { name: 'Remove failure path', exact: true })
       .click();
     await expect.poll(() => remote.graph.nodes.length).toBe(2);
-    await page
-      .getByRole('button', { name: 'Undo', exact: true })
-      .first()
-      .click();
+    await openWorkflowMenu(page);
+    await page.getByRole('menuitem', { name: 'Undo' }).click();
     await expect.poll(() => remote.graph.nodes.length).toBe(3);
     expect(JSON.stringify(remote.graph)).toContain('node_failure');
   });

@@ -1,9 +1,6 @@
-import { useState, type ComponentProps } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  WorkflowTestButton,
-  WorkflowTestMenuItems,
-} from '@/features/workflow-testing/workflow-testing-views.public';
+import { WorkflowTestButton } from '@/features/workflow-testing/workflow-testing-views.public';
 import type { EditorChrome } from '../components/editor-workspace';
 
 export function useWorkspaceChrome({
@@ -18,13 +15,14 @@ export function useWorkspaceChrome({
   const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(
     null,
   );
+  const overflowRef = useRef<HTMLButtonElement>(null);
   const chrome: Omit<EditorChrome, 'openProposal'> = {
+    overflowRef,
     renderFeedback: (feedback) =>
       feedbackTarget === null ? null : createPortal(feedback, feedbackTarget),
-    workflowTestAction: (
-      <WorkflowTestButton tests={tests} className="hidden sm:inline-flex" />
+    renderTestAction: (runItems) => (
+      <WorkflowTestButton tests={tests} runItems={runItems} />
     ),
-    workflowTestMenuItems: <WorkflowTestMenuItems tests={tests} />,
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,
     issuesOpen,

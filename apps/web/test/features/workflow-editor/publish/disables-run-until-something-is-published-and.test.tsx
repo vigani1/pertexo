@@ -14,6 +14,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   addStepButton,
+  openStepList,
+  openWorkflowMenu,
   checkNow,
   findCanvas,
   openRunLens,
@@ -55,16 +57,22 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     await findCanvas();
     await screen.findByRole('heading', { name: 'Draft only' });
+    await event.click(
+      await screen.findByRole('button', { name: 'Test and run actions' }),
+    );
     expect(
-      await screen.findByRole('button', { name: 'Run (publish first)' }),
+      await screen.findByRole('menuitem', { name: 'Run (publish first)' }),
     ).toHaveAttribute('aria-disabled', 'true');
+    await event.keyboard('{Escape}');
     const publish = screen.getByRole('button', { name: 'Publish v1' });
     expect(publish).toHaveAttribute('aria-disabled', 'true');
     expect(publish).toHaveAccessibleDescription('Add a trigger to start');
+    const issues = await openWorkflowMenu(event);
     expect(
-      await screen.findByRole('button', { name: 'Add a trigger to start' }),
+      await issues.findByRole('menuitem', { name: 'Add a trigger to start' }),
     ).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'No issues' })).toBeNull();
+    expect(issues.queryByRole('menuitem', { name: 'No issues' })).toBeNull();
+    await event.keyboard('{Escape}');
 
     await event.click(
       within(screen.getByRole('list', { name: 'Triggers' })).getByRole(
@@ -73,8 +81,9 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       ),
     );
     expect(screen.getByRole('button', { name: 'Publish v1' })).toBeEnabled();
+    const updated = await openWorkflowMenu(event);
     expect(
-      screen.queryByRole('button', { name: 'Add a trigger to start' }),
+      updated.queryByRole('menuitem', { name: 'Add a trigger to start' }),
     ).toBeNull();
   });
 });
@@ -141,13 +150,19 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       'true',
     );
     expect(screen.queryByRole('region', { name: /\d+ issues?/u })).toBeNull();
-    const chip = screen.getByRole('button', { name: /\d+ issues?/u });
+    const chip = (await openWorkflowMenu(event)).getByRole('menuitem', {
+      name: /\d+ issues?/u,
+    });
     expect(chip).toBeVisible();
     await event.click(chip);
-    expect(chip).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      await screen.findByRole('region', { name: /\d+ issues?/u }),
+    ).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Close issues' }));
     expect(screen.queryByRole('region', { name: /\d+ issues?/u })).toBeNull();
-    expect(chip).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'More workflow actions' }),
+    ).toHaveFocus();
   });
   it('navigates compatibility and mapping findings to their step', async () => {
     mockServer.use(
@@ -226,7 +241,11 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     });
     expect(screen.getByLabelText('Setup as JSON')).toBeVisible();
 
-    await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
+    await event.click(
+      (await openWorkflowMenu(event)).getByRole('menuitem', {
+        name: /\d+ issues?/u,
+      }),
+    );
     await event.click(
       await screen.findByRole('button', {
         name: /Fix: An input reads from a step/u,
@@ -249,6 +268,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await waitFor(
       () => {
@@ -256,8 +276,9 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       },
       { timeout: 6_000 },
     );
+    const menu = await openWorkflowMenu(event);
     expect(
-      await screen.findByRole('button', { name: '1 issue' }),
+      await menu.findByRole('menuitem', { name: '1 issue' }),
     ).toBeVisible();
     await act(() => vi.advanceTimersByTimeAsync(1_800));
     expect(validations).toBe(1);

@@ -1,7 +1,7 @@
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 
-import { addStep } from '../actions';
+import { addStep, openWorkflowMenu } from '../actions';
 import {
   addCsrfCookie,
   editorUrl,
@@ -57,14 +57,16 @@ for (const width of [375, 1280]) {
         page.getByRole('heading', { name: 'No triggers are enabled here' }),
       ).toBeVisible();
       await expect(
-        page.getByRole('button', { name: 'Add a step to start' }),
-      ).toBeVisible();
-      await expect(
         page.getByRole('button', { name: 'Publish v1' }),
       ).toBeDisabled();
       // The chip opens the issues lens at the bottom of the editor, over the
       // canvas, instead of a popover under the command bar.
-      await page.getByRole('button', { name: 'Add a step to start' }).click();
+      await openWorkflowMenu(page);
+      const emptyIssues = page.getByRole('menuitem', {
+        name: 'Add a step to start',
+      });
+      await expect(emptyIssues).toBeVisible();
+      await emptyIssues.click();
       const issues = page.getByRole('region', { name: 'Issues' });
       await expect(issues).toContainText('This draft has no steps yet');
       const issuesBox = await issues.boundingBox();
@@ -89,7 +91,7 @@ for (const width of [375, 1280]) {
           .getByRole('button', { name: 'Add step', exact: true })
           .click();
       }
-      await addStep(page, /Set fields/u).click();
+      await (await addStep(page, /Set fields/u)).click();
       await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
       if (width < 1024) {
         await page
@@ -128,9 +130,11 @@ for (const width of [375, 1280]) {
         page.getByRole('group', { name: 'Test output' }),
       ).toContainText('accepted');
 
+      await page.getByRole('button', { name: 'Test and run actions' }).click();
       await expect(
-        page.getByRole('button', { name: 'Run (publish first)' }),
+        page.getByRole('menuitem', { name: 'Run (publish first)' }),
       ).toBeDisabled();
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Publish v1' }).click();
       const lens = page.getByRole('dialog', { name: 'Publish v1' });
       await lens.getByRole('button', { name: 'Publish v1' }).click();
@@ -165,7 +169,9 @@ for (const width of [375, 1280]) {
         path: temporaryTestPath(`pertexo-245-${action}-${String(width)}.png`),
       });
       if (action === 'menu') {
-        await page.getByRole('button', { name: 'Run', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Test and run actions', exact: true })
+          .click();
         await page
           .getByRole('menuitem', { name: 'Run published version' })
           .click();

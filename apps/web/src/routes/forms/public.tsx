@@ -8,9 +8,9 @@ export function PublicFormRoute() {
     <main
       id="main"
       tabIndex={-1}
-      className="min-h-dvh bg-background px-5 py-10 text-foreground sm:px-8 sm:py-16"
+      className="min-h-dvh bg-background px-5 py-10 text-foreground sm:px-10 lg:px-14"
     >
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 md:gap-18">
         <p className="font-heading text-lg font-semibold text-muted-foreground">
           Pertexo
         </p>

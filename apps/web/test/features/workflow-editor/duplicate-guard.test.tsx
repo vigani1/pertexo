@@ -5,6 +5,8 @@ import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
+  openWorkflowMenu,
   findCanvas,
 } from '../../support/fixtures/editor-actions';
 import {
@@ -44,18 +46,24 @@ it('blocks saved-draft duplication while local edits are dirty/saving and after 
   await renderLoadedApp(editorPath);
   await findCanvas();
   const event = userEvent.setup();
-  const duplicate = screen.getByRole('button', { name: 'Duplicate…' });
-  expect(duplicate).toBeEnabled();
+  async function duplicateIs(enabled: boolean) {
+    const menu = await openWorkflowMenu(event);
+    const duplicate = menu.getByRole('menuitem', { name: 'Duplicate…' });
+    if (enabled) expect(duplicate).not.toHaveAttribute('aria-disabled', 'true');
+    else expect(duplicate).toHaveAttribute('aria-disabled', 'true');
+    await event.keyboard('{Escape}');
+  }
+  await duplicateIs(true);
+  await openStepList(event);
   await event.click(addStepButton(/Set fields/u));
-  expect(duplicate).toBeDisabled();
+  await duplicateIs(false);
   await waitFor(() => {
     expect(saved).toBe(true);
   });
-  expect(duplicate).toBeDisabled();
+  await duplicateIs(false);
   release?.();
-  await waitFor(() => {
-    expect(duplicate).toBeEnabled();
-  });
+  await screen.findByText(/^Saved/u);
+  await duplicateIs(true);
   mockServer.use(
     http.put(`${workflowApi}/draft`, () =>
       HttpResponse.json(
@@ -75,7 +83,8 @@ it('blocks saved-draft duplication while local edits are dirty/saving and after 
       ),
     ),
   );
+  await openStepList(event);
   await event.click(addStepButton(/Set fields/u));
   await screen.findByRole('region', { name: 'Draft conflict' });
-  expect(duplicate).toBeDisabled();
+  await duplicateIs(false);
 });

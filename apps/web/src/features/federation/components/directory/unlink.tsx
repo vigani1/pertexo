@@ -5,7 +5,7 @@ import type {
   FederationSettings,
   AccessibleWorkspace,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,8 @@ export function DirectoryWorkspaceLinks({
     setReview(undefined);
   });
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Workspace delegation"
       description="Either workspace owner can revoke a non-control link. Unlinking removes directory-managed grants in that workspace; manual memberships and accounts stay intact."
     >
@@ -133,6 +134,6 @@ export function DirectoryWorkspaceLinks({
           </DialogContent>
         </Dialog>
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }

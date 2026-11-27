@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { cn } from '@/lib/class-names';
 import {
   ROLE_MATRIX,
@@ -17,7 +17,8 @@ export function RolesMatrix({
   yourRole,
 }: Readonly<{ yourRole: WorkspaceRole }>) {
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="What each role can do"
       description={`You’re ${withArticle(yourRole)}. Your column is highlighted.`}
     >
@@ -98,6 +99,6 @@ export function RolesMatrix({
           ))}
         </tbody>
       </table>
-    </SettingsSection>
+    </SettingRow>
   );
 }

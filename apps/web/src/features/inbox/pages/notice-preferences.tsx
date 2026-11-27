@@ -1,6 +1,6 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
-import { useId, type ReactNode } from 'react';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -38,11 +38,10 @@ export function NotificationPreferencesPage({
               <Notice>{data.emailUnavailableReason}</Notice>
             )}
             <NotificationRoute snapshot={data} />
-            <div className="grid gap-4 lg:grid-cols-2">
-              <ScheduleCard
+            <SettingsGroup title="Email delivery">
+              <SettingRow
                 title="Your email"
-                current={describePersonalChoice(data)}
-                note="Immediate messages are grouped within a minute. Hourly digests arrive at the next hour; daily ones in your time zone. New changes only."
+                description={describePersonalChoice(data)}
               >
                 {paused ? null : (
                   <NotificationScheduleEditor
@@ -51,11 +50,15 @@ export function NotificationPreferencesPage({
                     target="personal"
                   />
                 )}
-              </ScheduleCard>
-              <ScheduleCard
+                <p className="text-meta text-muted-foreground">
+                  Immediate messages are grouped within a minute. Hourly digests
+                  arrive at the next hour; daily ones in your time zone. New
+                  changes only.
+                </p>
+              </SettingRow>
+              <SettingRow
                 title="Workspace default"
-                current={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
-                note={`${sentenceStart(whoCan('notification:manage_defaults'))} set it for everyone who hasn't chosen.`}
+                description={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
               >
                 {data.canManageDefaults && !paused ? (
                   <NotificationScheduleEditor
@@ -64,46 +67,12 @@ export function NotificationPreferencesPage({
                     target="defaults"
                   />
                 ) : null}
-              </ScheduleCard>
-            </div>
+                <p className="text-meta text-muted-foreground">{`${sentenceStart(whoCan('notification:manage_defaults'))} set it for everyone who hasn't chosen.`}</p>
+              </SettingRow>
+            </SettingsGroup>
           </>
         )}
       </QueryView>
     </div>
-  );
-}
-
-/**
- * One schedule as a card: its current value as a sentence first, then the
- * controls that change it, and a short note on how it behaves.
- */
-function ScheduleCard({
-  title,
-  current,
-  note,
-  children,
-}: Readonly<{
-  title: string;
-  current: string;
-  note: string;
-  children: ReactNode;
-}>) {
-  const headingId = useId();
-  return (
-    <section
-      aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-xl border border-surface-ink/7 bg-select p-5"
-    >
-      <div className="flex flex-col gap-1">
-        <h2 id={headingId} className="font-semibold">
-          {title}
-        </h2>
-        <p className="text-sm text-foreground/85">{current}</p>
-      </div>
-      {children}
-      <p className="mt-auto text-xs leading-relaxed text-subtle-foreground">
-        {note}
-      </p>
-    </section>
   );
 }

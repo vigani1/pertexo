@@ -15,7 +15,8 @@ import { accountSecuritySessionsQueryOptions } from '../../data/account-security
 import { accountCommandFailure } from '../../model/account/failure';
 import { orderSessions } from '../../model/account/sessions';
 import { describeUserAgent } from '../../model/account/user-agent';
-import { AccountSection, FreshSignInLink } from './section';
+import { FreshSignInLink } from './section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useSessionEnding, type SessionEnding } from './use-session-ending';
 
@@ -212,7 +213,8 @@ export function AccountSessionsSection({
     sessions.data?.items.some((session) => !session.current) ?? false;
 
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="Sessions"
       description="Signing out a device takes effect the next time it talks to Pertexo."
       action={
@@ -251,6 +253,6 @@ export function AccountSessionsSection({
         onCancel={ending.cancel}
         onConfirm={ending.confirm}
       />
-    </AccountSection>
+    </SettingRow>
   );
 }

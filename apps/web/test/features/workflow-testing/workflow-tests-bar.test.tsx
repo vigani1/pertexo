@@ -86,7 +86,7 @@ function mount({
 
 async function openTestMenu(event: ReturnType<typeof userEvent.setup>) {
   await event.click(
-    await screen.findByRole('button', { name: 'More test actions' }),
+    await screen.findByRole('button', { name: 'Test and run actions' }),
   );
   return screen.findByRole('menu');
 }

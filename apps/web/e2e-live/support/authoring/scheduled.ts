@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import {
   scheduleFireTimesResponseSchema,
   schedulePreviewRequestSchema,
@@ -112,6 +113,7 @@ export async function authorScheduledNestedGraph(
       .click();
     await page.getByRole('dialog').getByRole('button', { name: kind }).click();
   }
+  await openStepPalette(page);
   await page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name: /For each/u })

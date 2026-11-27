@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../../../e2e/workflow-editor/actions';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   workflowDraftResponseSchema,
@@ -163,9 +164,11 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
     .press('Enter');
   await expect(part(2).getByLabel('Field name', { exact: true })).toBeFocused();
   await expect.poll(readParts).toEqual(reordered);
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect.poll(readParts).toEqual(original);
-  await page.getByRole('button', { name: 'Redo', exact: true }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Redo' }).click();
   await expect.poll(readParts).toEqual(reordered);
   await page.getByRole('button', { name: 'Raw body', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -267,7 +270,9 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   ).toBe(200);
   await page.reload();
   await publishSingleStep(page, path);
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../../e2e/workflow-editor/actions';
 import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 import {
@@ -71,7 +72,8 @@ test('browser-authored Code uses the actual worker runner and keeps diagnostics 
   await timeout.fill('6');
   await page.keyboard.press('Tab');
   await editor.fill('return 0;');
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect(editor).toContainText("console.info('private Code log');");
   await editor.focus();
   await page.keyboard.press('Tab');

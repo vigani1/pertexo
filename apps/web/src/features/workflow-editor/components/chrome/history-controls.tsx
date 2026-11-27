@@ -1,8 +1,6 @@
 import { KeyboardIcon, Redo2Icon, Undo2Icon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
-import { cn } from '@/lib/class-names';
 import type { EditorState } from '../../model/state/workflow-editor.store';
 import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
@@ -12,44 +10,8 @@ const canUndo = (state: EditorState) =>
 const canRedo = (state: EditorState) =>
   state.history.future.length > 0 && state.save.status !== 'conflict';
 
-/** Undo and redo for the draft; the history holds whole edits, not keys. */
-export function HistoryControls({
-  onUndo,
-  onRedo,
-  className,
-}: Readonly<{ onUndo: () => void; onRedo: () => void; className?: string }>) {
-  const undoable = useEditorStore(canUndo);
-  const redoable = useEditorStore(canRedo);
-  return (
-    <div className={cn('flex items-center', className)}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Undo"
-        title={`Undo (${shortcut('Z')})`}
-        disabled={!undoable}
-        onClick={onUndo}
-      >
-        <Undo2Icon />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Redo"
-        title={`Redo (${shortcut('Z', { shift: true })})`}
-        disabled={!redoable}
-        onClick={onRedo}
-      >
-        <Redo2Icon />
-      </Button>
-    </div>
-  );
-}
-
 /**
- * The editor's entries in the workflow's shared phone menu.
+ * The editor's entries in the workflow's shared workflow menu.
  */
 export function HistoryMenuItems({
   onUndo,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { XIcon } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import type { AuditFilter } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,6 @@ import { AUDIT_SUBJECTS } from '../model/audit-ledger';
 
 const SUBJECTS = [{ value: 'any', label: 'Anything' }, ...AUDIT_SUBJECTS];
 const PRESETS = [
-  { label: 'Last 24 hours', ms: 86_400_000 },
   { label: 'Last 7 days', ms: 7 * 86_400_000 },
   { label: 'Last 30 days', ms: 30 * 86_400_000 },
 ] as const;
@@ -61,43 +60,92 @@ function TimeRange({
   filters: AuditFilter;
   onApply: (filters: AuditFilter) => void;
 }>) {
+  const today = localDateOf(new Date());
+  const from =
+    filters.from === undefined ? '' : localDateOf(new Date(filters.from));
+  const to =
+    filters.until === undefined
+      ? ''
+      : localDateOf(new Date(Date.parse(filters.until) - 1));
+  const currentDay = from !== '' && from === to ? from : today;
+
+  function applyDays(first: string, last: string) {
+    const start = dateOf(first);
+    const end = dateOf(shiftDays(last, 1));
+    if (start === undefined || end === undefined)
+      return 'Pick both days again.';
+    onApply({
+      ...filters,
+      from: start.toISOString(),
+      until: end.toISOString(),
+    });
+    return undefined;
+  }
+
+  function selectDay(day: string) {
+    applyDays(day, day);
+  }
+
   return (
-    <DayRangePicker
-      title="When it happened"
-      label={rangeLabel(filters)}
-      presets={PRESETS.map((preset) => ({
-        label: preset.label,
-        apply: () => {
-          onApply({
-            ...without(filters, 'from', 'until'),
-            from: new Date(Date.now() - preset.ms).toISOString(),
-          });
-        },
-      }))}
-      initial={{
-        from:
-          filters.from === undefined ? '' : localDateOf(new Date(filters.from)),
-        to:
-          filters.until === undefined
-            ? ''
-            : localDateOf(new Date(Date.parse(filters.until) - 1)),
-      }}
-      onApply={(first, last) => {
-        const from = dateOf(first);
-        const until = dateOf(shiftDays(last, 1));
-        if (from === undefined || until === undefined)
-          return 'Pick both days again.';
-        onApply({
-          ...filters,
-          from: from.toISOString(),
-          until: until.toISOString(),
-        });
-        return undefined;
-      }}
-      onClear={() => {
-        onApply(without(filters, 'from', 'until'));
-      }}
-    />
+    <div className="flex min-w-0 items-center gap-1 sm:ml-auto">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Previous day"
+        onClick={() => {
+          selectDay(shiftDays(currentDay, -1));
+        }}
+      >
+        <ChevronLeftIcon aria-hidden="true" />
+      </Button>
+      <DayRangePicker
+        title="When it happened"
+        label={rangeLabel(filters)}
+        presets={[
+          {
+            label: 'Today',
+            selected: from === today && to === today,
+            apply: () => {
+              selectDay(today);
+            },
+          },
+          {
+            label: 'Yesterday',
+            selected: from === shiftDays(today, -1) && from === to,
+            apply: () => {
+              selectDay(shiftDays(today, -1));
+            },
+          },
+          ...PRESETS.map((preset) => ({
+            label: preset.label,
+            apply: () => {
+              onApply({
+                ...without(filters, 'from', 'until'),
+                from: new Date(Date.now() - preset.ms).toISOString(),
+              });
+            },
+          })),
+        ]}
+        initial={{ from, to }}
+        onApply={applyDays}
+        onClear={() => {
+          onApply(without(filters, 'from', 'until'));
+        }}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Next day"
+        disabled={currentDay >= today}
+        onClick={() => {
+          selectDay(shiftDays(currentDay, 1));
+        }}
+      >
+        <ChevronRightIcon aria-hidden="true" />
+      </Button>
+    </div>
   );
 }
 

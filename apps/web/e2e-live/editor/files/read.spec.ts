@@ -361,7 +361,9 @@ test('reads a JSON file supplied through manual run input', async ({
   ).toBe(200);
   await page.reload();
   await publishSingleStep(page, path);
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

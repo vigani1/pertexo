@@ -9,7 +9,7 @@ import {
   type DirectoryMappings,
   type FederationSettings,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import {
   Select,
@@ -32,6 +32,18 @@ type DirectoryMappingsEditorProps = Readonly<{
   organization: Organization;
   editable: boolean;
 }>;
+
+function orderedMappings(
+  mappings: DirectoryMappings['mappings'],
+  workspaceId: string,
+) {
+  return mappings
+    .filter((entry) => entry.workspaceId === workspaceId)
+    .sort((left, right) => left.priority - right.priority);
+}
+
+const GROUP_ORDER =
+  'The first matching group wins. A person outside these groups receives the linked workspace’s default role. Builder and operator have different permissions.';
 
 export function DirectoryMappingsEditor({
   scope,
@@ -56,9 +68,7 @@ export function DirectoryMappingsEditor({
   const revision = edit?.revision ?? settings.revision;
   const workspaceId = selectedWorkspaceId ?? scope.workspaceId;
   const locked = !editable || command.pending || command.uncertain;
-  const rows = draft
-    .filter((mapping) => mapping.workspaceId === workspaceId)
-    .sort((left, right) => left.priority - right.priority);
+  const rows = orderedMappings(draft, workspaceId);
   const choices = settings.groups.filter(
     (group) => !rows.some((mapping) => mapping.groupId === group.id),
   );
@@ -81,20 +91,18 @@ export function DirectoryMappingsEditor({
     next[index + direction] = current;
     changeRows(next);
   }
+  function chooseWorkspace(value: string) {
+    setWorkspaceId(value);
+    setGroupId(null);
+  }
   return (
-    <SettingsSection
-      title="Group roles"
-      description="The first matching group wins. A person outside these groups receives the linked workspace’s default role. Builder and operator are separate roles; they are not ranked."
-    >
+    <SettingRow layout="section" title="Group roles" description={GROUP_ORDER}>
       <MappingWorkspaceChoice
         id={id}
         workspaceId={workspaceId}
         organization={organization}
         disabled={command.pending || command.uncertain}
-        onChange={(value) => {
-          setWorkspaceId(value);
-          setGroupId(null);
-        }}
+        onChange={chooseWorkspace}
       />
       {revision === settings.revision ? null : (
         <Notice
@@ -180,7 +188,7 @@ export function DirectoryMappingsEditor({
           Save group mappings
         </ProgressButton>
       ) : null}
-    </SettingsSection>
+    </SettingRow>
   );
 }
 

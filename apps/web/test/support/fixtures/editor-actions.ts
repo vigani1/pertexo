@@ -38,23 +38,35 @@ export function addStepButton(name: RegExp) {
   ).getByRole('button', { name });
 }
 
+export async function openStepList(event: UserEvent) {
+  const show = screen.queryByRole('button', { name: 'Show steps' });
+  if (show !== null) await event.click(show);
+}
+
 export async function openRunLens(event: UserEvent) {
-  const recover = screen.queryByRole('button', {
-    name: 'Recover unconfirmed run',
-  });
-  if (recover !== null) {
-    await event.click(recover);
-    return;
-  }
-  await event.click(await screen.findByRole('button', { name: 'Run' }));
   await event.click(
-    await screen.findByRole('menuitem', { name: 'Run with input…' }),
+    await screen.findByRole('button', { name: 'Test and run actions' }),
+  );
+  await event.click(
+    await screen.findByRole('menuitem', {
+      name: /^(Run with input…|Recover unconfirmed run)$/u,
+    }),
+  );
+}
+
+export async function openWorkflowMenu(event: UserEvent) {
+  await event.click(
+    await screen.findByRole('button', { name: 'More workflow actions' }),
+  );
+  return within(
+    await screen.findByRole('menu', { name: 'More workflow actions' }),
   );
 }
 
 export async function checkNow(event: UserEvent) {
+  const menu = await openWorkflowMenu(event);
   await event.click(
-    screen.getByRole('button', { name: /Not checked yet|No issues|issue/u }),
+    menu.getByRole('menuitem', { name: /Not checked yet|No issues|issue/u }),
   );
   await event.click(await screen.findByRole('button', { name: 'Check again' }));
 }

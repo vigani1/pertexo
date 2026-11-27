@@ -15,7 +15,7 @@ export function AuthLens({
       data-slot="auth-lens"
       aria-busy={pending || undefined}
       className={cn(
-        'lens relative flex w-full max-w-[25.25rem] flex-col rounded-xl px-6 pt-7 pb-6 sm:px-7.5 sm:pt-7.5',
+        'lens relative flex w-full max-w-[25.25rem] flex-col rounded-2xl px-6 pt-7 pb-6 sm:px-7.5 sm:pt-7.5',
         pending && 'live-edge',
         className,
       )}
@@ -28,7 +28,7 @@ export function AuthLensTitle({ className, ...props }: ComponentProps<'h1'>) {
   return (
     <h1
       className={cn(
-        'font-display text-3xl leading-none [--display-optical-size:30] [--display-width:82%]',
+        'font-display text-3xl/none [--display-optical-size:30] [--display-width:82%]',
         className,
       )}
       {...props}

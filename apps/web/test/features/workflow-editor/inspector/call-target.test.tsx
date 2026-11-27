@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findCanvas,
   pressSave,
+  openWorkflowMenu,
 } from '../../../support/fixtures/editor-actions';
 import {
   api,
@@ -148,7 +149,11 @@ describe('exact child version selection', { timeout: 30_000 }, () => {
         executableChecksum: `wf:sha256:${'b'.repeat(64)}`,
       });
     });
-    await state.user.click(screen.getByRole('button', { name: /Undo/u }));
+    await state.user.click(
+      (await openWorkflowMenu(state.user)).getByRole('menuitem', {
+        name: /^Undo/u,
+      }),
+    );
     await waitFor(() => {
       expect(
         screen.getByRole('combobox', { name: 'Published version' }),

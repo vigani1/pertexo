@@ -26,7 +26,7 @@ function useAddStepFold({
   setMobilePanel: (panel: MobilePanel) => void;
 }>) {
   const searchRef = useRef<HTMLInputElement>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   return {
     searchRef,
     collapsed,

@@ -91,7 +91,7 @@ test('keeps file pages authorized in previews and draft test history without all
     .toBe('succeeded');
   await page.reload();
   await page
-    .getByRole('button', { name: 'More test actions', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
     .click();
   await page
     .getByRole('menuitem', { name: 'Test history', exact: true })

@@ -1,12 +1,18 @@
 import { useEditorSession } from '../model/state/context';
 
-import { useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
-import { WorkflowCommandActions } from '@/features/workflow-publish/workflow-publish-views.public';
-import type { useWorkflowCommandSession } from '@/features/workflow-publish/public';
+import {
+  WorkflowCommandActions,
+  IssuesMenuItem,
+} from '@/features/workflow-publish/workflow-publish-views.public';
+import {
+  emptyDraftHint,
+  type useWorkflowCommandSession,
+} from '@/features/workflow-publish/public';
 import {
   ConfirmDialog,
   ConfirmationDetails,
@@ -54,23 +60,22 @@ export function SessionCommandBar({
     inspectorScratch,
     triggersAvailable,
   } = publication;
-  const moreRef = useRef<HTMLButtonElement>(null);
   const canPropose = !paused && editing.canUpdate;
 
   return (
     <>
       <EditorCommandBar
         presence={headerPresence}
-        moreRef={moreRef}
+        moreRef={chrome.overflowRef}
         secondaryMenuItems={
-          <>
-            {canPropose ? (
-              <DropdownMenuItem onClick={chrome.openProposal}>
-                Ask the assistant
-              </DropdownMenuItem>
-            ) : null}
-            {chrome.workflowTestMenuItems}
-          </>
+          paused ? null : (
+            <IssuesMenuItem
+              state={issues}
+              emptyHint={emptyDraftHint({ graph, triggersAvailable })}
+              open={chrome.issuesOpen}
+              onOpenChange={chrome.onIssuesOpenChange}
+            />
+          )
         }
         onRetrySave={() => void flushSave()}
         onReviewConflict={onReviewConflict}
@@ -88,23 +93,22 @@ export function SessionCommandBar({
                   {...{ [ASSISTANT_TRIGGER_ATTRIBUTE]: '' }}
                   variant="outline"
                   size="sm"
-                  className="hidden sm:inline-flex"
+                  aria-label="Ask the assistant"
                   onClick={chrome.openProposal}
                 >
-                  Ask the assistant
+                  <SparklesIcon aria-hidden="true" />
+                  <span className="hidden sm:inline">Ask the assistant</span>
                 </Button>
               ) : null}
               <WorkflowCommandActions
                 renderFeedback={chrome.renderFeedback}
                 commandSession={commandSession}
-                testAction={chrome.workflowTestAction}
+                renderTestAction={chrome.renderTestAction}
                 onPublished={(receipt) => {
                   if (!receipt.reused) effects.weaveIn();
                 }}
                 validation={{
                   issues,
-                  issuesOpen: chrome.issuesOpen,
-                  onIssuesOpenChange: chrome.onIssuesOpenChange,
                   onFix: chrome.onFix,
                 }}
                 snapshot={{

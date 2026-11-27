@@ -163,18 +163,34 @@ function PublishedForm({
     isApiError(command.cause) && command.cause.problem?.code === 'form.changed';
   const { versionId, form } = schema;
   const uploads = useFormUploadTarget(scope, versionId, session);
+  const isPublic = scope.target.kind === 'public';
+  const heading = (
+    <header className="flex min-w-0 flex-col gap-3">
+      <h1
+        className={
+          isPublic
+            ? 'font-display text-4xl leading-tight wrap-anywhere lg:text-hero'
+            : 'font-heading text-3xl font-semibold wrap-anywhere'
+        }
+      >
+        {form.title}
+      </h1>
+      {form.instructions === '' ? null : (
+        <p className="whitespace-pre-wrap wrap-anywhere text-muted-foreground">
+          {form.instructions}
+        </p>
+      )}
+    </header>
+  );
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <h1 className="break-words font-heading text-3xl font-semibold [overflow-wrap:anywhere]">
-          {form.title}
-        </h1>
-        {form.instructions === '' ? null : (
-          <p className="whitespace-pre-wrap break-words text-muted-foreground">
-            {form.instructions}
-          </p>
-        )}
-      </header>
+    <div
+      className={
+        isPublic
+          ? 'flex min-w-0 flex-col gap-6'
+          : 'flex max-w-2xl flex-col gap-6'
+      }
+    >
+      {isPublic ? null : heading}
       {paused ? (
         <Notice tone="warning">
           This workspace is suspended, so this form can’t take responses until
@@ -182,6 +198,7 @@ function PublishedForm({
         </Notice>
       ) : null}
       <FormResponse
+        intro={isPublic ? heading : undefined}
         fields={form.fields}
         serverError={command.cause}
         pending={command.pending}

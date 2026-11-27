@@ -1,41 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings/section';
 import {
   accountCommandFailure,
   needsFreshSignIn,
 } from '../../model/account/failure';
 import { allowlistedReturnPath, returnToSearch } from '../../model/return-path';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-
-/**
- * A block on the account page, laid out like every settings page: the title
- * and one short line on the left, the content on the right.
- */
-export function AccountSection({
-  title,
-  description,
-  action,
-  className,
-  children,
-}: Readonly<{
-  title: string;
-  description?: ReactNode;
-  action?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}>) {
-  return (
-    <SettingsSection
-      title={title}
-      {...(description === undefined ? {} : { description })}
-      {...(action === undefined ? {} : { action })}
-      {...(className === undefined ? {} : { className })}
-    >
-      {children}
-    </SettingsSection>
-  );
-}
 
 /**
  * "Sign in again" when the server wants a fresh session for a change. The

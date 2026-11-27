@@ -3401,6 +3401,7 @@
     "workflow-testing",
     "workflow-versions",
     "workflows",
+    "workspace-invitations",
     "workspace-variables",
     "workspaces"
   ],

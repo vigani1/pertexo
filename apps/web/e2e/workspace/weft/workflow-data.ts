@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { workflowId, workspaceId } from '../../workflow-editor/support';
 
 // Complete, contract-valid answers for the workflow tabs' screenshots.
@@ -63,7 +64,7 @@ function version(
   };
 }
 
-export const versions = [
+const versions = [
   version(3, steps, at(-46), people.dena),
   version(
     2,
@@ -95,7 +96,7 @@ export const workflowSummary = {
   },
 };
 
-export const webhooks = {
+const webhooks = {
   items: [
     {
       id: '50000000-0000-4000-8000-000000000001',
@@ -143,7 +144,7 @@ function schedule({
   };
 }
 
-export const schedules = {
+const schedules = {
   items: [
     schedule({
       id: '50000000-0000-4000-8000-000000000002',
@@ -166,7 +167,7 @@ export const schedules = {
   ],
 };
 
-export function nextRuns(url: string) {
+function nextRuns(url: string) {
   const first = url.includes('000000000002') ? 16.5 : 3.2;
   const step = url.includes('000000000002') ? 24 : 6;
   return {
@@ -175,4 +176,60 @@ export function nextRuns(url: string) {
       scheduledAt: at(first + index * step),
     })),
   };
+}
+
+const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
+
+export async function installWorkflowTabRoutes(page: Page) {
+  await page.route(`**/v1/workspaces/${workspaceId}/auto-pause`, (route) =>
+    route.fulfill({ json: { threshold: 10, revision: 1 } }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/notifications/summary`,
+    (route) => route.fulfill({ json: { unreadCount: 3, revision: '3' } }),
+  );
+  await page.route(workflowApi, (route) =>
+    route.fulfill({ json: workflowSummary }),
+  );
+  await page.route(`${workflowApi}?**`, (route) =>
+    route.fulfill({ json: { ...workflowSummary, templateOrigin: null } }),
+  );
+  await page.route(`${workflowApi}/versions/*`, (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-1);
+    const version = versions.find((item) => item.id === id);
+    return route.fulfill(
+      version === undefined ? { status: 404 } : { json: version },
+    );
+  });
+  await page.route(`${workflowApi}/versions?**`, (route) =>
+    route.fulfill({ json: { items: versions, nextCursor: null } }),
+  );
+  await page.route(`${workflowApi}/triggers`, (route) =>
+    route.fulfill({ json: webhooks }),
+  );
+  await page.route(`${workflowApi}/triggers/schedules`, (route) =>
+    route.fulfill({ json: schedules }),
+  );
+  await page.route(`${workflowApi}/triggers/*/schedule/next-runs?**`, (route) =>
+    route.fulfill({ json: nextRuns(route.request().url()) }),
+  );
+  await page.route(
+    `${workflowApi}/triggers/*/schedule/occurrences?**`,
+    (route) => route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(`${workflowApi}/mcp`, (route) =>
+    route.fulfill({
+      json: {
+        publishedVersionId: liveVersionId,
+        eligible: true,
+        exposure: null,
+      },
+    }),
+  );
+  await page.route(`${workflowApi}/failure-notification-policy`, (route) =>
+    route.fulfill({ json: { destination: null } }),
+  );
+  await page.route(`${workflowApi}/triggers/*/webhook/deliveries?**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
 }

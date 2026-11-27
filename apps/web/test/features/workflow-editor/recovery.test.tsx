@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
   findPaused,
   openRunLens,
@@ -264,14 +265,21 @@ describe(
       await event.click(
         screen.getByRole('button', { name: 'Verify original account' }),
       );
-      const openAccepted = await screen.findByRole('button', {
-        name: 'Open accepted run',
+      const runActions = await screen.findByRole('button', {
+        name: 'Test and run actions',
       });
+      await event.click(runActions);
+      await screen.findByRole('menuitem', { name: 'Open accepted run' });
+      await event.keyboard('{Escape}');
       expect(runRequests).toBe(1);
       // Request navigation before the real autosave debounce can elapse.
+      await openStepList(event);
       fireEvent.click(addStepButton(/Set fields/u));
       expect(screen.getByText('Unsaved')).toBeVisible();
-      fireEvent.click(openAccepted);
+      fireEvent.click(runActions);
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'Open accepted run' }),
+      );
       expect(
         await screen.findByRole('heading', {
           name: 'Leave with unsaved changes?',
@@ -283,7 +291,10 @@ describe(
       pressSave();
       expect(await screen.findByText(/^Saved/u)).toBeVisible();
       await event.click(
-        screen.getByRole('button', { name: 'Open accepted run' }),
+        screen.getByRole('button', { name: 'Test and run actions' }),
+      );
+      await event.click(
+        await screen.findByRole('menuitem', { name: 'Open accepted run' }),
       );
       await waitFor(() => {
         expect(app.router.state.location.pathname).toBe(
@@ -347,6 +358,7 @@ describe(
           screen.queryByRole('heading', { name: 'Editor paused' }),
         ).toBeNull();
       });
+      await openStepList(event);
       await event.click(addStepButton(/Set fields/u));
       expect(await screen.findByText('Edited since v1')).toBeVisible();
       expect(publishRequests).toBe(1);

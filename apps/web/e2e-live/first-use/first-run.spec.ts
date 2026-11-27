@@ -38,7 +38,9 @@ test('a new workspace runs its example by following the guide', async ({
   await expect(
     guide.getByRole('listitem').filter({ hasText: 'Publish it' }),
   ).toContainText('Done');
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run published version', exact: true })
     .click();

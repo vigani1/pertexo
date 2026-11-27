@@ -1,6 +1,5 @@
-import { useRef, type ReactNode, type RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { BracesIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import {
@@ -9,18 +8,13 @@ import {
 } from '@/features/workflows/workflows-views.public';
 
 import { useEditorStore, useEditorSession } from '../../model/state/context';
-import { HistoryMenuItems, HistoryControls } from './history-controls';
+import { HistoryMenuItems } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
 import { ShortcutSheet } from './shortcut-sheet';
 import { DeclarationDialog } from '../callable/declaration-dialog';
 
-/**
- * The Build tab's hub bar: the draft's pattern glyph before the name, the
- * live version and save state as a sentence under it, then undo/redo,
- * shortcuts and the publish feature's commands on the right. Below 640px,
- * undo, redo and shortcuts fold into ⋯ so Run and Publish always fit.
- */
+/** Build keeps draft state and primary commands in the hub. */
 export function EditorCommandBar({
   shortcuts,
   secondaryMenuItems,
@@ -51,20 +45,11 @@ export function EditorCommandBar({
   const duplicateBlocked = useEditorStore(
     (state) => state.save.status !== 'clean' || state.inspectorScratch,
   );
-  const contractRef = useRef<HTMLButtonElement>(null);
   const contractBlocked = useEditorStore((state) => state.inspectorScratch);
-  // The contract opens from ⋯ only where its own button is hidden; there the
-  // menu item is gone once the dialog closes, so focus returns to ⋯.
-  function finalFocus() {
-    const inline = contractRef.current;
-    if (inline !== null && inline.getClientRects().length > 0) return true;
-    const more = moreRef.current;
-    return more !== null && more.getClientRects().length > 0 ? more : true;
-  }
   return (
     <DeclarationDialog
       editable={!paused && workspace.capabilities.includes('workflow:update')}
-      finalFocus={finalFocus}
+      finalFocus={() => moreRef.current ?? true}
     >
       <WorkflowHubBar
         workflow={workflow}
@@ -73,7 +58,7 @@ export function EditorCommandBar({
         overflowRef={moreRef}
         slots={{
           presence,
-          mobileActions: (
+          overflowActions: (
             <>
               <DialogTrigger
                 render={<DropdownMenuItem />}
@@ -113,30 +98,9 @@ export function EditorCommandBar({
           ),
           actions: (
             <>
-              <DialogTrigger
-                ref={contractRef}
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hidden sm:inline-flex"
-                  />
-                }
-                disabled={contractBlocked}
-                aria-label="Workflow contract"
-              >
-                <BracesIcon aria-hidden="true" />
-                Contract
-              </DialogTrigger>
-              <HistoryControls
-                onUndo={onUndo}
-                onRedo={onRedo}
-                className="hidden sm:flex"
-              />
               <ShortcutSheet
                 open={shortcutsOpen}
                 onOpenChange={onShortcutsOpenChange}
-                triggerClassName="hidden sm:inline-flex"
                 fallbackAnchor={moreRef}
               />
               {commands}

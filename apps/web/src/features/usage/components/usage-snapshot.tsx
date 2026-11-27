@@ -1,6 +1,6 @@
 import { RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import {
   QueryView,
   type ReadQuery,
@@ -31,7 +31,8 @@ export function UsageSnapshot<Data>({
   children: (data: Data) => ReactNode;
 }>) {
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title={title}
       description={description}
       action={
@@ -68,6 +69,6 @@ export function UsageSnapshot<Data>({
       >
         {children}
       </QueryView>
-    </SettingsSection>
+    </SettingRow>
   );
 }

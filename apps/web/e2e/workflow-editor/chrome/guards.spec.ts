@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../actions';
 import { expect, test } from '../../support/fixtures';
 import { editorNode, mappingGraph } from '../graph';
 import {
@@ -112,15 +113,18 @@ test('resolves unfinished edits on step switches and keeps history consistent', 
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Applied B',
   );
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue('Node B');
-  await page.getByRole('button', { name: 'Redo' }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Redo' }).click();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Applied B',
   );
 
   await page.getByLabel('Count', { exact: true }).fill('still not a number');
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect(
     page.getByRole('heading', { name: 'Discard the unfinished edit?' }),
   ).toBeVisible();
@@ -128,7 +132,8 @@ test('resolves unfinished edits on step switches and keeps history consistent', 
   await expect(page.getByLabel('Count', { exact: true })).toHaveValue(
     'still not a number',
   );
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await page.getByRole('button', { name: 'Discard edit' }).click();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue('Node B');
 });
@@ -148,7 +153,7 @@ test('scopes keyboard deletion to the canvas and offers Undo', async ({
   await page.getByTestId('rf__node-node-a').click();
   await page.getByLabel('Count', { exact: true }).fill('unfinished');
 
-  await page.getByRole('button', { name: 'Keyboard shortcuts' }).focus();
+  await page.getByRole('button', { name: 'More workflow actions' }).focus();
   await page.keyboard.press('Delete');
   await expect(page.getByTestId('rf__node-node-a')).toBeVisible();
   await expect(
@@ -170,8 +175,7 @@ test('scopes keyboard deletion to the canvas and offers Undo', async ({
   await page.getByRole('button', { name: 'Discard edit' }).click();
   await expect(page.getByTestId('rf__node-node-a')).toBeHidden();
   await expect(page.getByText('Deleted “Node A”')).toBeVisible();
-  // The notification's Undo comes after the command bar's in the page.
-  await page.getByRole('button', { name: 'Undo' }).last().click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByTestId('rf__node-node-a')).toBeVisible();
 });
 

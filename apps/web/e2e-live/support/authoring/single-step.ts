@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import { expect, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
@@ -37,6 +38,7 @@ export async function addSingleStep(
   kind: RegExp,
   label: string,
 ) {
+  await openStepPalette(page);
   const palette = page.getByRole('complementary', { name: 'Add a step' });
   // Bundled steps (Switch · Parallel · Merge, Data table rows) open in place,
   // once the catalog has drawn them.
@@ -94,7 +96,9 @@ export async function publishSingleStep(page: Page, workflowPath: string) {
 }
 
 export async function startSingleStep(page: Page, input: unknown) {
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

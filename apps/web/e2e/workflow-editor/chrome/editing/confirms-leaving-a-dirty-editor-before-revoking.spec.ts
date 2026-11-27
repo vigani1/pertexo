@@ -299,7 +299,7 @@ for (const width of [1280, 390]) {
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
-    await addStep(page, /Set fields/u).click();
+    await (await addStep(page, /Set fields/u)).click();
     await expect.poll(() => remote.graph.nodes.length).toBe(3);
     const added = remote.graph.nodes.at(-1) as {
       id: string;
@@ -338,7 +338,7 @@ test('palette leaves a multiple selection unlinked', async ({
   await expect(
     page.getByRole('toolbar', { name: 'Canvas selection' }),
   ).toContainText('2 steps');
-  await addStep(page, /Set fields/u).click();
+  await (await addStep(page, /Set fields/u)).click();
   await expect.poll(() => remote.graph.nodes.length).toBe(3);
   expect(remote.graph.edges).toHaveLength(1);
 });

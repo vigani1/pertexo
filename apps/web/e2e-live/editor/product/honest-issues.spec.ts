@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../../../e2e/workflow-editor/actions';
 import type { Page } from '@playwright/test';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { test } from './account';
@@ -23,7 +24,8 @@ test('a step that can’t run is flagged in words before publish', async ({
   const path = await startEditor(page, 'Honest issues owner');
   await addStep(page, path, /^Manual\b/u, 'Start by hand');
   await addStep(page, path, /Condition/u, 'Gate with no input');
-  const chip = page.locator('#editor-issues-chip');
+  await openWorkflowMenu(page);
+  const chip = page.getByRole('menuitem', { name: /issue|check/iu }).last();
   await expect(chip).toContainText(/1 issue/u);
   await expect(page.getByText('No issues', { exact: true })).toBeHidden();
   await chip.click();

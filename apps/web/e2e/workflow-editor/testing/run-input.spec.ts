@@ -60,7 +60,9 @@ for (const width of [1280, 768, 390]) {
       },
     );
     await page.goto(editorUrl);
-    await page.getByRole('button', { name: 'Run', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Test and run actions', exact: true })
+      .click();
     await page.getByRole('menuitem', { name: 'Run with input…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Run with input' });
     await expect(

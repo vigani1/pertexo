@@ -26,7 +26,7 @@ test('Classify saves normalized category names and rejects duplicates on the edi
   const saved = () => parseWorkflowGraphDraft(remote.graph).nodes[0];
   await installEditorRoutes(page, remote, { definitions });
   await page.goto(editorUrl);
-  await addStep(page, /^Classify\b/u).click();
+  await (await addStep(page, /^Classify\b/u)).click();
   await expect.poll(() => saved()?.definition.key).toBe('ai.classify');
   await openStepSetup(page, { nodeId: saved()?.id ?? '', width: 1280 });
   const add = page.getByRole('button', { name: 'Add category', exact: true });
@@ -58,7 +58,7 @@ test('Guardrails reveals the required model setup only when a model check is ena
   const saved = () => parseWorkflowGraphDraft(remote.graph).nodes[0];
   await installEditorRoutes(page, remote, { definitions });
   await page.goto(editorUrl);
-  await addStep(page, /^Guardrails\b/u).click();
+  await (await addStep(page, /^Guardrails\b/u)).click();
   await expect.poll(() => saved()?.definition.key).toBe('ai.guardrails');
   await openStepSetup(page, { nodeId: saved()?.id ?? '', width: 1280 });
   const model = page.getByRole('checkbox', { name: 'Model check' });

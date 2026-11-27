@@ -8,7 +8,12 @@ import {
   workflowSummarySchema,
 } from '@pertexo/contracts';
 import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/input-dialog';
-import { RunMenu } from '@/features/workflow-publish/components/run-submission/menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PublishedRunMenuItems } from '@/features/workflow-publish/components/run-submission/published-action';
 import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
@@ -52,19 +57,25 @@ function openRunMenu() {
     });
     return (
       <>
-        <RunMenu
-          published
-          pending={submission.pending}
-          acceptedRunPending={submission.acceptedRunId !== undefined}
-          unresolvedRun={submission.retryAvailable}
-          onRunNow={() => {
-            setOpen(true);
-          }}
-          onRunWithInput={() => {
-            setOpen(true);
-          }}
-          onOpenAcceptedRun={() => void submission.openAcceptedRun()}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger>Test and run actions</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <PublishedRunMenuItems
+              form={false}
+              canRun
+              published
+              loading={false}
+              submission={submission}
+              scope={{ workflowId, workspaceId }}
+              onRunNow={() => {
+                setOpen(true);
+              }}
+              onRunWithInput={() => {
+                setOpen(true);
+              }}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
         <RunInputDialog
           caseScope={{
             apiClient,
@@ -105,7 +116,9 @@ async function chooseRun(
   event: ReturnType<typeof userEvent.setup>,
   action = 'Run with input…',
 ) {
-  await event.click(await screen.findByRole('button', { name: 'Run' }));
+  await event.click(
+    await screen.findByRole('button', { name: 'Test and run actions' }),
+  );
   await event.click(await screen.findByRole('menuitem', { name: action }));
   return screen.findByRole('button', { name: 'Start published version' });
 }

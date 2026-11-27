@@ -33,6 +33,8 @@ export function RunLoom({
   windowLabel,
   workspaceId,
   laneTotals,
+  currentRunning,
+  converge = false,
 }: Readonly<{
   runs: readonly WorkflowRunReadSummary[];
   windowMs: number;
@@ -40,6 +42,8 @@ export function RunLoom({
   windowLabel: string;
   workspaceId: string;
   /** Exact runs per workflow in the window, when the statistics read has them. */
+  currentRunning?: number | undefined;
+  converge?: boolean;
   laneTotals?: ReadonlyMap<string, number> | undefined;
 }>) {
   const nowMs = useNow({ intervalMs: CLOCK_TICK.chart, enabled: true });
@@ -61,6 +65,7 @@ export function RunLoom({
     'workflow',
   )} over ${windowLabel}.`;
 
+  const running = currentRunning ?? model.liveCount;
   const height = loomHeight(model.lanes.length);
   return (
     <div className="flex flex-col gap-3">
@@ -68,7 +73,7 @@ export function RunLoom({
         className="@container relative overflow-hidden transition-[height] duration-300 ease-out motion-reduce:transition-none"
         style={{ height }}
       >
-        <LoomCanvas model={model} label={summary} />
+        <LoomCanvas model={model} label={summary} converge={converge} />
         <LoomThreadLinks
           model={model}
           workspaceId={workspaceId}
@@ -77,8 +82,8 @@ export function RunLoom({
         />
         <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] flex w-[56px] items-center justify-center @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
           <CoreOrb
-            state={model.liveCount > 0 ? 'live' : 'idle'}
-            energy={coreEnergy(model.liveCount)}
+            state={running > 0 ? 'live' : 'idle'}
+            energy={coreEnergy(running)}
             className={
               height >= LOOM_TALL_HEIGHT
                 ? 'size-12 @min-[640px]:size-36'
@@ -89,10 +94,10 @@ export function RunLoom({
             className={cn(
               'absolute inset-x-0 bottom-0 text-center font-mono text-caption font-semibold @max-[639px]:hidden',
               // Live work is the one thing here that earns colour.
-              model.liveCount > 0 ? 'text-glint' : 'text-subtle-foreground',
+              running > 0 ? 'text-glint' : 'text-subtle-foreground',
             )}
           >
-            {String(model.liveCount)} running
+            {String(running)} running
           </p>
         </div>
         {model.runCount === 0 ? (
@@ -113,7 +118,8 @@ export function RunLoom({
 function LoomCanvas({
   model,
   label,
-}: Readonly<{ model: LoomModel; label: string }>) {
+  converge,
+}: Readonly<{ model: LoomModel; label: string; converge: boolean }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Without live runs the threads only drift with the clock, which the
   // model's own 15-second refresh redraws.
@@ -124,9 +130,9 @@ function LoomCanvas({
   });
 
   useEffect(() => {
-    rendererRef.current?.setModel(model);
+    rendererRef.current?.setModel(model, converge);
     refresh();
-  }, [rendererRef, refresh, model]);
+  }, [rendererRef, refresh, model, converge]);
 
   return (
     <canvas

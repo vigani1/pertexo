@@ -93,25 +93,34 @@ for (const screen of [
         name: 'More workflow actions',
         exact: true,
       });
-      const run = header.getByRole('button', { name: 'Run', exact: true });
+      const run = header.getByRole('button', {
+        name: 'Test and run actions',
+        exact: true,
+      });
       const publish = header.getByRole('button', {
         name: 'No changes since v1',
         exact: true,
       });
-      const issues = header.getByRole('button', {
+      await expect(publish).toBeDisabled();
+      await more.press('Enter');
+      const issues = page.getByRole('menuitem', {
         name: 'No issues',
         exact: true,
       });
-      await expect(publish).toBeDisabled();
-      await expect(
-        issues.getByText('No issues', { exact: true }),
-      ).toBeVisible();
+      await expect(issues).toBeVisible();
       expect(
-        await issues
-          .getByText('No issues', { exact: true })
-          .evaluate((label) => label.scrollWidth <= label.clientWidth),
+        await issues.evaluate(
+          (label) => label.scrollWidth <= label.clientWidth,
+        ),
       ).toBe(true);
-      const boxes = await Promise.all([more, issues, run, publish].map(bounds));
+      await page.keyboard.press('Escape');
+      const assistant = header.getByRole('button', {
+        name: 'Ask the assistant',
+        exact: true,
+      });
+      const boxes = await Promise.all(
+        [more, assistant, run, publish].map(bounds),
+      );
       const baseline = boxes[0];
       if (baseline === undefined) throw new Error('Missing command row');
       for (const box of boxes) {

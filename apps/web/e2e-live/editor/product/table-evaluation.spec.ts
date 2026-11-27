@@ -42,7 +42,7 @@ test('evaluates a published Switch against table rows and inspects its branch sc
   await page.reload();
   await publishSingleStep(page, workflow);
   await page
-    .getByRole('button', { name: 'More test actions', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
     .click();
   await page
     .getByRole('menuitem', { name: 'Evaluate data table', exact: true })

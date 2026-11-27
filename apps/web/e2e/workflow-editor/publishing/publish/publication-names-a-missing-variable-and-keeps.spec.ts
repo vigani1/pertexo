@@ -60,7 +60,7 @@ for (const width of [1280, 375])
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
-    await addStep(page, /Set fields/u).click();
+    await (await addStep(page, /Set fields/u)).click();
     await expect.poll(() => remote.revision).toBe(2);
     if (width < 1024)
       await page
@@ -94,7 +94,7 @@ for (const width of [1280, 375])
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
-    await addStep(page, /Set fields/u).click();
+    await (await addStep(page, /Set fields/u)).click();
     await expect.poll(() => remote.revision).toBe(3);
     const correctedGraph = structuredClone(remote.graph);
     if (width < 1024)

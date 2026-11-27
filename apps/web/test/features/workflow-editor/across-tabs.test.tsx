@@ -5,6 +5,7 @@ import { HttpResponse, delay, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
 } from '../../support/fixtures/editor-actions';
 import {
@@ -77,6 +78,7 @@ describe('workflow editor across tabs', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await waitFor(() => {
       expect(stored.revision).toBe(2);
@@ -89,6 +91,7 @@ describe('workflow editor across tabs', { timeout: 30_000 }, () => {
     returning = true;
     await event.click(await screen.findByRole('link', { name: 'Build' }));
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await waitFor(() => {
       expect(saves).toBe(2);

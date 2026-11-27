@@ -10,7 +10,7 @@ import {
   manualDefinition,
   remoteDraft,
 } from '../support';
-import { focusStep } from '../actions';
+import { focusStep, openStepPalette, openWorkflowMenu } from '../actions';
 
 test('drops a connection on empty canvas to add a connected step there, undone in one step', async ({
   context,
@@ -51,7 +51,8 @@ test('drops a connection on empty canvas to add a connected step there, undone i
     target: { port: 'in' },
   });
 
-  await page.getByRole('button', { name: 'Undo' }).first().click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect(page.locator('.react-flow__node')).toHaveCount(2);
   await expect
     .poll(() => remote.graph.nodes.length, { timeout: 4_000 })
@@ -110,6 +111,7 @@ test('keeps the step list the same length while it is scrolled through', async (
   await addCsrfCookie(context);
   await installEditorRoutes(page, remoteDraft(), { definitions });
   await page.goto(editorUrl);
+  await openStepPalette(page);
   const list = page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name: /^Manual start\b/u })

@@ -1,10 +1,8 @@
 export { WorkflowDuplicateDialog } from './components/duplicate/workflow-duplicate-dialog';
 export { WorkflowExportDialog } from './components/portability/workflow-export-dialog';
 export { FirstRunGuide } from './components/first-run-guide';
-export {
-  WorkflowHubBar,
-  type WorkflowHubTab,
-} from './components/workflow-hub-bar';
+export { WorkflowHubBar } from './components/workflow-hub-bar';
+export type { WorkflowHubTab } from './components/workflow-hub-tabs';
 export { WorkflowReadBoundary } from './components/workflow-read-boundary';
 export {
   InputCasesPanel,

@@ -13,7 +13,8 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { AccountCommandFailure, AccountSection } from './section';
+import { AccountCommandFailure } from './section';
+import { SettingRow } from '@/components/patterns/settings/row';
 
 // The account endpoints accept new passwords of at least 12 characters.
 const MINIMUM_LENGTH = DEFAULT_MINIMUM_PASSWORD_LENGTH;
@@ -64,7 +65,8 @@ export function AccountPasswordSection({
   }
 
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title={hasPassword ? 'Password' : 'Add a password'}
       description={
         hasPassword
@@ -127,6 +129,6 @@ export function AccountPasswordSection({
           {hasPassword ? 'Change password' : 'Add password'}
         </ProgressButton>
       </form>
-    </AccountSection>
+    </SettingRow>
   );
 }

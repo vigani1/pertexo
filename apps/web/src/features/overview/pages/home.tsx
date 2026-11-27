@@ -107,6 +107,7 @@ export function HomePage({
       </div>
     );
 
+  const shownStatistics = shownData(statistics);
   const newWorkspace = isNewWorkspace(facts);
   const settled =
     (!canReadRuns || anyRun.data !== undefined || anyRun.isError) &&
@@ -116,7 +117,7 @@ export function HomePage({
       <HomeHeader
         workspace={workspace}
         name={user.displayName}
-        statistics={shownData(statistics)}
+        statistics={shownStatistics}
         refreshing={refreshing}
         onRefresh={refresh}
         onOpenSearch={onOpenSearch}
@@ -143,6 +144,7 @@ export function HomePage({
               apiClient={apiClient}
               userId={user.id}
               workspaceId={workspace.id}
+              currentRunning={shownStatistics?.current.running}
             />
           ) : null}
           {newWorkspace ? null : (
