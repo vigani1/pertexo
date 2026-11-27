@@ -129,6 +129,7 @@ describe('team: members', () => {
       ),
     ).toBeVisible();
     expect(screen.getByText('you')).toBeVisible();
+    await userEvent.setup().click(screen.getByText('Compare roles'));
     const matrix = screen.getByRole('table');
     expect(
       within(matrix).getByRole('rowheader', {

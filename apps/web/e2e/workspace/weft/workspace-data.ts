@@ -162,3 +162,59 @@ export const tableRows = {
   affected: products.length,
   hasMore: false,
 };
+
+const people: readonly (readonly [
+  string,
+  'owner' | 'admin' | 'builder' | 'operator' | 'viewer',
+])[] = [
+  ['Pertexo Operator', 'owner'],
+  ['Iris Lund', 'admin'],
+  ['Marco Vitale', 'admin'],
+  ...[
+    'Sami Haddad',
+    'Priya Nair',
+    'Jonas Berg',
+    'Lea Moreau',
+    'Tomás Rivera',
+    'Hana Sato',
+    'Omar Aziz',
+    'Ines Costa',
+  ].map((name) => [name, 'builder'] as const),
+  ['Ruth Adler', 'operator'],
+  ['Kofi Mensah', 'operator'],
+  ['Mei Chen', 'viewer'],
+];
+
+export function members(ownerId: string) {
+  return {
+    items: people.map(([displayName, role], index) => ({
+      userId: index === 0 ? ownerId : id(3, index + 1),
+      email: `${displayName.split(' ')[0]?.toLowerCase() ?? 'person'}@northwind.example`,
+      displayName,
+      role,
+      roleRevision: 1,
+      membershipStatus: index === 12 ? 'suspended' : 'active',
+      createdAt: at(-24 * (300 - index * 11)),
+      updatedAt: at(-24 * 2),
+    })),
+    nextCursor: null,
+  };
+}
+
+export const invitations = {
+  issuanceAvailable: true,
+  items: ['ana@northwind.example', 'ben@northwind.example'].map(
+    (email, index) => ({
+      id: id(2, index + 1),
+      email,
+      role: 'builder',
+      status: 'pending',
+      revision: 1,
+      deliveryStatus: 'submitted',
+      expiresAt: at(24 * 6),
+      createdAt: at(-24),
+      updatedAt: at(-24),
+    }),
+  ),
+  nextCursor: null,
+};

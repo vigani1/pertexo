@@ -6,7 +6,18 @@ import {
   MoreHorizontalIcon,
   UserMinusIcon,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
+import { Row, RowList } from '@/components/patterns/lists/row';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
+import {
+  COLLAPSED_LIST_COUNT,
+  ShowAll,
+} from '@/components/patterns/lists/show-all';
+import {
+  groupMembers,
+  ROLE_SUMMARIES,
+  type MemberGroup,
+} from '../../model/member-groups';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   DropdownMenu,
@@ -123,9 +134,9 @@ function MemberRow({
 }>) {
   const feedback = control.feedback(member);
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-border py-3 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem]">
+    <Row className="grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,12.5rem)_minmax(0,1fr)_auto_8rem_2.5rem]">
       <RingMonogram name={member.displayName} />
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col sm:contents">
         <p className="flex min-w-0 items-baseline gap-2">
           <span
             className="truncate text-sm font-semibold"
@@ -139,24 +150,19 @@ function MemberRow({
             </span>
           ) : null}
           {member.membershipStatus === 'suspended' ? (
-            <span className="font-mono text-caption text-warning sm:hidden">
-              suspended
-            </span>
+            <StatusMark tone="attention">Suspended</StatusMark>
           ) : null}
         </p>
         <p
-          className="truncate text-xs text-muted-foreground"
+          className="truncate font-mono text-caption text-subtle-foreground"
           title={member.email}
         >
           {member.email}
         </p>
-        {member.directorySource === undefined ? null : (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Directory-managed. Ask the organization’s control workspace owner to
-            change access.
-          </p>
-        )}
       </div>
+      <span className="font-mono text-caption whitespace-nowrap text-subtle-foreground max-sm:hidden">
+        joined {formatDate(member.createdAt)}
+      </span>
       <div>
         {control.canChange(member) ? (
           <RoleSelect
@@ -168,26 +174,22 @@ function MemberRow({
             }}
             triggerProps={{
               'aria-label': `Role for ${member.displayName}`,
-              className: 'h-8 w-32 text-label font-semibold',
+              className: 'h-8 w-30 text-label font-semibold',
             }}
           />
         ) : (
-          <span className="inline-flex h-8 items-center px-3 text-label font-semibold">
+          <span className="inline-flex h-8 items-center px-3 text-label text-muted-foreground">
             {ROLE_NAMES[member.role]}
           </span>
         )}
       </div>
-      <span className="max-sm:hidden">
-        {member.membershipStatus === 'active' ? (
-          <StatusMark tone="success">Active</StatusMark>
-        ) : (
-          <StatusMark tone="attention">Suspended</StatusMark>
-        )}
-      </span>
-      <span className="font-mono text-caption text-subtle-foreground max-sm:hidden">
-        {formatDate(member.createdAt)}
-      </span>
       <MemberActions member={member} control={control} />
+      {member.directorySource === undefined ? null : (
+        <p className="col-span-full pl-11.5 text-xs text-muted-foreground">
+          Directory-managed. Ask the organization’s control workspace owner to
+          change access.
+        </p>
+      )}
       {feedback === undefined ? null : (
         <p
           role="alert"
@@ -201,34 +203,39 @@ function MemberRow({
           {feedback}
         </p>
       )}
-    </li>
+    </Row>
   );
 }
 
-/** Everyone with access: who they are, their role and when they joined. */
-export function MemberList({
-  members,
+/** One role's members: five, then “Show all N”. */
+function MemberGroupSection({
+  group,
   actorUserId,
   control,
 }: Readonly<{
-  members: readonly WorkspaceMember[];
+  group: MemberGroup;
   actorUserId: string;
   control: MemberRowControl;
 }>) {
+  const [expanded, setExpanded] = useState(false);
+  const listId = useId();
+  const shown = expanded
+    ? group.members
+    : group.members.slice(0, COLLAPSED_LIST_COUNT);
   return (
-    <div className="flex flex-col">
-      {/* Column names on wide screens, so the date reads as when someone
-          joined. Each cell names itself for screen readers already. */}
-      <div
-        aria-hidden="true"
-        className="hidden grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem] gap-x-3.5 border-b border-border pb-2 font-mono text-caption text-subtle-foreground sm:grid"
+    <section aria-labelledby={`${listId}-heading`} className="flex flex-col">
+      <RuleHeading id={`${listId}-heading`} count={group.members.length}>
+        {ROLE_GROUP_NAMES[group.role]}
+      </RuleHeading>
+      <p className="mt-1 text-meta text-subtle-foreground">
+        {ROLE_SUMMARIES[group.role]}
+      </p>
+      <RowList
+        id={listId}
+        aria-label={ROLE_GROUP_NAMES[group.role]}
+        className="mt-2"
       >
-        <span className="col-start-3 px-3">Role</span>
-        <span>Status</span>
-        <span>Joined</span>
-      </div>
-      <ul aria-label="Members" className="flex flex-col">
-        {members.map((member) => (
+        {shown.map((member) => (
           <MemberRow
             key={member.userId}
             member={member}
@@ -236,7 +243,56 @@ export function MemberList({
             control={control}
           />
         ))}
-      </ul>
+      </RowList>
+      <div className="mt-1">
+        <ShowAll
+          count={group.members.length}
+          controls={listId}
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+        />
+      </div>
+    </section>
+  );
+}
+
+const ROLE_GROUP_NAMES: Readonly<Record<WorkspaceRole, string>> = {
+  owner: 'Owner',
+  admin: 'Admins',
+  builder: 'Builders',
+  operator: 'Operators',
+  viewer: 'Viewers',
+};
+
+/** Everyone with access, grouped by role: who they are and when they joined. */
+export function MemberList({
+  members,
+  actorUserId,
+  control,
+  search,
+}: Readonly<{
+  members: readonly WorkspaceMember[];
+  actorUserId: string;
+  control: MemberRowControl;
+  search: string;
+}>) {
+  const groups = groupMembers(members, search);
+  if (groups.length === 0)
+    return (
+      <p className="py-6 text-sm text-muted-foreground">
+        No member matches “{search.trim()}”.
+      </p>
+    );
+  return (
+    <div aria-label="Members" role="group" className="flex flex-col gap-8">
+      {groups.map((group) => (
+        <MemberGroupSection
+          key={group.role}
+          group={group}
+          actorUserId={actorUserId}
+          control={control}
+        />
+      ))}
     </div>
   );
 }
