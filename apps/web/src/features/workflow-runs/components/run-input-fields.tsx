@@ -40,7 +40,8 @@ export function RunInputFields({
             autoComplete="off"
             autoFocus={autoFocus}
             spellCheck={false}
-            className="min-h-32 font-mono text-base md:text-label"
+            typography="code"
+            className="min-h-32"
             disabled={disabled}
             readOnly={inputReadOnly}
             value={runInput.input}

@@ -43,7 +43,7 @@ export function HomeHeader({
   return (
     <PageHeader>
       <div className="min-w-0">
-        <PageHeaderTitle className="break-words sm:text-5xl">
+        <PageHeaderTitle size="hero" className="break-words">
           {homeGreeting(name, new Date().getHours())}
         </PageHeaderTitle>
         {/* The figures' line is held while they load, so the actions under

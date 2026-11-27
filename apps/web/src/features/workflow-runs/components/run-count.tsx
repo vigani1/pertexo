@@ -25,7 +25,7 @@ export function RunCount({
   if (count === 0)
     return <span className="font-mono text-meta leading-none">{words}</span>;
   return (
-    <StatusMark tone={tone} className="font-mono">
+    <StatusMark tone={tone} typography="count">
       {words}
     </StatusMark>
   );

@@ -284,11 +284,7 @@ function SetupCheck({
             key={`${issue.path}\u0000${issue.code}`}
             className="flex items-start gap-2 text-label text-muted-foreground"
           >
-            <StatusMark
-              display="mark"
-              tone="failure"
-              className="mt-px text-destructive"
-            />
+            <StatusMark display="mark" tone="failure" className="mt-px" />
             {describeValidationIssue(issue)}
           </li>
         ))}

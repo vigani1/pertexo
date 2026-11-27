@@ -52,7 +52,7 @@ export function LiteralEditor({
             {...control}
             name={`inputMapping.${row.id}.value`}
             autoComplete="off"
-            className={mode === 'number' ? 'font-mono' : undefined}
+            typography={mode === 'number' ? 'mono' : 'normal'}
             value={literalText(mode, parsed, row.literalJson)}
             disabled={disabled}
             onChange={(event) => {
@@ -74,7 +74,8 @@ export function LiteralEditor({
           name={`inputMapping.${row.id}.literal`}
           autoComplete="off"
           spellCheck={false}
-          className="min-h-20 font-mono text-base md:text-label"
+          typography="code"
+          className="min-h-20"
           value={row.literalJson}
           disabled={disabled}
           onChange={(event) => {

@@ -109,7 +109,8 @@ export function LookupValueField({
             name={field.name}
             autoComplete="off"
             spellCheck={false}
-            className="flex-1 font-mono"
+            typography="mono"
+            className="flex-1"
             value={live.text}
             disabled={!form.editable}
             onBlur={() => {

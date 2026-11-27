@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
 
@@ -18,6 +19,17 @@ export function PageHeader({ className, ...props }: ComponentProps<'header'>) {
 
 const HEADING_TAGS = { 1: 'h1', 2: 'h2' } as const;
 
+const titleVariants = cva('font-display leading-tight', {
+  variants: {
+    size: {
+      page: 'text-4xl [--display-width:80%] sm:text-display',
+      hero: 'text-4xl [--display-width:80%] sm:text-5xl',
+      detail: 'text-3xl [--display-width:78%] sm:text-display',
+    },
+  },
+  defaultVariants: { size: 'page' },
+});
+
 /**
  * The page's title. Beside a detail that owns the page's title (list and
  * detail), the list's title steps down to a second-level heading.
@@ -25,16 +37,16 @@ const HEADING_TAGS = { 1: 'h1', 2: 'h2' } as const;
 export function PageHeaderTitle({
   className,
   level = 1,
+  size,
   ...props
-}: ComponentProps<'h1'> & Readonly<{ level?: 1 | 2 }>) {
+}: ComponentProps<'h1'> &
+  VariantProps<typeof titleVariants> &
+  Readonly<{ level?: 1 | 2 }>) {
   const Heading = HEADING_TAGS[level];
   return (
     <Heading
       data-slot="page-header-title"
-      className={cn(
-        'font-display text-4xl leading-tight [--display-width:80%] sm:text-display',
-        className,
-      )}
+      className={cn(titleVariants({ size }), className)}
       {...props}
     />
   );

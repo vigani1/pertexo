@@ -111,7 +111,7 @@ function ExactValueFields({
             placeholder="orderId"
             autoComplete="off"
             spellCheck={false}
-            className="font-mono"
+            typography="mono"
             value={key}
             maxLength={50}
             onChange={(event) => {
@@ -131,7 +131,7 @@ function ExactValueFields({
             {...control}
             placeholder="A-1042"
             autoComplete="off"
-            className="font-mono"
+            typography="mono"
             value={value}
             maxLength={255}
             onChange={(event) => {

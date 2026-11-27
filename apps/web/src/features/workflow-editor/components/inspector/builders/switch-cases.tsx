@@ -172,7 +172,7 @@ function CaseRow({
     >
       <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-start gap-2">
         <Field>
-          <FieldLabel htmlFor={`${baseId}-kind`} className="text-xs">
+          <FieldLabel htmlFor={`${baseId}-kind`} compact>
             Kind
           </FieldLabel>
           <ChoiceSelect
@@ -218,7 +218,7 @@ function CaseValue({
   if (kind === 'boolean')
     return (
       <Field>
-        <FieldLabel htmlFor={id} className="text-xs">
+        <FieldLabel htmlFor={id} compact>
           Equals
         </FieldLabel>
         <ChoiceSelect

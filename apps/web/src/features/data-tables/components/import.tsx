@@ -99,7 +99,7 @@ export function ImportTableCsv({
             <Label htmlFor="csv-text">Or paste CSV</Label>
             <Textarea
               id="csv-text"
-              className="font-mono text-base md:text-xs"
+              typography="compact-code"
               rows={8}
               disabled={locked}
               value={csv}

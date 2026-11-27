@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
 
@@ -23,11 +24,22 @@ export function EmptyMedia({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-export function EmptyTitle({ className, ...props }: ComponentProps<'h2'>) {
+const emptyTitleVariants = cva('font-heading font-semibold', {
+  variants: {
+    size: { section: 'text-section', panel: 'text-xl', feature: 'text-3xl' },
+  },
+  defaultVariants: { size: 'section' },
+});
+
+export function EmptyTitle({
+  size,
+  className,
+  ...props
+}: ComponentProps<'h2'> & VariantProps<typeof emptyTitleVariants>) {
   return (
     <h2
       data-slot="empty-title"
-      className={cn('font-heading text-section font-semibold', className)}
+      className={cn(emptyTitleVariants({ size }), className)}
       {...props}
     />
   );

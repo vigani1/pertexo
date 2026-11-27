@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/class-names';
 
@@ -17,6 +18,28 @@ const presentations = {
 
 export type StatusTone = keyof typeof presentations;
 
+const statusVariants = cva(
+  'inline-flex shrink-0 items-center gap-1.5 leading-none whitespace-nowrap',
+  {
+    variants: {
+      typography: {
+        default: 'text-meta',
+        label: 'font-sans text-label',
+        emphasized: 'text-label font-medium',
+        body: 'text-sm font-medium',
+        caption: 'text-xs font-normal',
+        count: 'font-mono text-meta',
+        metadata: 'font-mono text-xs font-normal',
+      },
+      emphasis: {
+        normal: 'text-muted-foreground',
+        muted: 'text-subtle-foreground',
+      },
+    },
+    defaultVariants: { typography: 'default', emphasis: 'normal' },
+  },
+);
+
 /**
  * One status mark for every state. With `display="word"` the state word sits
  * beside the mark. A mark shown alone is decorative, because the words next to
@@ -28,10 +51,13 @@ export function StatusMark({
   still = false,
   display = 'word',
   label,
+  typography,
+  emphasis,
   className,
   children,
   ...props
 }: Omit<ComponentProps<'span'>, 'children'> &
+  VariantProps<typeof statusVariants> &
   Readonly<{
     tone: StatusTone;
     still?: boolean;
@@ -49,10 +75,7 @@ export function StatusMark({
       role={named ? 'img' : undefined}
       aria-label={named ? label : undefined}
       aria-hidden={display === 'mark' && !named ? true : undefined}
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 text-meta leading-none whitespace-nowrap text-muted-foreground',
-        className,
-      )}
+      className={cn(statusVariants({ typography, emphasis }), className)}
       {...props}
     >
       <span

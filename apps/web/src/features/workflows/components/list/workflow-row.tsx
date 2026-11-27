@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { useStepDescriptions } from '@/features/catalog/public';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
@@ -245,14 +246,12 @@ export function WorkflowRow({
   // One line per workflow: on phones and tablets the name and its state;
   // from `lg` the facts' wrapper dissolves (`contents`) into their columns.
   return (
-    <li
+    <Row
+      transition="none"
       onKeyDown={(event) => {
         runShortcut(event, run);
       }}
-      className={cn(
-        'group/row row-divider grid items-center gap-x-3 gap-y-1 rounded-lg px-3 py-2 focus-within:bg-select hover:bg-select',
-        WORKFLOW_ROW_COLUMNS,
-      )}
+      className={cn('group/row gap-x-3 px-3 py-2', WORKFLOW_ROW_COLUMNS)}
     >
       <div className="flex items-center gap-2">
         {selectionControl == null ? null : (
@@ -302,6 +301,6 @@ export function WorkflowRow({
       {tags == null ? null : (
         <div className="col-start-2 row-start-2 min-w-0">{tags}</div>
       )}
-    </li>
+    </Row>
   );
 }

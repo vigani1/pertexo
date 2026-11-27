@@ -64,7 +64,7 @@ export function IssuesList({
                     <StatusMark
                       display="mark"
                       tone="failure"
-                      className="mt-px text-destructive"
+                      className="mt-px"
                     />
                     <span className="text-muted-foreground">{message}</span>
                     {target === undefined ||

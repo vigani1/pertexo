@@ -2,8 +2,8 @@ import type {
   AccessibleWorkspace,
   WorkspaceLifecycleChangeResponse,
 } from '@pertexo/contracts';
-import { useState, type ReactNode } from 'react';
-import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
+import { useState } from 'react';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
@@ -13,31 +13,6 @@ import { WorkspaceLifecycleDialog } from './workspace-lifecycle-dialog';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
-/** Irreversible or hard-to-undo actions, fenced off from the rest. */
-export function DangerZone({
-  children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
-  return <SettingsGroup title="Hard to undo">{children}</SettingsGroup>;
-}
-/**
- * One action in the danger zone: what it does, with its button beside it on
- * a wide screen, so every row lines up however long its sentence is.
- */
-export function DangerAction({
-  title,
-  description,
-  children,
-}: Readonly<{
-  title: string;
-  description: string;
-  children: ReactNode;
-}>) {
-  return (
-    <SettingRow title={title} description={description} action={children} />
-  );
-}
 const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
   deletion_requested: `The workspace is scheduled for deletion. Restore it within ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} of the request to keep it.`,
   deletion_restored:
@@ -100,49 +75,52 @@ export function WorkspaceLifecycleControls({
     );
   if (workspace.status === 'pending_deletion')
     return (
-      <DangerAction
+      <SettingRow
         title="Restore workspace"
         description={`It’s scheduled for deletion within ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} of the request. Restoring brings it back suspended, and an owner can then reactivate it; integrations stay off until they’re reconnected.`}
-      >
-        <WorkspaceLifecycleDialog
-          {...commandProps(command)}
-          title={`Restore ${workspace.name}?`}
-          description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, and an owner can then reactivate it. Triggers and integrations stay off until their connections are reconnected."
-          action="Restore workspace"
-          pendingLabel="Restoring…"
-          onConfirm={() => command.start({ command: 'restore' })}
-        />
-      </DangerAction>
+        action={
+          <WorkspaceLifecycleDialog
+            {...commandProps(command)}
+            title={`Restore ${workspace.name}?`}
+            description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, and an owner can then reactivate it. Triggers and integrations stay off until their connections are reconnected."
+            action="Restore workspace"
+            pendingLabel="Restoring…"
+            onConfirm={() => command.start({ command: 'restore' })}
+          />
+        }
+      />
     );
   return (
     <>
       {workspace.status === 'suspended' ? (
-        <DangerAction
+        <SettingRow
           title="Reactivate workspace"
           description="Lets people make changes and start runs again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked."
-        >
-          <WorkspaceLifecycleDialog
-            {...commandProps(reactivation)}
-            title={`Reactivate ${workspace.name}?`}
-            description="This lifts the suspension, so people can make changes and start runs again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked."
-            action="Reactivate workspace"
-            pendingLabel="Reactivating…"
-            onConfirm={() => reactivation.start({ command: 'reactivate' })}
-          />
-        </DangerAction>
-      ) : null}
-      <DangerAction
-        title="Delete workspace"
-        description={`Access and triggers stop straight away. You can restore it for ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')}; after that it’s gone for good.`}
-      >
-        <WorkspaceDeletionDialog
-          workspaceName={workspace.name}
-          {...commandProps(command)}
-          onRequest={(reason) =>
-            command.start({ command: 'request-deletion', reason })
+          action={
+            <WorkspaceLifecycleDialog
+              {...commandProps(reactivation)}
+              title={`Reactivate ${workspace.name}?`}
+              description="This lifts the suspension, so people can make changes and start runs again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked."
+              action="Reactivate workspace"
+              pendingLabel="Reactivating…"
+              onConfirm={() => reactivation.start({ command: 'reactivate' })}
+            />
           }
         />
-      </DangerAction>
+      ) : null}
+      <SettingRow
+        title="Delete workspace"
+        description={`Access and triggers stop straight away. You can restore it for ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')}; after that it’s gone for good.`}
+        action={
+          <WorkspaceDeletionDialog
+            workspaceName={workspace.name}
+            {...commandProps(command)}
+            onRequest={(reason) =>
+              command.start({ command: 'request-deletion', reason })
+            }
+          />
+        }
+      />
     </>
   );
 }

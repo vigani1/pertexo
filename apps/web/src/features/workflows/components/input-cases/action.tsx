@@ -143,7 +143,8 @@ function InputCasesDialog({
                     readOnly
                     autoComplete="off"
                     spellCheck={false}
-                    className="min-h-32 font-mono"
+                    typography="mono"
+                    className="min-h-32"
                     value={JSON.stringify(loaded.input, null, 2)}
                   />
                 )}

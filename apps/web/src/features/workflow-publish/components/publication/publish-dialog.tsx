@@ -238,10 +238,8 @@ function PublishProgress({
           >
             <StatusMark
               tone={tone}
-              className={cn(
-                'text-sm font-medium',
-                index > activeIndex && 'text-subtle-foreground',
-              )}
+              typography="body"
+              emphasis={index > activeIndex ? 'muted' : 'normal'}
             >
               {requesting && step.stage === 'publishing'
                 ? 'Sending the exact draft for review'

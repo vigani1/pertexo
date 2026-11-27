@@ -133,7 +133,7 @@ function VariableForm({
               {...control}
               id={`${prefix}-name`}
               name={`${prefix}.name`}
-              className="font-mono"
+              typography="mono"
               value={row.name}
               autoComplete="off"
               spellCheck={false}

@@ -195,11 +195,7 @@ function MemberRow({
           role="alert"
           className="col-span-full flex items-start gap-2 pl-11.5 text-xs text-foreground"
         >
-          <StatusMark
-            display="mark"
-            tone="attention"
-            className="text-warning"
-          />
+          <StatusMark display="mark" tone="attention" />
           {feedback}
         </p>
       )}

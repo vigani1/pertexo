@@ -143,10 +143,7 @@ function PauseReadProblem({
           display="mark"
           tone={checking ? 'waiting' : 'attention'}
           still={!checking}
-          className={cn(
-            'max-sm:hidden',
-            checking ? 'text-muted-foreground' : 'text-warning',
-          )}
+          className="max-sm:hidden"
         />
         <span className="min-w-0 leading-tight sm:truncate">
           Couldn’t check if triggers are paused.

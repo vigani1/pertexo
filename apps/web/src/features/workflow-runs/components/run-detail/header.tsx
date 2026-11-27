@@ -269,7 +269,7 @@ export function RunHeader({
             onReconnect={onReconnect}
           />
         </div>
-        <PageHeaderTitle className="mt-2 text-3xl break-words [--display-width:78%] sm:text-display">
+        <PageHeaderTitle size="detail" className="mt-2 break-words">
           {sentence}
         </PageHeaderTitle>
         {/* The title follows every step; this says only where the run is,

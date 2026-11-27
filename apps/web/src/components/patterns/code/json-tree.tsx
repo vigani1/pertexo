@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from 'lucide-react';
+import { Disclosure } from '@/components/ui/disclosure';
 import { cn } from '@/lib/class-names';
 
 // A read-only, keyboard-accessible JSON viewer for step outputs and test
@@ -46,29 +46,25 @@ function Node({
     ? `[${String(entries.length)}]`
     : `{${String(entries.length)}}`;
   return (
-    <details
-      open={depth < OPEN_DEPTH}
-      className="[&[open]>summary>svg]:rotate-90"
+    <Disclosure
+      defaultOpen={depth < OPEN_DEPTH}
+      appearance={{ look: 'tree' }}
+      summary={
+        <>
+          {label}
+          <span className="text-subtle-foreground">{summary}</span>
+        </>
+      }
     >
-      <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-surface-ink/4 focus-ring [&::-webkit-details-marker]:hidden">
-        <ChevronRightIcon
-          aria-hidden="true"
-          className="size-3.5 shrink-0 text-subtle-foreground transition-transform motion-reduce:transition-none"
-        />
-        {label}
-        <span className="text-subtle-foreground">{summary}</span>
-      </summary>
-      <div className="ml-1.5 border-l border-border pl-1">
-        {entries.slice(0, MAX_CHILDREN).map(([key, child]) => (
-          <Node key={key} name={key} value={child} depth={depth + 1} />
-        ))}
-        {entries.length > MAX_CHILDREN ? (
-          <div className="py-0.5 pl-4 text-subtle-foreground">
-            +{String(entries.length - MAX_CHILDREN)} more
-          </div>
-        ) : null}
-      </div>
-    </details>
+      {entries.slice(0, MAX_CHILDREN).map(([key, child]) => (
+        <Node key={key} name={key} value={child} depth={depth + 1} />
+      ))}
+      {entries.length > MAX_CHILDREN ? (
+        <div className="py-0.5 pl-4 text-subtle-foreground">
+          +{String(entries.length - MAX_CHILDREN)} more
+        </div>
+      ) : null}
+    </Disclosure>
   );
 }
 

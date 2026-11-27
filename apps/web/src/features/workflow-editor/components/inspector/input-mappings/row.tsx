@@ -126,7 +126,7 @@ function MappingEditor({
             autoComplete="off"
             spellCheck={false}
             list={suggestions.length === 0 ? undefined : listId}
-            className="font-mono"
+            typography="mono"
             value={row.destinationKey}
             disabled={disabled}
             aria-invalid={errors?.destinationKey !== undefined}

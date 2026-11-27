@@ -8,7 +8,6 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/class-names';
 import type { FieldParseResult } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { useInspectorDraftField } from '../use-draft-field';
@@ -178,7 +177,7 @@ export function LiveTextField<Value>({
         autoComplete="off"
         inputMode={inputMode}
         placeholder={placeholder}
-        className={cn(mono && 'font-mono')}
+        typography={mono ? 'mono' : 'normal'}
         value={live.text}
         disabled={!form.editable}
         aria-invalid={live.error !== undefined}

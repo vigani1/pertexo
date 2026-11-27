@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { useId, useState } from 'react';
@@ -149,9 +150,12 @@ export function NeedsAttention({
       ) : null}
       <ul id={listId} aria-label="Needs you" className="flex flex-col">
         {shown.map((item) => (
-          <li
+          <Row
+            frame="bare"
+            lift="none"
+            transition="none"
             key={item.key}
-            className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 row-divider py-3"
+            className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 py-3"
           >
             <StatusMark display="mark" tone={item.tone} />
             <div className="min-w-0">
@@ -177,7 +181,7 @@ export function NeedsAttention({
             ) : (
               <ActionLink action={item.action} workspaceId={workspace.id} />
             )}
-          </li>
+          </Row>
         ))}
       </ul>
       {moreWorkflows ? (
