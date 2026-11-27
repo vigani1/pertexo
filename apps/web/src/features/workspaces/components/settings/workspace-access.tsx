@@ -1,6 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { heldCapabilities } from '../../model/workspace-availability';
 import { Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button-variants';
 
 export function WorkspaceAccess({
   workspace,
@@ -8,23 +9,20 @@ export function WorkspaceAccess({
   const granted = new Set<string>(heldCapabilities(workspace));
   const canSeeTeam = granted.has('member:read');
   return (
-    <div className="flex flex-col gap-3">
+    <>
       {canSeeTeam ? (
-        <p className="text-sm text-muted-foreground">
-          <Link
-            to="/w/$workspaceId/team"
-            params={{ workspaceId: workspace.id }}
-            className="inline-link"
-          >
-            Compare every role on Team
-          </Link>
-          , where roles are changed too.
-        </p>
+        <Link
+          to="/w/$workspaceId/team"
+          params={{ workspaceId: workspace.id }}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+        >
+          Compare roles on Team
+        </Link>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-48 text-meta text-subtle-foreground">
           Someone who manages members can change your role.
         </p>
       )}
-    </div>
+    </>
   );
 }

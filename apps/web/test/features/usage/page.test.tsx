@@ -1,64 +1,46 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-
 import userEvent from '@testing-library/user-event';
-
 import { HttpResponse } from 'msw';
-
 import { describe, expect, it } from 'vitest';
-
-import {
-  coldStart,
-  fixtureIds,
-  fixtureStatistics,
-  statisticsHandler,
-} from '../../support/fixtures/run';
-
-import { mockServer } from '../../support/mock-server';
-
+import { coldStart, fixtureIds } from '../../support/fixtures/run';
 import { renderLoadedApp } from '../../support/render-app';
-
 import { capacity, install, path } from './page/fixture';
 
 describe('workspace Usage', () => {
-  it('keeps exact current capacity separate from retained activity and server-bound drilldowns', async () => {
+  it('says how much room is left, then runs per day and the busiest workflows', async () => {
     const { seen } = install();
-    await renderLoadedApp(`${path}?window=6h&ignored=secret`);
+    await renderLoadedApp(`${path}?period=90d&ignored=secret`);
     await screen.findByRole('heading', { name: 'Usage' }, coldStart);
-    const current = screen.getByRole('region', { name: 'Current capacity' });
+    const room = screen.getByRole('region', { name: 'Room left' });
     expect(
-      await within(current).findByText('8 PB', { selector: 'span' }),
+      await within(room).findByText('8 PB', { selector: 'span' }),
     ).toBeVisible();
-    expect(current).toHaveTextContent('8 EB');
-    expect(current).toHaveTextContent(
+    expect(room).toHaveTextContent('8 EB');
+    expect(room).toHaveTextContent(
       'One more place is held for a queued run about to start.',
     );
-    expect(current).toHaveTextContent(
-      'Files count from upload until they’re fully deleted',
+    expect(room).toHaveTextContent(
+      'Right now 3 of 5 runs at once are going, with 4 queued behind them.',
     );
+    expect(
+      within(room).getByRole('img', { name: /% of file storage used$/u }),
+    ).toBeVisible();
+    const perDay = screen.getByRole('region', { name: 'Runs per day' });
+    expect(await within(perDay).findByText('3')).toBeVisible();
+    expect(perDay).toHaveTextContent('Over 90 UTC days.');
+    expect(
+      await within(
+        screen.getByRole('region', { name: 'By workflow' }),
+      ).findByText('Order intake'),
+    ).toBeVisible();
     // The header shows the older of the two snapshot times.
-    expect(
-      document.querySelector('[data-slot="page-header-meta"] time'),
-    ).toHaveAttribute('datetime', '2026-09-15T10:00:00.000000Z');
-    expect(await screen.findByText('Daily intake')).toBeVisible();
-    const failed = screen.getByRole('list', {
-      name: 'Activity by current run status',
-    });
-    const link = within(failed).getByRole('link', { name: 'Failed 2' });
-    const url = new URL(link.getAttribute('href') ?? '', 'http://pertexo.test');
-    expect(url.searchParams.get('status')).toBe('failed');
-    expect(url.searchParams.get('createdAtFrom')).toBe(
-      '2026-09-14T10:00:00.000000Z',
+    expect(document.querySelector('header time')).toHaveAttribute(
+      'datetime',
+      '2026-09-15T10:00:00.123456Z',
     );
-    expect(url.searchParams.get('createdAtBefore')).toBe(
-      '2026-09-15T10:00:00.000000Z',
-    );
-    expect(
-      seen.some(
-        (query) =>
-          query.get('window') === '6h' && query.get('breakdown') === 'workflow',
-      ),
-    ).toBe(true);
+    expect(seen.map((query) => query.get('period'))).toContain('90d');
   });
+
   it('writes counts in the thousands with separators', async () => {
     install({
       snapshot: {
@@ -66,59 +48,27 @@ describe('workspace Usage', () => {
         artifacts: { ...capacity.artifacts, chargedCount: 1250 },
       },
     });
-    mockServer.use(
-      statisticsHandler((query) =>
-        fixtureStatistics({
-          window: query.get('window') ?? '24h',
-          byStatus: { succeeded: 1881, failed: 142 },
-          ...(query.get('breakdown') === 'workflow'
-            ? {
-                workflows: [
-                  {
-                    workflowId: fixtureIds.workflow,
-                    workflowName: 'Daily intake',
-                    total: 2023,
-                  },
-                ],
-              }
-            : {}),
-        }),
-      ),
-    );
     await renderLoadedApp(path);
-    await screen.findByRole('heading', { name: 'Usage' }, coldStart);
-    // "2023 runs started" in the display face reads like a year.
     expect(
-      await screen.findByText('2,023', { selector: 'span.text-2xl' }),
+      await screen.findByText(/^1,250 of 1,000 files/u, {}, coldStart),
     ).toBeVisible();
-    const statuses = screen.getByRole('list', {
-      name: 'Activity by current run status',
-    });
-    expect(
-      within(statuses).getByRole('link', { name: 'Succeeded 1,881' }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole('list', { name: 'Activity by workflow' }),
-    ).toHaveTextContent('Daily intake2,023');
-    expect(
-      screen.getByRole('region', { name: 'Current capacity' }),
-    ).toHaveTextContent('1,250 / 1,000');
   });
-  it('keeps the fixed window in the URL and never requests history to aggregate', async () => {
+
+  it('keeps the chosen range in the URL and reads that period', async () => {
     const { seen } = install();
     const { router } = await renderLoadedApp(path);
-    await screen.findByText('Daily intake', {}, coldStart);
-    await userEvent.click(screen.getByRole('button', { name: '7 days' }));
+    await screen.findByText('Order intake', {}, coldStart);
+    await userEvent.click(screen.getByRole('button', { name: '90 days' }));
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ window: '7d' });
+      expect(router.state.location.search).toEqual({ period: '90d' });
     });
     await waitFor(() => {
-      expect(seen.some((query) => query.get('window') === '7d')).toBe(true);
+      expect(seen.some((query) => query.get('period') === '90d')).toBe(true);
     });
   });
-  it.each([
-    // Only someone who can restore a workspace being deleted can open it.
-    {
+
+  it('does not read capacity in a workspace being deleted, while runs per day remain', async () => {
+    const { reads } = install({
       state: 'pending_deletion',
       caps: [
         'workspace:read',
@@ -127,44 +77,41 @@ describe('workspace Usage', () => {
         'workflow:read',
         'workspace:manage',
       ],
-    },
-  ] as const)(
-    'does not read capacity in a $state workspace, while activity remains available',
-    async ({ state, caps }) => {
-      const { reads } = install({ state, caps });
-      await renderLoadedApp(path);
-      await screen.findByText('Daily intake', {}, coldStart);
-      expect(
-        screen.getByText(
-          'Current capacity isn’t available for a workspace being deleted.',
-        ),
-      ).toBeVisible();
-      expect(reads()).toBe(0);
-    },
-  );
-  it('requires the intersection for capacity, but only run read for activity', async () => {
+    });
+    await renderLoadedApp(path);
+    await screen.findByText('Order intake', {}, coldStart);
+    expect(
+      screen.getByText(
+        'Current capacity isn’t available for a workspace being deleted.',
+      ),
+    ).toBeVisible();
+    expect(reads()).toBe(0);
+  });
+
+  it('requires runs and files for capacity, but only runs for runs per day', async () => {
     const { reads } = install({ caps: ['workspace:read', 'run:read'] });
     await renderLoadedApp(path);
-    await screen.findByText('Workflow cccc…cccc', {}, coldStart);
-    expect(screen.queryByText('Daily intake')).not.toBeInTheDocument();
+    await screen.findByRole('region', { name: 'By workflow' }, coldStart);
     expect(
       screen.getByText('You need access to runs and files to see capacity.'),
     ).toBeVisible();
     expect(reads()).toBe(0);
   });
-  it('does not read either snapshot without run read', async () => {
+
+  it('reads neither snapshot without access to runs', async () => {
     const { reads, seen } = install({
       caps: ['workspace:read', 'artifact:read'],
     });
     await renderLoadedApp(path);
     await screen.findByText(
-      'You need access to runs to see recent runs.',
+      'You need access to runs to see how many ran.',
       {},
       coldStart,
     );
     expect(reads()).toBe(0);
     expect(seen).toHaveLength(0);
   });
+
   it('shows unavailable execution limits and actual zero storage limits distinctly', async () => {
     install({
       snapshot: {
@@ -189,10 +136,12 @@ describe('workspace Usage', () => {
     });
     await renderLoadedApp(path);
     await screen.findByText('unavailable', { selector: 'strong' }, coldStart);
-    expect(screen.getAllByText('/ limit unavailable')).toHaveLength(2);
-    expect(screen.getByText('/ 0 B')).toBeVisible();
-    expect(screen.getByText('No storage capacity')).toBeVisible();
+    const room = screen.getByRole('region', { name: 'Room left' });
+    expect(room).toHaveTextContent('runs are going at once');
+    expect(room).not.toHaveTextContent(/of \d+ runs at once/u);
+    expect(room).toHaveTextContent('no storage capacity');
   });
+
   it.each(['expired', 'suspended', 'not_yet_effective'])(
     'does not describe a %s policy as unlimited or effective',
     async (state) => {
@@ -211,9 +160,12 @@ describe('workspace Usage', () => {
         {},
         coldStart,
       );
-      expect(screen.getByText('/ 5')).toBeVisible();
+      expect(
+        screen.getByRole('region', { name: 'Room left' }),
+      ).toHaveTextContent('3 of 5 runs at once');
     },
   );
+
   it.each([401, 403, 404, 409])(
     'forgets capacity after %s until fresh success, including remount and later failures',
     async (denial) => {
@@ -232,34 +184,27 @@ describe('workspace Usage', () => {
               )
             : new HttpResponse(null, { status }),
       });
+      const refresh = () =>
+        userEvent.click(
+          screen.getByRole('button', { name: 'Refresh room left' }),
+        );
       const { router } = await renderLoadedApp(path);
       await screen.findByText('8 PB', { selector: 'span' }, coldStart);
       status = 503;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh current capacity' }),
-      );
+      await refresh();
       await screen.findByText(/Couldn’t refresh. Showing results/u);
       expect(screen.getByText('8 PB', { selector: 'span' })).toBeVisible();
       status = denial;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh current capacity' }),
-      );
+      await refresh();
       await waitFor(() =>
         expect(
           screen.queryByText('8 PB', { selector: 'span' }),
         ).not.toBeInTheDocument(),
       );
-      expect(screen.getByText('Daily intake')).toBeVisible();
+      expect(screen.getByText('Order intake')).toBeVisible();
       status = 503;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh current capacity' }),
-      );
-      await screen.findByText(
-        'Current capacity couldn’t be loaded. Try again.',
-      );
-      expect(
-        screen.queryByText('8 PB', { selector: 'span' }),
-      ).not.toBeInTheDocument();
+      await refresh();
+      await screen.findByText('Room left couldn’t be loaded. Try again.');
       await act(() =>
         router.navigate({
           to: '/w/$workspaceId/settings',
@@ -270,20 +215,16 @@ describe('workspace Usage', () => {
         router.navigate({
           to: '/w/$workspaceId/settings/usage',
           params: { workspaceId: fixtureIds.workspace },
-          search: { window: '24h' },
+          search: { period: '30d' },
         }),
       );
-      await screen.findByText(
-        'Current capacity couldn’t be loaded. Try again.',
-      );
+      await screen.findByText('Room left couldn’t be loaded. Try again.');
       expect(
         screen.queryByText('8 PB', { selector: 'span' }),
       ).not.toBeInTheDocument();
       fresh = true;
       status = 200;
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Refresh current capacity' }),
-      );
+      await refresh();
       expect(
         await screen.findByText('42 B', { selector: 'span' }),
       ).toBeVisible();

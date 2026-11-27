@@ -207,7 +207,7 @@ function workspacePlaces({
         void navigate({
           to: WORKSPACE_PLACES.usage.to,
           params,
-          search: { window: '24h' },
+          search: { period: '30d' },
         }),
     }),
     place('settings', { label: 'Workspace settings' }),
