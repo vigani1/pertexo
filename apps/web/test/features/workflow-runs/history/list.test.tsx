@@ -115,8 +115,11 @@ describe('workspace runs', () => {
       now.getDate() - 1,
     );
     await event.keyboard('{ArrowLeft}');
+    const calendar = within(
+      screen.getByRole('dialog', { name: 'When runs started' }),
+    );
     await event.click(
-      screen.getByRole('button', {
+      calendar.getByRole('button', {
         name: new RegExp(formatCalendarDay(yesterday), 'u'),
       }),
     );
