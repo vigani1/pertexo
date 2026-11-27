@@ -205,7 +205,17 @@ test('shows a persisted malformed-file diagnostic after reload without echoing c
     .getByRole('button', { name: /Read malformed export/u })
     .first()
     .click();
-  await expect(page.getByText(/CSV record 3 has 1 column/u)).toBeVisible();
+  // The run page says why the step failed, and so does the step's panel.
+  await expect(
+    page
+      .getByRole('region', { name: 'Why Read malformed export failed' })
+      .getByText(/CSV record 3 has 1 column/u),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Step details' })
+      .getByText(/CSV record 3 has 1 column/u),
+  ).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain(
     'private-redaction-sentinel',
   );
