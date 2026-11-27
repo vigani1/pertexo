@@ -116,6 +116,10 @@ export const mockServer = setupServer(
   http.get('http://pertexo.test/v1/workspaces/:workspaceId/workflow-tags', () =>
     HttpResponse.json({ items: [], nextCursor: null }),
   ),
+  // The canvas reads each workflow's newest run; most tests have no history.
+  http.get('http://pertexo.test/v1/workspaces/:workspaceId/runs', () =>
+    HttpResponse.json({ items: [], nextCursor: null }),
+  ),
 );
 
 // Each isolated test file owns its server and restores handlers after every test.
