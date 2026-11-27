@@ -54,8 +54,9 @@ export function useCanvasOverlays(
   effects: ReturnType<typeof useCanvasEffects>,
   testStatuses:
     ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined,
-  lastRun: LastRunOverlay | undefined,
+  lastRun: Readonly<{ overlay: LastRunOverlay | undefined; shown: boolean }>,
 ) {
+  const lastRunShown = lastRun.shown ? lastRun.overlay : undefined;
   return useMemo(
     () => ({
       issuesByNode: issues.countsByNode,
@@ -63,10 +64,10 @@ export function useCanvasOverlays(
       weaveOrder: effects.weaveOrder,
       testOutputBytes: effects.testOutputBytes,
       testStatuses,
-      lastRun,
+      lastRun: lastRunShown,
     }),
     [
-      lastRun,
+      lastRunShown,
       testStatuses,
       effects.flowingEdgeIds,
       effects.testOutputBytes,

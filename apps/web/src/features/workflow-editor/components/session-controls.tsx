@@ -12,6 +12,7 @@ import {
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { EditorCommandBar } from './chrome/editor-command-bar';
+import { ASSISTANT_TRIGGER_ATTRIBUTE } from '../hooks/use-assistant-opening';
 import { ConflictCompareDialog } from './chrome/conflict-compare-dialog';
 import { UnfinishedEditDialog } from './chrome/editor-dialogs';
 import type { EditorChrome } from './editor-workspace';
@@ -87,7 +88,7 @@ export function SessionCommandBar({
             <>
               {canPropose ? (
                 <Button
-                  ref={chrome.assistantTrigger}
+                  {...{ [ASSISTANT_TRIGGER_ATTRIBUTE]: '' }}
                   variant="outline"
                   size="sm"
                   className="hidden sm:inline-flex"

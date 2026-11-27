@@ -10,8 +10,8 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
 
 /**
  * Places the editor's layers: the canvas fills the space above test history. The command
- * bar, add-step lens, inspector lens and the bottom lens (the issues
- * lens, or the last test's bar) float above it. Under 1024px the two
+ * bar, add-step lens, inspector lens (or the assistant's panel in its place)
+ * and the bottom lens (the issues lens, or the last test's bar) float above it. Under 1024px the two
  * lenses become bottom panels behind buttons, put away by a tap outside.
  * They stay mounted either way, so unfinished edits and navigation guards
  * survive switching panels.
@@ -35,7 +35,6 @@ export function EditorLayout({
   canvas: ReactNode;
   addStep: ReactNode;
   inspector: ReactNode;
-  /** The assistant's panel, over the inspector's place on the right. */
   assistant: ReactNode;
   overlay: ReactNode;
   bottomLens: ReactNode;

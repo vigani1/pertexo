@@ -2,15 +2,15 @@ import {
   WorkflowTestHistory,
   type NodeTestHandle,
 } from '@/features/workflow-testing/workflow-testing-views.public';
-import { useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { DraftProposal } from './draft-proposal';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
 import { useLastRun } from '../hooks/use-last-run';
-import { LastRunLine } from './canvas/last-run-line';
+import { CanvasTools } from './canvas/canvas-tools';
+import { useAssistantOpening } from '../hooks/use-assistant-opening';
 import { AddStepLens } from './add-step/lens';
-import { NoteTools } from './canvas/notes/tools';
 import { TestResultBar } from './chrome/test-result-bar';
 import { EditorLayout } from './editor-layout';
 import { WorkspaceSurface, WorkspaceOverlay } from './workspace-surfaces';
@@ -33,8 +33,6 @@ export type EditorChrome = Readonly<{
   onFix: (target: WorkflowValidationTarget) => void;
   proposalOpen: boolean;
   onProposalOpenChange: (open: boolean) => void;
-  /** The bar's assistant button, where focus returns when the panel closes. */
-  assistantTrigger: RefObject<HTMLButtonElement | null>;
 }>;
 
 /**
@@ -58,10 +56,7 @@ export function EditorWorkspace({
   const { definitions, codeSettings } = catalog;
   const { canUpdate, paused, actions, ensureSaved, effects } = editing;
   const { tests, testStatuses, revision, graph } = useEditorWorkflowTests({
-    apiClient,
-    userId,
-    workspace,
-    workflowId,
+    ...scope,
     paused,
     ensureSaved,
     verifyIdentity: editing.verifyIdentity,
@@ -73,8 +68,6 @@ export function EditorWorkspace({
   const { navigation } = actions;
   const lastTest = useLastTest();
   const lastRun = useLastRun({ apiClient, userId, workspace, workflowId });
-  const [proposalOpen, setProposalOpen] = useState(false);
-  const assistantTrigger = useRef<HTMLButtonElement>(null);
   const { chrome: workspaceChrome, setFeedbackTarget } = useWorkspaceChrome({
     tests,
     onFix: navigation.fix,
@@ -94,31 +87,44 @@ export function EditorWorkspace({
         setShortcutsOpen(true);
       },
     });
-  const chrome: EditorChrome = {
-    ...workspaceChrome,
-    proposalOpen,
-    onProposalOpenChange: (open) => {
-      if (open) adding.quickAdd.close();
-      setProposalOpen(open);
-    },
-    assistantTrigger,
-  };
-  function closeAssistant() {
-    setProposalOpen(false);
-    // The bar's button is folded into ⋯ on a phone; the canvas takes focus.
-    const trigger = assistantTrigger.current;
-    if (trigger !== null && trigger.getClientRects().length > 0)
-      trigger.focus();
-    else canvasRef.current?.focus();
-  }
+  const assistant = useAssistantOpening({
+    onOpen: adding.quickAdd.close,
+    canvasRef,
+  });
+  const chrome: EditorChrome = { ...workspaceChrome, ...assistant.chrome };
   const overlays = useCanvasOverlays(
     editing.issues,
     effects,
     testStatuses,
-    lastRun.shown ? lastRun.overlay : undefined,
+    lastRun,
   );
   return (
     <EditorLayout
+      addStep={
+        <AddStepLens
+          definitions={placeable}
+          fold={addStep}
+          onAdd={(choice) => {
+            adding.placement.addAtCentre(choice.definition);
+            navigation.setMobilePanel('none');
+          }}
+        />
+      }
+      inspector={
+        <WorkspaceInspector
+          editable={editable && !paused}
+          testing={{
+            tests,
+            testRef,
+            lastTest,
+            onTestPassed: effects.showTestPath,
+          }}
+          canvas={{ adding, selection }}
+        />
+      }
+      assistant={
+        <DraftProposal open={assistant.open} onClose={assistant.close} />
+      }
       history={
         <WorkflowTestHistory
           tests={tests}
@@ -145,56 +151,14 @@ export function EditorWorkspace({
           placeable={placeable}
           editable={editable}
           overlays={overlays}
-          sampleScope={{
-            apiClient,
-            userId,
-            workspaceId: workspace.id,
-            workflowId,
-          }}
-          readSamples={!paused && workspace.capabilities.includes('run:read')}
           canvas={{ canvasRef, adding, selection }}
           checking={editing.checking}
-          showStartPicker={!proposalOpen}
+          showStartPicker={!assistant.open}
           onOpenInspector={() => {
             navigation.setMobilePanel('inspector');
           }}
           onAddStep={addStep.focus}
         />
-      }
-      addStep={
-        <AddStepLens
-          definitions={placeable}
-          collapsed={addStep.collapsed}
-          searchRef={addStep.searchRef}
-          onToggleCollapsed={addStep.toggle}
-          onAdd={(choice) => {
-            adding.placement.addAtCentre(choice.definition);
-            navigation.setMobilePanel('none');
-          }}
-        />
-      }
-      inspector={
-        <WorkspaceInspector
-          editable={editable && !paused}
-
-          testing={{
-            tests,
-            testRef,
-            lastTest,
-            onTestPassed: effects.showTestPath,
-          }}
-          canvas={{ adding, selection }}
-        />
-      }
-      assistant={
-        editing.canUpdate && !paused ? (
-          <DraftProposal
-            open={proposalOpen}
-            onClose={closeAssistant}
-            graph={graph}
-            onFix={chrome.onFix}
-          />
-        ) : null
       }
       overlay={
         <WorkspaceOverlay
@@ -218,14 +182,11 @@ export function EditorWorkspace({
       header={{
         bar: bar(chrome),
         canvasTools: (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <NoteTools editable={editable} containerRef={canvasRef} />
-            <LastRunLine
-              overlay={lastRun.overlay}
-              shown={lastRun.shown}
-              onToggle={lastRun.toggle}
-            />
-          </div>
+          <CanvasTools
+            editable={editable}
+            canvasRef={canvasRef}
+            lastRun={lastRun}
+          />
         ),
         banner: <>{banner}</>,
       }}

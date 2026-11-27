@@ -1,18 +1,20 @@
 import {
   DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS,
-  type DraftProposalResult,
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { SparklesIcon, XIcon } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, type RefObject } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
-import { useDraftProposal } from '../data/draft-proposal.mutations';
+import {
+  useAssistantPanel,
+  useEscapeFromPanel,
+} from '../hooks/use-assistant-panel';
 import { DraftProposalReview } from './draft-proposal-review';
+import { useEditorSession, useEditorStore } from '../model/state/context';
 
 const outcomeCopy = {
   not_configured:
@@ -33,22 +35,23 @@ const outcomeCopy = {
  * The assistant, as a panel beside the canvas: one request, one proposal.
  * The proposal lists the draft changes and their publication check; Discard
  * drops it and Apply to draft saves it. A new request replaces the proposal,
- * since the assistant keeps no conversation. Escape or ✕ puts it away.
+ * since the assistant keeps no conversation. Escape or ✕ puts it away. Only
+ * people who can change the draft, while it isn't paused, have it.
  */
 export function DraftProposal({
   open,
   onClose,
-  graph,
-  onFix,
-}: Readonly<{
-  open: boolean;
-  onClose: () => void;
-  graph: WorkflowGraphContract;
-  onFix: (target: WorkflowValidationTarget) => void;
-}>) {
-  return open ? (
-    <AssistantPanel onClose={onClose} graph={graph} onFix={onFix} />
-  ) : null;
+}: Readonly<{ open: boolean; onClose: () => void }>) {
+  const { editing } = useEditorSession();
+  const graph = useEditorStore((state) => state.graph);
+  if (!open || !editing.canUpdate || editing.paused) return null;
+  return (
+    <AssistantPanel
+      onClose={onClose}
+      graph={graph}
+      onFix={editing.actions.navigation.fix}
+    />
+  );
 }
 
 function AssistantPanel({
@@ -63,72 +66,12 @@ function AssistantPanel({
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const requestRef = useRef<HTMLTextAreaElement>(null);
-  const [request, setRequest] = useState('');
-  // The words the proposal on screen answers; a new request replaces both.
-  const [asked, setAsked] = useState<string>();
-  const { disclosure, proposal, apply } = useDraftProposal();
-  const destination = disclosure.data;
-  const review = proposalReview(proposal.data);
-  const activity = proposalActivity({ disclosure, proposal, apply });
-  const pending = activity !== undefined;
-  const error = apply.error ?? proposal.error ?? disclosure.error;
-  const stale =
-    isApiError(error) && error.problem?.code === 'workflow.revision_conflict';
-  const outcome = (proposal.data ?? destination)?.kind;
-  const recheck =
-    stale || outcome === 'confirmation_changed' || disclosure.isError;
-
-  async function checkAssistant() {
-    proposal.reset();
-    apply.reset();
-    setAsked(undefined);
-    await disclosure.mutateAsync().catch(() => undefined);
-  }
-  // The assistant's destination is read once, when the panel opens.
-  // oxlint-disable-next-line react/exhaustive-deps
-  useEffect(() => void checkAssistant(), []);
-
-  function close() {
+  const panel = useAssistantPanel({ requestRef, onApplied: onClose });
+  const { destination, review, pending } = panel;
+  const close = () => {
     if (!pending) onClose();
-  }
-  // Escape puts the panel away from inside it, or when nothing else has
-  // focus (a field the model was busy with gives focus back to the page).
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
-      const active = document.activeElement;
-      if (
-        active !== null &&
-        active !== document.body &&
-        panelRef.current?.contains(active) !== true
-      )
-        return;
-      event.preventDefault();
-      close();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  });
-  function send() {
-    if (destination?.kind !== 'ready' || request.trim() === '') return;
-    apply.reset();
-    setAsked(request);
-    void proposal
-      .mutateAsync({ request, confirmation: destination.confirmation })
-      .then(() => {
-        setRequest('');
-        requestAnimationFrame(() => requestRef.current?.focus());
-      })
-      .catch(() => undefined);
-  }
-  function discard() {
-    proposal.reset();
-    apply.reset();
-    setAsked(undefined);
-  }
-
+  };
+  useEscapeFromPanel(panelRef, close);
   return (
     <aside
       ref={panelRef}
@@ -136,34 +79,7 @@ function AssistantPanel({
       data-slot="assistant-panel"
       className="lens pointer-events-auto absolute inset-x-0 top-0 bottom-16 z-50 flex flex-col overflow-hidden rounded-xl md:left-auto md:w-[min(26rem,100%)] lg:bottom-0"
     >
-      <header className="flex items-start gap-3 px-4.5 pt-4.5 pb-3">
-        <span
-          aria-hidden="true"
-          className="grid size-8 shrink-0 place-items-center rounded-md bg-action-soft text-glint [&_svg]:size-4"
-        >
-          <SparklesIcon />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="font-heading text-section font-semibold">
-            Assistant
-          </h2>
-          <p className="mt-0.5 text-meta text-muted-foreground">
-            It proposes changes to your draft. Nothing changes until you apply
-            them.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Close the assistant"
-          disabled={pending}
-          onClick={close}
-        >
-          <XIcon aria-hidden="true" />
-        </Button>
-      </header>
-
+      <AssistantHeader titleId={titleId} pending={pending} onClose={close} />
       <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto overscroll-contain px-4.5 pt-2 pb-4.5">
         {destination?.kind === 'ready' ? (
           <AssistantDisclosure destination={destination} inDialog={false}>
@@ -172,27 +88,15 @@ function AssistantPanel({
             Protected settings and connections are masked.
           </AssistantDisclosure>
         ) : null}
-        {asked === undefined ? null : (
-          <section aria-label="Your request" className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-meta font-medium text-muted-foreground">
-                Your request
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={pending}
-                onClick={() => {
-                  setRequest(asked);
-                  requestRef.current?.focus();
-                }}
-              >
-                Edit
-              </Button>
-            </div>
-            <p className="wrap-anywhere text-foreground">{asked}</p>
-          </section>
+        {panel.asked === undefined ? null : (
+          <AskedRequest
+            asked={panel.asked}
+            pending={pending}
+            onEdit={() => {
+              panel.edit();
+              requestRef.current?.focus();
+            }}
+          />
         )}
         {review === undefined ? null : (
           <section aria-label="Proposal" className="grid gap-4">
@@ -205,113 +109,198 @@ function AssistantPanel({
               }}
             />
             {review.kind === 'inspected' ? (
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={discard}
-                >
-                  Discard
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={pending}
-                  onClick={() => {
-                    void apply
-                      .mutateAsync(review)
-                      .then(onClose)
-                      .catch(() => undefined);
-                  }}
-                >
-                  Apply to draft
-                </Button>
-              </div>
+              <ProposalActions
+                pending={pending}
+                onDiscard={panel.discard}
+                onApply={() => {
+                  panel.apply(review);
+                }}
+              />
             ) : null}
           </section>
         )}
         <ProposalFeedback
-          activity={activity}
-          error={error}
-          stale={stale}
-          outcome={outcome}
+          activity={panel.activity}
+          error={panel.error}
+          stale={panel.stale}
+          outcome={panel.outcome}
         />
-        {recheck ? (
+        {panel.recheck ? (
           <Button
             type="button"
             variant="outline"
             className="justify-self-start"
             disabled={pending}
-            onClick={() => void checkAssistant()}
+            onClick={panel.checkAssistant}
           >
             Check again
           </Button>
         ) : null}
       </div>
-
       {destination?.kind === 'ready' ? (
-        <form
-          className="grid gap-2 border-t border-border px-3.5 pt-3 pb-3.5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            send();
-          }}
-        >
-          <label className="grid gap-2 text-meta font-medium">
-            What should the workflow do?
-            <Textarea
-              ref={requestRef}
-              value={request}
-              placeholder={
-                review === undefined
-                  ? 'Describe a change to this workflow'
-                  : 'New request · replaces this proposal'
-              }
-              onChange={(event) => {
-                setRequest(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' || event.shiftKey) return;
-                event.preventDefault();
-                send();
-              }}
-              maxLength={DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS}
-              disabled={pending}
-            />
-          </label>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-meta text-muted-foreground">
-              Each request starts fresh from the current draft; the assistant
-              doesn&apos;t keep a conversation.
-            </p>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={pending || request.trim() === ''}
-            >
-              Send to model
-            </Button>
-          </div>
-        </form>
+        <RequestForm
+          requestRef={requestRef}
+          request={panel.request}
+          replacing={review !== undefined}
+          pending={pending}
+          onChange={panel.setRequest}
+          onSend={panel.send}
+        />
       ) : null}
     </aside>
   );
 }
 
-type ProposalMutations = ReturnType<typeof useDraftProposal>;
-
-function proposalReview(result: DraftProposalResult | undefined) {
-  return result?.kind === 'inspected' || result?.kind === 'rejected'
-    ? result
-    : undefined;
+function AssistantHeader({
+  titleId,
+  pending,
+  onClose,
+}: Readonly<{ titleId: string; pending: boolean; onClose: () => void }>) {
+  return (
+    <header className="flex items-start gap-3 px-4.5 pt-4.5 pb-3">
+      <span
+        aria-hidden="true"
+        className="grid size-8 shrink-0 place-items-center rounded-md bg-action-soft text-glint [&_svg]:size-4"
+      >
+        <SparklesIcon />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 id={titleId} className="font-heading text-section font-semibold">
+          Assistant
+        </h2>
+        <p className="mt-0.5 text-meta text-muted-foreground">
+          It proposes changes to your draft. Nothing changes until you apply
+          them.
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Close the assistant"
+        disabled={pending}
+        onClick={onClose}
+      >
+        <XIcon aria-hidden="true" />
+      </Button>
+    </header>
+  );
 }
 
-function proposalActivity({ apply, proposal, disclosure }: ProposalMutations) {
-  if (apply.isPending) return 'Saving draft…';
-  if (proposal.isPending) return 'Waiting for the model…';
-  if (disclosure.isPending) return 'Checking the assistant settings…';
-  return undefined;
+function AskedRequest({
+  asked,
+  pending,
+  onEdit,
+}: Readonly<{ asked: string; pending: boolean; onEdit: () => void }>) {
+  return (
+    <section aria-label="Your request" className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-meta font-medium text-muted-foreground">
+          Your request
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          onClick={onEdit}
+        >
+          Edit
+        </Button>
+      </div>
+      <p className="wrap-anywhere text-foreground">{asked}</p>
+    </section>
+  );
+}
+
+function ProposalActions({
+  pending,
+  onDiscard,
+  onApply,
+}: Readonly<{ pending: boolean; onDiscard: () => void; onApply: () => void }>) {
+  return (
+    <div className="flex justify-end gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={pending}
+        onClick={onDiscard}
+      >
+        Discard
+      </Button>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={pending}
+        onClick={onApply}
+      >
+        Apply to draft
+      </Button>
+    </div>
+  );
+}
+
+function RequestForm({
+  requestRef,
+  request,
+  replacing,
+  pending,
+  onChange,
+  onSend,
+}: Readonly<{
+  requestRef: RefObject<HTMLTextAreaElement | null>;
+  request: string;
+  /** A proposal is on screen, which the next request replaces. */
+  replacing: boolean;
+  pending: boolean;
+  onChange: (value: string) => void;
+  onSend: () => void;
+}>) {
+  return (
+    <form
+      className="grid gap-2 border-t border-border px-3.5 pt-3 pb-3.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSend();
+      }}
+    >
+      <label className="grid gap-2 text-meta font-medium">
+        What should the workflow do?
+        <Textarea
+          ref={requestRef}
+          value={request}
+          placeholder={
+            replacing
+              ? 'New request · replaces this proposal'
+              : 'Describe a change to this workflow'
+          }
+          onChange={(event) => {
+            onChange(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.shiftKey) return;
+            event.preventDefault();
+            onSend();
+          }}
+          maxLength={DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS}
+          disabled={pending}
+        />
+      </label>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-meta text-muted-foreground">
+          Each request starts fresh from the current draft; the assistant
+          doesn&apos;t keep a conversation.
+        </p>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pending || request.trim() === ''}
+        >
+          Send to model
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 function ProposalFeedback({

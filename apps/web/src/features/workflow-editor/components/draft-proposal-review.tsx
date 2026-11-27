@@ -39,26 +39,49 @@ export function DraftProposalReview({
       {result.kind === 'inspected' ? (
         <DraftChanges before={result.base.graph} after={result.draft.graph} />
       ) : null}
-      {groups.length > 0 ? (
-        <section aria-labelledby="proposal-issues">
-          <h3 id="proposal-issues" className="text-sm font-medium">
-            {result.kind === 'rejected'
-              ? 'Proposal issues'
-              : 'Publication issues'}
-          </h3>
-          <div className="mt-2">
-            <IssuesList
-              groups={groups}
-              graph={proposedGraph}
-              fixableGraph={graph}
-              onFix={onFix}
-            />
-          </div>
-        </section>
-      ) : result.kind === 'inspected' ? (
-        <StatusMark tone="success">No publication issues</StatusMark>
-      ) : null}
+      <PublicationCheck
+        result={result}
+        groups={groups}
+        proposedGraph={proposedGraph}
+        graph={graph}
+        onFix={onFix}
+      />
     </div>
+  );
+}
+
+/** The proposal's publication check: its issues, or that there are none. */
+function PublicationCheck({
+  result,
+  groups,
+  proposedGraph,
+  graph,
+  onFix,
+}: Readonly<{
+  result: Extract<DraftProposalResult, { kind: 'inspected' | 'rejected' }>;
+  groups: ReturnType<typeof groupWorkflowIssues>;
+  proposedGraph: WorkflowGraphContract;
+  graph: WorkflowGraphContract;
+  onFix: (target: WorkflowValidationTarget) => void;
+}>) {
+  if (groups.length === 0)
+    return result.kind === 'inspected' ? (
+      <StatusMark tone="success">No publication issues</StatusMark>
+    ) : null;
+  return (
+    <section aria-labelledby="proposal-issues">
+      <h3 id="proposal-issues" className="text-sm font-medium">
+        {result.kind === 'rejected' ? 'Proposal issues' : 'Publication issues'}
+      </h3>
+      <div className="mt-2">
+        <IssuesList
+          groups={groups}
+          graph={proposedGraph}
+          fixableGraph={graph}
+          onFix={onFix}
+        />
+      </div>
+    </section>
   );
 }
 

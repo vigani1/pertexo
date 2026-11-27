@@ -8,6 +8,7 @@ import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
 import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/workflow-canvas';
+import { useEditorSession } from '../model/state/context';
 import type { useCanvasEditing } from './workspace-canvas';
 
 type CanvasEditing = ReturnType<typeof useCanvasEditing>;
@@ -16,8 +17,6 @@ type SurfaceProps = Readonly<{
   placeable: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   overlays: ComponentProps<typeof WorkflowCanvas>['overlays'];
-  sampleScope: Parameters<typeof stepSamplesQueryOptions>[0];
-  readSamples: boolean;
   canvas: Pick<CanvasEditing, 'canvasRef' | 'adding' | 'selection'>;
   checking: boolean;
   showStartPicker: boolean;
@@ -29,8 +28,6 @@ export function WorkspaceSurface({
   placeable,
   editable,
   overlays,
-  sampleScope,
-  readSamples,
   canvas,
   checking,
   showStartPicker,
@@ -38,9 +35,18 @@ export function WorkspaceSurface({
   onAddStep,
 }: SurfaceProps) {
   const { canvasRef, adding, selection } = canvas;
+  const { scope, editing } = useEditorSession();
+  // Sample marks on steps need runs to be readable, and a paused editor
+  // reads nothing new.
   const samples = useQuery({
-    ...stepSamplesQueryOptions(sampleScope),
-    enabled: readSamples,
+    ...stepSamplesQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      workflowId: scope.workflowId,
+    }),
+    enabled:
+      !editing.paused && scope.workspace.capabilities.includes('run:read'),
   });
   return (
     <WorkflowCanvas
