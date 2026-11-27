@@ -5,7 +5,7 @@ import {
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DeadlineField } from '@/components/ui/deadline-field';
+import { DeadlineField } from '@/components/patterns/dates/deadline-field';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
