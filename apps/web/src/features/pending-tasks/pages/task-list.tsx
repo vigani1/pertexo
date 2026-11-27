@@ -22,11 +22,13 @@ type TaskFilters = Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
 export function TasksPage({
   scope,
   filters,
+  selectedTaskId,
   views,
   onFilters,
 }: Readonly<{
   scope: TaskScope;
   filters: TaskFilters;
+  selectedTaskId?: string;
   /** Shown under the Inbox title when requests are one of its views. */
   views?: ReactNode;
   onFilters: (filters: TaskFilters) => void;
@@ -35,7 +37,7 @@ export function TasksPage({
     <div className="flex flex-col gap-8">
       <PageHeader>
         <div className="flex flex-col gap-4">
-          <PageHeaderTitle>
+          <PageHeaderTitle level={selectedTaskId === undefined ? 1 : 2}>
             {views !== undefined ? 'Inbox' : requestTitle(filters.kind)}
           </PageHeaderTitle>
           {views}
@@ -57,7 +59,11 @@ export function TasksPage({
           <RequestFilters filters={filters} onFilters={onFilters} />
         </PageHeaderActions>
       </PageHeader>
-      <TaskList scope={scope} filters={filters} />
+      <TaskList
+        scope={scope}
+        filters={filters}
+        selectedTaskId={selectedTaskId}
+      />
     </div>
   );
 }

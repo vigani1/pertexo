@@ -1,4 +1,7 @@
-import type { PendingTaskSummary } from '@pertexo/contracts';
+import type {
+  PendingTaskListQuery,
+  PendingTaskSummary,
+} from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -28,7 +31,17 @@ export function TaskRow({
   scope,
   task,
   nowMs,
-}: Readonly<{ scope: TaskScope; task: PendingTaskSummary; nowMs: number }>) {
+  selected,
+  inDetail,
+  filters,
+}: Readonly<{
+  scope: TaskScope;
+  task: PendingTaskSummary;
+  nowMs: number;
+  selected: boolean;
+  inDetail: boolean;
+  filters: Pick<PendingTaskListQuery, 'kind' | 'view' | 'status'>;
+}>) {
   const timedOut = timedOutAfter(task) !== undefined;
   // A request that moved its run on along Timed out reads amber, not failed.
   const tone = timedOut ? 'attention' : taskTone(task.status);
@@ -37,11 +50,17 @@ export function TaskRow({
   const blocked = waiting ? blockedLabel(task.blockedReason) : undefined;
   const when = waiting ? task.expiresAt : (task.completedAt ?? task.createdAt);
   return (
-    <li className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 rounded-lg px-3 py-4 transition-colors hover:bg-select motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]">
+    <li
+      className={cn(
+        'group/row row-divider grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 rounded-lg px-3 py-2.5 hover:bg-select',
+        !inDetail && 'sm:grid-cols-[1.25rem_minmax(0,1fr)_auto]',
+        selected && 'bg-select-raised',
+      )}
+    >
       <span
         aria-hidden="true"
         className={cn(
-          'mt-0.5 grid size-8 place-items-center rounded-sm transition-colors',
+          'mt-0.5 grid size-5 place-items-center rounded-sm',
           yours ? 'bg-select-raised' : undefined,
         )}
       >
@@ -52,6 +71,8 @@ export function TaskRow({
           <Link
             to="/w/$workspaceId/requests/$taskId"
             params={{ workspaceId: task.workspaceId, taskId: task.id }}
+            search={filters}
+            aria-current={selected ? 'page' : undefined}
             className={cn(
               "min-w-0 break-words outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60",
               yours ? 'font-semibold text-foreground' : 'font-medium',
@@ -71,11 +92,23 @@ export function TaskRow({
             .map((item) => ` · item ${String(item.ordinal + 1)}`)
             .join('')}
         </p>
-        <TaskDetailsLine details={task.details} />
+        {inDetail ? null : <TaskDetailsLine details={task.details} />}
       </div>
       {/* Below the request on a phone, beside it on wider screens. */}
-      <div className="relative z-10 col-start-2 flex flex-col items-start gap-2 sm:col-start-3 sm:row-start-1 sm:items-end">
-        <TaskAction scope={scope} task={task} yours={yours} blocked={blocked} />
+      <div
+        className={cn(
+          'relative z-10 col-start-2 flex flex-col items-start gap-1',
+          !inDetail && 'sm:col-start-3 sm:row-start-1 sm:items-end',
+        )}
+      >
+        {inDetail ? null : (
+          <TaskAction
+            scope={scope}
+            task={task}
+            yours={yours}
+            blocked={blocked}
+          />
+        )}
         <time
           dateTime={when}
           title={formatDateTime(when)}

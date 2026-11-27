@@ -1,3 +1,6 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { ArrowLeftIcon } from 'lucide-react';
 import { InputResponse } from '../components/input-response';
 import { TaskDetails } from '../components/task-details';
 import { useQuery } from '@tanstack/react-query';
@@ -14,18 +17,27 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { taskQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
 import {
+  audienceSentence,
   taskStatusLabel,
   taskTone,
   timedOutAfter,
 } from '../model/task-presentation';
 import { DecisionForm } from '../components/decision-form';
-import type { PendingTaskDetail } from '@pertexo/contracts';
+import type {
+  PendingTaskDetail,
+  PendingTaskListQuery,
+} from '@pertexo/contracts';
 import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
   taskId,
-}: Readonly<{ scope: TaskScope; taskId: string }>) {
+  backSearch = { view: 'mine', status: 'pending' },
+}: Readonly<{
+  scope: TaskScope;
+  taskId: string;
+  backSearch?: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
+}>) {
   const query = useQuery(taskQueryOptions(scope, taskId));
   return (
     <QueryView
@@ -35,7 +47,18 @@ export function TaskDetailPage({
     >
       {({ task }) => {
         return (
-          <div className="flex max-w-3xl flex-col gap-8">
+          <article className="flex max-w-3xl min-w-0 flex-col gap-6">
+            <div className="min-[900px]:hidden">
+              <Link
+                to="/w/$workspaceId/requests"
+                search={backSearch}
+                params={{ workspaceId: scope.workspaceId }}
+                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+              >
+                <ArrowLeftIcon aria-hidden="true" />
+                Back to requests
+              </Link>
+            </div>
             <PageHeader>
               <div className="flex min-w-0 flex-col gap-2">
                 <p className="text-sm text-muted-foreground">
@@ -65,7 +88,7 @@ export function TaskDetailPage({
             {/* The brief: what the workflow asks, then what it knows. */}
             <section
               aria-label="What is being asked"
-              className="flex flex-col gap-6 border-l border-border pl-5"
+              className="flex min-w-0 flex-col gap-4"
             >
               {task.instructions === '' ? null : (
                 <p className="text-lg whitespace-pre-wrap break-words">
@@ -73,50 +96,70 @@ export function TaskDetailPage({
                 </p>
               )}
               <TaskDetails details={task.details} />
+            </section>
+            <section aria-labelledby="task-audience" className="grid gap-2">
+              <RuleHeading id="task-audience">
+                {task.kind === 'approval' ? 'Who decides' : 'Who responds'}
+              </RuleHeading>
               <p className="text-sm text-muted-foreground">
-                {task.kind === 'approval'
-                  ? 'One eligible person approves or rejects this request.'
-                  : 'One eligible member responds. The person who started the run may respond.'}
+                {audienceSentence(task)}
+                {task.canRespond ? ' You can answer it.' : null}
               </p>
             </section>
             {task.kind !== 'approval' || task.output === null ? null : (
-              <section className="flex items-start gap-4 rounded-xl border border-border bg-select p-5">
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border border-border"
-                >
-                  <StatusMark display="mark" tone={taskTone(task.status)} />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="font-medium">
-                    {task.completedByName ?? 'Workspace member'}{' '}
-                    {task.output.decision} this request
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {formatDateTime(task.output.decidedAt)}
+              <section aria-labelledby="task-decision" className="grid gap-2">
+                <RuleHeading id="task-decision">Decision</RuleHeading>
+                <StatusMark tone={taskTone(task.status)} className="text-sm">
+                  {task.completedByName ?? 'Workspace member'}{' '}
+                  {task.output.decision} this request
+                </StatusMark>
+                <p className="font-mono text-meta text-subtle-foreground">
+                  {formatDateTime(task.output.decidedAt)}
+                </p>
+                {task.output.comment === null ? null : (
+                  <p className="whitespace-pre-wrap break-words">
+                    {task.output.comment}
                   </p>
-                  {task.output.comment === null ? null : (
-                    <p className="mt-3 whitespace-pre-wrap break-words">
-                      {task.output.comment}
-                    </p>
-                  )}
-                </div>
+                )}
               </section>
             )}
+            {task.kind === 'approval' && task.status === 'pending' ? (
+              <section
+                className="grid gap-2"
+                aria-labelledby="approval-outcomes"
+              >
+                <RuleHeading id="approval-outcomes">
+                  What each answer does
+                </RuleHeading>
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+                  <dt className="font-medium">Approve</dt>
+                  <dd className="text-muted-foreground">
+                    The run carries on along the step’s Approved path.
+                  </dd>
+                  <dt className="font-medium">Reject</dt>
+                  <dd className="text-muted-foreground">
+                    The run carries on along the step’s Rejected path.
+                  </dd>
+                  <dt className="font-medium">No answer</dt>
+                  <dd className="text-muted-foreground">
+                    At{' '}
+                    <time dateTime={task.expiresAt}>
+                      {formatDateTime(task.expiresAt)}
+                    </time>
+                    ,{' '}
+                    {task.onExpiry === 'continue'
+                      ? 'the run carries on along the Timed out path.'
+                      : 'this step fails. A failure route takes over if the workflow has one.'}
+                  </dd>
+                </dl>
+              </section>
+            ) : null}
             {task.kind === 'approval' ? (
               <DecisionForm key={task.id} task={task} scope={scope} />
             ) : (
               <InputResponse key={task.id} task={task} scope={scope} />
             )}
-            <Link
-              to="/w/$workspaceId/requests"
-              search={{ view: 'mine', status: 'pending' }}
-              params={{ workspaceId: scope.workspaceId }}
-              className="text-sm underline underline-offset-4"
-            >
-              Back to requests
-            </Link>
-          </div>
+          </article>
         );
       }}
     </QueryView>
