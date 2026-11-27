@@ -101,7 +101,10 @@ export function HomeLoom({
   return (
     <section aria-labelledby="home-loom-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <RuleHeading id="home-loom-title">{selected.title}</RuleHeading>
+        {/* Room for the title on one line; the window filter wraps below. */}
+        <RuleHeading id="home-loom-title" className="basis-48">
+          {selected.title}
+        </RuleHeading>
         <ToggleGroup
           aria-label="Time window"
           value={[windowKey]}
