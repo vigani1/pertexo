@@ -44,3 +44,11 @@ export const workspacePeoplePageSchema = responseSchema(
 
 export type WorkspacePeopleQuery = z.output<typeof workspacePeopleQuerySchema>;
 export type WorkspacePeoplePage = z.output<typeof workspacePeoplePageSchema>;
+
+/** A person by id and current display name, such as who published a version. */
+export const personReferenceSchema = z
+  .object({
+    id: z.uuid(),
+    displayName: z.string().max(PEOPLE_BOUNDS.displayNameCharacters),
+  })
+  .strict();

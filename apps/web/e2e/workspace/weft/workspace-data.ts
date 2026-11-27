@@ -3,7 +3,7 @@ import { workspaceId } from '../../workflow-editor/support';
 // Complete, contract-valid answers for the workspace pages' screenshots.
 
 const hour = 3_600_000;
-export const at = (offsetHours: number) =>
+const at = (offsetHours: number) =>
   new Date(Date.now() + offsetHours * hour).toISOString();
 const id = (group: number, index: number) =>
   `${String(group).padStart(8, '6')}-0000-4000-8000-${String(index).padStart(12, '0')}`;

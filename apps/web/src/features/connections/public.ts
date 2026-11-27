@@ -1,6 +1,5 @@
 export type { ConnectionMutationScope } from './data/connections.mutations';
 export { useConnectionResultScope } from './data/connections.mutations';
-export { connectionPresentation } from './model/connection-providers';
 export {
   describeTestOutcome,
   needsReconnecting,

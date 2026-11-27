@@ -1,10 +1,10 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { UsageTrendsPage } from '@/features/usage/pages/usage-trends';
-import { parseUsageTrendsSearch } from '@/features/usage/usage-routing.public';
+import { parseUsageSearch } from '@/features/usage/usage-routing.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function UsageTrendsRoute() {
   const scope = useWorkspaceScope();
-  const search = parseUsageTrendsSearch(
+  const search = parseUsageSearch(
     useSearch({
       from: '/w/$workspaceId/shell/settings-hub/settings/usage/trends',
     }),

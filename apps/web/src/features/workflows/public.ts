@@ -1,7 +1,6 @@
 export { workflowWorkspaceAccess } from './model/resource-access';
 export { diffWorkflowGraphs, isEmptyDiff } from './model/comparison';
 export type { VersionDiff, GraphChange } from './model/comparison';
-export { countWorkflowStates } from './model/list-view';
 export { canDuplicateWorkflow } from './model/duplicate/allowed';
 export { describeWorkflowState } from './model/workflow-state';
 export { useInputCases } from './data/input-cases/workflow-input-cases.mutations';
