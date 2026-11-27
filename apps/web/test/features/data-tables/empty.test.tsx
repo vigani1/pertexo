@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { RowsGrid } from '@/features/data-tables/components/rows/row-grid';
-import { TableCollection } from '@/features/data-tables/components/overview';
+import { TableList } from '@/features/data-tables/components/overview';
 
 const table: DataTableDefinition = {
   id: '01900000-0000-7000-8000-000000000001',
@@ -17,7 +17,12 @@ const table: DataTableDefinition = {
 const noop = () => undefined;
 it('gives the empty table collection a next step', () => {
   render(
-    <TableCollection tables={[]} rowLimit={100} workspaceId="workspace" />,
+    <TableList
+      tables={[]}
+      quotas={undefined}
+      selectedId={undefined}
+      workspaceId="workspace"
+    />,
   );
   expect(screen.getByRole('heading', { name: 'No tables yet' })).toBeVisible();
   expect(screen.getByText(/Create a table to keep orders/)).toBeVisible();

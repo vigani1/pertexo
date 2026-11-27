@@ -5,7 +5,13 @@ import {
   workspaceId,
 } from '../../workflow-editor/support';
 import { installPolishRoutes } from '../polish-layout-fixture';
-import { connectionUsage, connections } from './workspace-data';
+import {
+  connectionUsage,
+  connections,
+  tableQuotas,
+  tableRows,
+  tables,
+} from './workspace-data';
 import {
   liveVersionId,
   nextRuns,
@@ -30,6 +36,10 @@ export const workspaceScreens: readonly Screen[] = [
   { name: 'workflow-settings', path: `${hub}/settings` },
   { name: 'connections', path: `${root}/connections` },
   { name: 'tables', path: `${root}/data-tables` },
+  {
+    name: 'table-detail',
+    path: `${root}/data-tables/${tables[0]?.id ?? ''}`,
+  },
   { name: 'team', path: `${root}/team` },
   { name: 'settings', path: `${root}/settings` },
   { name: 'usage', path: `${root}/settings/usage` },
@@ -55,6 +65,12 @@ export async function installWorkspaceRoutes(page: Page) {
 const workspaceApi = `**/v1/workspaces/${workspaceId}`;
 
 async function installWorkspaceDataRoutes(page: Page) {
+  await page.route(`${workspaceApi}/data-tables`, (route) =>
+    route.fulfill({ json: { tables, quotas: tableQuotas } }),
+  );
+  await page.route(`${workspaceApi}/data-tables/*/rows/query`, (route) =>
+    route.fulfill({ json: tableRows }),
+  );
   await page.route(`${workspaceApi}/connections?**`, (route) =>
     route.fulfill({ json: { items: connections, nextCursor: null } }),
   );
