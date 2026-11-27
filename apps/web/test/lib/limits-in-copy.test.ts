@@ -53,8 +53,8 @@ const NOT_LIMITS: readonly string[] = [
   'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
   // The same window choices, said in a sentence or as Home's heading, and
   // the deadline presets.
-  'components/ui/deadline-field.tsx: In 1 day',
-  'components/ui/deadline-field.tsx: In 1 hour',
+  'components/patterns/dates/deadline-field.tsx: In 1 day',
+  'components/patterns/dates/deadline-field.tsx: In 1 hour',
   'features/overview/components/home-loom.tsx: The last 24 hours',
   'features/overview/components/home-loom.tsx: The last 6 hours',
   'features/overview/components/home-loom.tsx: The last 7 days',
