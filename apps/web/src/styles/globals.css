@@ -1,7 +1,5 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
 /* Weft: Pertexo's visual language. Five materials, one rule each:
    thread (a run through time), loom (time laid sideways), core (the live orb),
    lens (glass only for floating layers) and live edge (aurora only while work
@@ -30,13 +28,41 @@
   /* The type scale below Tailwind's text-sm, and the display sizes. Each
      size is far enough from its neighbours to tell apart; text keeps the
      line height it inherits, as the sizes it replaces did. */
-  --text-micro: 0.625rem; /* axis ticks, tiny counts, tile marks */
-  --text-caption: 0.7rem; /* ids, timestamps, mono metadata */
-  --text-label: 0.8rem; /* field labels, help, dense rows */
-  --text-lead: 0.95rem; /* a row's name, a large button */
+  --text-micro: 0.6875rem; /* axis ticks, tiny counts, tile marks */
+  --text-caption: 0.75rem; /* ids, timestamps, mono metadata */
+  --text-label: 0.8125rem; /* field labels, help, dense rows */
+  --text-lead: 0.875rem; /* a row's name, a large button */
   --text-wordmark: 1.375rem;
   --text-wordmark-lg: 1.625rem;
-  --text-display: 2.75rem; /* page titles from sm up */
+  --text-display: 2.5rem; /* page titles from sm up */
+
+  --text-meta: 0.78125rem;
+  --text-section: 1.1875rem;
+  --text-figure: 1.875rem;
+  --text-hero: 3.75rem;
+  --color-ground-deep: var(--ground-deep);
+  --color-well: var(--well);
+  --color-live: var(--live);
+  --color-glint: var(--glint);
+  --color-live-soft: var(--live-soft);
+  --color-live-line: var(--live-line);
+  --color-action-soft: var(--action-soft);
+  --color-action-line: var(--action-line);
+  --color-nav-on: var(--nav-on);
+  --color-waiting: var(--waiting);
+  --color-waiting-soft: var(--waiting-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-fail-soft: var(--fail-soft);
+  --color-select: var(--select);
+  --color-select-raised: var(--select-raised);
+  --color-select-strong: var(--select-strong);
+
+  --shadow-raised: var(--raised-shadow);
+  --shadow-sunken: var(--sunken-shadow);
+  --shadow-selection: var(--selection-ring);
+  --shadow-live: var(--live-glow);
+  --ease-weft-in-out: cubic-bezier(0.6, 0, 0.4, 1);
 
   --color-surface-ink: var(--surface-ink);
   --color-recess-ink: var(--recess-ink);
@@ -73,15 +99,17 @@
   --shadow-glow-primary-strong: 0 0 20px
     color-mix(in srgb, var(--primary) 20%, transparent);
   --shadow-node: var(--node-shadow);
-  --shadow-action: var(--action-shadow);
   --shadow-lens: var(--lens-shadow);
 
-  --radius-sm: 0.375rem;
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1.125rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.25rem;
 
-  --ease-unspool: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-unspool: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --animate-thread-flow: thread-flow 1.15s linear infinite;
   --animate-coil: coil-turn 5s linear infinite;
@@ -94,165 +122,157 @@
 }
 
 :root {
-  --node-shadow: 0 18px 44px -18px rgb(0 0 0 / 90%);
-  --graph-link: #7f8b8e;
+  --duration-quick: 150ms;
+  --duration-move: 240ms;
+  --duration-enter: 320ms;
+  --background: #111316;
+  --foreground: #e2e2e6;
+  --card: #191b1e;
+  --popover: #191b1e;
+  --action: #7fd3e3;
+  --action-foreground: #00262c;
+  --muted: #0d0f11;
+  --muted-foreground: #b2bcbf;
+  --subtle-foreground: #7f8b8e;
+  --raised: #202327;
+  --destructive: #ff7a70;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --glass-background: rgba(24, 26, 29, 0.74);
+  --glass-border-strong: rgba(255, 255, 255, 0.13);
+  --glass-border-subtle: rgba(255, 255, 255, 0.07);
+  --scrim-glass: rgba(8, 9, 11, 0.55);
+  --weave-line: rgba(255, 255, 255, 0.06);
+  --lens-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  --ground-deep: #0d0f11;
+  --well: #0b0d0f;
+  --live: #00e5ff;
+  --glint: #c3f5ff;
+  --live-soft: rgba(0, 229, 255, 0.12);
+  --live-faint: rgba(0, 229, 255, 0.08);
+  --live-line: rgba(0, 229, 255, 0.32);
+  --live-glow: 0 0 6px rgba(0, 229, 255, 0.7);
+  --action-soft: rgba(127, 211, 227, 0.12);
+  --action-line: rgba(127, 211, 227, 0.28);
+  --nav-on: #c3f5ff;
+  --waiting: #b9a2ff;
+  --waiting-soft: rgba(169, 139, 255, 0.1);
+  --warn: #f3c677;
+  --warn-soft: rgba(243, 198, 119, 0.09);
+  --fail-soft: rgba(255, 92, 82, 0.09);
+  --select: rgba(255, 255, 255, 0.04);
+  --select-raised: rgba(255, 255, 255, 0.065);
+  --select-strong: rgba(255, 255, 255, 0.09);
+  --raised-shadow: 0 10px 28px -16px rgba(0, 0, 0, 0.7);
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  --selection-ring:
+    inset 0 0 0 1px rgba(127, 211, 227, 0.6),
+    0 0 0 4px rgba(127, 211, 227, 0.08);
+  --page-paint:
+    radial-gradient(
+      1100px 640px at 100% -10%,
+      rgba(0, 229, 255, 0.055),
+      transparent 62%
+    ),
+    linear-gradient(180deg, #111316, #0d0f11);
+  --page-size: auto;
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --primary-foreground: var(--action-foreground);
+  --secondary-foreground: var(--background);
+  --success: var(--foreground);
+  --warning: var(--warn);
+  --secondary: var(--waiting);
+  --primary: var(--live);
+  --accent-foreground: var(--glint);
+  --accent: var(--select-raised);
+  --ring: var(--action);
+  --core-live: var(--live);
+  --core-glint: var(--glint);
+  --core-accent: var(--glint);
+  --core-failed: var(--destructive);
+  --core-waiting: var(--waiting);
+  --core-succeeded: var(--muted-foreground);
+  --node-shadow: var(--raised-shadow);
+  --glass-fallback: var(--card);
+  --glass-popup-fallback: var(--card);
+  --tooltip-background: var(--card);
+  --control-background: var(--well);
+  --control-border: var(--border);
+  --input: var(--border);
+  --canvas-ground: var(--ground-deep);
+  --graph-link: var(--subtle-foreground);
+  --scrim-solid: var(--scrim-glass);
+  --scrim-reduced: var(--scrim-glass);
+  --surface-ink: #ffffff;
+  --recess-ink: #000000;
+  --canvas-composite: lighter;
   --loom-thread-opacity: 0.85;
   --loom-success-opacity: 0.6;
   --loom-label-opacity: 0.85;
-  --action-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--surface-ink) 22%, transparent),
-    0 1px 2px color-mix(in srgb, var(--shadow-ink) 45%, transparent);
-  --lens-shadow:
-    0 30px 80px -30px color-mix(in srgb, var(--shadow-ink) 90%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-ink) 4%, transparent);
-
-  --surface-ink: #ffffff;
-  --recess-ink: #000000;
-  --shadow-ink: #000000;
-  --canvas-composite: lighter;
-  --canvas-ground: #101215;
-  --weave-accent: rgb(195 245 255 / 3.5%);
-  --weave-line: color-mix(in srgb, var(--surface-ink) 2.8%, transparent);
-  --scrim-solid: rgb(6 7 9 / 62%);
-  --scrim-glass: rgb(6 7 9 / 42%);
-  --scrim-reduced: rgb(6 7 9 / 72%);
-  --tooltip-background: rgb(34 36 40 / 94%);
-  --background: #111316;
-  --foreground: #e2e2e6;
-  --card: #1a1c1f;
-  --card-foreground: #e2e2e6;
-  --popover: #282a2d;
-  --popover-foreground: #e2e2e6;
-  /* The brand cyan: live work, selection, the Core. */
-  --primary: #00e5ff;
-  --primary-foreground: #001f24;
-  /* A calmer cyan for filled buttons, checked controls and focus, so the
-     things people press don't glow like live work does. */
-  --action: oklch(0.82 0.11 205);
-  --action-hover: oklch(0.87 0.1 205);
-  --action-foreground: #00262c;
-  --secondary: #d0bcff;
-  --secondary-foreground: #23005c;
-  --muted: #1a1c1f;
-  --muted-foreground: #bac9cc;
-  --subtle-foreground: #7f8b8e;
-  --accent: rgb(0 229 255 / 10%);
-  --accent-foreground: #c3f5ff;
-  --raised: #212428;
-  --destructive: #ffb4ab;
-  --success: #8fe3c0;
-  --warning: #f3c677;
-  /* Drawing inks, kept apart from text colours: the Core, the sign-in threads,
-     the Loom's live threads, the loading wave and the ambient glow. Text needs
-     different strengths per theme than light drawn on the ground does. The
-     status colours above are pale so text reads on the dark; drawn as points
-     of light they wash out, so the Core's states take deeper ones. */
-  --core-live: #00e5ff;
-  --core-glint: #c3f5ff;
-  --core-accent: #d0bcff;
-  --ambient-glow: color-mix(in srgb, var(--core-live) 10%, transparent);
-  --ambient-echo: color-mix(in srgb, var(--core-accent) 8%, transparent);
-  --core-failed: #ff5c52;
-  --core-waiting: #a98bff;
-  --core-succeeded: #36e0a2;
-  --border: color-mix(in srgb, var(--surface-ink) 8%, transparent);
-  --border-strong: color-mix(in srgb, var(--surface-ink) 14%, transparent);
-  --input: color-mix(in srgb, var(--surface-ink) 10%, transparent);
-  --ring: oklch(0.82 0.11 205);
-  --radius: 0.625rem;
-  --glass-background: rgb(25 27 30 / 62%);
-  --glass-fallback: #1a1c1f;
-  /* Popups open over busy rows, so their glass is denser and blurs harder
-     than the chrome's: what shows through is colour, never text. */
-  --glass-popup: rgb(29 31 35 / 70%);
-  --glass-popup-fallback: #1d1f22;
-  --glass-border-strong: color-mix(
-    in srgb,
-    var(--surface-ink) 15%,
-    transparent
-  );
-  --glass-border-subtle: color-mix(in srgb, var(--surface-ink) 7%, transparent);
-  --control-background: color-mix(in srgb, var(--shadow-ink) 22%, transparent);
-  --control-border: color-mix(in srgb, var(--surface-ink) 11%, transparent);
+  --action-hover: color-mix(in srgb, var(--action) 94%, white);
+  --glass-popup: color-mix(in srgb, var(--card) 55%, var(--glass-background));
+  --weave-accent: var(--weave-line);
+  --ambient-glow: var(--live-faint);
   --blur-glass: 22px;
   --blur-popup: 28px;
 }
 
-/* Light Weft follows the Radix light-scale roles (sage neutrals, cyan brand,
-   violet waiting, jade/red/amber status): a near-white ground, surfaces a
-   step lighter, structure from hairline borders and shadows only on what
-   floats. Text uses step-11/12 inks; graphics use the saturated step-9 solids,
-   because light from the dark theme washes out on white. */
 :root[data-theme='light'] {
-  --node-shadow:
-    0 1px 2px rgb(16 38 43 / 8%), 0 6px 16px -8px rgb(16 38 43 / 18%);
-  --graph-link: #7a8a8e;
+  --background: #eef2f3;
+  --foreground: #12355b;
+  --card: #f8fafb;
+  --popover: #f8fafb;
+  --action: #12355b;
+  --action-foreground: #f8fafb;
+  --muted: #e9eef0;
+  --muted-foreground: #3a5675;
+  --subtle-foreground: #53687f;
+  --raised: #e7edef;
+  --destructive: #b8322a;
+  --border: rgba(18, 53, 91, 0.12);
+  --border-strong: rgba(18, 53, 91, 0.22);
+  --glass-background: rgba(248, 250, 251, 0.84);
+  --glass-border-strong: rgba(18, 53, 91, 0.14);
+  --glass-border-subtle: rgba(18, 53, 91, 0.14);
+  --scrim-glass: rgba(214, 224, 229, 0.55);
+  --weave-line: rgba(18, 53, 91, 0.16);
+  --lens-shadow: 0 18px 40px -22px rgba(18, 53, 91, 0.28);
+  --ground-deep: #e9eef0;
+  --well: #e4eaec;
+  --live: #0a8fb0;
+  --glint: #0a6f8a;
+  --live-soft: rgba(10, 143, 176, 0.1);
+  --live-faint: rgba(10, 143, 176, 0.08);
+  --live-line: rgba(10, 143, 176, 0.34);
+  --live-glow: 0 0 0 transparent;
+  --action-soft: rgba(18, 53, 91, 0.08);
+  --action-line: rgba(18, 53, 91, 0.22);
+  --nav-on: #12355b;
+  --waiting: #5b45b4;
+  --waiting-soft: rgba(91, 69, 180, 0.08);
+  --warn: #8a5200;
+  --warn-soft: rgba(138, 82, 0, 0.08);
+  --fail-soft: rgba(192, 57, 47, 0.08);
+  --select: rgba(18, 53, 91, 0.045);
+  --select-raised: rgba(18, 53, 91, 0.075);
+  --select-strong: rgba(18, 53, 91, 0.1);
+  --raised-shadow: 0 6px 16px -12px rgba(18, 53, 91, 0.3);
+  --sunken-shadow: inset 0 0 0 1px rgba(18, 53, 91, 0.12);
+  --selection-ring: inset 0 0 0 1.5px #12355b;
+  --page-paint:
+    linear-gradient(rgba(18, 53, 91, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 53, 91, 0.075) 1px, transparent 1px),
+    linear-gradient(rgba(18, 53, 91, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 53, 91, 0.03) 1px, transparent 1px);
+  --page-size: 60px 60px, 60px 60px, 12px 12px, 12px 12px;
+  --surface-ink: #12355b;
+  --recess-ink: #e4eaec;
+  --canvas-composite: source-over;
   --loom-thread-opacity: 1;
   --loom-success-opacity: 1;
   --loom-label-opacity: 1;
-  --background: #f7f9f8;
-  --foreground: #16262b;
-  --card: #fbfdfc;
-  --card-foreground: #16262b;
-  --popover: #ffffff;
-  --popover-foreground: #16262b;
-  --primary: #0b7590;
-  --primary-foreground: #ffffff;
-  --action: #0b7590;
-  --action-hover: #095f75;
-  --action-foreground: #ffffff;
-  --secondary: #6550b9;
-  --secondary-foreground: #ffffff;
-  --muted: #eef1f0;
-  --muted-foreground: #4e5c60;
-  --subtle-foreground: #5f6563;
-  --accent: rgb(0 162 199 / 12%);
-  --accent-foreground: #0b6278;
-  --raised: #eef1f0;
-  --destructive: #c42a2f;
-  --success: #1b7458;
-  --warning: #935600;
-  /* Drawn graphics take the vivid step-9 solids, in one hue: light mirrors
-     dark's single cyan light (bright, pale and deep cyan), so the page never
-     turns into a rainbow. Violet stays only where it means waiting. */
-  --core-live: #00a2c7;
-  --core-glint: #3db9cf;
-  --core-accent: #107d98;
-  /* A blurred glow fades much faster on white, so the one light source is
-     stronger here to read like dark's. */
-  --ambient-glow: color-mix(in srgb, var(--core-live) 12%, transparent);
-  --ambient-echo: color-mix(in srgb, var(--core-accent) 6%, transparent);
-  --core-failed: #e5484d;
-  --core-waiting: #6e56cf;
-  --core-succeeded: #29a383;
-  --surface-ink: #16262b;
-  --recess-ink: #c7cdcc;
-  --shadow-ink: #1a2b30;
-  --canvas-composite: source-over;
-  --canvas-ground: #f2f5f4;
-  --weave-accent: rgb(0 162 199 / 6%);
-  /* A grid you can see, as on n8n's canvas; dark's 2.8% vanishes on white. */
-  --weave-line: rgb(22 38 43 / 7%);
-  --border: #d7dad9;
-  --border-strong: #b8bcba;
-  --input: #cbcfcd;
-  --ring: #0891b2;
-  --glass-background: rgb(251 253 252 / 82%);
-  --glass-fallback: #fbfdfc;
-  --glass-popup: rgb(255 255 255 / 94%);
-  --glass-popup-fallback: #ffffff;
-  --glass-border-strong: #d7dad9;
-  --glass-border-subtle: #d7dad9;
-  --control-background: #ffffff;
-  --control-border: #808c89;
-  --scrim-solid: rgb(16 30 34 / 30%);
-  --scrim-glass: rgb(16 30 34 / 18%);
-  --scrim-reduced: rgb(16 30 34 / 40%);
-  --tooltip-background: rgb(255 255 255 / 98%);
-  --action-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 18%), 0 1px 2px rgb(16 38 43 / 16%);
-  --lens-shadow:
-    0 1px 2px rgb(16 38 43 / 6%), 0 12px 32px -12px rgb(16 38 43 / 18%);
+  --ambient-glow: transparent;
 }
 
 @layer base {
@@ -267,7 +287,9 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-sm text-foreground antialiased;
+    background-image: var(--page-paint);
+    background-size: var(--page-size);
     min-height: 100svh;
   }
 
@@ -626,8 +648,7 @@
     pointer-events: none;
   }
 
-  .ambient::before,
-  .ambient::after {
+  .ambient::before {
     position: absolute;
     border-radius: 999px;
     content: '';
@@ -645,21 +666,10 @@
     background: var(--ambient-glow);
   }
 
-  .ambient::after {
-    bottom: -22rem;
-    left: 3rem;
-    width: 34rem;
-    height: 34rem;
-    background: var(--ambient-echo);
-    animation-duration: 34s;
-    animation-direction: alternate-reverse;
-  }
-
   /* Where a tab stays open all day (the workspace and the workflow hub), the
      aurora holds still: its drift repaints the whole window every frame. It
      drifts behind full-screen moments such as sign-in and boot. */
-  .ambient-still::before,
-  .ambient-still::after {
+  .ambient-still::before {
     animation: none;
   }
 
