@@ -12,5 +12,3 @@ export function parseUsageSearch(
   const result = usageTrendPeriodSchema.safeParse(value.period);
   return { period: result.success ? result.data : '30d' };
 }
-
-export const parseUsageTrendsSearch = parseUsageSearch;

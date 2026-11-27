@@ -3,10 +3,7 @@ import { holdsCapability } from '@/features/workspaces/workspaces-routing.public
 import { parsePromotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
 import { parseFederationSearch } from '@/features/federation/federation-routing.public';
 import { parseAuditSearch } from '@/features/governance/governance-routing.public';
-import {
-  parseUsageTrendsSearch,
-  parseUsageSearch,
-} from '@/features/usage/usage-routing.public';
+import { parseUsageSearch } from '@/features/usage/usage-routing.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 
@@ -80,7 +77,7 @@ export const usageTrendsRoute = createRoute({
   getParentRoute: () => settingsHubRoute,
   path: 'settings/usage/trends',
   ...workspacePage('Trends'),
-  validateSearch: parseUsageTrendsSearch,
+  validateSearch: parseUsageSearch,
 
   component: lazyRoute(() => import('../usage-trends'), 'UsageTrendsRoute'),
 });

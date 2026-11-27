@@ -1,5 +1,1 @@
-export {
-  parseUsageSearch,
-  parseUsageTrendsSearch,
-  type UsageSearch,
-} from './model/usage-search';
+export { parseUsageSearch, type UsageSearch } from './model/usage-search';
