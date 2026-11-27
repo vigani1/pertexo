@@ -318,7 +318,9 @@ describe('connections page', () => {
     // Already saved before the test ran, so the way out is Done.
     await actor.click(lens().getByRole('button', { name: 'Done' }));
     expect(
-      await screen.findByText('last test failed · address not found'),
+      await within(
+        await screen.findByRole('list', { name: 'Connections' }),
+      ).findByText('last test failed · address not found'),
     ).toBeVisible();
     expect(screen.queryByText('never tested')).not.toBeInTheDocument();
     await actor.click(
