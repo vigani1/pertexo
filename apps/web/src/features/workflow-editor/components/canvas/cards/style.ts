@@ -59,23 +59,17 @@ const NODE_FOCUS_RING = String.raw`in-[.react-flow\_\_node:focus-visible]:outlin
 
 export function cardClassName(
   state: Readonly<{
-    hasIssues: boolean;
     selected: boolean;
     disabled: boolean;
-    /** The last run is working in this step: it breathes. */
-    running?: boolean;
     /** The last run finished without reaching this step. */
     passedBy?: boolean;
   }>,
   className?: string,
 ): string {
   return cn(
-    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card px-3 py-2.5 text-card-foreground shadow-node transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
+    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card px-3 py-2.5 text-card-foreground shadow-node transition-[background-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
     NODE_FOCUS_RING,
-    state.hasIssues && 'border-destructive/50 shadow-node-issue',
-    state.selected && 'border-action-line shadow-selection',
-    (state.running ?? false) &&
-      'border-live-line node-live motion-loop:animate-node-live',
+    state.selected && 'bg-select-raised ring-1 ring-action-line',
     (state.disabled || (state.passedBy ?? false)) && 'opacity-55',
     className,
   );

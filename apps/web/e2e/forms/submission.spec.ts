@@ -286,3 +286,32 @@ for (const width of [1280, 375])
     expect(keys[1]).toBeTruthy();
     expect(keys[1]).not.toBe(keys[0]);
   });
+
+test('counts a required agreement only while it is checked', async ({
+  page,
+}) => {
+  await installEditorRoutes(page, remoteDraft());
+  const agreement = formConfigSchema.parse({
+    title: 'Send consent',
+    fields: [
+      {
+        id: 'agree',
+        name: 'agree',
+        label: 'I agree',
+        type: 'boolean',
+        required: true,
+        mustBeTicked: true,
+      },
+    ],
+  });
+  await page.route(`**/v1/forms/${publicId}`, (route) =>
+    route.fulfill({ json: { versionId, form: agreement } }),
+  );
+  await page.goto(`/forms/${publicId}#${capability}`);
+  const checkbox = page.getByRole('checkbox', { name: 'I agree' });
+  await checkbox.check();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('value', '1');
+  await checkbox.uncheck();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('value', '0');
+  await expect(page.getByText('1 required answer left.')).toBeVisible();
+});

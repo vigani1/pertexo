@@ -42,7 +42,6 @@ export function ForEachNodeCard({
       data-selected={selected}
       className={cardClassName(
         {
-          hasIssues: data.issueCount > 0,
           selected,
           disabled: data.disabled,
         },

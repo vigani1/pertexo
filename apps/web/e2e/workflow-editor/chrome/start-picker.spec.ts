@@ -39,3 +39,19 @@ for (const width of [375, 390]) {
     expect(choice.x + choice.width).toBeLessThanOrEqual(width);
   });
 }
+
+test('focuses step search after opening the folded palette by keyboard', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await installEditorRoutes(page, remoteDraft(), {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+  const show = page.getByRole('button', { name: 'Show steps', exact: true });
+  await expect(show).toBeVisible();
+  await show.press('Enter');
+  await expect(
+    page.getByRole('searchbox', { name: 'Search steps' }),
+  ).toBeFocused();
+});

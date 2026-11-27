@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   coldStart,
+  fixtureRun,
   fixtureStatistics,
   identityHandlers,
 } from '../../support/fixtures/run';
@@ -105,11 +106,9 @@ describe('workspace home', () => {
     );
     for (const status of ['failed', 'timed_out', 'outcome_unknown']) {
       expect(statuses).toContain(status);
-      expect(
-        runQueries
-          .find((query) => query.get('status') === status)
-          ?.get('createdAtFrom'),
-      ).toMatch(/Z$/u);
+      const query = runQueries.find((query) => query.get('status') === status);
+      expect(query?.get('createdAtFrom')).toBe('2026-09-14T10:00:00.000000Z');
+      expect(query?.get('createdAtBefore')).toBe('2026-09-15T10:00:00.000000Z');
     }
     expect(
       runQueries.some(
@@ -118,6 +117,61 @@ describe('workspace home', () => {
       ),
     ).toBe(true);
     expect(runQueries.some((query) => query.get('limit') === '1')).toBe(true);
+  });
+  it('uses the header counts when later detail reads see another failure', async () => {
+    const runPages = new Map([
+      [
+        'timed_out',
+        [
+          fixtureRun(recentRunId, 'timed_out', {
+            workflowName: 'Daily intake',
+          }),
+        ],
+      ],
+      [
+        'failed',
+        [fixtureRun(failedRunId, 'failed', { workflowName: 'Daily intake' })],
+      ],
+    ]);
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      workflowHandlers(),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
+        ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status');
+          return HttpResponse.json({
+            items: runPages.get(status ?? '') ?? [],
+            nextCursor: null,
+          });
+        },
+      ),
+      ...runHandlers({
+        statistics: (query) =>
+          fixtureStatistics({
+            window: query.get('window') ?? '24h',
+            byStatus: { timed_out: 1 },
+          }),
+      }),
+    );
+
+    await renderLoadedApp(`/w/${workspaceId}`);
+    expect(
+      await screen.findByText('failed in 24 h', { exact: true }, coldStart),
+    ).toHaveTextContent('0 failed in 24 h');
+    const attention = await screen.findByRole(
+      'region',
+      { name: 'Needs you' },
+      coldStart,
+    );
+    expect(
+      await within(attention).findByText(
+        'Daily intake timed out once in the last 24 hours',
+      ),
+    ).toBeVisible();
+    expect(
+      within(attention).getByRole('link', { name: 'Open run' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${recentRunId}`);
   });
   it('shows exact counts from one statistics snapshot in the header and spine', async () => {
     const runQueries: URLSearchParams[] = [];

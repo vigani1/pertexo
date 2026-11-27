@@ -1,4 +1,5 @@
 import { isApiError } from '@/lib/api/error';
+import { formatCount } from '@/lib/format/count';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { FormFieldControl } from './field-control';
 import { FileFieldControl } from './files/field';
@@ -58,6 +59,8 @@ export function FormResponse({
       .filter((field) => {
         if (field.type === 'file') return uploads.uploadIds(field).length > 0;
         const value = draft[field.name];
+        if (field.type === 'boolean' && field.mustBeTicked === true)
+          return value === true;
         return (
           typeof value === 'boolean' ||
           (typeof value === 'string'
@@ -159,8 +162,7 @@ export function FormResponse({
           </ProgressButton>
           {intro === undefined || remaining === 0 ? null : (
             <p className="text-meta text-muted-foreground">
-              {remaining} required {remaining === 1 ? 'answer' : 'answers'}{' '}
-              left.
+              {formatCount(remaining, 'required answer')} left.
             </p>
           )}
           {uploads.pending ? (

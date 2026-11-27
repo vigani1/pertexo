@@ -23,7 +23,7 @@ export function WorkspaceCard({
   const availability = workspaceAvailability(workspace);
   return (
     <Row className="grid-cols-[auto_minmax(0,1fr)] gap-x-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
-      <WorkspaceMark name={workspace.name} className="size-10 rounded-lg" />
+      <WorkspaceMark name={workspace.name} size="picker" />
       <div className="flex min-w-0 flex-col gap-1">
         <span className="font-heading text-section font-semibold wrap-anywhere">
           {workspace.name}

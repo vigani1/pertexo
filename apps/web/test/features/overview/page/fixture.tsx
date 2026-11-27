@@ -3,6 +3,7 @@ import { HttpResponse, http } from 'msw';
 import {
   fixtureIds,
   fixtureRun,
+  fixtureStatistics,
   fixtureTimestamp,
   fixtureWorkflow,
   minutesAgo,
@@ -74,7 +75,19 @@ export function runHandlers(
       });
     },
   );
-  return [runs, statisticsHandler(reads.statistics, reads.statisticsSeen)];
+  return [
+    runs,
+    statisticsHandler(
+      reads.statistics ??
+        ((query) =>
+          fixtureStatistics({
+            window: query.get('window') ?? '24h',
+            byStatus: { failed: reads.problems?.length ?? 1 },
+            ...(query.get('breakdown') === 'workflow' ? { workflows: [] } : {}),
+          })),
+      reads.statisticsSeen,
+    ),
+  ];
 }
 
 export function workflowHandlers(

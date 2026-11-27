@@ -74,8 +74,6 @@ interface WorkflowNodeData extends Record<string, unknown> {
   sampleState?: 'pinned' | 'stale' | 'expired' | undefined;
   /** What this step did in the workflow's last run, when results are shown. */
   lastRun?: StepRunResult | undefined;
-  /** The last run is working in this step right now. */
-  running?: boolean;
   /** The latest check describes the draft on screen. */
   issueCount: number;
   missingConnections: number;
@@ -316,7 +314,6 @@ function projectNode({
       testStatus: decorations.testStatuses?.get(node.id),
       sampleState: decorations.sampleStates?.get(node.id),
       lastRun: decorations.lastRun?.results.get(node.id),
-      running: decorations.lastRun?.runningNodeIds.has(node.id) ?? false,
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition === undefined
         ? []

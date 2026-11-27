@@ -11,7 +11,11 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import type { AttentionAction, AttentionItem } from '../model/needs-attention';
+import {
+  ATTENTION_WINDOW,
+  type AttentionAction,
+  type AttentionItem,
+} from '../model/needs-attention';
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';
 
@@ -84,7 +88,7 @@ export function NeedsAttention({
   workspace: AccessibleWorkspace;
   items: readonly AttentionItem[];
   state: HomeBlockState;
-  /** Some problem-run reads hit their page limit. */
+  /** The loaded problem runs do not cover the full statistics count. */
   moreFailedRuns: boolean;
   moreWorkflows?: boolean;
 }>) {
@@ -98,7 +102,13 @@ export function NeedsAttention({
   // Nothing needs you: the block is gone, not an empty promise. Partial
   // evidence still shows, so its gap is said.
   const loading = state.pending && !state.hasData;
-  if (items.length === 0 && !state.failed && !loading && !moreWorkflows)
+  if (
+    items.length === 0 &&
+    !state.failed &&
+    !loading &&
+    !moreWorkflows &&
+    !moreFailedRuns
+  )
     return null;
   const needle = search.trim().toLocaleLowerCase();
   const filtered =
@@ -201,7 +211,7 @@ export function NeedsAttention({
       />
       {moreFailedRuns ? (
         <p className="border-t border-border pt-2 text-xs text-subtle-foreground">
-          Counting the latest 100 problem runs of each kind.
+          Some problem runs from {ATTENTION_WINDOW} aren’t listed.
         </p>
       ) : null}
     </HomeBlock>

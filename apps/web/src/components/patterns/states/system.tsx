@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
 
@@ -35,14 +36,19 @@ export function SystemStateArt({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
+const systemStateTitle = cva('font-display text-4xl leading-none', {
+  variants: { size: { hero: 'sm:text-hero' } },
+});
+
 export function SystemStateTitle({
   className,
+  size,
   ...props
-}: ComponentProps<'h1'>) {
+}: ComponentProps<'h1'> & VariantProps<typeof systemStateTitle>) {
   return (
     <h1
       data-slot="system-state-title"
-      className={cn('font-display text-4xl leading-none', className)}
+      className={cn(systemStateTitle({ size }), className)}
       {...props}
     />
   );

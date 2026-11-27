@@ -12,7 +12,7 @@ import { formatElapsedTime } from '@/lib/format/time';
 import { formatCount, pluralWord } from '@/lib/format/count';
 import { ATTENTION_WINDOW_HOURS } from '@/features/workflow-runs/workflow-runs-queries.public';
 
-const ATTENTION_WINDOW = `the last ${formatCount(ATTENTION_WINDOW_HOURS, 'hour')}`;
+export const ATTENTION_WINDOW = `the last ${formatCount(ATTENTION_WINDOW_HOURS, 'hour')}`;
 
 // "Needs attention" is derived from reads the app already makes: problem
 // runs from the last day, workflows whose triggers aren't healthy,

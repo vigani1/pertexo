@@ -1,18 +1,32 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 import { formatInitials } from '@/lib/format/initials';
 
+const workspaceMark = cva(
+  'grid shrink-0 place-items-center bg-raised font-sans font-semibold text-foreground inset-ring inset-ring-border-strong',
+  {
+    variants: {
+      size: {
+        compact: 'size-5 rounded-xs text-micro',
+        list: 'size-9 rounded-lg text-caption',
+        picker: 'size-10 rounded-lg text-micro',
+        invitation: 'size-12 rounded-full text-base',
+        preview:
+          'size-14 rounded-xl text-lg transition-[box-shadow] duration-200 motion-reduce:transition-none',
+      },
+      editing: { true: 'shadow-selection' },
+    },
+    defaultVariants: { size: 'compact' },
+  },
+);
+
 export function WorkspaceMark({
   name,
-  className,
-}: Readonly<{ name: string; className?: string }>) {
+  size,
+  editing,
+}: Readonly<{ name: string }> & VariantProps<typeof workspaceMark>) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'grid size-5 shrink-0 place-items-center rounded-xs bg-raised font-sans text-micro font-semibold text-foreground inset-ring inset-ring-border-strong',
-        className,
-      )}
-    >
+    <span aria-hidden="true" className={workspaceMark({ size, editing })}>
       {formatInitials(name)}
     </span>
   );

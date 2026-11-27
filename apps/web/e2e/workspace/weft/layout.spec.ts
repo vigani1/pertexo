@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import { test, expect } from '../../support/fixtures';
-import { addCsrfCookie } from '../../workflow-editor/support';
+import { addCsrfCookie, workspaceId } from '../../workflow-editor/support';
 import { mockIdentity } from '../auth/fixture';
 import { installPublicScreenRoutes, installWorkspaceRoutes } from './fixture';
 import { workspaceScreens } from './screens';
@@ -51,10 +51,15 @@ for (const [width, height] of viewports) {
             `${screen.name} fits without horizontal page scroll`,
           ).toBeLessThanOrEqual(width);
           if (touch) {
+            if (screen.name === 'public-form') {
+              await expect(
+                page.getByRole('combobox', { name: 'Currency' }),
+              ).toBeVisible();
+            }
             const targets = await page.evaluate(() =>
               [
                 ...document.querySelectorAll(
-                  '[data-slot="button"], [data-slot="tabs-trigger"], [data-slot="dropdown-menu-item"]',
+                  '[data-slot="button"], [data-slot="tabs-trigger"], [data-slot="dropdown-menu-item"], select',
                 ),
               ]
                 .filter(
@@ -106,3 +111,28 @@ for (const [width, height] of viewports) {
       }
   });
 }
+
+test('Home shows the same 24-hour failures in its header and Needs you', async ({
+  page,
+}) => {
+  await installWorkspaceRoutes(page);
+  await page.goto(`/w/${workspaceId}`);
+  await expect(page.getByText(/^\d+ failed in 24 h$/u)).toHaveText(
+    '1 failed in 24 h',
+  );
+  const attention = page.getByRole('region', { name: 'Needs you' });
+  await expect(
+    attention.getByText(
+      'Invoice intake had 3 runs go wrong in the last 24 hours',
+    ),
+  ).toBeVisible();
+  await expect(
+    attention.getByText(/1 failed, 1 timed out, 1 unknown/u),
+  ).toBeVisible();
+  await expect(
+    attention.getByRole('link', { name: 'Open run' }),
+  ).toHaveAttribute(
+    'href',
+    `/w/${workspaceId}/runs/11000000-0000-4000-8000-000000000007`,
+  );
+});

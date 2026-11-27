@@ -56,10 +56,12 @@ export function AuditPage({
   return (
     <div className="flex min-w-0 max-w-4xl flex-col gap-8">
       <PageHeader>
-        <div>
+        <div className="min-w-0">
           <PageHeaderTitle>Audit log</PageHeaderTitle>
           <PageHeaderMeta>
-            <span>Who changed what in {workspace.name}</span>
+            <span className="wrap-anywhere">
+              Who changed what in {workspace.name}
+            </span>
           </PageHeaderMeta>
         </div>
         <PageHeaderActions>

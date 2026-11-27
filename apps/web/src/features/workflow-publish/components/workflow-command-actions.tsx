@@ -97,7 +97,7 @@ function EditedSinceNote({
  * stamp follows a successful publish.
  */
 type WorkflowCommandActionsProps = Readonly<{
-  renderTestAction: (runItems: ReactNode) => ReactNode;
+  renderTestAction: (runItems: ReactNode, runPending: boolean) => ReactNode;
   renderFeedback: (feedback: ReactNode) => ReactNode;
   commandSession: WorkflowCommandSession;
   onPublished: (receipt: PublicationReceipt) => void;
@@ -146,6 +146,7 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               }}
             />
           ) : null,
+          model.runSubmission.pending,
         )}
         {model.receipt === undefined ? null : (
           <EditedSinceNote receipt={model.receipt} draft={model.draft} />

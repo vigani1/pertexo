@@ -20,6 +20,10 @@ export const buttonVariants = cva(
         chip: 'h-auto min-h-6.5 max-w-full gap-1.5 border-border bg-select-raised px-2 text-meta whitespace-normal text-foreground hover:bg-select-strong',
         link: 'inline-link h-auto px-0',
       },
+      joined: {
+        start: 'rounded-e-none',
+        end: '-ms-px rounded-s-none',
+      },
       // Coarse pointers keep a 40px floor; phone controls use the shared
       // 44px minimum above unless their surface owns compact geometry.
       size: {

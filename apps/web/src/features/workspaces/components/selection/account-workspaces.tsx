@@ -52,10 +52,7 @@ export function AccountWorkspacesSection({
                   params={{ workspaceId: workspace.id }}
                   className="group flex min-h-14 items-center gap-3 rounded-md px-1 py-2 outline-none transition-colors hover:bg-select focus-ring"
                 >
-                  <WorkspaceMark
-                    name={workspace.name}
-                    className="size-9 rounded-lg text-caption"
-                  />
+                  <WorkspaceMark name={workspace.name} size="list" />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="truncate text-sm font-semibold">
