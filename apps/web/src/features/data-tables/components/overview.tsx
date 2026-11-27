@@ -10,7 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import { Button } from '@/components/ui/button';
 import {

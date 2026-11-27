@@ -4,7 +4,7 @@ import type { UserProfileResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { accountSecurityQueryOptions } from '../data/account-security/account-security.queries';

@@ -7,9 +7,9 @@ import {
   EmptyActions,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { readFailureReason, shownData } from '@/lib/api/error-copy';
 

@@ -10,7 +10,7 @@ import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';

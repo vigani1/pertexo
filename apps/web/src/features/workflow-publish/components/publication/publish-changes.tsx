@@ -1,5 +1,5 @@
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import type {
   PublishSummary,
   PublishSummaryLine,

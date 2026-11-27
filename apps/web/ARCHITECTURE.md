@@ -901,7 +901,7 @@ their own:
 | Copy           | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts`                 | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard                                                                                                                                      |
 | Notice         | `components/patterns/notices/inline-notice.tsx`                                           | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes                                                                                                                                                |
 | Stale data     | `components/patterns/states/stale-line.tsx`                                               | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                                                                                                                                                         |
-| Lists          | `components/patterns/lists/load-more.tsx`, `components/ui/skeleton.tsx`                   | `LoadMore` (next page, retry, one failure line); `Skeleton`, `SkeletonThread`, `SkeletonRows` (a list loading in its row shape)                                                                                                                                                                                                   |
+| Lists          | `components/patterns/lists/load-more.tsx`, `components/ui/skeleton.tsx`                   | `LoadMore` (next page, retry, one failure line); `Skeleton` and `SkeletonThread` primitives; `SkeletonRows` and `SkeletonLines` in `components/patterns/states/loading.tsx`                                                                                                                                                       |
 | Recent log     | `components/patterns/lists/recent-log.tsx`                                                | `RecentLog` (heading, note, loading rows, one failure owner, empty sentence, "Load older", optional day groups) and `RecentLogEntry` (glyph, words, action, time) for trigger logs, the audit ledger and promotion history                                                                                                        |
 | Query states   | `components/patterns/states/query-view.tsx`                                               | `QueryView`: the one owner of a read's states: `loading`, a first-read failure (`error` slot, `FailedReadState` or `InlineFailedRead`), `StaleLine` over kept data, `empty`, and access loss hiding data                                                                                                                          |
 | Clock          | `lib/use-now.ts`, `lib/use-countdown.ts`, `lib/format-time.ts`                            | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24"                                                                                                                                    |
@@ -922,25 +922,25 @@ available alongside the visualization.
 Other primitives (`components/ui`): button (`primary` is the one filled action
 per screen; `default` tinted; `outline`, `ghost`, `destructive`, `link`), badge,
 input/textarea, select, dropdown-menu, tabs, tooltip, popover, switch, checkbox,
-sheet, toggle-group, separator, kbd, empty (`Empty`, `EmptyMedia`, `EmptyTitle`,
-`EmptyDescription`, `EmptyActions` — every empty state names its next action),
-toast (`NotificationsProvider`, `useNotifications` with success/info/error/undo
-and `track` for progress → result), loading-orb, dialog (`center`, `top`). Other
-patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
-line, actions), `CommandPalette`, `JsonTree`, `SystemState` (its art — a thread
-drawing, an icon or the Core — sits on the page, never in a framed box; in the
-shell the state reads from the left, a full screen centres it), thread
-illustrations. The Core's particles grow in number with its size and each is
-capped in size, so a large Core (sign-in) stays fine-grained. Other libraries
-(`lib`): `format-time.ts` (all date/time/duration text — no feature-local
-`Intl.DateTimeFormat`; `formatDateTimeInZone` reads a time on a named clock with
-its zone name; `formatShortTime` is the locale's time to the minute, “Saved
-14:31” and the stale line, while `formatClock` keeps seconds for logs; durations
-have one compact style, `0.12s`, `4.2s`, `1m 12s`, `2h 05m`, and relative times
-the narrow one, `3m ago`), `format-bytes.ts` (byte sizes for files and
-payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic read/command
-failure sentences, uncertain outcome, forbidden, rate-limit and support
-reference helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
+sheet, toggle-group, separator, kbd, toast (`NotificationsProvider`,
+`useNotifications` with success/info/error/undo and `track` for progress →
+result), loading-orb, dialog (`center`, `top`). Other patterns
+(`components/patterns`): `CoreOrb`, `Empty` (title, description and next
+action), `PageHeader` (title, mono meta line, actions), `CommandPalette`,
+`JsonTree`, `SystemState` (its art — a thread drawing, an icon or the Core —
+sits on the page, never in a framed box; in the shell the state reads from the
+left, a full screen centres it), thread illustrations. The Core's particles grow
+in number with its size and each is capped in size, so a large Core (sign-in)
+stays fine-grained. Other libraries (`lib`): `format-time.ts` (all
+date/time/duration text — no feature-local `Intl.DateTimeFormat`;
+`formatDateTimeInZone` reads a time on a named clock with its zone name;
+`formatShortTime` is the locale's time to the minute, “Saved 14:31” and the
+stale line, while `formatClock` keeps seconds for logs; durations have one
+compact style, `0.12s`, `4.2s`, `1m 12s`, `2h 05m`, and relative times the
+narrow one, `3m ago`), `format-bytes.ts` (byte sizes for files and payloads),
+`format-initials.ts`, `api/api-error-copy.ts` (generic read/command failure
+sentences, uncertain outcome, forbidden, rate-limit and support reference
+helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 The inbox's new-failure notice is the one anchored toast. It uses its own Base
 UI toast manager (`features/inbox/components/arrivals/listener.tsx`), not a

@@ -5,7 +5,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Disclosure } from '@/components/ui/disclosure';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import type { RunDataScope } from './data/value';
 import { workflowRunVariablesQueryOptions } from '../../data/stored-values.queries';
 // Enough to recognise the set; the rest wait behind "Show all".

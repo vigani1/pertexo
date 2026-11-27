@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import {
   StatusMark,
   type StatusTone,

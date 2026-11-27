@@ -4,8 +4,12 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyTitle,
+} from '@/components/patterns/states/empty';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import {
   anyRunQueryOptions,
   runStatisticsQueryOptions,

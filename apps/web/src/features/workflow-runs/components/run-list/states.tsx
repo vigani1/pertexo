@@ -13,7 +13,7 @@ import {
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 
 /** Spooling rows in the list's own shape while the first page loads. */

@@ -21,7 +21,7 @@ import { DataTableSetup } from '../builders/table-setup';
 import { isDataTableDefinition } from '@pertexo/node-sdk';
 import { Suspense } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';

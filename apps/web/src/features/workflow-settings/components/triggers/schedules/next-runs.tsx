@@ -2,7 +2,7 @@ import { useId } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { ScheduleRunTimes } from '@/features/catalog/catalog-views.public';
 import type { ApiClient } from '@/lib/api/client';
 import { scheduleNextRunsQueryOptions } from '../../../data/workflow-settings.queries';

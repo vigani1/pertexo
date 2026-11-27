@@ -21,7 +21,7 @@ import {
   EmptyActions,
   EmptyDescription,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { SettingsSection } from '@/components/patterns/settings/section';

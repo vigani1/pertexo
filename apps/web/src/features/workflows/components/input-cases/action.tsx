@@ -10,7 +10,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClient } from '@/lib/api/client';
 import { useInputCases } from '../../data/input-cases/workflow-input-cases.mutations';

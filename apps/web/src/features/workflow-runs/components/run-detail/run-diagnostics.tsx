@@ -5,7 +5,7 @@ import {
   InlineFailedRead,
   QueryView,
 } from '@/components/patterns/states/query-view';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { nodeRunDiagnosticsQueryOptions } from '../../data/stored-values.queries';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import type { RunDataScope } from './data/value';

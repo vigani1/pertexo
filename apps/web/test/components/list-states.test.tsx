@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LoadMore } from '../../src/components/patterns/lists/load-more';
 import { ApiError } from '../../src/lib/api/error';
-import { SkeletonRows } from '../../src/components/ui/skeleton';
+import { SkeletonRows } from '../../src/components/patterns/states/loading';
 
 describe('list states', () => {
   it('loads the next page and retries it after a failure', async () => {

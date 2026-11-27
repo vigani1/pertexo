@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Badge } from '@/components/ui/badge';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES } from '../../model/role-words';
