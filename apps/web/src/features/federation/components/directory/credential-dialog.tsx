@@ -189,7 +189,8 @@ function DirectoryCredentialReceipt({
         value={secret}
         autoComplete="off"
         spellCheck={false}
-        className="font-mono text-base break-all md:text-xs"
+        typography="compact-code"
+        className="break-all"
       />
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={saved} onCheckedChange={setSaved} />

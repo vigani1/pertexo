@@ -39,7 +39,8 @@ export function PreviewInputFields({
             name="previewInput"
             autoComplete="off"
             spellCheck={false}
-            className="min-h-24 font-mono"
+            typography="mono"
+            className="min-h-24"
             value={input}
             onChange={(event) => {
               onInputChange(event.target.value);

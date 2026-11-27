@@ -64,7 +64,7 @@ export function StatusGuide({
         align="end"
         className="w-[min(27rem,calc(100vw-2rem))] p-5"
       >
-        <PopoverTitle className="text-sm">{title}</PopoverTitle>
+        <PopoverTitle compact>{title}</PopoverTitle>
         {sections.map((section) => (
           <section key={section.title} className="mt-4">
             <h3 className="font-sans text-xs font-semibold text-subtle-foreground">

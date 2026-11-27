@@ -106,7 +106,7 @@ export function PasswordResetPage({
                     <StatusMark
                       display="mark"
                       tone="success"
-                      className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
+                      className="mb-4 size-6 motion-safe:animate-knot"
                     />
                   }
                   title="Password changed"

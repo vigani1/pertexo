@@ -7,22 +7,38 @@ import { cn } from '@/lib/class-names';
  * background; the selected row lifts it further. The grid columns are the
  * caller's layout, passed in `className`.
  */
-const rowVariants = cva(
-  'row-divider grid min-w-0 items-center gap-x-4 gap-y-1 rounded-lg px-3.5 py-3 transition-colors duration-(--duration-quick)',
-  {
-    variants: {
-      lift: {
-        none: '',
-        hover: 'hover:bg-select focus-within:bg-select',
-      },
-      selected: {
-        true: 'bg-select-raised hover:bg-select-raised',
-        false: '',
-      },
+const rowVariants = cva('row-divider', {
+  variants: {
+    lift: {
+      none: '',
+      pointer: 'hover:bg-select',
+      hover: 'hover:bg-select focus-within:bg-select',
     },
-    defaultVariants: { lift: 'hover', selected: false },
+    selected: {
+      true: 'bg-select-raised',
+      false: '',
+    },
+    frame: {
+      bare: '',
+      standard:
+        'grid min-w-0 items-center gap-x-4 gap-y-1 rounded-lg px-3.5 py-3',
+    },
+    transition: {
+      none: '',
+      normal:
+        'transition-colors duration-(--duration-quick) motion-reduce:transition-none',
+    },
   },
-);
+  compoundVariants: [
+    { lift: 'hover', selected: true, class: 'hover:bg-select-raised' },
+  ],
+  defaultVariants: {
+    lift: 'hover',
+    selected: false,
+    frame: 'standard',
+    transition: 'normal',
+  },
+});
 
 export function RowList({ className, ...props }: ComponentProps<'ul'>) {
   // The negative margin lines row text up with the page; the lift overhangs.
@@ -35,9 +51,17 @@ export function Row({
   className,
   lift,
   selected,
+  frame,
+  transition,
   ...props
 }: ComponentProps<'li'> & VariantProps<typeof rowVariants>) {
   return (
-    <li className={cn(rowVariants({ lift, selected }), className)} {...props} />
+    <li
+      className={cn(
+        rowVariants({ lift, selected, frame, transition }),
+        className,
+      )}
+      {...props}
+    />
   );
 }

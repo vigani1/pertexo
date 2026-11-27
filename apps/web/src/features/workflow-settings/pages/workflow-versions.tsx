@@ -52,8 +52,8 @@ function NothingPublished({
   workflowId,
 }: Readonly<{ workspaceId: string; workflowId: string }>) {
   return (
-    <Empty className="border-t-0 py-2">
-      <EmptyTitle className="text-xl">Nothing published yet</EmptyTitle>
+    <Empty className="py-2">
+      <EmptyTitle size="panel">Nothing published yet</EmptyTitle>
       <EmptyDescription>
         Publish from Build to create the first version. Each publish adds one
         here.

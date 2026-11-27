@@ -103,11 +103,7 @@ export function FinishedThread({ className }: IllustrationProps) {
       )}
     >
       <span className="h-px w-24 bg-success/40" />
-      <StatusMark
-        display="mark"
-        tone="success"
-        className="size-10 text-success"
-      />
+      <StatusMark display="mark" tone="success" className="size-10" />
     </div>
   );
 }

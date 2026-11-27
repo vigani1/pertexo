@@ -9,9 +9,10 @@ import {
 export type NoticeTone = 'info' | 'success' | 'warning' | 'destructive';
 
 const noticeVariants = cva(
-  'flex items-start gap-3 rounded-lg px-3.5 py-3 text-label leading-snug text-muted-foreground',
+  'rounded-lg px-3.5 py-3 text-label leading-snug text-muted-foreground',
   {
     variants: {
+      layout: { inline: 'flex items-start gap-3', stacked: 'block' },
       tone: {
         info: 'bg-select-raised',
         success: 'bg-select-raised',
@@ -19,6 +20,7 @@ const noticeVariants = cva(
         destructive: 'bg-fail-soft',
       },
     },
+    defaultVariants: { layout: 'inline' },
   },
 );
 
@@ -38,6 +40,7 @@ const TONE_GLYPH: Readonly<Record<NoticeTone, StatusTone>> = {
 export function Notice({
   tone = 'info',
   glyph,
+  layout,
   title,
   action,
   role = tone === 'destructive' ? 'alert' : 'status',
@@ -47,6 +50,7 @@ export function Notice({
 }: Omit<ComponentProps<'div'>, 'title'> &
   Readonly<{
     tone?: NoticeTone;
+    layout?: 'inline' | 'stacked';
     glyph?: StatusTone | undefined;
     title?: ReactNode;
     /** One follow-up control under the message, e.g. "Try again". */
@@ -59,7 +63,7 @@ export function Notice({
       data-slot="notice"
       data-tone={tone}
       className={cn(
-        noticeVariants({ tone }),
+        noticeVariants({ tone, layout }),
         thread === 'waiting' && 'bg-waiting-soft',
         className,
       )}

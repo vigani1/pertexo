@@ -44,7 +44,7 @@ export function WorkflowListEmpty({
         <CoreOrb state="idle" energy={0.45} assemble className="size-52" />
       </EmptyMedia>
       <div className="flex flex-col gap-3">
-        <EmptyTitle id="workflows-empty-title" className="text-3xl">
+        <EmptyTitle id="workflows-empty-title" size="feature">
           Weave your first workflow
         </EmptyTitle>
         <EmptyDescription>

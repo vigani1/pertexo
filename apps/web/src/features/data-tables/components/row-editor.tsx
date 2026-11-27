@@ -248,7 +248,7 @@ function CellInput({
         <Input
           {...control}
           ref={registerInput(column.name)}
-          className="font-mono"
+          typography="mono"
           value={text}
           onChange={(event) => {
             onChange(event.currentTarget.value);

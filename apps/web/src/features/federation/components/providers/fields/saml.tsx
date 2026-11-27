@@ -86,7 +86,8 @@ export function SamlIdentityFields({
           <Textarea
             {...control}
             {...fields.control('certificate')}
-            className="min-h-40 font-mono text-base md:text-xs"
+            typography="compact-code"
+            className="min-h-40"
             spellCheck={false}
             autoCapitalize="none"
             autoCorrect="off"
@@ -118,7 +119,8 @@ export function SamlClaimFields({
             <Textarea
               {...control}
               {...fields.control('nextCertificate')}
-              className="min-h-32 font-mono text-base md:text-xs"
+              typography="compact-code"
+              className="min-h-32"
               spellCheck={false}
               autoCapitalize="none"
               autoCorrect="off"

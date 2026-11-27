@@ -1,15 +1,31 @@
 import { SearchIcon } from 'lucide-react';
 import { Input as InputPrimitive } from '@base-ui/react/input';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 
-export function Input({ className, ...props }: InputPrimitive.Props) {
+const inputVariants = cva(
+  'recessed-control h-9.5 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full pointer-coarse:h-10 min-w-0 rounded-md border px-3 py-2 sm:text-sm file:mr-3 file:border-0 file:bg-transparent file:font-medium file:text-foreground',
+  {
+    variants: {
+      typography: {
+        normal: 'text-base',
+        mono: 'font-mono text-base',
+        'compact-mono': 'font-mono text-label',
+      },
+    },
+    defaultVariants: { typography: 'normal' },
+  },
+);
+
+export function Input({
+  className,
+  typography,
+  ...props
+}: InputPrimitive.Props & VariantProps<typeof inputVariants>) {
   return (
     <InputPrimitive
       data-slot="input"
-      className={cn(
-        'recessed-control h-9.5 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full pointer-coarse:h-10 min-w-0 rounded-md border px-3 py-2 text-base sm:text-sm file:mr-3 file:border-0 file:bg-transparent file:font-medium file:text-foreground',
-        className,
-      )}
+      className={cn(inputVariants({ typography }), className)}
       {...props}
     />
   );

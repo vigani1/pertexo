@@ -13,7 +13,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
 import { ANY_ADMINISTRATOR } from '../../model/role-words';
 import { useLeaveWorkspaceCommand } from '../../data/mutations/use-leave-workspace-command';
-import { DangerAction } from './workspace-danger-zone';
+import { SettingRow } from '@/components/patterns/settings/row';
 /**
  * Leave the workspace (ADR 047). The owner can't: they are told to make
  * another member the owner first. Everyone else confirms the consequences,
@@ -44,70 +44,73 @@ export function WorkspaceLeave({
   });
   const isOwner = !canLeaveWorkspace(workspace.role);
   return (
-    <DangerAction
+    <SettingRow
       title="Leave workspace"
       description={
         isOwner
           ? 'You’re the owner, so you can’t leave yet. Make another member the owner from Team, then leave.'
           : 'Your access ends straight away. To come back, someone has to invite you again.'
       }
-    >
-      {isOwner ? (
-        <Link
-          to="/w/$workspaceId/team"
-          params={{ workspaceId: workspace.id }}
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Go to Team
-        </Link>
-      ) : (
-        <Button
-          type="button"
-          variant="destructive"
-          onClick={() => {
-            setConfirming(true);
-          }}
-        >
-          <LogOutIcon data-icon="inline-start" aria-hidden="true" />
-          Leave workspace
-        </Button>
-      )}
-      <ConfirmDialog
-        state={{
-          open: confirming && !isOwner,
-          onOpenChange: setConfirming,
-          locked: command.pending,
-        }}
-        title={`Leave ${workspace.name}?`}
-        onSubmit={() => command.start()}
-        submitDisabled={command.pending}
-        actions={{
-          cancel: {
-            kind: 'close',
-            label: 'Cancel',
-            variant: 'ghost',
-            disabled: command.pending,
-          },
-          confirm: {
-            label: 'Leave workspace',
-            type: 'submit',
-            variant: 'destructive',
-            pending: command.pending,
-            pendingLabel: 'Leaving…',
-          },
-        }}
-      >
-        <ConfirmationDetails
-          consequences={[
-            'You lose access to its workflows, runs and connections straight away.',
-            'You’re signed out everywhere, including here, and sign in again to reach your other workspaces.',
-            'Runs you already started keep going, and invitations you sent stay pending.',
-            `To come back, an ${ANY_ADMINISTRATOR} has to invite you again.`,
-          ]}
-          error={command.error}
-          tone="destructive"
-        />
-      </ConfirmDialog>
-    </DangerAction>
+      action={
+        <>
+          {isOwner ? (
+            <Link
+              to="/w/$workspaceId/team"
+              params={{ workspaceId: workspace.id }}
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              Go to Team
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setConfirming(true);
+              }}
+            >
+              <LogOutIcon data-icon="inline-start" aria-hidden="true" />
+              Leave workspace
+            </Button>
+          )}
+          <ConfirmDialog
+            state={{
+              open: confirming && !isOwner,
+              onOpenChange: setConfirming,
+              locked: command.pending,
+            }}
+            title={`Leave ${workspace.name}?`}
+            onSubmit={() => command.start()}
+            submitDisabled={command.pending}
+            actions={{
+              cancel: {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: command.pending,
+              },
+              confirm: {
+                label: 'Leave workspace',
+                type: 'submit',
+                variant: 'destructive',
+                pending: command.pending,
+                pendingLabel: 'Leaving…',
+              },
+            }}
+          >
+            <ConfirmationDetails
+              consequences={[
+                'You lose access to its workflows, runs and connections straight away.',
+                'You’re signed out everywhere, including here, and sign in again to reach your other workspaces.',
+                'Runs you already started keep going, and invitations you sent stay pending.',
+                `To come back, an ${ANY_ADMINISTRATOR} has to invite you again.`,
+              ]}
+              error={command.error}
+              tone="destructive"
+            />
+          </ConfirmDialog>
+        </>
+      }
+    />
   );
 }

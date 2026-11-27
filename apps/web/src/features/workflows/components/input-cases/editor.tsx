@@ -90,7 +90,8 @@ export function InputCaseEditor(props: InputCaseEditorProps) {
               disabled={fieldsDisabled}
               autoComplete="off"
               spellCheck={false}
-              className="min-h-32 font-mono"
+              typography="mono"
+              className="min-h-32"
               onChange={(event) => {
                 model.setInput(event.target.value);
                 let problem: string | undefined;

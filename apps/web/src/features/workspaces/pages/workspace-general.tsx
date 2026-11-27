@@ -7,10 +7,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDate, formatDateTime } from '@/lib/format/time';
 import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
-import {
-  DangerZone,
-  WorkspaceLifecycleControls,
-} from '../components/settings/workspace-danger-zone';
+import { WorkspaceLifecycleControls } from '../components/settings/workspace-danger-zone';
 import { WorkspaceLeave } from '../components/settings/workspace-leave';
 import { WorkspaceNameField } from '../components/settings/workspace-name-field';
 import { WorkspaceAccess } from '../components/settings/workspace-access';
@@ -123,7 +120,7 @@ export function WorkspaceGeneralPage({
 
       {assistantSettings}
       {canManage || workspace.status === 'active' ? (
-        <DangerZone>
+        <SettingsGroup title="Hard to undo">
           {canManage ? (
             <WorkspaceLifecycleControls
               apiClient={apiClient}
@@ -139,7 +136,7 @@ export function WorkspaceGeneralPage({
               onLeft={onLeft}
             />
           ) : null}
-        </DangerZone>
+        </SettingsGroup>
       ) : null}
     </div>
   );

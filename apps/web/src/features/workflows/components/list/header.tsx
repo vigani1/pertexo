@@ -89,7 +89,7 @@ export function WorkflowListHeader({
                   <StatusMark
                     key={state.label}
                     tone={state.tone}
-                    className="font-mono text-xs font-normal"
+                    typography="metadata"
                   >
                     <b className="font-semibold">
                       {state.count.toLocaleString(FORMAT_LOCALE)}

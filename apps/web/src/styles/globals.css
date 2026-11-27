@@ -38,7 +38,6 @@
 
   --text-meta: 0.78125rem;
   --text-section: 1.1875rem;
-  --text-figure: 1.875rem;
   --text-hero: 3.75rem;
   /* Provider artwork keeps its brand ink across palettes. */
   --color-brand-google-blue: #4285f4;
@@ -117,7 +116,6 @@
   --animate-thread-flow: thread-flow 1.15s linear infinite;
   --animate-blink: blink 2.4s ease-in-out infinite;
   --animate-spool: spool 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  --animate-tip: tip-pulse 1.2s ease-in-out infinite;
   --animate-knot: knot-pop 0.6s var(--ease-unspool);
   --animate-fray: fray-in 0.5s ease-out;
 }
@@ -601,7 +599,7 @@
     animation: live-edge-turn 3.4s linear infinite;
   }
 
-  /* The ambient aurora: two slow blobs behind the app, bounded to the shell. */
+  /* The ambient glow is bounded to the entry screen. */
   .ambient {
     position: absolute;
     inset: 0;
@@ -617,21 +615,11 @@
     @variant motion-loop {
       animation: ambient-drift 28s ease-in-out infinite alternate;
     }
-  }
-
-  .ambient::before {
     top: -18rem;
     right: -11rem;
     width: 38rem;
     height: 38rem;
     background: var(--ambient-glow);
-  }
-
-  /* Where a tab stays open all day (the workspace and the workflow hub), the
-     aurora holds still: its drift repaints the whole window every frame. It
-     drifts behind full-screen moments such as sign-in and boot. */
-  .ambient-still::before {
-    animation: none;
   }
 
   .loading-orb {
@@ -929,13 +917,6 @@
   }
   to {
     left: 100%;
-  }
-}
-
-@keyframes tip-pulse {
-  50% {
-    transform: scale(1.35);
-    opacity: 0.8;
   }
 }
 

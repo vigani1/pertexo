@@ -104,7 +104,7 @@ export function ColumnOrder({
           autoComplete="off"
           spellCheck={false}
           placeholder="Field name"
-          className="font-mono"
+          typography="mono"
           value={draft}
           disabled={!form.editable}
           aria-invalid={error !== undefined}

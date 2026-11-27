@@ -94,7 +94,7 @@ export function ReviewCandidate({
             {(control) => (
               <Textarea
                 {...control}
-                className="font-mono text-base md:text-xs"
+                typography="compact-code"
                 rows={12}
                 readOnly
                 value={JSON.stringify(graph, null, 2)}
@@ -106,7 +106,7 @@ export function ReviewCandidate({
               {(control) => (
                 <Textarea
                   {...control}
-                  className="font-mono text-base md:text-xs"
+                  typography="compact-code"
                   rows={12}
                   readOnly
                   value={JSON.stringify(liveGraph, null, 2)}

@@ -323,7 +323,7 @@ function PathField({
         id={id}
         autoComplete="off"
         spellCheck={false}
-        className="font-mono"
+        typography="mono"
         value={value}
         disabled={disabled}
         aria-invalid={error !== undefined}

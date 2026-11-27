@@ -1,3 +1,4 @@
+import { Disclosure } from '@/components/ui/disclosure';
 import { CurrentProviderSettings } from './revision-notice';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { SheetFooter } from '@/components/ui/sheet';
@@ -98,8 +99,7 @@ export function ProviderFooter({
             />
           ) : null}
           {command.revisionRead?.kind === 'refreshed' ? (
-            <details open>
-              <summary>Current provider settings</summary>
+            <Disclosure summary="Current provider settings" defaultOpen>
               {command.revisionRead.value.organization?.providers.map(
                 (provider) => (
                   <CurrentProviderSettings
@@ -108,7 +108,7 @@ export function ProviderFooter({
                   />
                 ),
               )}
-            </details>
+            </Disclosure>
           ) : null}
         </div>
       ) : null}

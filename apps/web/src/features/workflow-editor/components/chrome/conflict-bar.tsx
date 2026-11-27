@@ -21,7 +21,7 @@ export function ConflictBar({
       aria-label="Draft conflict"
       className="lens pointer-events-auto mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-warning/35 px-3 py-2 text-sm"
     >
-      <StatusMark display="mark" tone="attention" className="text-warning" />
+      <StatusMark display="mark" tone="attention" />
       <p className="min-w-0 flex-1">
         <span className="font-semibold text-warning">
           Changed elsewhere (revision {conflict.remoteRevision})

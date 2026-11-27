@@ -44,12 +44,17 @@ export function PopoverContent({
 
 export function PopoverTitle({
   className,
+  compact = false,
   ...props
-}: PopoverPrimitive.Title.Props) {
+}: PopoverPrimitive.Title.Props & Readonly<{ compact?: boolean }>) {
   return (
     <PopoverPrimitive.Title
       data-slot="popover-title"
-      className={cn('font-heading text-base font-semibold', className)}
+      className={cn(
+        'font-heading font-semibold',
+        compact ? 'text-sm' : 'text-base',
+        className,
+      )}
       {...props}
     />
   );
