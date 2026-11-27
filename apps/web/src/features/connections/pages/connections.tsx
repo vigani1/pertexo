@@ -39,7 +39,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
-import { ConnectionDetailSheet } from '../components/detail/sheet';
+import { ConnectionDetailSheet } from '../components/detail/panel';
 import { ProviderSockets } from '../components/provider-sockets';
 import { connectionsInfiniteQueryOptions } from '../data/connections.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
