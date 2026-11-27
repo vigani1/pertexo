@@ -115,10 +115,11 @@ export function mutationVariables(
   );
 }
 
+/** The open add-connection sheet, else the chosen connection's detail. */
 export function lens() {
-  const sheet = document.querySelector<HTMLElement>(
-    '[data-slot="sheet-content"]',
-  );
+  const sheet =
+    document.querySelector<HTMLElement>('[data-slot="sheet-content"]') ??
+    document.querySelector<HTMLElement>('[data-slot="connection-detail"]');
   if (sheet === null) throw new Error('No lens is open.');
   return within(sheet);
 }

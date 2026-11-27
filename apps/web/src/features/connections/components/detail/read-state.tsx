@@ -1,10 +1,4 @@
 import { Button } from '@/components/ui/button';
-import {
-  SheetBody,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { SkeletonLines } from '@/components/patterns/states/loading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { describeReadError, isNotFound } from '@/lib/api/error-copy';
@@ -12,18 +6,16 @@ import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 /** The loaded header's shape, so the connection lands without a jump. */
 export function ConnectionLoading() {
   return (
-    <>
-      <SheetHeader className="flex-row items-center gap-3">
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3">
         <Skeleton className="size-10 shrink-0 rounded-lg" />
-        <div className="min-w-0">
-          <SheetTitle>Connection</SheetTitle>
-          <Skeleton className="my-[3px] h-3.5 w-32" />
+        <div className="flex min-w-0 flex-col gap-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3.5 w-32" />
         </div>
-      </SheetHeader>
-      <SheetBody className="flex flex-col gap-3">
-        <SkeletonLines label="Loading this connection" lines={4} />
-      </SheetBody>
-    </>
+      </div>
+      <SkeletonLines label="Loading this connection" lines={4} />
+    </div>
   );
 }
 
@@ -38,30 +30,32 @@ export function ConnectionUnreadable({
 }>) {
   const missing = isNotFound(error);
   return (
-    <>
-      <SheetHeader>
-        <SheetTitle>
-          {missing ? 'Connection not found' : 'Connection'}
-        </SheetTitle>
-        <SheetDescription>
-          {missing
-            ? 'This connection doesn’t exist, or you don’t have access to it.'
-            : describeReadError(error, 'This connection')}
-        </SheetDescription>
-      </SheetHeader>
+    <section
+      aria-labelledby="connection-unreadable"
+      className="flex flex-col gap-3"
+    >
+      <h2
+        id="connection-unreadable"
+        className="font-heading text-section font-semibold"
+      >
+        {missing ? 'Connection not found' : 'Connection'}
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        {missing
+          ? 'This connection doesn’t exist, or you don’t have access to it.'
+          : describeReadError(error, 'This connection')}
+      </p>
       {onRetry === undefined ? null : (
-        <SheetBody className="flex flex-col gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="self-start"
-            disabled={retrying}
-            onClick={onRetry}
-          >
-            Retry
-          </Button>
-        </SheetBody>
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          disabled={retrying}
+          onClick={onRetry}
+        >
+          Retry
+        </Button>
       )}
-    </>
+    </section>
   );
 }

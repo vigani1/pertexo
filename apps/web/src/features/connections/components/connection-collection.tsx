@@ -9,6 +9,7 @@ import type {
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConnectionList } from './connection-list';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 
 type ConnectionsQuery = UseInfiniteQueryResult<
   InfiniteData<ConnectionListResponse>
@@ -20,6 +21,7 @@ export function ConnectionCollection({
   revokedCount,
   view,
   onViewChange,
+  selectedId,
   onOpen,
 }: Readonly<{
   query: ConnectionsQuery;
@@ -27,17 +29,18 @@ export function ConnectionCollection({
   revokedCount: number;
   view: 'current' | 'revoked';
   onViewChange: (view: 'current' | 'revoked') => void;
+  selectedId: string | undefined;
   onOpen: (connectionId: string) => void;
 }>) {
   const visible = items.filter((item) =>
     view === 'revoked' ? item.status === 'revoked' : item.status !== 'revoked',
   );
   return (
-    <section aria-labelledby="your-connections" className="flex flex-col gap-3">
+    <section aria-labelledby="your-connections" className="flex flex-col gap-2">
+      <RuleHeading id="your-connections" count={visible.length}>
+        {view === 'revoked' ? 'Revoked' : 'All'}
+      </RuleHeading>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="your-connections" className="text-lg font-semibold">
-          Your connections
-        </h2>
         {revokedCount > 0 || view === 'revoked' ? (
           <ToggleGroup
             aria-label="Show"
@@ -64,13 +67,17 @@ export function ConnectionCollection({
         ) : null}
       </div>
       {visible.length === 0 ? (
-        <p className="border-t border-border py-8 text-sm text-muted-foreground">
+        <p className="py-6 text-sm text-muted-foreground">
           {view === 'revoked'
             ? 'No revoked connections.'
             : 'Every connection here has been revoked. Add a new one to use it again.'}
         </p>
       ) : (
-        <ConnectionList connections={visible} onOpen={onOpen} />
+        <ConnectionList
+          connections={visible}
+          selectedId={selectedId}
+          onOpen={onOpen}
+        />
       )}
       <LoadMore
         subject="connections"
