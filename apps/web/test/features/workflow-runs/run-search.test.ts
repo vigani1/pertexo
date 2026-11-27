@@ -1,5 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import {
+  daySearch,
+  pickedDay,
+  recentRunDays,
+} from '@/features/workflow-runs/model/list/recent-days';
 import { runFilterChips } from '@/features/workflow-runs/model/list/run-filter-labels';
 import {
   customRangeInputs,
@@ -158,4 +163,32 @@ it('keeps an exact run value pair including empty text and clears both fields to
   expect(
     runFilterChips({ runValueKey: 'orderId', runValue: 'a' }, undefined),
   ).toEqual([{ key: 'runValueKey', label: 'orderId = a' }]);
+});
+
+describe('recent days', () => {
+  it('lists the last seven local days, today last', () => {
+    const days = recentRunDays(new Date(2026, 10, 27, 14, 30).getTime());
+    expect(days.map((day) => day.value)).toEqual([
+      '2026-11-21',
+      '2026-11-22',
+      '2026-11-23',
+      '2026-11-24',
+      '2026-11-25',
+      '2026-11-26',
+      '2026-11-27',
+    ]);
+    expect(days.at(-1)?.label).toBe('Today');
+    expect(days[0]?.label).toBe('Sat 21');
+  });
+
+  it('picks one day and lets go of it again', () => {
+    const picked = daySearch({ status: 'failed' }, '2026-11-24');
+    expect(pickedDay(picked)).toBe('2026-11-24');
+    expect(picked.status).toBe('failed');
+    expect(daySearch(picked, undefined)).toEqual({ status: 'failed' });
+    // A range of several days is not one picked day.
+    const range = customRangeSearch({}, '2026-11-24', '2026-11-25');
+    if (!range.ok) throw new Error('Expected a valid range');
+    expect(pickedDay(range.search)).toBeUndefined();
+  });
 });

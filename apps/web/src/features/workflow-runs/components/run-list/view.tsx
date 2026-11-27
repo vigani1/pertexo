@@ -1,13 +1,10 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type {
   AccessibleWorkspace,
   WorkflowRunListItem,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  groupRunsByDay,
-  runDurationMs,
-  threadBarScale,
-} from '../../model/list/runs';
+import { groupRunsByDay, runDurationMs } from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/presentation/run-status';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
@@ -17,7 +14,7 @@ import { RUN_ROW_LAYOUT, type RunListVariant } from './row-layout';
 
 /**
  * The operator's log: runs grouped under local days, with durations that
- * tick while runs are active and thread bars scaled to the visible set.
+ * tick while runs are active.
  */
 export function RunList({
   apiClient,
@@ -37,7 +34,6 @@ export function RunList({
   const durations = new Map(
     runs.map((run) => [run.id, runDurationMs(run, nowMs)] as const),
   );
-  const scale = threadBarScale([...durations.values()]);
   const waiting = runs.filter(
     (run) =>
       run.status === 'queued' &&
@@ -57,12 +53,9 @@ export function RunList({
       )}
       {groupRunsByDay(runs, nowMs).map((group) => (
         <section key={group.key} aria-labelledby={`runs-day-${group.key}`}>
-          <h2
-            id={`runs-day-${group.key}`}
-            className="mb-2 px-3 font-display text-xl leading-none text-foreground/90 [--display-optical-size:20]"
-          >
+          <RuleHeading id={`runs-day-${group.key}`} className="mb-2 px-3">
             {group.heading}
-          </h2>
+          </RuleHeading>
           <ColumnHeadings variant={variant} />
           <ul
             aria-label={`Runs from ${group.heading}`}
@@ -79,7 +72,6 @@ export function RunList({
                   run={run}
                   variant={variant}
                   durationMs={durationMs}
-                  share={scale(durationMs)}
                   nowMs={nowMs}
                 />
               );
@@ -102,11 +94,10 @@ function ColumnHeadings({ variant }: Readonly<{ variant: RunListVariant }>) {
     >
       <span>Status</span>
       <span>{variant === 'workspace' ? 'Workflow' : 'Started'}</span>
-      {/* A tablet's table drops Trigger and the bar; so do their names. */}
+      {/* A tablet's table drops Trigger; so does its name. */}
       <span className="max-lg:hidden">Trigger</span>
       {variant === 'workspace' ? <span>Started</span> : null}
       <span>Took</span>
-      <span className="max-lg:hidden" />
       <span>Run</span>
       <span />
     </div>

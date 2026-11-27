@@ -17,7 +17,6 @@ import { describeListedFailure } from '../../model/presentation/run-failure';
 import { describeRunStatus } from '../../model/presentation/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { RunRowMenu } from '../run-actions/row-menu';
-import { RunDurationBar } from '../run-duration-bar';
 import { TriggerLabel } from '../trigger-label';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './row-layout';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
@@ -45,7 +44,7 @@ function StartedAt({
 
 /**
  * One run as a thread: status, name (or start time inside a workflow),
- * trigger, start, duration, a thread bar and its short ID. The whole row
+ * trigger, start, duration, and its short ID. The whole row
  * opens the run; the ID and menu sit above that link.
  */
 export function RunRow({
@@ -55,7 +54,6 @@ export function RunRow({
   run,
   variant,
   durationMs,
-  share,
   nowMs,
 }: Readonly<{
   apiClient: ApiClient;
@@ -64,7 +62,6 @@ export function RunRow({
   run: WorkflowRunListItem;
   variant: RunListVariant;
   durationMs: number | undefined;
-  share: number;
   nowMs: number;
 }>) {
   const look = describeRunStatus({
@@ -154,14 +151,6 @@ export function RunRow({
         run={run}
         compact
         className="col-span-2 row-start-4 min-w-0 text-xs text-muted-foreground md:col-start-2 md:col-end-[-1] md:row-start-2"
-      />
-      <RunDurationBar
-        share={share}
-        tone={look.tone}
-        className={cn(
-          'col-span-2 row-start-3 md:col-span-1 md:row-start-1',
-          layout.bar,
-        )}
       />
       {/* Last in reading order, so Tab reaches Copy run ID first; the grid
           still places it at the row's end. */}

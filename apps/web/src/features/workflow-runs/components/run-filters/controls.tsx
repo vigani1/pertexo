@@ -1,3 +1,10 @@
+import { RecentDays } from '@/components/patterns/dates/recent-days';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
+import {
+  daySearch,
+  pickedDay,
+  recentRunDays,
+} from '../../model/list/recent-days';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { localDateValue } from '../../model/list/run-search';
 import { BusinessValueFilter } from './business-value';
@@ -63,6 +70,10 @@ export function RunFilters({
   workflowName?: string;
   runs: readonly WorkflowRunReadSummary[];
 }>) {
+  const now = useNow({ intervalMs: CLOCK_TICK.relativeTime });
+  const markedDays = new Set(
+    runs.map((run) => localDateValue(Date.parse(run.createdAt))),
+  );
   const chips = runFilterChips(search, workflowName);
   return (
     <div className="flex flex-col gap-3">
@@ -96,11 +107,7 @@ export function RunFilters({
         <TimeRangeFilter
           search={search}
           onSearchChange={onSearchChange}
-          markedDays={
-            new Set(
-              runs.map((run) => localDateValue(Date.parse(run.createdAt))),
-            )
-          }
+          markedDays={markedDays}
         />
         <Select
           items={triggerItems}
@@ -126,6 +133,13 @@ export function RunFilters({
         </Select>
         <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
       </div>
+      <RecentDays
+        days={recentRunDays(now)}
+        selected={pickedDay(search)}
+        onPick={(day) => {
+          onSearchChange(daySearch(search, day));
+        }}
+      />
       {chips.length === 0 ? null : (
         <div
           role="group"

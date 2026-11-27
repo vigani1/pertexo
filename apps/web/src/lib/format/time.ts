@@ -251,6 +251,11 @@ export function formatMonthName(date: Date): string {
   return monthFormatter.format(date);
 }
 
+/** A day in a strip of recent days: "Tue 24". */
+export function formatWeekdayDate(date: Date): string {
+  return `${weekdayFormatter.format(date)} ${String(date.getDate())}`;
+}
+
 /** Short weekday names from Monday: "Mon" … "Sun". */
 export function weekdayNames(): readonly string[] {
   // 2024-01-01 was a Monday.

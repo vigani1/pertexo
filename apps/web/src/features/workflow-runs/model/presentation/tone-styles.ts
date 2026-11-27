@@ -1,7 +1,7 @@
 import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 // Run visuals drawn outside a `Status` (thread segments, graph edges) use
-// the status colours from `statusToneText`, plus these borders and lines.
+// the status colours from `statusToneText`, plus these borders.
 export const toneBorderClass: Readonly<Record<StatusTone, string>> = {
   live: 'border-primary/55',
   queued: 'border-secondary/35',
@@ -15,10 +15,3 @@ export const toneBorderClass: Readonly<Record<StatusTone, string>> = {
   skipped: 'border-surface-ink/8',
   neutral: 'border-surface-ink/10',
 };
-
-/** How a thread is drawn for a tone: solid, dashed (waiting) or dotted. */
-export function toneLineStyle(tone: StatusTone): 'solid' | 'dashed' | 'dotted' {
-  if (tone === 'waiting' || tone === 'skipped') return 'dashed';
-  if (tone === 'queued' || tone === 'attention') return 'dotted';
-  return 'solid';
-}
