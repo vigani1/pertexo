@@ -52,6 +52,7 @@
       },
       "apps/web": {
         "entry": [
+          "src/styles/globals.css",
           "oxlint.config.mjs",
           "playwright.live.config.ts",
           "playwright.browsers.config.ts",
