@@ -1,0 +1,403 @@
+import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
+import { fixtureRun, fixtureStatistics } from '../../test/support/fixtures/run';
+import type { Page } from '../support/fixtures';
+import { workflowListBody } from '../workflows/list-support';
+import {
+  workflowGraphReadBody,
+  workflowVersionsBody,
+} from '../workflows/read-projections';
+import {
+  installEditorRoutes,
+  remoteDraft,
+  workflowId,
+  workflowSummary,
+  workspace,
+  workspaceId,
+} from '../workflow-editor/support';
+
+// A workspace in the middle of a working day: a failed invoice run, a live
+// one, two approvals waiting and the invoice workflow on the canvas, so each
+// screenshot shows the states the core-flow pages are designed around.
+
+export const failedRunId = '20000000-0000-4000-8000-000000000001';
+export const liveRunId = '20000000-0000-4000-8000-000000000002';
+export const approvalId = '20000000-0000-4000-8000-000000000003';
+const versionId = '20000000-0000-4000-8000-000000000004';
+const syncWorkflowId = '20000000-0000-4000-8000-000000000005';
+const remindersWorkflowId = '20000000-0000-4000-8000-000000000007';
+const secondApprovalId = '20000000-0000-4000-8000-000000000006';
+
+const minute = 60_000;
+const at = (minutesAgo: number) =>
+  new Date(Date.now() - minutesAgo * minute).toISOString();
+
+function latestVersions() {
+  const byKey = new Map<string, number>();
+  for (const { definition } of platformBrowserNodeDefinitionCatalog()
+    .definitions)
+    byKey.set(
+      definition.key,
+      Math.max(byKey.get(definition.key) ?? 0, definition.version),
+    );
+  return byKey;
+}
+
+function node(
+  id: string,
+  key: string,
+  label: string,
+  x: number,
+  y: number,
+  config: Record<string, unknown> = {},
+) {
+  return {
+    id,
+    label,
+    definition: { key, version: latestVersions().get(key) ?? 1 },
+    position: { x, y },
+    configVersion: 1,
+    config,
+    inputMappings: {},
+    connectionRefs: {},
+  };
+}
+
+function edge(source: string, target: string, port = 'out') {
+  return {
+    id: `${source}-${port}-${target}`,
+    source: { nodeId: source, port },
+    target: { nodeId: target, port: 'in' },
+  };
+}
+
+/** New invoice → Check payload → Over 5,000? → approval or ERP → receipt. */
+export function invoiceGraph() {
+  return {
+    nodes: [
+      node('intake', 'core.manual', 'New invoice', 0, 200),
+      node('check', 'core.validate', 'Check payload', 300, 200),
+      node('over', 'core.condition', 'Over 5,000?', 600, 200),
+      node('approve', 'core.approval', 'Finance approval', 900, 40),
+      node('erp', 'http.request', 'Post to ERP', 1200, 200),
+      node('receipt', 'email.send_notification', 'Send receipt', 1500, 200),
+    ],
+    edges: [
+      edge('intake', 'check'),
+      edge('check', 'over'),
+      edge('over', 'approve', 'true'),
+      edge('over', 'erp', 'false'),
+      edge('approve', 'erp', 'approved'),
+      edge('erp', 'receipt'),
+    ],
+    settings: {},
+  };
+}
+
+function nodeRun(
+  nodeId: string,
+  status: string,
+  startedMinutesAgo: number,
+  seconds: number,
+  extra: Record<string, unknown> = {},
+) {
+  const startedAt = at(startedMinutesAgo);
+  return {
+    id: crypto.randomUUID(),
+    nodeId,
+    invocationKey: nodeId,
+    status,
+    currentAttemptNumber: 1,
+    startedAt,
+    completedAt:
+      status === 'running' || status === 'queued'
+        ? null
+        : new Date(Date.parse(startedAt) + seconds * 1000).toISOString(),
+    resumeAt: null,
+    safeErrorCode: null,
+    ...extra,
+  };
+}
+
+function run(id: string, status: string, minutesAgo: number) {
+  return fixtureRun(id, status as 'failed', {
+    workspaceId,
+    workflowId,
+    workflowVersionId: versionId,
+    workflowName: 'Invoice intake',
+    triggerType: 'webhook',
+    createdAt: at(minutesAgo),
+    updatedAt: at(minutesAgo - 1),
+    startedAt: at(minutesAgo),
+    completedAt:
+      status === 'running' ? null : at(Math.max(0, minutesAgo - 1.2)),
+    ...(status === 'failed'
+      ? {
+          failedStep: {
+            nodeId: 'receipt',
+            label: 'Send receipt',
+            definitionKey: 'email.send_notification',
+            safeErrorCode: 'provider.unavailable',
+          },
+        }
+      : {}),
+  });
+}
+
+const failedRun = run(failedRunId, 'failed', 19);
+const liveRun = run(liveRunId, 'running', 1);
+
+function failedNodes() {
+  return [
+    nodeRun('intake', 'succeeded', 19, 0.02),
+    nodeRun('check', 'succeeded', 19, 0.05),
+    nodeRun('over', 'succeeded', 19, 0.01),
+    nodeRun('erp', 'succeeded', 19, 2.6),
+    nodeRun('receipt', 'failed', 18.5, 0.4, {
+      currentAttemptNumber: 3,
+      safeErrorCode: 'provider.unavailable',
+      errorSummary: 'Resend answered 503 Service Unavailable.',
+    }),
+  ];
+}
+
+function liveNodes() {
+  return [
+    nodeRun('intake', 'succeeded', 1, 0.02),
+    nodeRun('check', 'succeeded', 1, 0.05),
+    nodeRun('over', 'succeeded', 1, 0.01),
+    nodeRun('erp', 'running', 0.5, 0),
+  ];
+}
+
+function task(id: string, title: string, expiresInMinutes: number) {
+  return {
+    id,
+    workspaceId,
+    workflowId,
+    workflowName: 'Invoice intake',
+    runId: liveRunId,
+    nodeId: 'approve',
+    stepName: 'Finance approval',
+    nodeRunId: crypto.randomUUID(),
+    iterationPath: [],
+    kind: 'approval',
+    title,
+    details: { Invoice: 'INV-2291', Amount: '7,480.00 EUR' },
+    status: 'pending',
+    createdAt: at(29),
+    expiresAt: new Date(Date.now() + expiresInMinutes * minute).toISOString(),
+    onExpiry: 'fail',
+    completedAt: null,
+    completedByName: null,
+    canRespond: true,
+    blockedReason: null,
+  };
+}
+
+const tasks = [
+  task(approvalId, 'Pay Fjord Supplies 7,480.00 EUR?', 23 * 60),
+  task(secondApprovalId, 'Approve restock order PO-7716', 48),
+];
+
+/** Every read the core-flow pages make, answered with the day above. */
+export async function installCoreFlowRoutes(
+  page: Page,
+  options: Readonly<{ live?: boolean }> = {},
+) {
+  await page.route('**/v1/**', (route) => {
+    if (process.env.PERTEXO_CORE_FLOW_SHOTS !== undefined)
+      console.log(`unanswered ${route.request().url()}`);
+    return route.fulfill({ status: 404 });
+  });
+  await page.route('**/presence/*', (route) => route.fulfill({ status: 204 }));
+  await installEditorRoutes(page, remoteDraft(invoiceGraph()), {
+    definitions: platformBrowserNodeDefinitionCatalog().definitions,
+    workflowName: 'Invoice intake',
+    accessibleWorkspace: {
+      ...workspace,
+      role: 'owner',
+      capabilities: [
+        ...workspace.capabilities,
+        'workflow:create',
+        'run:replay',
+        'member:read',
+      ],
+    },
+  });
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) =>
+      route.fulfill({ json: workflowSummary('Invoice intake', versionId) }),
+  );
+  await page.route('**/v1/workspaces/*/run-statistics?**', (route) =>
+    route.fulfill({
+      json: fixtureStatistics({
+        window:
+          new URL(route.request().url()).searchParams.get('window') ?? '24h',
+        workflows: [],
+        current: { running: 1, waiting: 2 },
+      }),
+    }),
+  );
+  const runs = options.live === true ? [liveRun, failedRun] : [failedRun];
+  await page.route('**/v1/workspaces/*/runs?**', (route) => {
+    const status = new URL(route.request().url()).searchParams.get('status');
+    route.fulfill({
+      json: {
+        items: runs.filter((item) => status === null || item.status === status),
+        nextCursor: null,
+      },
+    });
+  });
+  await page.route(`**/v1/workspaces/*/runs/${failedRunId}`, (route) =>
+    route.fulfill({ json: { run: failedRun, nodes: failedNodes() } }),
+  );
+  await page.route(`**/v1/workspaces/*/runs/${liveRunId}`, (route) =>
+    route.fulfill({ json: { run: liveRun, nodes: liveNodes() } }),
+  );
+  await page.route(`**/v1/workspaces/*/pending-tasks?**`, (route) =>
+    route.fulfill({
+      json: { items: tasks, nextCursor: null, pendingCount: tasks.length },
+    }),
+  );
+  await page.route(`**/v1/workspaces/*/pending-tasks/${approvalId}`, (route) =>
+    route.fulfill({
+      json: {
+        task: {
+          ...tasks[0],
+          workflowVersionId: versionId,
+          instructions:
+            'Invoices over 5,000 need a second look. Check that it matches a purchase order before it goes to the ERP.',
+          audience: { roles: ['owner', 'admin'], memberIds: [] },
+          output: null,
+        },
+      },
+    }),
+  );
+  await page.route('**/v1/workspaces/*/notifications?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null, revision: '0' } }),
+  );
+  await page.route('**/v1/workspaces/*/members?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  // The shell's own reads, which the catch-all above would otherwise answer.
+  await page.route('**/v1/workspaces/*/notifications/summary', (route) =>
+    route.fulfill({ json: { unreadCount: 2, revision: '0' } }),
+  );
+  await page.route('**/v1/workspaces/*/notifications/events', (route) =>
+    route.fulfill({
+      headers: { 'content-type': 'text/event-stream' },
+      body: 'retry: 60000\n\n',
+    }),
+  );
+  await page.route('**/v1/workspaces/*/runs/*/events', (route) =>
+    route.fulfill({
+      headers: { 'content-type': 'text/event-stream' },
+      body: 'retry: 60000\n\n',
+    }),
+  );
+  await page.route(
+    '**/v1/workspaces/*/workflows/*/publication-review',
+    (route) => route.fulfill({ json: { required: false, request: null } }),
+  );
+  await page.route(
+    '**/v1/workspaces/*/failure-notification-destinations',
+    (route) => route.fulfill({ json: { items: [] } }),
+  );
+  await page.route('**/v1/workspaces/*/workflows/*/comments**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  for (const id of [syncWorkflowId, remindersWorkflowId])
+    await page.route(
+      `**/v1/workspaces/*/workflows/${id}/draft**`,
+      async (route) =>
+        route.fulfill({
+          json: await workflowGraphReadBody(route.request().url(), {
+            workflowId: id,
+            revision: 1,
+            graph: invoiceGraph(),
+            updatedAt: at(60),
+          }),
+        }),
+    );
+  await page.route(
+    '**/v1/workspaces/*/workflows/*/versions?**',
+    async (route) =>
+      route.fulfill({
+        json: await workflowVersionsBody(route.request().url(), {
+          items: [
+            {
+              id: versionId,
+              workflowId,
+              versionNumber: 3,
+              graph: invoiceGraph(),
+              checksum: `wf:sha256:${'b'.repeat(64)}`,
+              publishedAt: at(60 * 24),
+            },
+          ],
+          nextCursor: null,
+        }),
+      }),
+  );
+  await page.route('**/v1/workspaces/*/workflows?**', (route) =>
+    route.fulfill({
+      json: workflowListBody(route.request().url(), workflowList()),
+    }),
+  );
+}
+
+function shapeOf(graph: ReturnType<typeof invoiceGraph>) {
+  return {
+    nodes: graph.nodes.map(({ id, definition, position, label }) => ({
+      id,
+      definition,
+      position,
+      label,
+    })),
+    edges: graph.edges,
+  };
+}
+
+function listed(
+  id: string,
+  name: string,
+  recentRuns: readonly Readonly<{ status: string; createdAt: string }>[],
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id,
+    workspaceId,
+    name,
+    nameRevision: 1,
+    listSummary: { shape: shapeOf(invoiceGraph()), recentRuns },
+    lifecycleStatus: 'active',
+    lifecycleRevision: 1,
+    activationStatus: 'active',
+    webhookSetupRequired: false,
+    publishedVersionId: versionId,
+    createdAt: at(60 * 24 * 30),
+    updatedAt: at(22),
+    ...overrides,
+  };
+}
+
+function workflowList() {
+  const hourly = Array.from({ length: 20 }, (_, index) => ({
+    status: index === 9 ? 'failed' : 'succeeded',
+    createdAt: at(60 * 6 * index + 5),
+  }));
+  return [
+    listed(workflowId, 'Invoice intake', [
+      { status: 'running', createdAt: at(1) },
+      { status: 'failed', createdAt: at(19) },
+      { status: 'succeeded', createdAt: at(60 * 30) },
+      { status: 'failed', createdAt: at(60 * 50) },
+    ]),
+    listed(syncWorkflowId, 'Hourly stock sync', hourly),
+    listed(remindersWorkflowId, 'Supplier reminders', [], {
+      activationStatus: 'inactive',
+      publishedVersionId: null,
+      updatedAt: at(60),
+    }),
+  ];
+}
