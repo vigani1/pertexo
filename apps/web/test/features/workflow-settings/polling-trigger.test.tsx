@@ -75,9 +75,11 @@ it('shows a safe credential repair message and the retained position while pause
     lastErrorCode: 'http.poll_authentication',
     paused: true,
   });
-  const card = within(
-    await screen.findByRole('article', { name: 'HTTP Polling: Watch feed' }),
-  );
+  const row = await screen.findByRole('article', {
+    name: 'HTTP Polling: Watch feed',
+  });
+  expect(document.getElementById(health.id)).toBe(row);
+  const card = within(row);
   expect(card.getByText('Paused')).toBeVisible();
   expect(
     card.getByText(/Repair the connection.*resume triggers/u),

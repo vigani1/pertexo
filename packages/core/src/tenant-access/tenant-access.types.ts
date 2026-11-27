@@ -287,6 +287,7 @@ export type WorkspaceMembersPosition = Readonly<{
   userId: string;
 }>;
 export type ListWorkspaceMembersInput = Readonly<{
+  q?: string;
   limit?: number;
   after?: WorkspaceMembersPosition;
 }>;

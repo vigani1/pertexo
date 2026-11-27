@@ -54,7 +54,7 @@ test('renders the repair action when schedule health has no valid recurrence', a
   );
   await page.goto(`${editorUrl}/triggers`);
   const card = page.getByRole('article', { name: /Schedule:/ });
-  await expect(card.getByText('Schedule needs repair')).toBeVisible();
+  await expect(card.getByText('Schedule · needs repair')).toBeVisible();
   await expect(
     card.getByText('Edit the schedule and publish again.', { exact: false }),
   ).toBeVisible();

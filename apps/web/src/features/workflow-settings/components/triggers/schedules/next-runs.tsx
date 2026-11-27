@@ -1,3 +1,4 @@
+import { SCHEDULE_FIRE_TIME_DEFAULT_COUNT } from '@pertexo/contracts';
 import { useId } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
@@ -25,43 +26,57 @@ export function ScheduleNextRuns({
   trigger: ScheduleTriggerHealthResponse;
 }>) {
   const headingId = useId();
-  const nextRuns = useQuery(
-    scheduleNextRunsQueryOptions({
+  const off = trigger.status === 'disabled';
+  const nextRuns = useQuery({
+    ...scheduleNextRunsQueryOptions({
       apiClient,
       userId,
       workspaceId,
       workflowId,
       triggerId: trigger.id,
     }),
-  );
+    enabled: !off,
+  });
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <h4 id={headingId} className="text-sm font-semibold">
         Next runs
       </h4>
-      <QueryView
-        query={nextRuns}
-        resource="Next runs"
-        loading={<SkeletonLines label="Loading next runs" />}
-        isEmpty={(data) => data.items.length === 0}
-        empty={
-          <p className="text-sm text-muted-foreground">
-            {trigger.status === 'disabled'
-              ? 'Paused — nothing runs until the schedule is turned back on.'
-              : 'Nothing is scheduled. Runs start again once this version is published and active.'}
-          </p>
-        }
-      >
-        {(data) => (
-          <ScheduleRunTimes
-            label="Next runs"
-            times={data.items.map(({ scheduledAt }) => scheduledAt)}
-            {...(trigger.recurrence?.kind === 'cron'
-              ? { timezone: trigger.recurrence.timezone }
-              : {})}
-          />
-        )}
-      </QueryView>
+      {off ? (
+        <p className="text-sm text-muted-foreground">
+          Paused — nothing runs until the schedule is turned back on.
+        </p>
+      ) : (
+        <QueryView
+          query={nextRuns}
+          resource="Next runs"
+          loading={<SkeletonLines label="Loading next runs" />}
+          failure={() => (
+            <a href="#upcoming-runs" className="self-start text-sm inline-link">
+              Check upcoming schedule runs
+            </a>
+          )}
+          isEmpty={(data) => data.items.length === 0}
+          empty={
+            <p className="text-sm text-muted-foreground">
+              Nothing is scheduled. Runs start again once this version is
+              published and active.
+            </p>
+          }
+        >
+          {(data) => (
+            <ScheduleRunTimes
+              label="Next runs"
+              times={data.items
+                .slice(0, SCHEDULE_FIRE_TIME_DEFAULT_COUNT)
+                .map(({ scheduledAt }) => scheduledAt)}
+              {...(trigger.recurrence?.kind === 'cron'
+                ? { timezone: trigger.recurrence.timezone }
+                : {})}
+            />
+          )}
+        </QueryView>
+      )}
     </section>
   );
 }

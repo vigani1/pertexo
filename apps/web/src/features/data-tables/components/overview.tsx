@@ -1,3 +1,4 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { UnavailableDataTable } from './unavailable';
 import { Link } from '@tanstack/react-router';
 import type { DataTablesResponse } from '@pertexo/contracts';
@@ -132,18 +133,16 @@ export function TableList({
     );
   return (
     <nav aria-label="Tables" className="flex min-w-0 flex-col">
-      <h2 className="flex min-w-0 items-center gap-3 font-heading text-section font-semibold">
+      <RuleHeading
+        appearance="quota"
+        {...(quotas === undefined
+          ? {}
+          : {
+              count: `${String(quotas.tableCount)} of ${String(quotas.tableLimit)}`,
+            })}
+      >
         Tables
-        {quotas === undefined ? null : (
-          <span className="font-mono text-caption font-medium text-subtle-foreground">
-            {quotas.tableCount} of {quotas.tableLimit}
-          </span>
-        )}
-        <span
-          aria-hidden="true"
-          className="h-px min-w-3 flex-1 bg-linear-to-r from-border-strong to-border"
-        />
-      </h2>
+      </RuleHeading>
       {/* The chosen damaged table says so in the detail, not twice. */}
       {unavailableTables
         ?.filter((item) => item.id !== selectedId)

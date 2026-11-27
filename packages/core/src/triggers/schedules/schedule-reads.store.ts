@@ -44,7 +44,7 @@ export function createScheduleTriggerReads(pool: Pool) {
       const row = await withScheduleReader(pool, input, async (client) =>
         requireSchedule(await readScheduleState(client, input)),
       );
-      return projectPersistedSchedule(row, input.count);
+      return projectPersistedSchedule(row, input.count, input.windowMs);
     },
     previewFireTimes: async (input: PreviewScheduleFireTimesInput) => {
       const { count, recurrence } = input;
@@ -57,12 +57,9 @@ export function createScheduleTriggerReads(pool: Pool) {
       // unsaved rule is projected as if it were published at this instant.
       return Object.freeze({
         observedAt,
-        items: projectScheduleOccurrences(
-          recurrence,
-          observedAt,
-          observedAt,
+        items: projectScheduleOccurrences(recurrence, observedAt, observedAt, {
           count,
-        ),
+        }),
       });
     },
   });
@@ -96,6 +93,7 @@ export function withScheduleReader<T>(
 function projectPersistedSchedule(
   row: ScheduleState,
   count: number,
+  windowMs: number | undefined,
 ): ScheduleFireTimes {
   const observedAt = row.observed_at;
   // A schedule the scanner would not claim has no upcoming fire times.
@@ -107,15 +105,17 @@ function projectPersistedSchedule(
     return Object.freeze({ observedAt, items: Object.freeze([]) });
   // The persisted next fire comes first, even while it waits for a scanner;
   // after it, each instant is what the scanner persists when it claims.
-  const later =
-    count === 1
-      ? []
-      : projectScheduleOccurrences(
-          recurrence,
-          row.anchor_at,
-          nextFireAt > observedAt ? nextFireAt : observedAt,
-          count - 1,
-        );
+  const later = projectScheduleOccurrences(
+    recurrence,
+    row.anchor_at,
+    nextFireAt > observedAt ? nextFireAt : observedAt,
+    {
+      count: count - 1,
+      ...(windowMs === undefined
+        ? {}
+        : { untilMs: observedAt.getTime() + windowMs }),
+    },
+  );
   return Object.freeze({
     observedAt,
     items: Object.freeze([nextFireAt, ...later]),

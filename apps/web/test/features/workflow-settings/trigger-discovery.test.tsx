@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { unpausedWorkflowSettings } from '../../support/fixtures/auto-pause';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
@@ -99,3 +100,39 @@ it.each([
     ).not.toBeInTheDocument();
   },
 );
+
+it('shows that submissions are paused while the workflow triggers are paused', async () => {
+  installQueries();
+  mockServer.use(
+    http.get(`${workflowApi}/versions`, () =>
+      HttpResponse.json({
+        items: [
+          version(versionId, 1, {
+            nodes: [stepNode('form', 'core.form')],
+            edges: [],
+            settings: {},
+          }),
+        ],
+        nextCursor: null,
+      }),
+    ),
+    http.get(`${workflowApi}/auto-pause`, () =>
+      HttpResponse.json({
+        ...unpausedWorkflowSettings,
+        pauseState: 'paused',
+        pauseReason: 'consecutive_failures',
+        pausedAt: '2026-09-15T12:00:00Z',
+        pausedFailures: 10,
+      }),
+    ),
+  );
+  await renderLoadedApp(triggersPath);
+  const form = await screen.findByRole(
+    'article',
+    { name: 'Form: Form' },
+    coldStart,
+  );
+  expect(
+    await within(form).findByText('Paused', { exact: true }),
+  ).toBeVisible();
+});

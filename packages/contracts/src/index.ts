@@ -360,9 +360,9 @@ export {
   type WorkflowPresenceHeartbeat,
   type WorkflowPresence,
 } from './schemas/workflows/collaboration/presence.js';
-
 export {
   workspacePeopleQuerySchema,
+  WORKSPACE_PEOPLE_SEARCH_MAX_CHARACTERS,
   workspacePeoplePageSchema,
   type WorkspacePeopleQuery,
   type WorkspacePeoplePage,

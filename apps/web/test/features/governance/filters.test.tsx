@@ -1,4 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { formatCalendarDay } from '@/lib/format/time';
+import { coldStart } from '../../support/fixtures/run';
+import {
+  api,
+  identityHandlers,
+  ownerWorkspace,
+  workspaceId,
+} from '../../support/fixtures/team';
+import { mockServer } from '../../support/mock-server';
+import { renderLoadedApp } from '../../support/render-app';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { AuditFilters } from '@/features/governance/components/audit-filters';
@@ -34,4 +45,40 @@ it('shows a narrowed action as a chip that widens the log again', async () => {
     }),
   );
   expect(onApply).toHaveBeenLastCalledWith({ person: 'Alice' });
+});
+
+it('applies an Audit date on the first tap and sends the sorted range on the second', async () => {
+  const reads: URLSearchParams[] = [];
+  mockServer.use(
+    ...identityHandlers({
+      ...ownerWorkspace,
+      capabilities: ['workspace:read', 'audit:read'],
+    }),
+    http.get(`${api}/governance/audit`, ({ request }) => {
+      reads.push(new URL(request.url).searchParams);
+      return HttpResponse.json({ items: [], nextCursor: null });
+    }),
+  );
+  await renderLoadedApp(`/w/${workspaceId}/settings/audit`);
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'When: Any time' }, coldStart),
+  );
+  const now = new Date();
+  const date = (offset: number) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+  const bounds = () => [reads.at(-1)?.get('from'), reads.at(-1)?.get('until')];
+  await user.click(
+    await screen.findByRole('button', { name: formatCalendarDay(date(0)) }),
+  );
+  await waitFor(() => {
+    expect(bounds()).toEqual([date(0).toISOString(), date(1).toISOString()]);
+  });
+  await user.keyboard('{ArrowLeft}');
+  await user.click(
+    screen.getByRole('button', { name: formatCalendarDay(date(-1)) }),
+  );
+  await waitFor(() => {
+    expect(bounds()).toEqual([date(-1).toISOString(), date(1).toISOString()]);
+  });
 });

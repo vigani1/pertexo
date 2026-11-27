@@ -6,21 +6,23 @@ import {
   DISPLAY_NAME_MAX_CHARACTERS,
 } from '@pertexo/workflow-model';
 
+export const WORKSPACE_PEOPLE_SEARCH_MAX_CHARACTERS = 100;
+
 const PEOPLE_BOUNDS = Object.freeze({
-  qCharacters: 100,
   displayNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
   workspacePeoplePageItems: 50,
 });
 
+export const workspacePeopleSearchSchema = z
+  .string()
+  .trim()
+  .max(WORKSPACE_PEOPLE_SEARCH_MAX_CHARACTERS)
+  .refine(isStorageText);
+
 export const workspacePeopleQuerySchema = z
   .object({
     after: z.uuid().optional(),
-    q: z
-      .string()
-      .trim()
-      .max(PEOPLE_BOUNDS.qCharacters)
-      .refine(isStorageText)
-      .default(''),
+    q: workspacePeopleSearchSchema.default(''),
   })
   .strict();
 export const workspacePeoplePageSchema = responseSchema(

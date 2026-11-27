@@ -56,7 +56,9 @@ describe('workspace deletion visibility', () => {
       ...authenticatedHandlers(),
     );
     const app = await renderLoadedApp(`/w/${workspaceId}/settings`);
-    await screen.findByRole('heading', { name: 'Settings' });
+    expect(
+      await screen.findByRole('heading', { name: workspace.name, level: 1 }),
+    ).toBeVisible();
     purging = true;
     await app.queryClient.invalidateQueries({ queryKey: ['identity'] });
     expect(

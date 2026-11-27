@@ -301,21 +301,20 @@ describe('workflow publication projections', () => {
       recordBenchmarkOperation('workflow-publish-initial', operationStartedAt);
       expect(first.version).toMatchObject({
         publishedBy: actorId,
-        publisherName: 'Workflow Author',
       });
-      await expect(
-        authoring.getVersion(
-          workspaceId,
-          created.workflowId,
-          first.version.id,
-          actorId,
-        ),
-      ).resolves.toMatchObject({
+      expect(first.version).not.toHaveProperty('publisherName');
+      const immutable = await authoring.getVersion(
+        workspaceId,
+        created.workflowId,
+        first.version.id,
+        actorId,
+      );
+      expect(immutable).toMatchObject({
         checksum: first.version.checksum,
         graphJson: baseGraph,
         publishedBy: actorId,
-        publisherName: 'Workflow Author',
       });
+      expect(immutable).not.toHaveProperty('publisherName');
       await saveCurrentDraft(catalogAuthoring, {
         actorId,
         expectedRevision: 1,
@@ -486,6 +485,7 @@ describe('workflow publication projections', () => {
           workflowId: created.workflowId,
           actorId,
           limit: 1,
+          includePublisher: true,
         }),
       ).resolves.toMatchObject({
         items: [{ versionNumber: 2, publisherName: 'Workflow Author' }],

@@ -50,10 +50,6 @@ const NOT_LIMITS: readonly string[] = [
   'features/overview/components/home-loom.tsx: 7 days',
   'features/usage/pages/usage-trends.tsx: 30 days',
   'features/usage/pages/usage-trends.tsx: 90 days',
-  'features/usage/pages/workspace-usage.tsx: 1 hour',
-  'features/usage/pages/workspace-usage.tsx: 24 hours',
-  'features/usage/pages/workspace-usage.tsx: 6 hours',
-  'features/usage/pages/workspace-usage.tsx: 7 days',
   'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
   // The same window choices, said in a sentence or as Home's heading, and
   // the deadline presets.
@@ -65,9 +61,6 @@ const NOT_LIMITS: readonly string[] = [
   'features/overview/components/home-loom.tsx: the last 24 hours',
   'features/overview/components/home-loom.tsx: the last 6 hours',
   'features/overview/components/home-loom.tsx: the last 7 days',
-  'features/usage/pages/workspace-usage.tsx: the last 24 hours',
-  'features/usage/pages/workspace-usage.tsx: the last 6 hours',
-  'features/usage/pages/workspace-usage.tsx: the last 7 days',
 ];
 
 function writtenLimits(root: string): string[] {

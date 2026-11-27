@@ -1,7 +1,6 @@
 import { and, eq, exists, isNull, ne, or, sql } from 'drizzle-orm';
-import { QueryBuilder, alias } from 'drizzle-orm/pg-core';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 import {
-  users,
   workflows,
   workflowDrafts,
   workflowVersions,
@@ -65,11 +64,6 @@ export const draftProjection = {
   updatedBy: workflowDrafts.updatedBy,
   updatedAt: workflowDrafts.updatedAt,
 };
-const publisher = alias(users, 'publisher');
-const publisherName = new QueryBuilder()
-  .select({ displayName: publisher.displayName })
-  .from(publisher)
-  .where(eq(publisher.id, workflowVersions.publishedBy));
 export const versionProjection = {
   id: workflowVersions.id,
   workspaceId: workflowVersions.workspaceId,
@@ -78,7 +72,6 @@ export const versionProjection = {
   graphJson: workflowVersions.graphJson,
   checksum: workflowVersions.checksum,
   publishedBy: workflowVersions.publishedBy,
-  publisherName: sql<string>`(${publisherName})`,
   publishedAt: workflowVersions.publishedAt,
 };
 export function projectDraft(
@@ -95,8 +88,8 @@ export function projectDraft(
 export function projectVersion(
   row: Pick<
     typeof workflowVersions.$inferSelect,
-    Exclude<keyof typeof versionProjection, 'publisherName'>
-  > & { publisherName: string },
+    keyof typeof versionProjection
+  >,
 ): WorkflowVersionRecord {
   return Object.freeze({
     ...row,

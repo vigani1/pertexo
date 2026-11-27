@@ -45,7 +45,7 @@ export type ListScheduleOccurrencesInput = TriggerRead &
   Readonly<{ limit?: number; after?: ScheduleOccurrencePosition }>;
 
 export type NextScheduleFireTimesInput = TriggerRead &
-  Readonly<{ count: number }>;
+  Readonly<{ count: number; windowMs?: number }>;
 
 export type PreviewScheduleFireTimesInput = Omit<TriggerRead, 'triggerId'> &
   Readonly<{ recurrence: ScheduleRecurrence; count: number }>;

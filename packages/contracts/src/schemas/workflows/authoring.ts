@@ -3,11 +3,7 @@ import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { personReferenceSchema } from '../identity/people.js';
-import {
-  WORKFLOW_PAGE_LIMITS,
-  workflowCursorSchema,
-  workflowListQuerySchema,
-} from './read-queries.js';
+import { workflowListQuerySchema, workflowPageSchema } from './read-queries.js';
 export {
   workflowDraftQuerySchema,
   workflowListQuerySchema,
@@ -46,16 +42,6 @@ import {
 const AUTHORING_BOUNDS = Object.freeze({
   issuesItems: 1000,
 });
-/** A page of workflows, or of their versions, with the cursor to the next. */
-function workflowPageSchema<Item extends z.ZodType>(item: Item) {
-  return z
-    .object({
-      items: z.array(item).max(WORKFLOW_PAGE_LIMITS.items),
-      nextCursor: workflowCursorSchema.nullable(),
-    })
-    .apply(responseSchema);
-}
-
 /** Opaque, quoted strong HTTP entity tag. Its internal value is not a client contract. */
 export const strongEtagSchema = z
   .string()
@@ -254,7 +240,7 @@ export const workflowVersionResponseSchema = responseSchema(
       graphDigest: workflowGraphDigestSchema.optional(),
       checksum: workflowExecutableChecksumSchema,
       publishedAt: z.iso.datetime(),
-      publishedBy: personReferenceSchema.optional(),
+      publishedBy: personReferenceSchema.nullable().optional(),
     })
     .strict(),
 );
@@ -266,6 +252,15 @@ export const workflowPublishResponseSchema = z
   .apply(responseSchema);
 export const workflowVersionsResponseSchema = workflowPageSchema(
   workflowVersionResponseSchema,
+);
+export const workflowVersionReviewPageSchema = workflowPageSchema(
+  workflowVersionResponseSchema.required({ graphDigest: true }),
+);
+export const workflowVersionHistoryPageSchema = workflowPageSchema(
+  workflowVersionResponseSchema.required({
+    graphDigest: true,
+    publishedBy: true,
+  }),
 );
 export const workflowListResponseSchema = workflowPageSchema(
   workflowSummarySchema,

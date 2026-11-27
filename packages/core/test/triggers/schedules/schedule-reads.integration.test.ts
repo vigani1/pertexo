@@ -260,6 +260,24 @@ describe('schedule fire times', () => {
     await expect(writeFingerprint()).resolves.toBe(before);
   });
 
+  it('projects the complete requested window without losing the default count', async () => {
+    const minute = 60_000;
+    const windowMs = 60 * minute;
+    const times = await schedule.schedules.nextFireTimes({
+      ...read,
+      count: 3,
+      windowMs,
+    });
+    const instants = times.items.map((instant) => instant.getTime());
+    const until = times.observedAt.getTime() + windowMs;
+    expect(instants.length).toBeGreaterThan(3);
+    expect(instants).toEqual(
+      instants.map((_, index) => Number(instants[0]) + index * minute),
+    );
+    expect(Number(instants.at(-1))).toBeLessThanOrEqual(until);
+    expect(Number(instants.at(-1)) + minute).toBeGreaterThan(until);
+  });
+
   it('projects a persisted cron schedule through its timezone’s DST rules', async () => {
     const times = await schedule.schedules.nextFireTimes({
       ...read,

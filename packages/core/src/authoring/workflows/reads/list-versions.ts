@@ -1,3 +1,4 @@
+import { hasCapability } from '@pertexo/policy';
 import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { projectVersion } from '../representation/workflow-representations.repository.js';
@@ -27,9 +28,19 @@ export async function listVersions(
   const result = await readVersionPage(client, input, {
     limit,
     beforeVersionNumber,
+    includePublisher: input.includePublisher === true,
+    canReadMembers:
+      scope.role !== null && hasCapability(scope.role, 'member:read'),
   });
   const hasMore = result.length > limit;
-  const items = Object.freeze(result.slice(0, limit).map(projectVersion));
+  const items = Object.freeze(
+    result.slice(0, limit).map(({ publisherName, ...row }) =>
+      Object.freeze({
+        ...projectVersion(row),
+        ...(publisherName === undefined ? {} : { publisherName }),
+      }),
+    ),
+  );
   const last = items.at(-1);
   return Object.freeze({
     items,
