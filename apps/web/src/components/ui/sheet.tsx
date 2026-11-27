@@ -1,4 +1,5 @@
 import { DialogFooter } from './dialog';
+import { usePopupFocus } from './popup-focus';
 import type { ComponentProps } from 'react';
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -36,14 +37,19 @@ export function SheetContent({
   children,
   side,
   variant,
+  id,
+  initialFocus,
   ...props
 }: SheetPrimitive.Popup.Props & VariantProps<typeof sheetContentVariants>) {
+  const { popupId, focusFirstUnlessChosen } = usePopupFocus(id);
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity duration-(--duration-enter) data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side ?? 'right'}
+        id={popupId}
+        initialFocus={initialFocus ?? focusFirstUnlessChosen}
         className={cn(sheetContentVariants({ side, variant }), className)}
         {...props}
       >
