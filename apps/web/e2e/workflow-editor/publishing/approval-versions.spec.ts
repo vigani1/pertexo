@@ -75,6 +75,7 @@ for (const width of [375, 1280]) {
           graph,
           checksum: `wf:sha256:${'b'.repeat(64)}`,
           publishedAt: '2026-09-14T10:00:00.000Z',
+          publishedBy: { id: workspaceId, displayName: 'Ada Lovelace' },
         });
         return route.fulfill({
           json: await workflowVersionsBody(route.request().url(), {
@@ -90,7 +91,9 @@ for (const width of [375, 1280]) {
     await page.getByRole('link', { name: 'Open workflow editor' }).click();
     await page.getByRole('link', { name: 'Versions', exact: true }).click();
     await expect(
-      page.getByRole('button', { name: 'Preview v1', exact: true }),
+      page.getByRole('navigation', { name: 'Versions' }).getByRole('button', {
+        name: /^v1 /u,
+      }),
     ).toBeVisible();
     const before = versionReads;
     await page.goBack();
@@ -102,7 +105,9 @@ for (const width of [375, 1280]) {
     await page.getByRole('link', { name: 'Open workflow editor' }).click();
     await page.getByRole('link', { name: 'Versions', exact: true }).click();
     await expect(
-      page.getByRole('button', { name: 'Preview v2', exact: true }),
+      page.getByRole('navigation', { name: 'Versions' }).getByRole('button', {
+        name: /^v2 /u,
+      }),
     ).toBeVisible();
     expect(versionReads).toBeGreaterThan(before);
     await expect(page).toHaveURL(

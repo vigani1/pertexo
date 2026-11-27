@@ -5,7 +5,7 @@ import type {
   WorkflowErrorSettings,
 } from '@pertexo/contracts';
 import { SettingSentence } from '@/components/patterns/settings/sentence';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import {
   Select,
@@ -207,7 +207,7 @@ export function ErrorWorkflowSection(scope: Scope) {
     scope.workspace.status === 'active' &&
     scope.workspace.capabilities.includes('workflow:update');
   return (
-    <SettingsSection
+    <SettingRow
       title="Error workflow"
       description="Another workflow to run when this one fails."
     >
@@ -272,6 +272,6 @@ export function ErrorWorkflowSection(scope: Scope) {
           )}
         </QueryView>
       ) : null}
-    </SettingsSection>
+    </SettingRow>
   );
 }

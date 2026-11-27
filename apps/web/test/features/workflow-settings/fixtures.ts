@@ -158,6 +158,7 @@ export function version(
     graph,
     checksum: `wf:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:00:00.000Z',
+    publishedBy: { id: userId, displayName: 'Ada Lovelace' },
   };
 }
 

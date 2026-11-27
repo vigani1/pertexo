@@ -29,7 +29,7 @@ async function chooseDuration(label: string) {
   const event = userEvent.setup();
   const section = await screen.findByRole(
     'region',
-    { name: 'Run duration' },
+    { name: 'Maximum run duration' },
     coldStart,
   );
   await event.click(
@@ -64,7 +64,7 @@ describe('workflow settings: run duration', () => {
     // deadline at all.
     const unset = await screen.findByRole(
       'region',
-      { name: 'Run duration' },
+      { name: 'Maximum run duration' },
       coldStart,
     );
     expect(
@@ -138,7 +138,7 @@ describe('workflow settings: run duration', () => {
     await renderLoadedApp(settingsPath);
     const section = await screen.findByRole(
       'region',
-      { name: 'Run duration' },
+      { name: 'Maximum run duration' },
       coldStart,
     );
     expect(

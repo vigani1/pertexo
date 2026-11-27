@@ -7,14 +7,11 @@ import {
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-  WorkflowVersionResponse,
   WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { canDuplicateWorkflow } from '@/features/workflows/public';
-import { GitCompareArrowsIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   Empty,
@@ -24,38 +21,31 @@ import {
 } from '@/components/patterns/states/empty';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { ListDetail } from '@/components/patterns/lists/list-detail';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../components/settings-read-failure';
 import { RestoreVersionDialog } from '../components/versions/restore-dialog';
 import { VersionCompareSheet } from '../components/versions/compare-sheet';
 import { VersionPreviewSheet } from '../components/versions/preview-sheet';
-import { VersionTimeline } from '../components/versions/timeline';
+import { VersionDetail } from '../components/versions/version-detail';
+import { VersionList } from '../components/versions/version-list';
+import {
+  previousVersion,
+  shownVersion,
+  type HistoryVersion,
+} from '../model/versions/history';
 import { workflowVersionsQueryOptions } from '../data/workflow-settings.queries';
 import { shownData } from '@/lib/api/error-copy';
 
-type Version = WorkflowVersionResponse;
+type Version = HistoryVersion;
 
 type VersionOverlay =
-  | Readonly<{ kind: 'none' | 'compare' }>
+  | Readonly<{ kind: 'none' }>
+  | Readonly<{ kind: 'compare'; from?: Version; to?: Version }>
   | Readonly<{
       kind: 'preview' | 'restore' | 'duplicate' | 'export';
       version: Version;
     }>;
-
-/** "3 published · v3 is live", under the section's sentence. */
-function VersionsTally({
-  count,
-  liveNumber,
-  archived,
-}: Readonly<{ count: number; liveNumber: number; archived: boolean }>) {
-  return (
-    <span className="mt-2 block font-mono text-xs text-subtle-foreground">
-      {String(count)} published · v{String(liveNumber)} is{' '}
-      {archived ? 'current (archived)' : 'live'}
-    </span>
-  );
-}
 
 function NothingPublished({
   workspaceId,
@@ -81,80 +71,7 @@ function NothingPublished({
   );
 }
 
-/** The section's sentence, and the tally once a version is live. */
-function VersionsIntro({
-  count,
-  live,
-  archived,
-}: Readonly<{ count: number; live: Version | undefined; archived: boolean }>) {
-  return (
-    <>
-      Each publish makes a version that never changes. Restoring one copies it
-      into the draft.
-      {live === undefined ? null : (
-        <VersionsTally
-          count={count}
-          liveNumber={live.versionNumber}
-          archived={archived}
-        />
-      )}
-    </>
-  );
-}
-
-/** The versions on their thread, with Compare once there are two. */
-function VersionList({
-  items,
-  liveVersionId,
-  archived,
-  canRestore,
-  promotionWorkspaceId,
-  actions,
-}: Readonly<{
-  items: readonly Version[];
-  liveVersionId: string | null;
-  archived: boolean;
-  canRestore: boolean;
-  promotionWorkspaceId: string | undefined;
-  actions: Readonly<{
-    onCompare: () => void;
-    onPreview: (version: Version) => void;
-    onRestore: (version: Version) => void;
-    onDuplicate: ((version: Version) => void) | undefined;
-    onExport: ((version: Version) => void) | undefined;
-  }>;
-}>) {
-  const { onCompare, onPreview, onRestore, onDuplicate, onExport } = actions;
-
-  return (
-    <>
-      {items.length < 2 ? null : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="self-start"
-          onClick={onCompare}
-        >
-          <GitCompareArrowsIcon aria-hidden="true" data-icon="inline-start" />
-          Compare versions
-        </Button>
-      )}
-      <VersionTimeline
-        versions={items}
-        liveVersionId={liveVersionId}
-        liveLabel={archived ? 'Current' : 'Live'}
-        canRestore={canRestore}
-        {...(promotionWorkspaceId === undefined
-          ? {}
-          : { promotionWorkspaceId })}
-        actions={{ onPreview, onRestore, onDuplicate, onExport }}
-      />
-    </>
-  );
-}
-
-/** Every published version on one thread, with preview, compare and restore. */
+/** The draft and every published version beside the chosen one's detail. */
 export function WorkflowVersionsPage({
   apiClient,
   user,
@@ -173,73 +90,106 @@ export function WorkflowVersionsPage({
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
   const [overlay, setOverlay] = useState<VersionOverlay>({ kind: 'none' });
+  const [chosen, setChosen] = useState<
+    Readonly<{ id: string | undefined; showing: 'list' | 'detail' }>
+  >({ id: undefined, showing: 'list' });
   const workflow = shownData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = shownData(versions)?.items;
   const liveVersionId = summary.data?.publishedVersionId ?? null;
   const archived = summary.data?.lifecycleStatus === 'archived';
-  const live = items?.find((version) => version.id === liveVersionId);
+  const liveLabel = archived ? 'Current' : 'Live';
 
   return (
     <>
-      <SettingsSection
-        title="Versions"
-        description={
-          <VersionsIntro
-            count={items?.length ?? 0}
-            live={live}
-            archived={archived}
+      <QueryView
+        query={versions}
+        resource="Versions"
+        failure={settingsReadFailure}
+        isEmpty={(listed) => listed.items.length === 0}
+        empty={
+          <NothingPublished
+            workspaceId={workspace.id}
+            workflowId={workflowId}
           />
         }
       >
-        <QueryView
-          query={versions}
-          resource="Versions"
-          failure={settingsReadFailure}
-          isEmpty={(listed) => listed.items.length === 0}
-          empty={
-            <NothingPublished
-              workspaceId={workspace.id}
-              workflowId={workflowId}
-            />
-          }
-        >
-          {(listed) => (
-            <VersionList
-              items={listed.items}
-              liveVersionId={liveVersionId}
-              archived={archived}
-              canRestore={canRestore}
-              promotionWorkspaceId={canRestore ? workspace.id : undefined}
-              actions={{
-                onCompare: () => {
-                  setOverlay({ kind: 'compare' });
-                },
-                onPreview: (version) => {
-                  setOverlay({ kind: 'preview', version });
-                },
-                onRestore: (version) => {
-                  setOverlay({ kind: 'restore', version });
-                },
-                onExport:
-                  isWorkspaceBrowsable(workspace) &&
-                  workspace.capabilities.includes('workflow:read')
-                    ? (version) => {
-                        setOverlay({ kind: 'export', version });
-                      }
-                    : undefined,
-                onDuplicate:
-                  workflow !== undefined &&
-                  canDuplicateWorkflow(workspace, workflow)
-                    ? (version) => {
-                        setOverlay({ kind: 'duplicate', version });
-                      }
-                    : undefined,
+        {(listed) => {
+          const shown = shownVersion(listed.items, chosen.id, liveVersionId);
+          const live = listed.items.find(
+            (version) => version.id === liveVersionId,
+          );
+          return (
+            <ListDetail
+              showing={chosen.showing}
+              backLabel="All versions"
+              onBack={() => {
+                setChosen({ id: chosen.id, showing: 'list' });
               }}
+              list={
+                <VersionList
+                  versions={listed.items}
+                  liveVersionId={liveVersionId}
+                  liveLabel={liveLabel}
+                  selectedId={shown?.id}
+                  onSelect={(version) => {
+                    setChosen({ id: version.id, showing: 'detail' });
+                  }}
+                  draftLink={{ workspaceId: workspace.id, workflowId }}
+                />
+              }
+              detail={
+                shown === undefined ? null : (
+                  <VersionDetail
+                    version={shown}
+                    previous={previousVersion(listed.items, shown)}
+                    live={live}
+                    liveLabel={liveLabel}
+                    actions={{
+                      onPreview: (version) => {
+                        setOverlay({ kind: 'preview', version });
+                      },
+                      onRestore: canRestore
+                        ? (version) => {
+                            setOverlay({ kind: 'restore', version });
+                          }
+                        : undefined,
+                      onCompare:
+                        live === undefined
+                          ? undefined
+                          : (version) => {
+                              // Older first, so the changes read forwards.
+                              const [from, to] =
+                                version.versionNumber < live.versionNumber
+                                  ? [version, live]
+                                  : [live, version];
+                              setOverlay({ kind: 'compare', from, to });
+                            },
+                      promotionWorkspaceId: canRestore
+                        ? workspace.id
+                        : undefined,
+                      onExport:
+                        isWorkspaceBrowsable(workspace) &&
+                        workspace.capabilities.includes('workflow:read')
+                          ? (version) => {
+                              setOverlay({ kind: 'export', version });
+                            }
+                          : undefined,
+                      onDuplicate:
+                        workflow !== undefined &&
+                        canDuplicateWorkflow(workspace, workflow)
+                          ? (version) => {
+                              setOverlay({ kind: 'duplicate', version });
+                            }
+                          : undefined,
+                    }}
+                  />
+                )
+              }
             />
-          )}
-        </QueryView>
-      </SettingsSection>
+          );
+        }}
+      </QueryView>
       <VersionOverlayContent
         overlay={overlay}
         onChange={setOverlay}
@@ -286,6 +236,9 @@ function VersionOverlayContent({
         <VersionCompareSheet
           open={versions !== undefined}
           versions={versions ?? []}
+          {...(overlay.from === undefined || overlay.to === undefined
+            ? {}
+            : { pair: { from: overlay.from, to: overlay.to } })}
           onClose={close}
         />
       );
@@ -298,8 +251,8 @@ function VersionOverlayContent({
               candidate.versionNumber < overlay.version.versionNumber,
           )}
           canRestore={workspace.capabilities.includes('workflow:update')}
-          onRestore={(version) => {
-            onChange({ kind: 'restore', version });
+          onRestore={() => {
+            onChange({ kind: 'restore', version: overlay.version });
           }}
           onClose={close}
         />

@@ -14,15 +14,19 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/patterns/states/empty';
-import { PollingSection } from '../components/triggers/polling-rows';
+import { PollingRows } from '../components/triggers/polling-rows';
+import { TriggerRow } from '../components/triggers/trigger-row';
+import { StepTile } from '@/features/catalog/catalog-views.public';
+import { describeStep } from '@/features/catalog/public';
+import { Row, RowList } from '@/components/patterns/lists/row';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/class-names';
-import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../components/settings-read-failure';
 import { SchedulesSection } from '../components/triggers/schedules/section';
 import { WebhooksSection } from '../components/triggers/webhooks/section';
-import { triggerStepName } from '../model/triggers/steps';
+import { UpcomingRuns } from '../components/triggers/schedules/upcoming';
+import { publishedStepNames, triggerStepName } from '../model/triggers/steps';
 import {
   publishedPollingTitle,
   publishedTriggerKinds,
@@ -46,38 +50,6 @@ type TriggersPageProps = Readonly<{
   workspace: AccessibleWorkspace;
   workflowId: string;
 }>;
-
-/** A trigger kind the published version lacks, and where to add one. */
-function NoTriggerStep({
-  kind,
-  workspaceId,
-  workflowId,
-  editable,
-}: Readonly<{
-  kind: 'Webhook' | 'Schedule';
-  workspaceId: string;
-  workflowId: string;
-  editable: boolean;
-}>) {
-  return (
-    <p className="text-sm text-muted-foreground">
-      The published version has no {kind} step.
-      {editable ? (
-        <>
-          {' '}
-          <Link
-            to="/w/$workspaceId/workflows/$workflowId"
-            params={{ workspaceId, workflowId }}
-            className="inline-link"
-          >
-            Add one in Build
-          </Link>
-          , then publish.
-        </>
-      ) : null}
-    </p>
-  );
-}
 
 /** How the published version's runs start, and the controls for each. */
 export function WorkflowTriggersPage(props: TriggersPageProps) {
@@ -140,28 +112,23 @@ const WAYS_IN = [
 /** The ways a run can start, with the one this version has lit. */
 function WaysIn() {
   return (
-    <ul
-      aria-label="Ways a run can start"
-      className="my-1 flex w-full max-w-lg flex-col border-y border-border"
-    >
+    <RowList aria-label="Ways a run can start" className="my-1 max-w-lg">
       {WAYS_IN.map((way) => (
-        <li
+        <Row
           key={way.name}
-          className="flex items-center gap-3 border-t border-border py-2.5 text-sm first:border-t-0"
+          lift="none"
+          className="grid-cols-[minmax(0,1fr)_auto] py-2.5 text-sm sm:grid-cols-[6rem_minmax(0,1fr)_auto]"
         >
-          {/* Phones stack the sentence under its name, not beside it. */}
-          <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
-            <span className="font-medium sm:w-24 sm:shrink-0">{way.name}</span>
-            <span className="text-muted-foreground max-sm:text-xs">
-              {way.detail}
-            </span>
+          <span className="font-medium">{way.name}</span>
+          <span className="text-muted-foreground max-sm:col-start-1 max-sm:row-start-2 max-sm:text-xs">
+            {way.detail}
           </span>
           <StatusMark tone={way.on ? 'success' : 'off'}>
             {way.on ? 'On' : 'Not added'}
           </StatusMark>
-        </li>
+        </Row>
       ))}
-    </ul>
+    </RowList>
   );
 }
 
@@ -225,83 +192,145 @@ function TriggersSession({
         published={summary.data?.publishedVersionId !== null}
       />
     );
+  const publishedNumber = versions.data?.items.find(
+    (version) => version.id === summary.data?.publishedVersionId,
+  )?.versionNumber;
   return (
-    <div className="flex flex-col">
+    <div className="flex max-w-190 flex-col gap-10">
+      <header className="flex flex-col gap-2">
+        <h1 className="font-heading text-section font-semibold">
+          Ways a run can start
+        </h1>
+        <p className="text-meta text-subtle-foreground">
+          {publishedNumber === undefined
+            ? 'From the published version.'
+            : `From the published version, v${String(publishedNumber)}.`}{' '}
+          Turning a schedule off stops new runs from it right away; the draft is
+          not touched.
+        </p>
+      </header>
       <PublicationDiscovery discovery={publication} />
-      {form ? (
-        <SettingsSection
-          title="Form"
-          description="Starts a run each time someone submits the form. Its link, fields and who may submit are set on the Form step."
-        >
-          <Link
-            to="/w/$workspaceId/workflows/$workflowId"
-            params={{ workspaceId: workspace.id, workflowId }}
-            className={cn(buttonVariants({ variant: 'outline' }), 'w-fit')}
-          >
-            Open Build
-          </Link>
-        </SettingsSection>
-      ) : null}
-      {onFailure ? (
-        <SettingsSection
-          title="On failure"
-          description="Starts a run when another workflow fails and names this one as its error workflow."
-        >
-          <p className="text-sm text-muted-foreground">
-            Each workflow chooses its error workflow in its own Settings.
-          </p>
-        </SettingsSection>
-      ) : null}
-      <SettingsSection
-        title="Webhooks"
-        description="Start a run when another system sends an event to the endpoint address."
-      >
+      <section aria-labelledby="workflow-triggers" className="flex flex-col">
+        <RuleHeading id="workflow-triggers">Triggers</RuleHeading>
         {editable ? (
-          <>
-            <QueryView
-              query={webhooks}
-              resource="Webhooks"
-              failure={settingsReadFailure}
-              isEmpty={(listed) => listed.items.length === 0}
-              empty={<NoTriggerStep kind="Webhook" {...common} />}
-            />
+          <QueryView
+            query={webhooks}
+            resource="Webhooks"
+            failure={settingsReadFailure}
+          />
+        ) : null}
+        <QueryView
+          query={schedules}
+          resource="Schedules"
+          failure={settingsReadFailure}
+        />
+        <RowList aria-label="Triggers" className="mt-2">
+          {editable ? (
             <WebhooksSection
               {...common}
               triggers={webhookItems ?? []}
               stepNameFor={(trigger) => stepName(trigger, 'Webhook')}
             />
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
+          ) : null}
+          <SchedulesSection
+            {...common}
+            triggers={scheduleItems ?? []}
+            stepNameFor={(trigger) => stepName(trigger, 'Schedule')}
+          />
+          {pollingTitle === undefined ? null : (
+            <PollingRows
+              title={pollingTitle}
+              triggers={shownData(summary)?.pollingTriggers ?? []}
+              stepNameFor={(trigger) => stepName(trigger, pollingTitle)}
+            />
+          )}
+          {form
+            ? publishedStepNames(
+                versions.data?.items,
+                summary.data?.publishedVersionId,
+                'core.form',
+              ).map((step) => (
+                <TriggerRow
+                  key={step.nodeId}
+                  label={`Form: ${step.name}`}
+                  icon={<StepTile step={describeStep('core.form')} />}
+                  name={step.name}
+                  kind="Form · starts a run each time someone submits it. Its link, fields and who may submit are set on the step in Build."
+                  state={<StatusMark tone="success">On</StatusMark>}
+                />
+              ))
+            : null}
+          {onFailure
+            ? publishedStepNames(
+                versions.data?.items,
+                summary.data?.publishedVersionId,
+                'core.workflow_error',
+              ).map((step) => (
+                <TriggerRow
+                  key={step.nodeId}
+                  label={`On failure: ${step.name}`}
+                  icon={<StepTile step={describeStep('core.workflow_error')} />}
+                  name={step.name}
+                  kind="When a workflow fails · each workflow chooses its error workflow in its own Settings"
+                  state={<StatusMark tone="success">On</StatusMark>}
+                />
+              ))
+            : null}
+          <TriggerRow
+            label="By hand"
+            icon={<StepTile step={describeStep('core.manual')} />}
+            name="By hand"
+            kind="Manual · anyone who can run this workflow fills its inputs, then starts it"
+            state={
+              <span className="text-meta text-subtle-foreground">
+                Always on
+              </span>
+            }
+          />
+        </RowList>
+        {editable ? null : (
+          <p className="mt-3 text-meta text-subtle-foreground">
             Webhook addresses and deliveries are shown to{' '}
             {whoCan(WEBHOOK_CAPABILITY)}.
           </p>
         )}
-      </SettingsSection>
-      {pollingTitle === undefined ? null : (
-        <PollingSection
-          title={pollingTitle}
-          triggers={shownData(summary)?.pollingTriggers ?? []}
-          stepNameFor={(trigger) => stepName(trigger, pollingTitle)}
-        />
-      )}
-      <SettingsSection
-        title="Schedules"
-        description="Start runs on a timetable. Times follow each schedule’s time zone."
-      >
-        <QueryView
-          query={schedules}
-          resource="Schedules"
-          failure={settingsReadFailure}
-          isEmpty={(listed) => listed.items.length === 0}
-          empty={<NoTriggerStep kind="Schedule" {...common} />}
-        />
-        <SchedulesSection
-          {...common}
+        <p className="mt-3 text-meta text-subtle-foreground">
+          Schedules can be switched off one by one. To stop webhooks and forms
+          too, pause the workflow in{' '}
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/settings"
+            params={{ workspaceId: workspace.id, workflowId }}
+            className="inline-link"
+          >
+            Settings
+          </Link>
+          .
+        </p>
+        {editable ? (
+          <p className="mt-1.5 text-meta text-subtle-foreground">
+            Polling and “When a workflow fails” can start runs too. Add that
+            trigger step in{' '}
+            <Link
+              to="/w/$workspaceId/workflows/$workflowId"
+              params={{ workspaceId: workspace.id, workflowId }}
+              className="inline-link"
+            >
+              Build
+            </Link>
+            , then publish.
+          </p>
+        ) : null}
+      </section>
+      {(scheduleItems?.length ?? 0) === 0 ? null : (
+        <UpcomingRuns
+          apiClient={apiClient}
+          userId={user.id}
+          workspaceId={workspace.id}
+          workflowId={workflowId}
           triggers={scheduleItems ?? []}
           stepNameFor={(trigger) => stepName(trigger, 'Schedule')}
         />
-      </SettingsSection>
+      )}
     </div>
   );
 }

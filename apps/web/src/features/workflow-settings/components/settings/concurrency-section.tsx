@@ -8,7 +8,7 @@ import type {
   WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
 import { SettingSentence } from '@/components/patterns/settings/sentence';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -279,8 +279,8 @@ export function ConcurrencySection(scope: Scope) {
     enabled: canRead,
   });
   return (
-    <SettingsSection
-      title="Concurrency"
+    <SettingRow
+      title="Runs at once"
       description="How many runs of this workflow can go at once."
     >
       {canRead ? (
@@ -298,6 +298,6 @@ export function ConcurrencySection(scope: Scope) {
           Your role can’t read these settings.
         </p>
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }

@@ -14,7 +14,8 @@ export async function workflowGraphReadBody<Body extends GraphRead>(
   body: Body,
 ) {
   const { graphDigest: _previousDigest, ...base } = body;
-  return new URL(url).searchParams.get('include') === 'graphDigest'
+  const include = new URL(url).searchParams.get('include')?.split(',') ?? [];
+  return include.includes('graphDigest')
     ? {
         ...base,
         graphDigest: await portableGraphDigest(

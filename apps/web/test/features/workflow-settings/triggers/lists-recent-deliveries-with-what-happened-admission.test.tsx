@@ -21,7 +21,7 @@ import {
   workspaceId,
 } from '../fixtures';
 
-import { triggersPath } from './fixture';
+import { openTrigger, triggersPath } from './fixture';
 
 describe('workflow triggers tab', () => {
   it('lists recent deliveries with what happened, admission status and the run', async () => {
@@ -83,9 +83,7 @@ describe('workflow triggers tab', () => {
       ),
     );
     await renderLoadedApp(triggersPath);
-    const hook = await screen.findByRole('article', {
-      name: 'Webhook: Receive order',
-    });
+    const hook = await openTrigger('Webhook: Receive order');
     const list = await within(hook).findByRole('list', {
       name: 'Recent deliveries',
     });
@@ -141,9 +139,7 @@ describe('workflow triggers tab', () => {
       ),
     );
     await renderLoadedApp(triggersPath);
-    const hook = await screen.findByRole('article', {
-      name: 'Webhook: Receive order',
-    });
+    const hook = await openTrigger('Webhook: Receive order');
     expect(
       await within(hook).findByText(
         'Recent deliveries couldn’t be loaded. Try again.',

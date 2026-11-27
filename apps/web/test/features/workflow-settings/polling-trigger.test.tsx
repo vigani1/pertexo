@@ -56,12 +56,14 @@ function renderPolling(trigger: PollingTriggerHealth) {
 
 it('shows the published polling step waiting for its baseline and when it will check', async () => {
   await renderPolling(health);
-  const card = within(await screen.findByRole('article'));
+  const card = within(
+    await screen.findByRole('article', { name: 'HTTP Polling: Watch feed' }),
+  );
   expect(
     await card.findByRole('heading', { name: 'Watch feed' }),
   ).toBeVisible();
   expect(card.getByText('Waiting for its first check')).toBeVisible();
-  expect(card.getByText('Next check')).toBeVisible();
+  expect(card.getByText(/^Next check/u)).toBeVisible();
   expect(screen.queryByText('This version has no trigger')).toBeNull();
 });
 
@@ -73,7 +75,9 @@ it('shows a safe credential repair message and the retained position while pause
     lastErrorCode: 'http.poll_authentication',
     paused: true,
   });
-  const card = within(await screen.findByRole('article'));
+  const card = within(
+    await screen.findByRole('article', { name: 'HTTP Polling: Watch feed' }),
+  );
   expect(card.getByText('Paused')).toBeVisible();
   expect(
     card.getByText(/Repair the connection.*resume triggers/u),
@@ -81,5 +85,5 @@ it('shows a safe credential repair message and the retained position while pause
   expect(
     card.getByText('Resuming keeps the items already recorded.'),
   ).toBeVisible();
-  expect(card.queryByText('Next check')).toBeNull();
+  expect(card.queryByText(/^Next check/u)).toBeNull();
 });

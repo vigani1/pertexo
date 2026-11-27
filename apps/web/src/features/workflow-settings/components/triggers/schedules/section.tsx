@@ -10,7 +10,7 @@ import { ScheduleNextRuns } from './next-runs';
 import { ScheduleOccurrences } from './occurrences';
 
 /**
- * Schedule cards with their next and recent runs. Turning one on is
+ * Schedule rows with their next and recent runs. Turning one on is
  * immediate; turning one off asks first, because nothing runs from it until
  * someone turns it back on.
  */
@@ -59,7 +59,9 @@ export function SchedulesSection({
   return (
     <>
       {schedule.error === undefined ? null : (
-        <Notice tone="destructive">{schedule.error}</Notice>
+        <li>
+          <Notice tone="destructive">{schedule.error}</Notice>
+        </li>
       )}
       {triggers.map((trigger) => (
         <ScheduleCard

@@ -24,7 +24,7 @@ import {
   workspaceId,
 } from '../fixtures';
 
-import { schedulesKey, triggersPath } from './fixture';
+import { openTrigger, schedulesKey, triggersPath } from './fixture';
 
 describe('workflow triggers tab', () => {
   it('keeps the exact provisioning retry reachable after the endpoint status refreshes', async () => {
@@ -64,6 +64,7 @@ describe('workflow triggers tab', () => {
     );
     const { queryClient } = await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
+    await openTrigger('Webhook: Receive order');
     await event.click(
       await screen.findByRole('button', { name: 'Create endpoint' }),
     );
@@ -186,9 +187,10 @@ describe('workflow triggers tab', () => {
     );
     const { queryClient } = await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
-    const toggle = () => screen.getByRole('switch', { name: 'Schedule on' });
+    const toggle = () =>
+      screen.getByRole('switch', { name: 'Nightly check schedule on' });
     await event.click(
-      await screen.findByRole('switch', { name: 'Schedule on' }),
+      await screen.findByRole('switch', { name: 'Nightly check schedule on' }),
     );
     const confirm = await screen.findByRole('dialog', {
       name: 'Turn off this schedule?',
@@ -242,8 +244,11 @@ describe('workflow triggers tab', () => {
       ),
     ).toBeVisible();
     expect(
-      await screen.findByText('The published version has no Schedule step.'),
+      await screen.findByRole('article', { name: 'By hand' }),
     ).toBeVisible();
+    expect(
+      screen.queryByRole('article', { name: /^Schedule:/u }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Add one in Build' }),
     ).not.toBeInTheDocument();
@@ -304,9 +309,11 @@ describe('workflow triggers tab', () => {
       ),
     );
     await renderLoadedApp(triggersPath);
-    const form = await screen.findByRole('region', { name: 'Form' });
+    const form = await screen.findByRole('article', {
+      name: 'Form: Expense form',
+    });
     expect(
-      within(form).getByText(/each time someone submits the form/u),
+      within(form).getByText(/each time someone submits it/u),
     ).toBeVisible();
     expect(
       screen.queryByRole('heading', { name: 'This version has no trigger' }),

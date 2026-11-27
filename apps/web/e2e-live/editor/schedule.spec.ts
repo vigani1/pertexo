@@ -242,7 +242,9 @@ test('real one-minute schedule survives runtime restart and completes bounded ne
   const disablePending = page.waitForRequest((outgoing) =>
     isPost(outgoing, `${triggerPath}/disable`),
   );
-  await card.getByRole('switch', { name: 'Schedule on', exact: true }).click();
+  await card
+    .getByRole('switch', { name: 'Minute schedule schedule on', exact: true })
+    .click();
   await page
     .getByRole('dialog', { name: 'Turn off this schedule?', exact: true })
     .getByRole('button', { name: 'Turn off', exact: true })
@@ -265,7 +267,10 @@ test('real one-minute schedule survives runtime restart and completes bounded ne
     replayed: false,
   });
   await expect(
-    card.getByRole('switch', { name: 'Schedule on', exact: true }),
+    card.getByRole('switch', {
+      name: 'Minute schedule schedule on',
+      exact: true,
+    }),
   ).not.toBeChecked();
   expect((await occurrences()).items).toHaveLength(1);
   expect(manualStarts).toHaveLength(0);

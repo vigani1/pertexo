@@ -144,7 +144,7 @@ for (const width of [375, 1280]) {
     await retry.click();
     await expect.poll(() => reads).toBeGreaterThan(previousReads);
     await expect(
-      page.getByRole('heading', { name: 'Schedules', exact: true }),
+      page.getByRole('heading', { name: 'Triggers', exact: true }),
     ).toBeVisible();
     expect(
       await page.evaluate(

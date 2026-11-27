@@ -30,7 +30,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../data/mutations/use-notification-commands';
 import { failureNotificationPolicyQueryOptions } from '../../data/workflow-settings.queries';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import { CurrentAlertDestination } from './current-alert-destination';
@@ -250,7 +250,7 @@ export function FailureAlertsSection({
   }
 
   return (
-    <SettingsSection
+    <SettingRow
       title="Failure alerts"
       description="Where Pertexo tells you when a run of this workflow fails."
     >
@@ -317,6 +317,6 @@ export function FailureAlertsSection({
           ) : null}
         </>
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }
