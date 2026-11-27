@@ -13,11 +13,7 @@ import {
   COLLAPSED_LIST_COUNT,
   ShowAll,
 } from '@/components/patterns/lists/show-all';
-import {
-  groupMembers,
-  ROLE_SUMMARIES,
-  type MemberGroup,
-} from '../../model/member-groups';
+import { groupMembers, type MemberGroup } from '../../model/member-groups';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   DropdownMenu,
@@ -29,7 +25,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDate } from '@/lib/format/time';
-import type { ManagedRole, WorkspaceRole } from '../../model/workspace-roles';
+import {
+  ROLE_SUMMARIES,
+  type ManagedRole,
+  type WorkspaceRole,
+} from '../../model/workspace-roles';
 import { ROLE_NAMES } from '../../model/role-words';
 import { RingMonogram } from '../shell/workspace-mark';
 import { RoleSelect } from './role-select';

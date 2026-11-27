@@ -79,13 +79,19 @@ export const connectionUsage = {
   nextCursor: null,
 };
 
-function table(
-  index: number,
-  name: string,
-  keyColumn: string | null,
-  rowCount: number,
-  columns: readonly (readonly [string, 'text' | 'number' | 'boolean'])[],
-) {
+function table({
+  index,
+  name,
+  keyColumn,
+  rowCount,
+  columns,
+}: Readonly<{
+  index: number;
+  name: string;
+  keyColumn: string | null;
+  rowCount: number;
+  columns: readonly (readonly [string, 'text' | 'number' | 'boolean'])[];
+}>) {
   return {
     id: id(5, index),
     name,
@@ -104,29 +110,59 @@ function table(
 }
 
 export const tables = [
-  table(1, 'Restock thresholds', 'sku', 412, [
-    ['sku', 'text'],
-    ['product', 'text'],
-    ['on_hand', 'number'],
-    ['reorder_qty', 'number'],
-    ['active', 'boolean'],
-  ]),
-  table(2, 'Invoice ledger', null, 8640, [
-    ['invoice', 'text'],
-    ['amount', 'number'],
-  ]),
-  table(3, 'Supplier contacts', 'supplier_id', 38, [
-    ['supplier_id', 'text'],
-    ['email', 'text'],
-  ]),
-  table(4, 'Partner endpoints', 'partner_id', 21, [
-    ['partner_id', 'text'],
-    ['url', 'text'],
-  ]),
-  table(5, 'Holiday calendar', 'date', 14, [
-    ['date', 'text'],
-    ['name', 'text'],
-  ]),
+  table({
+    index: 1,
+    name: 'Restock thresholds',
+    keyColumn: 'sku',
+    rowCount: 412,
+    columns: [
+      ['sku', 'text'],
+      ['product', 'text'],
+      ['on_hand', 'number'],
+      ['reorder_qty', 'number'],
+      ['active', 'boolean'],
+    ],
+  }),
+  table({
+    index: 2,
+    name: 'Invoice ledger',
+    keyColumn: null,
+    rowCount: 8640,
+    columns: [
+      ['invoice', 'text'],
+      ['amount', 'number'],
+    ],
+  }),
+  table({
+    index: 3,
+    name: 'Supplier contacts',
+    keyColumn: 'supplier_id',
+    rowCount: 38,
+    columns: [
+      ['supplier_id', 'text'],
+      ['email', 'text'],
+    ],
+  }),
+  table({
+    index: 4,
+    name: 'Partner endpoints',
+    keyColumn: 'partner_id',
+    rowCount: 21,
+    columns: [
+      ['partner_id', 'text'],
+      ['url', 'text'],
+    ],
+  }),
+  table({
+    index: 5,
+    name: 'Holiday calendar',
+    keyColumn: 'date',
+    rowCount: 14,
+    columns: [
+      ['date', 'text'],
+      ['name', 'text'],
+    ],
+  }),
 ];
 
 export const tableQuotas = {

@@ -191,38 +191,13 @@ function ConnectionsSession({
   const counts = countByStatus(items);
   const definitions = useConnectionDefinitions();
 
-  if (!canBrowse)
-    return (
-      <UnavailablePage
-        heading="Connections"
-        title="Connections are unavailable"
-        description={roleLimitSentence(
-          workspace.role,
-          'connection:read',
-          'see this workspace’s connections',
-        )}
-      />
-    );
-  if (
-    connections.isError &&
-    isApiError(connections.error) &&
-    connections.error.problem?.code === 'connection.not_configured'
-  )
-    return (
-      <UnavailablePage
-        heading="Connections"
-        title="Connections need server configuration"
-        description="This server has no connection encryption provider configured. Enable local connection encryption for development, or configure AWS KMS on the server. Alerts need a connection too."
-      />
-    );
-  if (connections.isError && isReadAccessLost(connections.error))
-    return (
-      <UnavailablePage
-        heading="Connections"
-        title="Connections are unavailable"
-        description="This workspace’s connections don’t exist, or you don’t have access to them."
-      />
-    );
+  const unavailable = unavailableCopy({
+    canBrowse,
+    role: workspace.role,
+    error: connections.isError ? connections.error : undefined,
+  });
+  if (unavailable !== undefined)
+    return <UnavailablePage heading="Connections" {...unavailable} />;
 
   const openAdd = (add: NonNullable<ConnectionsSearch['add']>) => {
     onSearchChange({ ...search, add });
@@ -308,4 +283,38 @@ function ConnectionsSession({
       ) : null}
     </div>
   );
+}
+
+/** Why the page can't show connections, if it can't. */
+function unavailableCopy({
+  canBrowse,
+  role,
+  error,
+}: Readonly<{
+  canBrowse: boolean;
+  role: AccessibleWorkspace['role'];
+  error: unknown;
+}>): Readonly<{ title: string; description: string }> | undefined {
+  if (!canBrowse)
+    return {
+      title: 'Connections are unavailable',
+      description: roleLimitSentence(
+        role,
+        'connection:read',
+        'see this workspace’s connections',
+      ),
+    };
+  if (isApiError(error) && error.problem?.code === 'connection.not_configured')
+    return {
+      title: 'Connections need server configuration',
+      description:
+        'This server has no connection encryption provider configured. Enable local connection encryption for development, or configure AWS KMS on the server. Alerts need a connection too.',
+    };
+  if (error !== undefined && isReadAccessLost(error))
+    return {
+      title: 'Connections are unavailable',
+      description:
+        'This workspace’s connections don’t exist, or you don’t have access to them.',
+    };
+  return undefined;
 }

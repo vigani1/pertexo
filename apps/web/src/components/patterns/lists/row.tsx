@@ -7,7 +7,7 @@ import { cn } from '@/lib/class-names';
  * background; the selected row lifts it further. The grid columns are the
  * caller's layout, passed in `className`.
  */
-export const rowVariants = cva(
+const rowVariants = cva(
   'row-divider grid min-w-0 items-center gap-x-4 gap-y-1 rounded-lg px-3.5 py-3 transition-colors duration-(--duration-quick)',
   {
     variants: {
