@@ -28,6 +28,7 @@ export type CanvasOverlays = Pick<
   | 'weaveOrder'
   | 'testOutputBytes'
   | 'testStatuses'
+  | 'lastRun'
 >;
 
 /**

@@ -1,7 +1,7 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
+  getSmoothStepPath,
   type EdgeProps,
 } from '@xyflow/react';
 import { XIcon } from 'lucide-react';
@@ -12,13 +12,15 @@ import type { WorkflowFlowEdge } from '../../model/graph/adapter';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
 
 const HIDE_DELAY_MS = 160;
+// Links run square with rounded corners, so branches read as lanes.
+const CORNER_RADIUS = 14;
 const WEAVE_STEP_MS = 320;
 // The thread's own stroke outranks React Flow's focus style, so a link with
 // keyboard focus looks selected here.
 const FOCUSED_THREAD = String.raw`in-[.react-flow\_\_edge:focus-visible]:!stroke-primary in-[.react-flow\_\_edge:focus-visible]:!stroke-2`;
 
 /**
- * A link is a thread: it brightens on hover, turns cyan when selected
+ * A link is a thread drawn square, lane to lane: it brightens on hover, turns cyan when selected
  * and offers ✕ to remove it. Failure runs red and Timed out amber, each
  * dashed in its own rhythm. Into a step with issues it runs dashed; after a
  * passed test it flows; on publish it weaves in by execution order.
@@ -38,7 +40,8 @@ export function WorkflowEdge({
   const { editable, removeEdge } = use(CanvasActionsContext);
   const [hovered, setHovered] = useState(false);
   const hideTimer = useRef<number | undefined>(undefined);
-  const [path, labelX, labelY] = getBezierPath({
+  const [path, labelX, labelY] = getSmoothStepPath({
+    borderRadius: CORNER_RADIUS,
     sourcePosition,
     sourceX,
     sourceY,

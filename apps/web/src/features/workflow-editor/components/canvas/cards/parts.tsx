@@ -48,6 +48,44 @@ export function CardHeading({
   );
 }
 
+/**
+ * What the step did in the workflow's last run, written under its card:
+ * how long it took, the error code and tries of a failure, or that the run
+ * never reached it. Outside the card's box, so it never resizes the card.
+ */
+export function StepRunLine({
+  result,
+}: Readonly<{ result: WorkflowFlowNode['data']['lastRun'] }>) {
+  if (result === undefined) return null;
+  return (
+    <p className="pointer-events-none absolute top-full left-1 mt-2 flex items-center gap-1.5 font-mono text-caption whitespace-nowrap text-subtle-foreground">
+      <StepRunWords result={result} />
+    </p>
+  );
+}
+
+function StepRunWords({
+  result,
+}: Readonly<{ result: NonNullable<WorkflowFlowNode['data']['lastRun']> }>) {
+  if (result.kind === 'not-taken') return <>not taken in the last run</>;
+  if (result.kind === 'failed')
+    return (
+      <>
+        <StatusMark tone="failure" display="mark" label="Failed" />
+        <span className="text-destructive">{result.code ?? 'failed'}</span>
+        {result.tries === null ? null : <span>· {result.tries}</span>}
+      </>
+    );
+  const look = describeNodeStatus(result.status);
+  return (
+    <>
+      <StatusMark tone={look.tone} display="mark" label={look.label} />
+      {result.status === 'succeeded' ? null : <span>{look.label}</span>}
+      {result.detail === null ? null : <span>{result.detail}</span>}
+    </>
+  );
+}
+
 export function IssueBadge({ count }: Readonly<{ count: number }>) {
   if (count <= 0) return null;
   return (

@@ -14,6 +14,7 @@ import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';
 import { useQuickAdd } from './add-step/use-quick';
+import type { LastRunOverlay } from '../model/canvas/last-run';
 import { useStepPlacement } from './add-step/use-placement';
 
 /** The add-step lens's fold and its search field, which "/" focuses. */
@@ -45,7 +46,7 @@ function useAddStepFold({
 
 /**
  * What the canvas draws over the steps: issue counts, a passed test's path
- * and output size, and the publish weave. A valid step says nothing: a
+ * and output size, the last run's results and the publish weave. A valid step says nothing: a
  * mark that came and went with every check made each card grow and shrink.
  */
 export function useCanvasOverlays(
@@ -53,6 +54,7 @@ export function useCanvasOverlays(
   effects: ReturnType<typeof useCanvasEffects>,
   testStatuses:
     ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined,
+  lastRun: LastRunOverlay | undefined,
 ) {
   return useMemo(
     () => ({
@@ -61,8 +63,10 @@ export function useCanvasOverlays(
       weaveOrder: effects.weaveOrder,
       testOutputBytes: effects.testOutputBytes,
       testStatuses,
+      lastRun,
     }),
     [
+      lastRun,
       testStatuses,
       effects.flowingEdgeIds,
       effects.testOutputBytes,

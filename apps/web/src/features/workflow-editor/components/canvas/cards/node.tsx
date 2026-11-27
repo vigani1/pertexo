@@ -8,14 +8,21 @@ import {
 } from '@xyflow/react';
 import { useLayoutEffect } from 'react';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
-import { CardHeading, IssueBadge, NodeMarks, PortRows } from './parts';
+import {
+  CardHeading,
+  IssueBadge,
+  NodeMarks,
+  PortRows,
+  StepRunLine,
+} from './parts';
 import { cardClassName, cardIdentity, handleClass } from './style';
 
 /**
  * A step on the canvas: family tile, title and human type (with a summary
  * of its setup), the wired ports of branching steps, then one line of facts
  * and marks for issues, missing connections and steps that are disabled.
- * Only the selected card animates (its scan edge).
+ * Under the card, what the step did in the last run. The selected card
+ * animates its scan edge; a step the last run is working in breathes.
  */
 export function WorkflowNodeCard({
   id,
@@ -42,6 +49,8 @@ export function WorkflowNodeCard({
         hasIssues: data.issueCount > 0,
         selected,
         disabled: data.disabled,
+        running: data.running ?? false,
+        passedBy: data.lastRun?.kind === 'not-taken',
       })}
     >
       {branchingIn || data.inputPorts[0] === undefined ? null : (
@@ -103,6 +112,7 @@ export function WorkflowNodeCard({
         </>
       ) : null}
       <IssueBadge count={data.issueCount} />
+      <StepRunLine result={data.lastRun} />
     </article>
   );
 }

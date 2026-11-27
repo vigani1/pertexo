@@ -26,6 +26,7 @@ import {
 } from './for-each-body-layout';
 import type { BodyIssue } from './for-each-body-rules';
 import { portLinks, shownPorts, stepSummary } from '../step-card';
+import type { LastRunOverlay, StepRunResult } from '../canvas/last-run';
 import { levelSinks } from './order';
 import { loopSummary, type LoopSummary } from './loop-summary';
 import {
@@ -71,6 +72,10 @@ interface WorkflowNodeData extends Record<string, unknown> {
   testOutputBytes: number | undefined;
   testStatus?: WorkflowNodeRunSummary['status'] | undefined;
   sampleState?: 'pinned' | 'stale' | 'expired' | undefined;
+  /** What this step did in the workflow's last run, when results are shown. */
+  lastRun?: StepRunResult | undefined;
+  /** The last run is working in this step right now. */
+  running?: boolean;
   /** The latest check describes the draft on screen. */
   issueCount: number;
   missingConnections: number;
@@ -90,7 +95,7 @@ interface WorkflowEdgeData extends Record<string, unknown> {
   timedOut?: boolean;
   sourceLabel: string;
   targetLabel: string;
-  /** The last successful test ran along this link. */
+  /** The last successful test ran along this link, or a live run is. */
   flowing: boolean;
   /** Execution depth for the publish weave-in; null when not weaving. */
   weaveOrder: number | null;
@@ -127,6 +132,8 @@ export type CanvasDecorations = Readonly<{
   testStatuses?:
     ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined;
   sampleStates?: ReadonlyMap<string, 'pinned' | 'stale' | 'expired'>;
+  /** The workflow's last run, drawn under its steps; undefined when hidden. */
+  lastRun?: LastRunOverlay | undefined;
 }>;
 
 const noCanvasDecorations: CanvasDecorations = Object.freeze({
@@ -308,6 +315,8 @@ function projectNode({
       testOutputBytes: decorations.testOutputBytes?.get(node.id),
       testStatus: decorations.testStatuses?.get(node.id),
       sampleState: decorations.sampleStates?.get(node.id),
+      lastRun: decorations.lastRun?.results.get(node.id),
+      running: decorations.lastRun?.runningNodeIds.has(node.id) ?? false,
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition === undefined
         ? []
@@ -360,7 +369,9 @@ function projectEdge(
       timedOut: edge.source.port === TIMED_OUT_PORT,
       sourceLabel,
       targetLabel,
-      flowing: decorations.flowingEdgeIds.has(edge.id),
+      flowing:
+        decorations.flowingEdgeIds.has(edge.id) ||
+        (decorations.lastRun?.liveEdgeIds.has(edge.id) ?? false),
       weaveOrder: decorations.weaveOrder?.get(edge.id) ?? null,
       intoIssue: (decorations.issuesByNode.get(edge.target.nodeId) ?? 0) > 0,
     },

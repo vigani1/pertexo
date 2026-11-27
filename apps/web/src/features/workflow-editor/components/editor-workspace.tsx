@@ -6,6 +6,8 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
+import { useLastRun } from '../hooks/use-last-run';
+import { LastRunLine } from './canvas/last-run-line';
 import { AddStepLens } from './add-step/lens';
 import { NoteTools } from './canvas/notes/tools';
 import { TestResultBar } from './chrome/test-result-bar';
@@ -67,6 +69,7 @@ export function EditorWorkspace({
   const testRef = useRef<NodeTestHandle>(null);
   const { navigation } = actions;
   const lastTest = useLastTest();
+  const lastRun = useLastRun({ apiClient, userId, workspace, workflowId });
   const [proposalOpen, setProposalOpen] = useState(false);
   const { chrome: workspaceChrome, setFeedbackTarget } = useWorkspaceChrome({
     tests,
@@ -95,7 +98,12 @@ export function EditorWorkspace({
       setProposalOpen(open);
     },
   };
-  const overlays = useCanvasOverlays(editing.issues, effects, testStatuses);
+  const overlays = useCanvasOverlays(
+    editing.issues,
+    effects,
+    testStatuses,
+    lastRun.shown ? lastRun.overlay : undefined,
+  );
   return (
     <EditorLayout
       history={
@@ -137,6 +145,7 @@ export function EditorWorkspace({
           onOpenInspector={() => {
             navigation.setMobilePanel('inspector');
           }}
+          onAddStep={addStep.focus}
         />
       }
       addStep={
@@ -185,7 +194,16 @@ export function EditorWorkspace({
       }}
       header={{
         bar: bar(chrome),
-        canvasTools: <NoteTools editable={editable} containerRef={canvasRef} />,
+        canvasTools: (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <NoteTools editable={editable} containerRef={canvasRef} />
+            <LastRunLine
+              overlay={lastRun.overlay}
+              shown={lastRun.shown}
+              onToggle={lastRun.toggle}
+            />
+          </div>
+        ),
         banner: <>{banner}</>,
       }}
     />

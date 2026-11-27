@@ -32,6 +32,8 @@ import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
 import { useCanvasFraming } from './use-framing';
 import { CanvasZoomLens } from './zoom-lens';
+import { CanvasToolbar } from './canvas-toolbar';
+import { LaneBands } from './lane-bands';
 import { ForEachNodeCard } from './cards/for-each';
 import { WorkflowEdge } from './workflow-edge';
 import { WorkflowNodeCard } from './cards/node';
@@ -80,6 +82,8 @@ type WorkflowCanvasProps = Readonly<{
     onAddToBody: (loopId: string, opener: HTMLElement) => void;
     /** A step was double-clicked or double-tapped: show it in its panel. */
     onOpenStep: (nodeId: string) => void;
+    /** Opens the add-step search, as / does. */
+    onAddStep: () => void;
   }>;
 }>;
 
@@ -163,7 +167,15 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           // a press that began on one step ended on another.
           className="!overflow-clip !bg-transparent workflow-canvas-colors"
         >
+          <LaneBands />
           <CanvasZoomLens
+            onFit={() => {
+              fit({ animate: true });
+            }}
+          />
+          <CanvasToolbar
+            editable={editable}
+            onAddStep={props.actions.onAddStep}
             onFit={() => {
               fit({ animate: true });
             }}
