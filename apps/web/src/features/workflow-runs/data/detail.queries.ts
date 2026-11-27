@@ -15,13 +15,36 @@ export function workflowRunQueryOptions(
   userId: string,
   workspaceId: string,
   runId: string,
-  surface: 'page' | 'canvas' = 'page',
+) {
+  const runKey = workflowRunKeys.detail(userId, workspaceId, runId);
+  return runSnapshotQueryOptions(apiClient, workspaceId, runId, { runKey });
+}
+
+export function canvasRunQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
 ) {
   const runKey = workflowRunKeys.detail(userId, workspaceId, runId);
   // Leaving the canvas cancels its in-flight read when its observer unmounts.
   // The route loader needs its own request to survive that transition.
+  return runSnapshotQueryOptions(apiClient, workspaceId, runId, {
+    runKey,
+    surface: 'canvas',
+  });
+}
+
+type RunKey = ReturnType<typeof workflowRunKeys.detail>;
+
+function runSnapshotQueryOptions(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  { runKey, surface }: Readonly<{ runKey: RunKey; surface?: 'canvas' }>,
+) {
   const queryKey =
-    surface === 'canvas' ? ([...runKey, surface] as const) : runKey;
+    surface === undefined ? runKey : ([...runKey, surface] as const);
   return queryOptions({
     queryKey,
     queryFn: async ({ signal, client }) => {

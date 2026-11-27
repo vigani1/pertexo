@@ -35,8 +35,8 @@ it.each(['succeeded', 'outcome_unknown'] as const)(
     const label = 'Read order';
     const graph = { ...oneStepGraph, nodes: [{ ...step, label }] };
     const completedAt = run.updatedAt;
-    const detailRequested = deferred<void>();
-    const releaseDetails = deferred<void>();
+    const detailRequested = deferred<undefined>();
+    const releaseDetails = deferred<undefined>();
     let accepted = false;
     let completed = false;
     mockServer.use(
@@ -68,7 +68,7 @@ it.each(['succeeded', 'outcome_unknown'] as const)(
         HttpResponse.json({ output: { kind: 'none' } }),
       ),
       http.get(`${runApi}/${runId}`, async () => {
-        detailRequested.resolve();
+        detailRequested.resolve(undefined);
         await releaseDetails.promise;
         return HttpResponse.json({
           run: completed ? { ...run, status, completedAt } : run,
@@ -99,9 +99,7 @@ it.each(['succeeded', 'outcome_unknown'] as const)(
     await renderLoadedApp(editorPath);
     await findCanvas();
     const event = userEvent.setup();
-    await event.click(
-      await screen.findByRole('button', { name: 'Run', exact: true }),
-    );
+    await event.click(await screen.findByRole('button', { name: 'Run' }));
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),
     );
@@ -109,7 +107,7 @@ it.each(['succeeded', 'outcome_unknown'] as const)(
     try {
       await screen.findByRole('status', { name: 'Loading' });
     } finally {
-      releaseDetails.resolve();
+      releaseDetails.resolve(undefined);
     }
     expect(
       await screen.findByRole(

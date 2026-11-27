@@ -5,8 +5,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { isActiveRunStatus } from '@/features/workflow-runs/public';
 import {
+  canvasRunQueryOptions,
   latestWorkflowRunQueryOptions,
-  workflowRunQueryOptions,
 } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { useEditorStore } from '../model/state/context';
 import { lastRunOverlay, type LastRunOverlay } from '../model/canvas/last-run';
@@ -41,13 +41,7 @@ export function useLastRun({
   });
   const listed = latest.data ?? null;
   const detail = useQuery({
-    ...workflowRunQueryOptions(
-      apiClient,
-      userId,
-      workspace.id,
-      listed?.id ?? '',
-      'canvas',
-    ),
+    ...canvasRunQueryOptions(apiClient, userId, workspace.id, listed?.id ?? ''),
     enabled: listed !== null,
     // A live run is followed step by step while the canvas is open.
     refetchInterval: (query) => {

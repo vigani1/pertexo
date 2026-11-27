@@ -138,7 +138,7 @@ it('offers Regenerate after a draft conflict and prevents resubmitting the stale
     screen.queryByRole('button', { name: 'Send to model' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: 'Edit', exact: true }),
+    screen.queryByRole('button', { name: 'Edit' }),
   ).not.toBeInTheDocument();
   await actor.click(screen.getByRole('button', { name: 'Regenerate' }));
   expect(

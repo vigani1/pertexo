@@ -13,6 +13,7 @@ export {
   type RunStatistics,
 } from './data/statistics.queries';
 export {
+  canvasRunQueryOptions,
   stepHealthQueryOptions,
   stepRunsQueryOptions,
   workflowRunQueryOptions,
