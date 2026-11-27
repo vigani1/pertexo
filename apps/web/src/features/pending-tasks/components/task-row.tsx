@@ -71,7 +71,7 @@ export function TaskRow({
           <Link
             to="/w/$workspaceId/requests/$taskId"
             params={{ workspaceId: task.workspaceId, taskId: task.id }}
-            search={search}
+            {...(search === undefined ? {} : { search })}
             aria-current={selected ? 'page' : undefined}
             className={cn(
               "min-w-0 break-words outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60",
@@ -149,7 +149,7 @@ function TaskAction({
     <Link
       to="/w/$workspaceId/requests/$taskId"
       params={{ workspaceId: task.workspaceId, taskId: task.id }}
-      search={search}
+      {...(search === undefined ? {} : { search })}
       className={buttonVariants({ size: 'sm' })}
     >
       Respond
