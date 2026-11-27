@@ -2,7 +2,8 @@ import { responseSchema } from '../shared/response-schema.js';
 import { RUN_STATUSES } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-const LIST_SUMMARY_BOUNDS = Object.freeze({
+/** How many of a workflow's latest runs its list summary carries. */
+export const LIST_SUMMARY_BOUNDS = Object.freeze({
   recentRunsItems: 20,
 });
 

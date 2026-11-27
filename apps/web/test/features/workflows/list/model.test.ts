@@ -225,14 +225,18 @@ describe('failure strips', () => {
     expect(strip.ticks.map((tick) => Math.round(tick.position))).toEqual([
       93, 50,
     ]);
-    // An older run was loaded, so the thread covers the whole week.
     expect(strip.start).toBe(0);
   });
 
-  it('starts the thread at the oldest loaded run inside the week', () => {
-    const strip = failureStrip([run('succeeded', 84)], now);
+  it('starts the thread at the oldest run a full summary carries', () => {
+    const busy = Array.from({ length: 20 }, (_, index) =>
+      run('succeeded', 84 - index),
+    );
+    const strip = failureStrip(busy, now);
     expect(strip.ticks).toEqual([]);
     expect(strip.start).toBe(50);
+    // Fewer runs than the summary holds: the rest of the week had none.
+    expect(failureStrip([run('succeeded', 84)], now).start).toBe(0);
   });
 
   it('has no thread for a week without runs', () => {

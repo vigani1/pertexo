@@ -19,8 +19,8 @@ const FLOW_CLASS = {
 } as const;
 
 /**
- * A workflow's silhouette: dots for steps, curved threads for connections,
- * the trigger lit in cyan. `muted` draws an unpublished draft; `flow` sends
+ * A workflow's silhouette in ink: dots for steps, curved threads for
+ * connections, the trigger a touch larger. `muted` draws an unpublished draft; `flow` sends
  * light along each thread, always or while its starter card is hovered.
  * A workflow without steps draws the empty thread, never a blank gap.
  * Always decorative.
@@ -76,7 +76,7 @@ export function PatternGlyph({
                 'fill-none',
                 muted
                   ? 'stroke-subtle-foreground/45 [stroke-dasharray:2_2]'
-                  : 'stroke-accent-foreground/35',
+                  : 'stroke-subtle-foreground',
               )}
             />
             {flow === undefined ? null : (
@@ -153,6 +153,8 @@ function nodeFill({
   muted,
   trigger,
 }: Readonly<{ muted: boolean; trigger: boolean }>): string {
+  // Ink, not cyan: a workflow's shape is identity, and colour means
+  // attention. The trigger is only a touch larger.
   if (muted) return 'fill-subtle-foreground';
-  return trigger ? 'fill-primary drop-shadow-live' : 'fill-accent-foreground';
+  return trigger ? 'fill-foreground/80' : 'fill-muted-foreground';
 }
