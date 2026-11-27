@@ -299,6 +299,10 @@ describe('workflow publication projections', () => {
         workspaceId,
       });
       recordBenchmarkOperation('workflow-publish-initial', operationStartedAt);
+      expect(first.version).toMatchObject({
+        publishedBy: actorId,
+        publisherName: 'Workflow Author',
+      });
       await expect(
         authoring.getVersion(
           workspaceId,
@@ -309,6 +313,8 @@ describe('workflow publication projections', () => {
       ).resolves.toMatchObject({
         checksum: first.version.checksum,
         graphJson: baseGraph,
+        publishedBy: actorId,
+        publisherName: 'Workflow Author',
       });
       await saveCurrentDraft(catalogAuthoring, {
         actorId,
@@ -481,7 +487,9 @@ describe('workflow publication projections', () => {
           actorId,
           limit: 1,
         }),
-      ).resolves.toMatchObject({ items: [{ versionNumber: 2 }] });
+      ).resolves.toMatchObject({
+        items: [{ versionNumber: 2, publisherName: 'Workflow Author' }],
+      });
 
       await saveCurrentDraft(authoring, {
         actorId,

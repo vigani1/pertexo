@@ -77,6 +77,7 @@ export function version(): WorkflowVersionRecord {
     checksum:
       'wf:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     publishedBy: actorId,
+    publisherName: 'Mira Builder',
     publishedAt: new Date('2026-08-20T12:00:00.000Z'),
   };
 }

@@ -27,6 +27,7 @@ import {
   serializeWorkflowSummary,
   serializeWorkflowValidation,
   serializeWorkflowVersions,
+  type VersionAdditions,
   type WorkflowValidationResult,
 } from './http/serializers.js';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -71,7 +72,7 @@ export type ListWorkflowVersionsInput = WorkflowResourceInput &
     limit?: number;
     after?: string;
     versionId?: string;
-    includeGraphDigest?: boolean;
+    additions?: VersionAdditions;
   }>;
 
 export class ListWorkflowsService {
@@ -324,7 +325,7 @@ export class ListWorkflowVersionsService {
           page.nextCursor === undefined
             ? null
             : encodeVersionCursor(page.nextCursor.beforeVersionNumber),
-          input.includeGraphDigest,
+          input.additions,
         );
       },
     );
