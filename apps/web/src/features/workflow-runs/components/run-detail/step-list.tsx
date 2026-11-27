@@ -1,5 +1,4 @@
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { stepTag } from '../../model/step-inspection/copy';
@@ -61,12 +60,7 @@ export function RunStepList({
                   {stepLine(row, nowMs)}
                 </span>
               </span>
-              <span
-                className={cn(
-                  'flex shrink-0 items-center gap-1.5 font-mono text-xs',
-                  statusToneText[row.tone],
-                )}
-              >
+              <span className="flex shrink-0 items-center gap-1.5 font-mono text-xs text-muted-foreground">
                 <StatusMark display="mark" tone={row.tone} />
                 {row.attempts > 1 ? `×${String(row.attempts)}` : null}
               </span>

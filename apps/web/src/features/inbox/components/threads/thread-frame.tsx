@@ -4,7 +4,6 @@ import {
   StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   Tooltip,
@@ -61,12 +60,7 @@ export function NoticeFrame({
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 sm:flex-nowrap">
           {title}
           {/* The ring already draws the glyph; the word keeps its colour. */}
-          <span
-            className={cn(
-              'shrink-0 text-label font-medium',
-              statusToneText[tone],
-            )}
-          >
+          <span className="shrink-0 text-label font-medium text-muted-foreground">
             {word}
           </span>
           <time

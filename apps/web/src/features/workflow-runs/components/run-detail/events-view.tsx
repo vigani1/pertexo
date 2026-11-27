@@ -2,8 +2,6 @@ import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
-import { cn } from '@/lib/class-names';
 import { describeRunEvent } from '../../model/timeline/event-copy';
 
 /**
@@ -53,11 +51,7 @@ export function RunEventsView({
               <span className="pt-px text-right font-mono text-caption text-subtle-foreground">
                 {line.offset}
               </span>
-              <StatusMark
-                display="mark"
-                tone={line.tone}
-                className={cn('mt-0.5', statusToneText[line.tone])}
-              />
+              <StatusMark display="mark" tone={line.tone} className="mt-0.5" />
               {/* The raw type trails the sentence on hover or focus without
                   taking a line of its own, so rows keep one line's height. */}
               <span className="min-w-0">
