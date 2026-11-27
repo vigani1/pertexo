@@ -1,13 +1,8 @@
 import { screen, within } from '@testing-library/react';
-import type userEvent from '@testing-library/user-event';
 import { HttpResponse } from 'msw';
 import { workflowApi, workflowId, workspaceId } from '../fixtures';
-export async function limitField(event: ReturnType<typeof userEvent.setup>) {
+export async function limitField() {
   const section = await screen.findByRole('region', { name: 'Runs at once' });
-  const toggle = await within(section).findByRole('button', {
-    name: /^(Change|Close)$/u,
-  });
-  if (toggle.textContent === 'Change') await event.click(toggle);
   return within(section).findByRole('textbox', { name: 'Runs at once' });
 }
 

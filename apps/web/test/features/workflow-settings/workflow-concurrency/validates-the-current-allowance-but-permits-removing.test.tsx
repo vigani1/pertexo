@@ -44,7 +44,7 @@ describe('workflow concurrency settings', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    const input = await limitField(event);
+    const input = await limitField();
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
@@ -81,7 +81,7 @@ describe('workflow concurrency settings', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    const input = await limitField(event);
+    const input = await limitField();
     await event.type(input, '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
@@ -121,7 +121,7 @@ describe('workflow concurrency settings', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    await event.type(await limitField(event), '1');
+    await event.type(await limitField(), '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
@@ -242,7 +242,6 @@ it('saves Skip with the workflow limit and shows metadata-only skip history', as
   );
   await renderLoadedApp(path);
   const user = userEvent.setup();
-  await limitField(user);
   await user.click(
     await screen.findByRole('combobox', { name: 'When the limit is reached' }),
   );

@@ -14,7 +14,7 @@ import { renderLoadedApp } from '../../../support/render-app';
 
 import { installQueries, workflowApi, workspaceId } from '../fixtures';
 
-import { openEditorFor, path, paused, sentence } from './fixture';
+import { path, paused, sentence } from './fixture';
 
 describe('workflow automatic pause controls', () => {
   it('keeps edits on typed conflict, refreshes authority and waits for explicit resubmission', async () => {
@@ -61,7 +61,6 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
-    await openEditorFor(event, 'Pause after failures in a row');
     const threshold = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
@@ -124,7 +123,6 @@ describe('workflow automatic pause controls', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    await openEditorFor(event, 'Workspace default');
     const input = await screen.findByRole('textbox', {
       name: 'Workspace default',
     });
