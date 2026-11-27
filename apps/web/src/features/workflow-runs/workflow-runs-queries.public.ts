@@ -1,5 +1,6 @@
 export {
   anyRunQueryOptions,
+  latestWorkflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
 } from './data/history.queries';
 export {

@@ -33,6 +33,13 @@ export const workflowRunKeys = {
     [...workflowRunKeys.scope(userId, workspaceId), 'attention-24h'] as const,
   loom: (userId: string, workspaceId: string, windowMs: number) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'loom', windowMs] as const,
+  /** A workflow's newest run, which the editor draws under its steps. */
+  latest: (userId: string, workspaceId: string, workflowId: string) =>
+    [
+      ...workflowRunKeys.scope(userId, workspaceId),
+      'latest',
+      workflowId,
+    ] as const,
   anyRun: (userId: string, workspaceId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'any'] as const,
 };

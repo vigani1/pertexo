@@ -22,6 +22,7 @@ type SurfaceProps = Readonly<{
   checking: boolean;
   showStartPicker: boolean;
   onOpenInspector: () => void;
+  onAddStep: () => void;
 }>;
 export function WorkspaceSurface({
   definitions,
@@ -34,6 +35,7 @@ export function WorkspaceSurface({
   checking,
   showStartPicker,
   onOpenInspector,
+  onAddStep,
 }: SurfaceProps) {
   const { canvasRef, adding, selection } = canvas;
   const samples = useQuery({
@@ -59,6 +61,7 @@ export function WorkspaceSurface({
           // up where panels fold away, and leaves the tab as it was.
           onOpenInspector();
         },
+        onAddStep,
       }}
     >
       {showStartPicker ? (

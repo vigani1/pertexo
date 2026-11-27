@@ -120,6 +120,7 @@
   --animate-tip: tip-pulse 1.2s ease-in-out infinite;
   --animate-knot: knot-pop 0.6s var(--ease-unspool);
   --animate-fray: fray-in 0.5s ease-out;
+  --animate-node-live: node-live 1.9s ease-in-out infinite;
 }
 
 :root {
@@ -143,6 +144,7 @@
   --glass-border-subtle: rgba(255, 255, 255, 0.07);
   --scrim-glass: rgba(8, 9, 11, 0.55);
   --weave-line: rgba(255, 255, 255, 0.06);
+  --lane: rgba(255, 255, 255, 0.022);
   --lens-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
   --ground-deep: #0d0f11;
   --well: #0b0d0f;
@@ -235,6 +237,7 @@
   --glass-border-subtle: rgba(18, 53, 91, 0.14);
   --scrim-glass: rgba(214, 224, 229, 0.55);
   --weave-line: rgba(18, 53, 91, 0.16);
+  --lane: rgba(18, 53, 91, 0.035);
   --lens-shadow: 0 0 40px -16px rgba(18, 53, 91, 0.28);
   --ground-deep: #e9eef0;
   --well: #e4eaec;
@@ -526,6 +529,23 @@
     transparent 1px 12px
   );
   mask-image: linear-gradient(180deg, black, transparent 32%);
+}
+
+/* A step the last run is working in: a live outline; the halo breathes
+   with animate-node-live. */
+@utility node-live {
+  box-shadow:
+    inset 0 0 0 1px var(--live-line),
+    var(--raised-shadow);
+}
+
+/* A branch's lane behind its steps on the canvas: a soft band between
+   hairlines that fades to the right. */
+@utility lane-band {
+  background: linear-gradient(90deg, var(--lane), transparent 80%);
+  box-shadow:
+    inset 0 1px 0 var(--border),
+    inset 0 -1px 0 var(--border);
 }
 
 /* The weave: the editor canvas and run maps share this texture. */
@@ -1091,6 +1111,15 @@
 }
 
 /* editor slice */
+/* A running step breathes: a live outline and a soft halo that swells. */
+@keyframes node-live {
+  50% {
+    box-shadow:
+      inset 0 0 0 1px var(--live-line),
+      0 0 0 6px var(--live-soft),
+      var(--raised-shadow);
+  }
+}
 @keyframes editor-edge-flow {
   to {
     stroke-dashoffset: -16;

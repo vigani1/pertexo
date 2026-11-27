@@ -120,8 +120,9 @@ export function EditorLayout({
             </aside>
             {overlay}
             {bottomLens === null ? null : (
-              // Clear of the zoom lens in the bottom-left corner at every size.
-              <div className="pointer-events-none absolute right-0 bottom-14 left-12 z-30 flex justify-center sm:left-52 lg:bottom-0 lg:left-[calc(var(--editor-left-inset)+10.25rem)] lg:right-[calc(var(--editor-right-inset)-0.75rem)]">
+              // Clear of the zoom lens in the bottom-left corner at every size,
+              // and from 1024px above the canvas toolbar.
+              <div className="pointer-events-none absolute right-0 bottom-14 left-12 z-30 flex justify-center sm:left-52 lg:bottom-14 lg:left-[calc(var(--editor-left-inset)+10.25rem)] lg:right-[calc(var(--editor-right-inset)-0.75rem)]">
                 <div className="w-full max-w-xl">{bottomLens}</div>
               </div>
             )}

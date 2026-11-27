@@ -19,6 +19,7 @@ export function FlowZoomLens<NodeType extends Node>({
   nodeStrokeColor,
   onFit,
   className,
+  controlsClassName,
 }: Readonly<{
   /** Names the overview map: "Workflow overview". */
   mapLabel: string;
@@ -30,6 +31,8 @@ export function FlowZoomLens<NodeType extends Node>({
   /** Replaces the plain fit, e.g. with the editor's own framing. */
   onFit?: () => void;
   className?: string;
+  /** Hides the zoom buttons where the graph has its own toolbar. */
+  controlsClassName?: string;
 }>) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const reducedMotion = usePrefersReducedMotion();
@@ -58,7 +61,7 @@ export function FlowZoomLens<NodeType extends Node>({
           className="!static !m-0 !hidden overflow-hidden rounded-sm flow-minimap sm:!block"
         />
       ) : null}
-      <div className="flex flex-col gap-1">
+      <div className={cn('flex flex-col gap-1', controlsClassName)}>
         <Button
           type="button"
           size="icon-xs"
