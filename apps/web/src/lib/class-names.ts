@@ -11,6 +11,10 @@ const TYPE_SCALE = [
   'wordmark',
   'wordmark-lg',
   'display',
+  'meta',
+  'section',
+  'figure',
+  'hero',
 ] as const;
 
 const merge = extendTailwindMerge({

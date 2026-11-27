@@ -72,7 +72,6 @@
   --shadow-sunken: var(--sunken-shadow);
   --shadow-selection: var(--selection-ring);
   --shadow-live: var(--live-glow);
-  --ease-weft-in-out: cubic-bezier(0.6, 0, 0.4, 1);
 
   --color-surface-ink: var(--surface-ink);
   --color-recess-ink: var(--recess-ink);
@@ -1380,4 +1379,19 @@
 
 @utility drop-shadow-live {
   filter: drop-shadow(var(--live-glow));
+}
+
+/* React Flow consumes these paint roles through its own custom properties. */
+@utility flow-minimap {
+  --xy-minimap-background-color: var(--glass-background);
+  --xy-minimap-mask-background-color: var(--scrim-glass);
+  --xy-minimap-mask-stroke-color: var(--action-line);
+  --xy-minimap-node-background-color: var(--subtle-foreground);
+}
+
+@utility workflow-canvas-colors {
+  --xy-edge-stroke: var(--graph-link);
+  --xy-connectionline-stroke: var(--action);
+  --xy-selection-background-color: var(--select);
+  --xy-selection-border: 1px solid var(--action-line);
 }

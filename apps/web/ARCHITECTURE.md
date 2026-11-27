@@ -909,8 +909,8 @@ their own:
 | Status colour  | `components/patterns/status/status-mark.tsx`, `components/patterns/status/status-tone.ts` | `StatusMark` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                                        |
 | Pagination     | `lib/api/pagination.ts`                                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
 | Setting        | `components/patterns/settings/sentence.tsx`                                               | `SettingSentence`: a setting read as one sentence of its current value; Change opens its unchanged editor in place (kept mounted, so edits and an unconfirmed retry survive closing) and the rules wait in "How this works"                                                                                                       |
-| Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); a bead per page and a knot for the open one while the page has room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |
-| Day range      | `components/patterns/dates/day-range-form.tsx`                                            | `DayRangeForm`: whole days in the person's time zone on one calendar, shared by the Runs and audit time filters                                                                                                                                                                                                                   |
+| Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); plain grouped words and a knot for the open page when there is room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |
+| Day range      | `components/patterns/dates/day-range-form.tsx`                                            | `DayRangeForm`: presets and a calendar in the person’s time zone, shared by the Runs and Audit log time filters                                                                                                                                                                                                                   |
 
 The Loom uses Canvas for drawing and native SVG links over the plotted runs for
 pointer and keyboard navigation. Both share the run geometry. Focus has a
@@ -942,14 +942,14 @@ narrow one, `3m ago`), `format-bytes.ts` (byte sizes for files and payloads),
 sentences, uncertain outcome, forbidden, rate-limit and support reference
 helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
-The inbox's new-failure notice is the one anchored toast. It uses its own Base
-UI toast manager (`features/inbox/components/arrivals/listener.tsx`), not a
-second toast system: a thread leaves the Inbox destination and stops at the
-failure glyph where the notice opens. It never shows on the inbox page, failures
-arriving together share one notice, and the first summary a tab loads announces
-nothing. Base UI turns swiping off for anchored toasts, so the notice brings its
-own (`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine
-or down into the phone bar, dismisses it like the close button, and it stays
+The inbox's new-failure notice uses an anchored Base UI toast manager
+(`features/inbox/components/arrivals/listener.tsx`). A thread links the notice
+to the Inbox destination. The ring around Close shows time left and pauses while
+the notice is hovered or focused. It stays off the Inbox page. Failures arriving
+together share one notice, and the first summary a tab loads announces nothing.
+Base UI turns swiping off for anchored toasts, so the notice brings its own
+(`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine or
+down into the phone bar, dismisses it like the close button, and it stays
 unread.
 
 #### Structure
@@ -957,17 +957,17 @@ unread.
 - `/w/$workspaceId` resolves the person and workspace once (`beforeLoad`); an
   unavailable workspace renders the full-screen unavailable page. The pathless
   `shell` layout renders the spine (Home Core, Workflows, Runs with live count,
-  Connections · Team, Alerts, Settings, API tokens · Search, account), the
-  breadcrumb rooted in the workspace switcher, banners and the page. Phones get
-  a bottom bar with a More sheet. ⌘K opens the command palette. The shell route
-  also provides `CommandPaletteContext` (`routes/command-palette-context.ts`); a
-  page route reads `useOpenCommandPalette()` and hands its feature a plain
-  callback (Home's Search), so features never import routes.
-- `/w/$workspaceId/workflows/$workflowId` is the immersive workflow hub (no
-  spine) with Build (index), Runs, Triggers, Versions and Settings tabs. Every
-  tab renders `WorkflowHubBar` (from
-  `features/workflows/workflows-views.public.ts`) with its own right-hand
-  actions; Build embeds the editor.
+  Inbox with unread count, Data tables, Connections, Team, Settings, Help,
+  theme, Search, account), the breadcrumb rooted in the workspace switcher,
+  banners and the page. Phones get a bottom bar with Home, Workflows, Runs,
+  Inbox and a More sheet. ⌘K opens the command palette. The shell route also
+  provides `CommandPaletteContext` (`routes/command-palette-context.ts`); a page
+  route reads `useOpenCommandPalette()` and hands its feature a plain callback
+  (Home's Search), so features never import routes.
+- `/w/$workspaceId/workflows/$workflowId` uses the same shell around a workflow
+  hub with Build (index), Runs, Triggers, Versions and Settings tabs. Every tab
+  renders `WorkflowHubBar` (from `features/workflows/workflows-views.public.ts`)
+  with its own right-hand actions; Build embeds the editor.
 - Routes are thin compositions (`useWorkspaceScope`, `useWorkflowHubScope`) and
   set document titles with `pageTitle`. Resource pages render `ResourceNotFound`
   inside the frame for missing runs or workflows; their loaders use

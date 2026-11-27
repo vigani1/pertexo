@@ -2,30 +2,14 @@ import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 import type { StepPresentation } from '../model/steps/registry';
 
-// Family colours: trigger cyan, action ice, logic lavender, transform mint,
-// output neutral. The tile is decorative; the step name carries meaning.
 const tileVariants = cva(
-  'grid shrink-0 place-items-center inset-ring inset-ring-(--tile-ring)',
+  'grid shrink-0 place-items-center bg-select-raised text-muted-foreground inset-ring inset-ring-border',
   {
     variants: {
-      family: {
-        trigger:
-          'bg-primary/10 text-primary [--tile-ring:color-mix(in_srgb,var(--primary)_25%,transparent)]',
-        action:
-          'bg-accent-foreground/7 text-accent-foreground [--tile-ring:color-mix(in_srgb,var(--accent-foreground)_18%,transparent)]',
-        logic:
-          'bg-secondary/9 text-secondary [--tile-ring:color-mix(in_srgb,var(--secondary)_24%,transparent)]',
-        transform:
-          'bg-success/8 text-success [--tile-ring:color-mix(in_srgb,var(--success)_22%,transparent)]',
-        output:
-          'bg-surface-ink/5 text-muted-foreground [--tile-ring:var(--border-strong)]',
-        unknown:
-          'bg-surface-ink/4 text-subtle-foreground [--tile-ring:var(--border)]',
-      },
       size: {
-        sm: 'size-6.5 rounded-[0.5rem] [&_svg]:size-3.5',
-        md: 'size-7.5 rounded-[0.5625rem] [&_svg]:size-4',
-        lg: 'size-9.5 rounded-[0.6875rem] [&_svg]:size-5',
+        sm: 'size-6.5 rounded-sm [&_svg]:size-3.5',
+        md: 'size-7.5 rounded-sm [&_svg]:size-4',
+        lg: 'size-9.5 rounded-md [&_svg]:size-5',
       },
     },
     defaultVariants: { size: 'md' },
@@ -46,7 +30,7 @@ export function StepTile({
     <span
       aria-hidden="true"
       data-family={step.family}
-      className={cn(tileVariants({ family: step.family, size }), className)}
+      className={cn(tileVariants({ size }), className)}
     >
       <Icon />
     </span>

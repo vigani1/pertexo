@@ -56,16 +56,16 @@ type NodeSize = Readonly<{ width: number; height: number }>;
 type RunEdge = Edge<RunEdgeData, 'runEdge'>;
 const toneFill: Readonly<Record<StatusTone, string>> = {
   live: 'var(--primary)',
-  queued: 'color-mix(in srgb, var(--secondary) 70%, transparent)',
+  queued: 'var(--subtle-foreground)',
   waiting: 'var(--secondary)',
   success: 'var(--success)',
   failure: 'var(--destructive)',
   timeout: 'var(--destructive)',
   attention: 'var(--warning)',
-  canceled: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
-  off: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
-  skipped: 'color-mix(in srgb, var(--subtle-foreground) 45%, transparent)',
-  neutral: 'color-mix(in srgb, var(--muted-foreground) 60%, transparent)',
+  canceled: 'var(--subtle-foreground)',
+  off: 'var(--subtle-foreground)',
+  skipped: 'var(--subtle-foreground)',
+  neutral: 'var(--subtle-foreground)',
 };
 const nodeTypes = Object.freeze({ runNode: WorkflowRunNode });
 const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
@@ -382,7 +382,7 @@ function WorkflowRunEdge({
       {(data?.active ?? false) ? (
         <circle
           r="2.5"
-          className="workflow-transfer-marker fill-accent-foreground [filter:drop-shadow(0_0_5px_color-mix(in_srgb,var(--primary)_70%,transparent))] motion-reduce:hidden"
+          className="workflow-transfer-marker fill-accent-foreground drop-shadow-live motion-reduce:hidden"
           aria-hidden="true"
         >
           <animate

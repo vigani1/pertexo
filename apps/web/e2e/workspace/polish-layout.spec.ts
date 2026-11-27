@@ -1,3 +1,4 @@
+import { deferred } from '../../test/support/fixtures/workflow-editor';
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import {
   httpDraft,
@@ -82,11 +83,20 @@ async function routes(page: Page) {
         window:
           new URL(route.request().url()).searchParams.get('window') ?? '24h',
         workflows: [],
+        current: { running: 2 },
       }),
     }),
   );
+  const createdAt = new Date().toISOString();
   await page.route('**/v1/workspaces/*/runs?**', (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
+    route.fulfill({
+      json: {
+        items: [
+          fixtureRun(runId, 'running', { createdAt, startedAt: createdAt }),
+        ],
+        nextCursor: null,
+      },
+    }),
   );
   await page.route(`**/v1/workspaces/*/runs/${runId}`, (route) =>
     route.fulfill({ json: { run: fixtureRun(runId, 'succeeded'), nodes: [] } }),
@@ -194,6 +204,62 @@ async function routes(page: Page) {
       },
     }),
   );
+}
+
+async function captureInboxArrival(
+  page: Page,
+  shot: (name: string) => Promise<void>,
+) {
+  const change = deferred<void>();
+  let revision = '1';
+  await page.route('**/v1/workspaces/*/notifications/summary', (route) =>
+    route.fulfill({ json: { unreadCount: Number(revision), revision } }),
+  );
+  await page.route('**/v1/workspaces/*/notifications?**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            noticeKind: 'workflow_failure',
+            workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            workflowName: 'Nightly import',
+            kind: 'failed',
+            failureDays: [],
+            occurrenceCount: 2,
+            firstOccurredAt: '2026-09-15T09:00:00.000000Z',
+            latestOccurredAt: '2026-09-15T09:30:00.000000Z',
+            latestRunId: runId,
+            latestFailedStep: null,
+            revision,
+            unread: true,
+          },
+        ],
+        nextCursor: null,
+        revision,
+      },
+    }),
+  );
+  await page.route('**/v1/workspaces/*/notifications/events', async (route) => {
+    await change.promise;
+    await route.fulfill({
+      contentType: 'text/event-stream',
+      body: 'event: inbox.ready\ndata: {"revision":null}\n\nevent: inbox.changed\ndata: {"revision":"2"}\n\n',
+    });
+  });
+  await page.goto(`/w/${workspaceId}`);
+  await expect(
+    page.getByRole('link', { name: 'Inbox, 1 unread' }),
+  ).toBeVisible();
+  revision = '2';
+  change.resolve();
+  const notice = page.getByRole('dialog', { name: 'Nightly import' });
+  await expect(
+    notice.getByRole('button', { name: 'Dismiss notification' }),
+  ).toBeVisible();
+  await shot('inbox-arrival');
+  await notice.getByRole('button', { name: 'Dismiss notification' }).click();
+  await expect(notice).toBeHidden();
 }
 
 for (const [width, height] of viewports)
@@ -385,5 +451,6 @@ for (const [width, height] of viewports)
         .getByRole('button', { name: 'Upload part file', exact: true })
         .click();
       await shot('upload-file');
+      await captureInboxArrival(page, shot);
     });
   }

@@ -32,6 +32,11 @@ describe('Weft visual primitives', () => {
     );
   });
 
+  it('names a mark when its status is displayed elsewhere', () => {
+    render(<StatusMark display="mark" tone="off" />);
+    expect(screen.getByRole('img', { name: 'Off' })).toBeVisible();
+  });
+
   it('holds an invalid control without changing it', async () => {
     const { container } = render(
       <FieldControl>

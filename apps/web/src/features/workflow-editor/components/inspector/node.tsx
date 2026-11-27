@@ -260,12 +260,10 @@ function pulse(element: Element | null | undefined) {
   element.animate(
     [
       {
-        boxShadow:
-          '0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent)',
+        boxShadow: '0 0 0 0 var(--action-line)',
       },
       {
-        boxShadow:
-          '0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent)',
+        boxShadow: '0 0 0 10px transparent',
       },
     ],
     { duration: 700, iterations: 2, easing: 'ease-out' },

@@ -161,7 +161,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           // container: a hidden overflow still scrolls when something brings
           // a step into view, React Flow scrolls it back a frame later, and
           // a press that began on one step ended on another.
-          className="!overflow-clip !bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
+          className="!overflow-clip !bg-transparent workflow-canvas-colors"
         >
           <CanvasZoomLens
             onFit={() => {
