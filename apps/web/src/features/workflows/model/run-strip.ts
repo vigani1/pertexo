@@ -1,4 +1,7 @@
-import type { WorkflowRunReadSummary } from '@pertexo/contracts';
+import {
+  LIST_SUMMARY_BOUNDS,
+  type WorkflowRunReadSummary,
+} from '@pertexo/contracts';
 
 type RecentRun = Pick<WorkflowRunReadSummary, 'status' | 'createdAt'>;
 
@@ -10,9 +13,9 @@ export type FailureTick = Readonly<{ at: string; position: number }>;
 
 /**
  * A workflow's failures over the last week, as positions from 0 (a week ago)
- * to 100 (now). The list summary carries only the latest runs, so the thread
- * starts where that evidence starts: at the oldest loaded run when it is
- * inside the week, otherwise at the week's start. A week without runs has no
+ * to 100 (now). The list summary carries only the latest runs; when it is
+ * full and all of them fall inside the week, earlier runs are unknown, so
+ * the thread starts at the oldest one it has. A week without runs has no
  * thread at all.
  */
 export type FailureStrip = Readonly<{
@@ -31,11 +34,13 @@ export function failureStrip(
     return age >= 0 && age < WINDOW_MS;
   });
   if (inWeek.length === 0) return { ticks: [], start: undefined };
-  const olderLoaded = inWeek.length < runs.length;
+  const capped =
+    inWeek.length === runs.length &&
+    runs.length >= LIST_SUMMARY_BOUNDS.recentRunsItems;
   return {
     ticks: inWeek
       .filter((run) => run.status === 'failed' || run.status === 'timed_out')
       .map((run) => ({ at: run.createdAt, position: position(run) })),
-    start: olderLoaded ? 0 : Math.min(...inWeek.map(position)),
+    start: capped ? Math.min(...inWeek.map(position)) : 0,
   };
 }

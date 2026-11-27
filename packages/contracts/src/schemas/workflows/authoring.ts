@@ -14,6 +14,8 @@ export {
 } from './read-queries.js';
 import { workflowGraphDigestSchema } from './graph-digest.js';
 import { workflowListSummarySchema } from './list-summary.js';
+
+export { LIST_SUMMARY_BOUNDS } from './list-summary.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 
