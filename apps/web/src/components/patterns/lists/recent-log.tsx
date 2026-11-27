@@ -6,13 +6,11 @@ import {
   StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import {
   formatDateTime,
   formatDayHeading,
   formatRelativeTime,
 } from '@/lib/format/time';
-import { cn } from '@/lib/class-names';
 
 /** The parts of a paged (infinite) query a recent-activity list reads. */
 export type RecentLogQuery = Readonly<{
@@ -172,11 +170,7 @@ export function RecentLogEntry({
 }>) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
-      <StatusMark
-        display="mark"
-        tone={tone}
-        className={cn('mt-0.5', statusToneText[tone])}
-      />
+      <StatusMark display="mark" tone={tone} className="mt-0.5" />
       <div className="min-w-0">
         <p className="text-sm font-medium">{label}</p>
         {detail === undefined ? null : (

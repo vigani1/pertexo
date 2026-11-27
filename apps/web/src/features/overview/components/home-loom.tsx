@@ -4,7 +4,6 @@ import {
   StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { RunLoom } from '@/features/workflow-runs/workflow-runs-views.public';
 import {
@@ -106,12 +105,7 @@ export function HomeLoom({
             <li key={tone} className="inline-flex items-center gap-1.5">
               {/* Each glyph in its status colour, as the Loom draws it; a key
                   names a status, so it doesn't play one. */}
-              <StatusMark
-                display="mark"
-                tone={tone}
-                still
-                className={statusToneText[tone]}
-              />
+              <StatusMark display="mark" tone={tone} still />
               {label}
             </li>
           ))}

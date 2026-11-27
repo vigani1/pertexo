@@ -1,7 +1,6 @@
 import type { PendingTaskSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { statusToneText } from '@/components/patterns/status/status-tone';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   formatDateTime,
@@ -60,7 +59,7 @@ export function TaskRow({
           >
             {task.title}
           </Link>
-          <span className={cn('text-label font-medium', statusToneText[tone])}>
+          <span className="text-label font-medium text-muted-foreground">
             {waiting ? taskStatusLabel(task.status) : taskOutcome(task)}
           </span>
         </div>

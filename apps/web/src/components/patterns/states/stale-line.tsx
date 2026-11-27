@@ -5,7 +5,7 @@ import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 
 /**
- * A background refresh failed: the data stays on screen and one amber line
+ * A background refresh failed: the data stays on screen and one line
  * says how old it is, with Retry. Never blank a page for a failed refetch.
  * `children` adds one short sentence, e.g. that unsaved edits are kept.
  */
@@ -30,7 +30,7 @@ export function StaleLine({
       role="alert"
       data-slot="stale-line"
       className={cn(
-        'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-warning',
+        'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground',
         className,
       )}
     >
