@@ -46,6 +46,7 @@ export function useLastRun({
       userId,
       workspace.id,
       listed?.id ?? '',
+      'canvas',
     ),
     enabled: listed !== null,
     // A live run is followed step by step while the canvas is open.
