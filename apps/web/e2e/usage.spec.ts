@@ -6,21 +6,11 @@ import {
   createWorkspaceFixture,
 } from '../test/support/fixtures/identity';
 import { expect, test, type Page } from './support/fixtures';
+import { fixtureUsageTrends } from '../test/support/fixtures/usage-trends';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const timestamp = '2026-09-15T10:00:00.000000Z';
-const counts = {
-  queued: 1,
-  running: 1,
-  waiting: 0,
-  succeeded: 1,
-  failed: 1,
-  canceled: 0,
-  timed_out: 0,
-  outcome_unknown: 0,
-};
-
 async function install(
   page: Page,
   options: Readonly<{
@@ -108,39 +98,22 @@ async function install(
         },
       });
     }
-    if (url.pathname.endsWith('/run-statistics')) {
-      if (
-        url.searchParams.get('breakdown') === 'workflow' &&
-        activityStatus !== 200
-      )
+    if (url.pathname.endsWith('/usage-trends')) {
+      if (activityStatus !== 200)
         return activityStatus === 0
           ? route.abort('failed')
           : route.fulfill({ status: activityStatus });
+      const trends = fixtureUsageTrends(
+        url.searchParams.get('period') === '90d' ? '90d' : '30d',
+        workflowId,
+      );
       return route.fulfill({
         json: {
-          asOf: timestamp,
-          current: { queued: 1, running: 1, waiting: 0 },
-          window: {
-            duration: url.searchParams.get('window') ?? '24h',
-            createdAtFrom: '2026-09-14T10:00:00.123456Z',
-            createdAtBefore: timestamp,
-            total: 4,
-            byStatus: counts,
-          },
-          workflows:
-            url.searchParams.get('breakdown') === 'workflow'
-              ? {
-                  items: [
-                    {
-                      workflowId,
-                      workflowName: activityName,
-                      total: 4,
-                      byStatus: counts,
-                    },
-                  ],
-                  truncated: true,
-                }
-              : null,
+          ...trends,
+          busiest: trends.busiest.map((item) => ({
+            ...item,
+            workflowName: activityName,
+          })),
         },
       });
     }
@@ -168,54 +141,33 @@ async function install(
   };
 }
 
-test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile keyboard navigation', async ({
+test('Usage says how much room is left, keeps the range in the URL and fits a phone', async ({
   page,
 }) => {
   await install(page, { policy: 'expired' });
-  await page.goto(`/w/${workspaceId}/settings/usage?window=1h`);
+  await page.goto(`/w/${workspaceId}/settings/usage?period=90d`);
   await expect(
     page.getByRole('heading', { name: 'Usage', exact: true }),
   ).toBeVisible();
-  const capacity = page.getByRole('region', { name: 'Current capacity' });
+  const room = page.getByRole('region', { name: 'Room left' });
+  await expect(room.getByText('8 PB', { exact: true }).first()).toBeVisible();
+  await expect(room).toContainText('of 0 B');
+  await expect(room).toContainText('limits are expired');
+  await expect(room).toContainText('New runs aren’t accepted right now');
   await expect(
-    capacity.getByText('8 PB', { exact: true }).first(),
-  ).toBeVisible();
-  await expect(capacity).toContainText('/ 0 B');
-  await expect(capacity).toContainText('limits are expired');
-  await expect(capacity).toContainText('New runs aren’t accepted right now');
-  await expect(
-    page.getByText('Showing 1 workflow.', { exact: false }),
+    page
+      .getByRole('region', { name: 'By workflow' })
+      .getByText('Daily intake', { exact: true }),
   ).toBeVisible();
   await expectAccessibleInBothThemes(page);
-  await page.getByRole('button', { name: '6 hours' }).click();
-  await expect(page).toHaveURL(/window=6h/u);
-  const failed = page
-    .getByRole('list', { name: 'Activity by current run status' })
-    .getByRole('link', { name: 'Failed 1' });
-  const href = new URL(
-    (await failed.getAttribute('href')) ?? '',
-    'http://127.0.0.1:4173',
-  );
-  expect(href.searchParams.get('createdAtFrom')).toBe(
-    '2026-09-14T10:00:00.123456Z',
-  );
-  expect(href.searchParams.get('createdAtBefore')).toBe(timestamp);
-  await failed.click();
-  await expect(
-    page.getByRole('heading', { name: 'Runs', exact: true }),
-  ).toBeVisible();
-  await page.goto(`/w/${workspaceId}/settings/usage`);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: '7 days' }).focus();
+  await page.getByRole('button', { name: '30 days' }).focus();
   await page.keyboard.press('Space');
-  await expect(page).toHaveURL(/window=7d/u);
-  await expect(page.getByRole('button', { name: '7 days' })).toHaveAttribute(
+  await expect(page).toHaveURL(/period=30d/u);
+  await expect(page.getByRole('button', { name: '30 days' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(
-    page.getByRole('button', { name: 'Refresh recent runs' }),
-  ).toBeEnabled();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -245,26 +197,24 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   ).toHaveAttribute('aria-current', 'page');
 });
 
-test('Usage removes denied cached capacity without hiding retained activity', async ({
+test('Usage removes denied cached capacity without hiding runs per day', async ({
   page,
 }) => {
   const { deny, failCapacity, authorize } = await install(page);
   await page.goto(`/w/${workspaceId}/settings/usage`);
   await expect(page.getByText('8 PB', { exact: true }).first()).toBeVisible();
   deny();
-  await page.getByRole('button', { name: 'Refresh current capacity' }).click();
+  await page.getByRole('button', { name: 'Refresh room left' }).click();
   await expect(page.getByText('8 PB', { exact: true }).first()).toHaveCount(0);
   await expect(page.getByText('Daily intake', { exact: true })).toBeVisible();
   for (const status of [503, 0]) {
     failCapacity(status);
-    await page
-      .getByRole('button', { name: 'Refresh current capacity' })
-      .click();
+    await page.getByRole('button', { name: 'Refresh room left' }).click();
     await expect(
       page.getByText(
         status === 0
-          ? 'Current capacity couldn’t be reached. Check your connection and try again.'
-          : 'Current capacity couldn’t be loaded. Try again.',
+          ? 'Room left couldn’t be reached. Check your connection and try again.'
+          : 'Room left couldn’t be loaded. Try again.',
       ),
     ).toBeVisible();
     await expect(page.getByText('8 PB', { exact: true }).first()).toHaveCount(
@@ -272,41 +222,36 @@ test('Usage removes denied cached capacity without hiding retained activity', as
     );
   }
   authorize();
-  await page.getByRole('button', { name: 'Refresh current capacity' }).click();
+  await page.getByRole('button', { name: 'Refresh room left' }).click();
   await expect(page.getByText('42 B', { exact: true }).first()).toBeVisible();
 });
 
-test('Usage forgets denied activity across windows, transient failures and fresh recovery', async ({
+test('Usage forgets denied runs per day across ranges, transient failures and fresh recovery', async ({
   page,
 }) => {
   const { failActivity, authorize } = await install(page);
   await page.goto(`/w/${workspaceId}/settings/usage`);
   await expect(page.getByText('Daily intake', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '6 hours' }).click();
-  await expect(page).toHaveURL(/window=6h/u);
-  await expect(
-    page.getByRole('button', { name: 'Refresh recent runs' }),
-  ).toBeEnabled();
   failActivity(404);
-  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
+  await page.getByRole('button', { name: 'Refresh runs per day' }).click();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   failActivity(503);
-  await page.getByRole('button', { name: '24 hours' }).click();
+  await page.getByRole('button', { name: '90 days' }).click();
   await expect(
-    page.getByText('Recent runs couldn’t be loaded. Try again.'),
+    page.getByText('Runs per day couldn’t be loaded. Try again.'),
   ).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   failActivity(0);
-  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
+  await page.getByRole('button', { name: 'Refresh runs per day' }).click();
   await expect(
     page.getByText(
-      'Recent runs couldn’t be reached. Check your connection and try again.',
+      'Runs per day couldn’t be reached. Check your connection and try again.',
     ),
   ).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
   await expect(page.getByText('8 PB', { exact: true }).first()).toBeVisible();
   authorize();
-  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
+  await page.getByRole('button', { name: 'Refresh runs per day' }).click();
   await expect(page.getByText('Fresh activity', { exact: true })).toBeVisible();
 });
 
@@ -321,7 +266,6 @@ test('Usage leaves capacity unread for roles without artifact access', async ({
   await expect(
     page.getByText('You need access to runs and files to see capacity.'),
   ).toBeVisible();
-  await expect(page.getByText('Workflow cccc…cccc')).toBeVisible();
-  await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'By workflow' })).toBeVisible();
   expect(requests.some((path) => path.endsWith('/usage-capacity'))).toBe(false);
 });

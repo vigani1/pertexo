@@ -103,7 +103,7 @@ test('requests deletion through the accessible workspace settings flow', async (
   await page.goto(`/w/${workspaceId}/settings`);
 
   await expect(
-    page.getByRole('heading', { name: 'Workspace', exact: true }),
+    page.getByRole('heading', { name: 'How it’s known', exact: true }),
   ).toBeVisible();
   await expect(
     page
@@ -177,7 +177,7 @@ test('keeps a valid unbroken workspace name inside its card at 320 pixels', asyn
   ).toBeVisible();
 
   const section = page
-    .getByRole('heading', { name: 'Workspace', exact: true })
+    .getByRole('heading', { name: 'How it’s known', exact: true })
     .locator('xpath=ancestor::section[1]');
   const name = section.getByText(longName, { exact: true });
   const [nameBox, sectionBox] = await Promise.all([

@@ -3,7 +3,7 @@ import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { z } from 'zod';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -64,12 +64,14 @@ export function AssistantSettings({ scope }: Readonly<{ scope: Scope }>) {
     );
 
   return (
-    <SettingsSection
-      title="AI assistant"
-      description="Choose the connection and model that explain failed runs in this workspace."
-    >
-      {content}
-    </SettingsSection>
+    <SettingsGroup title="AI assistant">
+      <SettingRow
+        title="Connection and model"
+        description="What explains failed runs in plain language. It reads the run, never your connections’ secrets."
+      >
+        {content}
+      </SettingRow>
+    </SettingsGroup>
   );
 }
 
