@@ -296,14 +296,6 @@ export const alertsRedirectRoute = createRoute({
   },
 });
 
-export const workspaceAccountRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
-  path: 'account',
-  ...workspacePage('Account & security'),
-
-  component: lazyRoute(() => import('./account'), 'WorkspaceAccountRoute'),
-});
-
 export const approvalsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals',

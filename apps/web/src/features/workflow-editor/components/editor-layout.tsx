@@ -55,7 +55,7 @@ export function EditorLayout({
   } = panels;
   const leftInset = addStepInset({ editable, addStepCollapsed });
   return (
-    <div className="flex h-svh min-h-0 flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11 max-sm:[&_summary]:min-h-11 max-sm:[&_a]:min-h-11">
+    <div className="flex h-[calc(100svh-5rem)] min-h-0 md:h-svh flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11 max-sm:[&_summary]:min-h-11 max-sm:[&_a]:min-h-11">
       <div
         className="relative flex-1 min-h-0 overflow-hidden bg-background"
         style={

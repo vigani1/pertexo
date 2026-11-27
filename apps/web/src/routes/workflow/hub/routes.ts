@@ -25,7 +25,7 @@ const WorkflowHubPending = lazyPiece(() =>
 );
 
 /**
- * `/workflows/$workflowId` is an immersive hub (no spine): a floating command
+ * `/workflows/$workflowId` is a workflow hub: a floating command
  * bar with Build, Runs, Triggers, Versions and Settings tabs. An invalid ID
  * leaves `workflowId` null and the hub renders "doesn't exist".
  */

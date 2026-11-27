@@ -10,7 +10,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/class-names';
 import {
   settingsGroups,
   type SettingsDestination,
@@ -18,8 +17,7 @@ import {
 } from './settings-destinations';
 
 /**
- * Settings' own navigation. Beside the page, each section is a bead on one
- * thread and the open one is the knot. When the page is too narrow for both
+ * Settings' own navigation. Beside the page, sections are grouped by purpose and the open one carries a knot. When the page is too narrow for both
  * (a container query, not the window) one button names the open section and
  * lists every section in a sheet.
  */
@@ -49,27 +47,25 @@ function RailGroup({
   return (
     <div className="flex flex-col gap-2">
       {/* The list carries the group's name; this only shows it. */}
-      <p aria-hidden="true" className="pl-8 text-xs text-subtle-foreground">
+      <p
+        aria-hidden="true"
+        className="pl-4 font-mono text-micro tracking-wider uppercase text-subtle-foreground"
+      >
         {group.label}
       </p>
-      <ul
-        aria-label={group.label}
-        className="relative flex flex-col before:absolute before:top-4 before:bottom-4 before:left-[0.6875rem] before:w-px before:bg-border"
-      >
+      <ul aria-label={group.label} className="flex flex-col gap-0.5">
         {group.destinations.map((destination) => (
           <li key={destination.to}>
             <Link
               to={destination.to}
               params={{ workspaceId: workspace.id }}
               activeOptions={{ exact: destination.exact ?? false }}
-              className="group flex items-center gap-3 rounded-md py-1.5 pr-2 text-sm whitespace-nowrap text-muted-foreground outline-none transition-colors hover:text-foreground focus-ring aria-[current=page]:text-foreground"
+              className="group flex min-h-7.5 items-center gap-2 rounded-sm px-1 text-label whitespace-nowrap text-subtle-foreground outline-none transition-colors hover:text-foreground focus-ring aria-[current=page]:font-medium aria-[current=page]:text-foreground pointer-coarse:min-h-10"
             >
               <span
                 aria-hidden="true"
-                className="relative z-1 grid size-5.5 shrink-0 place-items-center"
-              >
-                <span className="size-2 rounded-full border border-border-strong bg-background transition-[scale,background-color,border-color,box-shadow] duration-200 ease-unspool group-hover:border-foreground/50 group-aria-[current=page]:scale-125 group-aria-[current=page]:border-action group-aria-[current=page]:bg-action group-aria-[current=page]:shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_22%,transparent)] motion-reduce:transition-none" />
-              </span>
+                className="size-1.5 shrink-0 rounded-full group-aria-[current=page]:bg-action"
+              />
               {destination.label}
             </Link>
           </li>
@@ -106,10 +102,10 @@ function SectionSwitcher({
     .find((destination) => isOpen(destination));
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-surface-ink/[0.025] px-3.5 py-2.5 text-left text-sm outline-none transition-colors hover:bg-surface-ink/[0.05] focus-ring @3xl:hidden">
+      <SheetTrigger className="flex min-h-11 w-full items-center gap-3 rounded-sm px-1 py-2.5 text-left text-sm outline-none transition-colors hover:bg-select focus-ring @3xl:hidden">
         <span
           aria-hidden="true"
-          className="size-2 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_22%,transparent)]"
+          className="size-1.5 shrink-0 rounded-full bg-action"
         />
         <span className="min-w-0 flex-1 truncate">
           <span className="text-subtle-foreground">Settings · </span>
@@ -148,11 +144,12 @@ function SectionSwitcher({
                       onClick={() => {
                         setOpen(false);
                       }}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring',
-                        'aria-[current=page]:bg-action/8 aria-[current=page]:text-accent-foreground',
-                      )}
+                      className="group flex min-h-10 items-center gap-2 rounded-sm px-1 text-label text-subtle-foreground outline-none hover:text-foreground focus-ring aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                     >
+                      <span
+                        aria-hidden="true"
+                        className="size-1.5 shrink-0 rounded-full group-aria-[current=page]:bg-action"
+                      />
                       {destination.label}
                     </Link>
                   </li>

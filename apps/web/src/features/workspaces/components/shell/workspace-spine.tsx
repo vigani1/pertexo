@@ -24,7 +24,7 @@ function formatBadge(count: number): string {
 }
 
 const spineLinkClass =
-  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-surface-ink/5 hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
+  "relative grid size-10 shrink-0 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-select-raised hover:text-foreground focus-ring aria-[current=page]:bg-action-soft aria-[current=page]:text-nav-on aria-[current=page]:inset-ring aria-[current=page]:inset-ring-action-line [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,
@@ -61,7 +61,7 @@ function SpineLink({
           // A new count rolls in, so a change is seen without a flash.
           <span
             key={destination.badge}
-            className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-micro leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30 motion-safe:animate-[badge-roll_320ms_var(--ease-unspool)]"
+            className="absolute top-0.5 right-0.5 rounded-xs bg-action-soft px-0.5 font-mono text-micro leading-[0.8rem] font-semibold text-nav-on inset-ring inset-ring-action-line motion-safe:animate-[badge-roll_var(--duration-enter)_var(--ease-unspool)]"
           >
             {formatBadge(destination.badge)}
           </span>
@@ -85,18 +85,18 @@ function HomeCore({
             params={{ workspaceId }}
             activeOptions={{ exact: true }}
             aria-label="Home"
-            className="grid size-11 place-items-center rounded-lg bg-[radial-gradient(circle,color-mix(in_srgb,var(--primary)_14%,transparent),transparent_70%)] outline-none focus-ring aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
+            className="grid size-11 place-items-center rounded-lg core-home-paint outline-none focus-ring aria-[current=page]:inset-ring aria-[current=page]:inset-ring-live-line"
           />
         }
       >
         <CoreOrb
-          state={liveRunCount === 0 ? 'idle' : 'live'}
+          state={liveRunCount ? 'live' : 'idle'}
           energy={
             liveRunCount
               ? 0.7 + Math.min(liveRunCount, 6) * 0.08
               : CORE_IDLE_ENERGY
           }
-          className="size-11"
+          className="size-10"
         />
       </TooltipTrigger>
       <TooltipContent side="right">Home</TooltipContent>
@@ -129,10 +129,10 @@ export function WorkspaceSpine({
   return (
     <nav
       aria-label="Workspace"
-      className="lens fixed top-3 bottom-3 left-3 z-40 hidden w-15 flex-col items-center gap-1 rounded-xl py-2.5 md:flex"
+      className="lens fixed top-3 bottom-3 left-3 overflow-y-auto z-40 hidden w-15 flex-col items-center gap-1 rounded-3xl py-2.5 md:flex"
     >
       <HomeCore workspaceId={workspace.id} liveRunCount={liveRunCount} />
-      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-surface-ink/9" />
+      <span aria-hidden="true" className="my-1.5 h-px w-6 shrink-0 bg-border" />
       {destinations.primary.map((destination) => (
         <SpineLink
           key={destination.to}
@@ -143,7 +143,7 @@ export function WorkspaceSpine({
           }
         />
       ))}
-      <span aria-hidden="true" className="my-1.5 h-px w-6 bg-surface-ink/9" />
+      <span aria-hidden="true" className="my-1.5 h-px w-6 shrink-0 bg-border" />
       {destinations.workspace.map((destination) => (
         <SpineLink
           key={destination.to}

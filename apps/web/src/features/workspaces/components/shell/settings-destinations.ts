@@ -14,6 +14,7 @@ export type SettingsDestination = Readonly<{
     | '/w/$workspaceId/settings/sso'
     | '/w/$workspaceId/settings/notifications'
     | '/w/$workspaceId/settings/api-tokens'
+    | '/w/$workspaceId/account'
   >;
   label: string;
   capability?: AccessibleWorkspace['capabilities'][number];
@@ -50,6 +51,7 @@ export function settingsGroups(
       destinations: [
         WORKSPACE_PLACES.notifications,
         WORKSPACE_PLACES.apiTokens,
+        { to: '/w/$workspaceId/account', label: 'Account' },
       ],
     },
     {

@@ -12,9 +12,7 @@ import { ResourceNotFound } from '../../root/status/pages';
 import { WorkspaceShellFrame } from '../../workspace/shell/layout';
 
 /**
- * Immersive frame for one workflow: no spine, its own floating bar. A
- * workflow that doesn't exist (or isn't visible) keeps the workspace shell,
- * so people can move on without reloading.
+ * The workflow bar sits inside the same workspace navigation as every page.
  */
 export function WorkflowHubRoute() {
   const { apiClient, user, workspace, workflowId } = useRouteContext({
@@ -56,12 +54,9 @@ export function WorkflowHubRoute() {
           workflowId,
         }}
       >
-        <div className="relative min-h-svh bg-background">
-          <div className="ambient ambient-still fixed" aria-hidden="true" />
-          <main id="main" className="relative min-h-svh">
-            <Outlet />
-          </main>
-        </div>
+        <WorkspaceShellFrame layout="workflow">
+          <Outlet />
+        </WorkspaceShellFrame>
       </WorkflowPresenceProvider>
     </WorkflowReadBoundary>
   );

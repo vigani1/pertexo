@@ -21,6 +21,14 @@ export const settingsHubRoute = createRoute({
   component: lazyRoute(() => import('./hub'), 'SettingsHubRoute'),
 });
 
+export const workspaceAccountRoute = createRoute({
+  getParentRoute: () => settingsHubRoute,
+  path: 'account',
+  ...workspacePage('Account & security'),
+
+  component: lazyRoute(() => import('../account'), 'WorkspaceAccountRoute'),
+});
+
 export const alertsRoute = createRoute({
   getParentRoute: () => settingsHubRoute,
   path: 'settings/alerts',

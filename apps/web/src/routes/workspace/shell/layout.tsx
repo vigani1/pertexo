@@ -73,8 +73,13 @@ function useInboxAnchors() {
  */
 export function WorkspaceShellFrame({
   crumbs,
+  layout,
   children,
-}: Readonly<{ crumbs?: readonly Crumb[]; children: ReactNode }>) {
+}: Readonly<{
+  crumbs?: readonly Crumb[];
+  layout?: 'page' | 'workflow';
+  children: ReactNode;
+}>) {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const notifications = useNotifications();
   const logout = useLogout(apiClient, {
@@ -136,6 +141,7 @@ export function WorkspaceShellFrame({
 
   return (
     <WorkspaceShell
+      layout={layout}
       liveRunCount={canReadRuns ? liveRunCount.data : undefined}
       unreadNoticeCount={
         canReadInbox ? inboxSummary.data?.unreadCount : undefined
