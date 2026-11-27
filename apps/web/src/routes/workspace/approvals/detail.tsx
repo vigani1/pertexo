@@ -11,6 +11,7 @@ export function ApprovalDetailRoute() {
       key={`${user.id}:${workspace.id}:${taskId}`}
       scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
       taskId={taskId}
+      backSearch={{ view: 'mine', status: 'pending' }}
     />
   );
 }

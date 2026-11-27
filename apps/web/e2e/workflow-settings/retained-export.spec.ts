@@ -52,6 +52,10 @@ for (const width of [1280, 375]) {
                 graph,
                 checksum: `wf:sha256:${'a'.repeat(64)}`,
                 publishedAt: '2026-09-14T10:00:00.000Z',
+                publishedBy: {
+                  id: '00000000-0000-4000-8000-00000000a001',
+                  displayName: 'Ada Lovelace',
+                },
               },
             ],
             nextCursor: null,
@@ -71,6 +75,11 @@ for (const width of [1280, 375]) {
         return route.fulfill({ json: manifest });
       });
       await page.goto(`${editorUrl}/versions`);
+      // Narrow screens show the list first; choosing v1 opens its detail.
+      await page
+        .getByRole('navigation', { name: 'Versions' })
+        .getByRole('button', { name: /^v1 /u })
+        .click();
       await page.getByRole('button', { name: 'More for v1' }).click();
       await page.getByRole('menuitem', { name: /Export/u }).click();
       const dialog = page.getByRole('dialog', { name: /Export/u });

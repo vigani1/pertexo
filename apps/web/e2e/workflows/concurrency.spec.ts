@@ -70,7 +70,7 @@ test('workflow concurrency preserves conflict edits, fresh confirmations and Que
     },
   );
   await page.goto(`${editorUrl}/settings`);
-  const section = page.getByRole('region', { name: 'Concurrency' });
+  const section = page.getByRole('region', { name: 'Runs at once' });
   await section.getByRole('button', { name: 'Change' }).click();
   const input = section.getByRole('textbox', { name: 'Runs at once' });
   await input.fill('1');
@@ -134,7 +134,7 @@ test('workflow concurrency is readable but not editable by a viewer', async ({
   });
   await installWorkflowSettingsReads(page);
   await page.goto(`${editorUrl}/settings`);
-  const section = page.getByRole('region', { name: 'Concurrency' });
+  const section = page.getByRole('region', { name: 'Runs at once' });
   await expect(section.getByText(/^No limit of its own\./u)).toBeVisible();
   await expect(section.getByRole('textbox')).toHaveCount(0);
   await expect(

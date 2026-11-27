@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import {
@@ -13,32 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeScheduleHold } from '../../../model/triggers/occurrence-outcome';
 import { describeTriggerState } from '../../../model/triggers/trigger-state';
-
-function When({
-  label,
-  value,
-  empty,
-}: Readonly<{ label: string; value: string | null; empty: string }>) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm">
-        {value === null ? (
-          <span className="text-subtle-foreground">{empty}</span>
-        ) : (
-          <>
-            <time dateTime={value} className="font-medium">
-              {formatRelativeTime(value)}
-            </time>
-            <span className="block font-mono text-caption text-subtle-foreground">
-              {formatDateTime(value)}
-            </span>
-          </>
-        )}
-      </dd>
-    </div>
-  );
-}
+import { TriggerRow } from '../trigger-row';
 
 /**
  * One schedule: its rule as a sentence, when it runs next and last, what
@@ -65,63 +40,78 @@ export function ScheduleCard({
   /** Recorded run times, composed by the section that can read them. */
   history?: ReactNode;
 }>) {
-  const switchId = useId();
   const state = describeTriggerState(trigger);
   const hold = describeScheduleHold(trigger);
   const enabled = trigger.status !== 'disabled';
   return (
-    <article
-      aria-label={`Schedule: ${stepName}`}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card/50 p-4 sm:p-5"
-    >
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <StepTile step={describeStep('core.schedule')} size="lg" />
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold">{stepName}</h3>
-            <StatusMark tone={state.tone} className="mt-1 text-xs">
-              {state.label}
-            </StatusMark>
-          </div>
-        </div>
-        {editable ? (
-          <label
-            htmlFor={switchId}
-            className="flex cursor-pointer items-center gap-2.5 text-sm text-muted-foreground"
-          >
+    <TriggerRow
+      label={`Schedule: ${stepName}`}
+      icon={<StepTile step={describeStep('core.schedule')} />}
+      name={stepName}
+      kind={
+        <>
+          Schedule ·{' '}
+          {trigger.recurrence === null
+            ? 'needs repair'
+            : describeRecurrence(trigger.recurrence)}
+          {trigger.recurrence?.kind === 'cron'
+            ? `, ${trigger.recurrence.timezone}`
+            : null}
+        </>
+      }
+      extra={
+        hold === undefined ? undefined : (
+          <Notice tone="warning" className="mt-2">
+            {hold}
+          </Notice>
+        )
+      }
+      state={
+        <>
+          <StatusMark tone={state.tone}>{state.label}</StatusMark>
+          <span className="text-meta text-subtle-foreground">
+            {trigger.lastFireAt === null ? (
+              'Not run yet'
+            ) : (
+              <>
+                Last run{' '}
+                <time
+                  dateTime={trigger.lastFireAt}
+                  title={formatDateTime(trigger.lastFireAt)}
+                >
+                  {formatRelativeTime(trigger.lastFireAt)}
+                </time>
+              </>
+            )}
+          </span>
+        </>
+      }
+      control={
+        editable ? (
+          <span className="flex items-center gap-2 pt-0.5">
             {pending ? <LoadingOrb /> : null}
-            Schedule on
             <Switch
-              id={switchId}
+              aria-label={`${stepName} schedule on`}
               checked={enabled}
               disabled={disabled}
               onCheckedChange={(next) => {
                 onEnabledChange(next);
               }}
             />
-          </label>
-        ) : null}
-      </header>
-      <p className="font-heading text-xl leading-snug font-semibold tracking-[-0.02em]">
-        {trigger.recurrence === null
-          ? 'Schedule needs repair'
-          : describeRecurrence(trigger.recurrence)}
-        {trigger.recurrence?.kind === 'cron' ? (
-          <span className="ml-2 font-mono text-xs font-normal tracking-normal text-subtle-foreground">
-            {trigger.recurrence.timezone}
           </span>
-        ) : null}
-      </p>
-      {hold === undefined ? null : <Notice tone="warning">{hold}</Notice>}
-      {nextRuns}
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <When label="Last run" value={trigger.lastFireAt} empty="Not yet" />
-      </dl>
-      {/* A rule, not a reading, so a note rather than a value. */}
-      <p className="text-xs text-muted-foreground">
-        {describeMisfirePolicy(trigger.misfirePolicy)}
-      </p>
-      {history}
-    </article>
+        ) : undefined
+      }
+      detailsLabel="Runs"
+      details={
+        <>
+          {nextRuns}
+          {/* A rule, not a reading, so a note rather than a value. */}
+          <p className="text-meta text-subtle-foreground">
+            {describeMisfirePolicy(trigger.misfirePolicy)}
+          </p>
+          {history}
+        </>
+      }
+    />
   );
 }

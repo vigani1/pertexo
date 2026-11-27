@@ -23,7 +23,7 @@ import {
 } from '../../model/run-duration';
 import { useRunDurationChange } from '../../data/mutations/use-run-duration-change';
 import { workflowVersionsQueryOptions } from '../../data/workflow-settings.queries';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/public';
@@ -236,8 +236,8 @@ export function RunDurationSection({
   const archived = workflow?.lifecycleStatus === 'archived';
 
   return (
-    <SettingsSection
-      title="Run duration"
+    <SettingRow
+      title="Maximum run duration"
       description="How long a run may take before Pertexo stops it. With no limit, a run takes as long as it needs."
     >
       <QueryView
@@ -300,6 +300,6 @@ export function RunDurationSection({
           {choice.problem.message}
         </Notice>
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }

@@ -4,7 +4,7 @@ import {
   MCP_TOOL_LIMITS,
   type WorkflowMcpSettings,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -23,8 +23,8 @@ export function McpExposureSection({ scope }: Readonly<{ scope: Scope }>) {
   const query = useQuery(mcpExposureQuery(scope));
   const settings = shownData(query);
   return (
-    <SettingsSection
-      title="MCP exposure"
+    <SettingRow
+      title="Use as a tool"
       description="Expose a reviewed published version as a tool for clients with a workspace API token."
     >
       {settings === undefined ? (
@@ -36,7 +36,7 @@ export function McpExposureSection({ scope }: Readonly<{ scope: Scope }>) {
       ) : (
         <McpExposureEditor scope={scope} settings={settings} />
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }
 

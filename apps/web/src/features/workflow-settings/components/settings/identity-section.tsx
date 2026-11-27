@@ -4,9 +4,13 @@ import {
   WorkflowTemplateOrigin,
 } from '@/features/workflows/workflows-views.public';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import {
+  formatDate,
+  formatDateTime,
+  formatRelativeTime,
+} from '@/lib/format/time';
 import { CopyButton } from '@/components/ui/copy-button';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import {
   QueryView,
   type ReadQuery,
@@ -14,28 +18,14 @@ import {
 import { settingsReadFailure } from '../settings-read-failure';
 import { shownData } from '@/lib/api/error-copy';
 
-function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm">
-        <time dateTime={value}>{formatRelativeTime(value)}</time>
-        <span className="block font-mono text-caption text-subtle-foreground">
-          {formatDateTime(value)}
-        </span>
-      </dd>
-    </div>
-  );
-}
-
 function identityDescription(
   workspace: AccessibleWorkspace,
   workflow: WorkflowSummary | undefined,
 ): string {
   return workflow?.lifecycleStatus === 'archived' &&
     workspace.capabilities.includes('workflow:update')
-    ? 'How this workflow is known. Restore it to rename it.'
-    : 'How this workflow is known.';
+    ? 'Restore the workflow to rename it.'
+    : 'What people see in lists, runs and the Inbox.';
 }
 
 /**
@@ -55,10 +45,7 @@ export function IdentitySection({
 }>) {
   const workflow = shownData(query);
   return (
-    <SettingsSection
-      title="Identity"
-      description={identityDescription(workspace, workflow)}
-    >
+    <SettingsGroup title="Identity">
       <QueryView
         query={query}
         resource="This workflow"
@@ -66,47 +53,64 @@ export function IdentitySection({
       >
         {(shown) => (
           <>
-            <dl className="grid gap-5 sm:grid-cols-2">
-              <div className="flex flex-col gap-0.5 sm:col-span-2">
-                <dt className="text-xs text-muted-foreground">Name</dt>
-                <dd>
-                  <WorkflowNameField
-                    apiClient={apiClient}
-                    userId={userId}
-                    workspace={workspace}
-                    workflow={shown}
-                    textClassName="text-base font-semibold"
+            <SettingRow
+              title="Name"
+              description={identityDescription(workspace, workflow)}
+            >
+              <WorkflowNameField
+                apiClient={apiClient}
+                userId={userId}
+                workspace={workspace}
+                workflow={shown}
+                textClassName="text-base font-semibold"
+              >
+                <span className="min-w-0 text-base font-semibold break-words">
+                  {shown.name}
+                </span>
+              </WorkflowNameField>
+            </SettingRow>
+            <SettingRow
+              title="Workflow ID"
+              description="How API clients and exports refer to this workflow."
+              action={
+                <CopyButton
+                  value={shown.id}
+                  display={`${shown.id.slice(0, 8)}…`}
+                  label="Copy workflow ID"
+                />
+              }
+            />
+            <SettingRow
+              title="Created"
+              description={
+                <WorkflowTemplateOrigin
+                  apiClient={apiClient}
+                  userId={userId}
+                  workspace={workspace}
+                  workflowId={shown.id}
+                />
+              }
+              action={
+                <span className="font-mono text-caption text-subtle-foreground">
+                  <time
+                    dateTime={shown.createdAt}
+                    title={formatDateTime(shown.createdAt)}
                   >
-                    <span className="min-w-0 text-base font-semibold break-words">
-                      {shown.name}
-                    </span>
-                  </WorkflowNameField>
-                </dd>
-              </div>
-              {/* The same short, copyable ID as the workspace's settings. */}
-              <div className="flex flex-col gap-0.5 sm:col-span-2">
-                <dt className="text-xs text-muted-foreground">Workflow ID</dt>
-                <dd>
-                  <CopyButton
-                    value={shown.id}
-                    display={`${shown.id.slice(0, 8)}…`}
-                    label="Copy workflow ID"
-                  />
-                </dd>
-              </div>
-              <Moment label="Created" value={shown.createdAt} />
-              <Moment label="Last updated" value={shown.updatedAt} />
-            </dl>
-            <WorkflowTemplateOrigin
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
-              workflowId={shown.id}
-              className="text-sm text-muted-foreground"
+                    {formatDate(shown.createdAt)}
+                  </time>{' '}
+                  · updated{' '}
+                  <time
+                    dateTime={shown.updatedAt}
+                    title={formatDateTime(shown.updatedAt)}
+                  >
+                    {formatRelativeTime(shown.updatedAt)}
+                  </time>
+                </span>
+              }
             />
           </>
         )}
       </QueryView>
-    </SettingsSection>
+    </SettingsGroup>
   );
 }

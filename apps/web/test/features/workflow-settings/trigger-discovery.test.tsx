@@ -40,7 +40,7 @@ it('offers recovery for failed publication discovery without claiming there are 
   await userEvent.setup().click(retry);
   await screen.findByRole('button', { name: 'Retry' });
   expect(reads).toBeGreaterThan(previousReads);
-  expect(screen.getByRole('heading', { name: 'Schedules' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Triggers' })).toBeVisible();
 });
 
 it.each([
@@ -93,7 +93,7 @@ it.each([
     refused = false;
     await userEvent.setup().click(retry);
     expect(await screen.findByRole('heading', { name: 'Form' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Open Build' })).toBeVisible();
+    expect(screen.getByText(/Add that trigger step in/u)).toBeVisible();
     expect(
       screen.queryByText('This version has no trigger'),
     ).not.toBeInTheDocument();

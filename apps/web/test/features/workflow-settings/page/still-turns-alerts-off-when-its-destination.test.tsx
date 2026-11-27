@@ -113,7 +113,9 @@ describe('workflow settings tab', () => {
       ),
     );
     await renderLoadedApp(settingsPath);
-    const lifecycle = await screen.findByRole('region', { name: 'Lifecycle' });
+    const lifecycle = await screen.findByRole('region', {
+      name: 'Danger zone',
+    });
     const archive = await within(lifecycle).findByRole('button', {
       name: 'Archive workflow',
     });

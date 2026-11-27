@@ -16,3 +16,20 @@ export function triggerStepName(
     ?.graph.nodes.find((candidate) => candidate.id === trigger.nodeId);
   return node === undefined ? fallback : stepLabel(node);
 }
+
+/**
+ * The published version's steps of one trigger kind, by name, for the kinds
+ * the server keeps no trigger record of (forms and failure triggers).
+ */
+export function publishedStepNames(
+  versions: readonly WorkflowVersionResponse[] | undefined,
+  publishedVersionId: string | null | undefined,
+  key: string,
+): readonly Readonly<{ nodeId: string; name: string }>[] {
+  const published = versions?.find(
+    (version) => version.id === publishedVersionId,
+  );
+  return (published?.graph.nodes ?? [])
+    .filter((node) => node.definition.key === key)
+    .map((node) => ({ nodeId: node.id, name: stepLabel(node) }));
+}

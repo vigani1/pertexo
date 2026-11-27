@@ -187,9 +187,7 @@ describe('workflow rename', () => {
     const archived = await renderLoadedApp(settingsPath);
     const identity = await screen.findByRole('region', { name: 'Identity' });
     expect(
-      await within(identity).findByText(
-        'How this workflow is known. Restore it to rename it.',
-      ),
+      await within(identity).findByText('Restore the workflow to rename it.'),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Rename workflow' }),

@@ -54,7 +54,7 @@ describe('workflow concurrency settings', () => {
         status === 403 ? /Your role doesn’t allow/u : /didn’t work/u,
       );
       expect(
-        await screen.findByRole('region', { name: 'Concurrency' }),
+        await screen.findByRole('region', { name: 'Runs at once' }),
       ).toHaveTextContent('workspace runs up to 10');
     },
   );
@@ -192,7 +192,7 @@ describe('workflow concurrency settings', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    const section = await screen.findByRole('region', { name: 'Concurrency' });
+    const section = await screen.findByRole('region', { name: 'Runs at once' });
     const input = await limitField(event);
     await event.type(input, '1');
     await event.click(

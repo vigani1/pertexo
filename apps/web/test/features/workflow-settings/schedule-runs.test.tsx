@@ -1,3 +1,4 @@
+import { openTrigger } from './triggers/fixture';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -39,7 +40,7 @@ function occurrence(
 }
 
 async function scheduleCard() {
-  return screen.findByRole('article', { name: 'Schedule: Nightly check' });
+  return openTrigger('Schedule: Nightly check');
 }
 
 describe('schedule run history in words', () => {

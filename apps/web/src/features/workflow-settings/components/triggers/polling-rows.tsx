@@ -1,7 +1,15 @@
+import {
+  DATABASE_POLL_TRIGGER,
+  HTTP_POLL_TRIGGER,
+} from '@pertexo/workflow-model';
 import type { PollingTriggerHealth } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { StepTile } from '@/features/catalog/catalog-views.public';
+import { describeStep } from '@/features/catalog/public';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { formatDateTime } from '@/lib/format/time';
+import { StatusMark } from '@/components/patterns/status/status-mark';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import { TriggerRow } from './trigger-row';
 import {
   databasePollingGuidance,
   pollingGuidance,
@@ -42,7 +50,8 @@ const failureCopy: Record<string, string | undefined> = {
   'http.poll_request_failed': 'The feed could not be reached.',
 };
 
-export function PollingSection({
+/** The published version's polling triggers, one row each. */
+export function PollingRows({
   title,
   triggers,
   stepNameFor,
@@ -51,32 +60,34 @@ export function PollingSection({
   triggers: readonly PollingTriggerHealth[];
   stepNameFor: (trigger: PollingTriggerHealth) => string;
 }>) {
-  return (
-    <SettingsSection
+  if (triggers.length === 0)
+    return (
+      <TriggerRow
+        label={title}
+        icon={<StepTile step={describeStep(pollingStepKey(title))} />}
+        name={title}
+        kind="Polling · checks for changes and starts a run for each new item"
+        state={
+          <StatusMark tone="queued">Waiting for its first check</StatusMark>
+        }
+      />
+    );
+  return triggers.map((trigger) => (
+    <PollingRow
+      key={trigger.id}
       title={title}
-      description="Check for changes and start a run for each new item."
-    >
-      {triggers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Waiting for its first check
-        </p>
-      ) : (
-        triggers.map((trigger) => (
-          <PollingCard
-            key={trigger.id}
-            trigger={trigger}
-            name={stepNameFor(trigger)}
-          />
-        ))
-      )}
-    </SettingsSection>
-  );
+      trigger={trigger}
+      name={stepNameFor(trigger)}
+    />
+  ));
 }
 
-function PollingCard({
+function PollingRow({
+  title,
   trigger,
   name,
 }: Readonly<{
+  title: string;
   trigger: PollingTriggerHealth;
   name: string;
 }>) {
@@ -92,41 +103,65 @@ function PollingCard({
     trigger.paused || trigger.healthStatus === 'disabled'
       ? null
       : trigger.nextPollAt;
+  const status = pollStatus(trigger);
   return (
-    <article
-      id={trigger.id}
-      className="space-y-2 rounded-lg border border-border p-4"
-    >
-      <h3 className="font-medium">{name}</h3>
-      <p className="text-sm text-muted-foreground">{pollStatus(trigger)}</p>
-      {next === null ? null : (
-        <p className="text-sm text-muted-foreground">
-          Next check <time dateTime={next}>{formatDateTime(next)}</time>
-        </p>
-      )}
-      {reason === null ? null : (
-        <Notice tone="warning">
-          <p>{reason}</p>
-          <p>
-            {trigger.baselineEstablished
-              ? 'Resuming keeps the items already recorded.'
-              : guidance.baseline}
-          </p>
-          <p>
-            {guidance.keys} {guidance.retention} {guidance.interval}
-          </p>
-        </Notice>
-      )}
-    </article>
+    <TriggerRow
+      label={`${title}: ${name}`}
+      icon={<StepTile step={describeStep(pollingStepKey(title))} />}
+      name={name}
+      kind={`${title} · checks for changes and starts a run for each new item`}
+      state={
+        <>
+          <StatusMark tone={status.tone}>{status.label}</StatusMark>
+          {next === null ? null : (
+            <span className="text-meta text-subtle-foreground">
+              Next check{' '}
+              <time dateTime={next} title={formatDateTime(next)}>
+                {formatRelativeTime(next)}
+              </time>
+            </span>
+          )}
+        </>
+      }
+      extra={
+        reason === null ? undefined : (
+          <Notice tone="warning" className="mt-2">
+            <p>{reason}</p>
+            <p>
+              {trigger.baselineEstablished
+                ? 'Resuming keeps the items already recorded.'
+                : guidance.baseline}
+            </p>
+            <p>
+              {guidance.keys} {guidance.retention} {guidance.interval}
+            </p>
+          </Notice>
+        )
+      }
+    />
   );
 }
 
-function pollStatus(trigger: PollingTriggerHealth): string {
-  if (trigger.healthStatus === 'disabled') return 'Disabled';
-  if (trigger.paused) return 'Paused';
-  if (trigger.healthStatus === 'healthy') return 'Healthy';
-  if (trigger.lastErrorCode !== null) return 'Check failed';
-  return trigger.baselineEstablished
-    ? 'Waiting for its next check'
-    : 'Waiting for its first check';
+function pollingStepKey(title: string): string {
+  return title === 'Database Row'
+    ? DATABASE_POLL_TRIGGER.key
+    : HTTP_POLL_TRIGGER.key;
+}
+
+function pollStatus(
+  trigger: PollingTriggerHealth,
+): Readonly<{ tone: StatusTone; label: string }> {
+  if (trigger.healthStatus === 'disabled')
+    return { tone: 'off', label: 'Disabled' };
+  if (trigger.paused) return { tone: 'off', label: 'Paused' };
+  if (trigger.healthStatus === 'healthy')
+    return { tone: 'success', label: 'Healthy' };
+  if (trigger.lastErrorCode !== null)
+    return { tone: 'attention', label: 'Check failed' };
+  return {
+    tone: 'queued',
+    label: trigger.baselineEstablished
+      ? 'Waiting for its next check'
+      : 'Waiting for its first check',
+  };
 }

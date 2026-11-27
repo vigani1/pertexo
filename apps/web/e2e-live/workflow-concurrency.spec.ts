@@ -21,7 +21,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
   const settingsPath = `/w/${seed.workspaceId}/workflows/${seed.workflowId}/settings`;
   await page.goto(settingsPath);
   // The setting reads as a sentence; Change opens its editor.
-  const concurrency = page.getByRole('region', { name: 'Concurrency' });
+  const concurrency = page.getByRole('region', { name: 'Runs at once' });
   await concurrency.getByRole('button', { name: 'Change' }).click();
   const input = page.getByRole('textbox', {
     name: 'Runs at once',

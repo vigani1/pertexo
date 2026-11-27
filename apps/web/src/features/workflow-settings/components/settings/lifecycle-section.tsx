@@ -3,9 +3,7 @@ import { useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
-  describeWorkflowState,
   LIFECYCLE_CONSEQUENCES,
   lifecycleIntentFor,
   type LifecycleIntent,
@@ -16,13 +14,13 @@ import {
   QueryView,
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/public';
 import { shownData } from '@/lib/api/error-copy';
 
-/** Where the workflow is now, what archiving or restoring does, and the button. */
-function LifecycleCard({
+/** What archiving or restoring does, then the button, as one row. */
+function LifecycleRow({
   workflow,
   role,
   canManage,
@@ -34,24 +32,24 @@ function LifecycleCard({
   onStart: () => void;
 }>) {
   const archived = workflow.lifecycleStatus === 'archived';
-  const state = describeWorkflowState(workflow);
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Now</span>
-        <StatusMark tone={state.tone}>{state.label}</StatusMark>
-      </div>
-      <p className="text-sm font-medium">
-        {archived ? 'If you restore it:' : 'If you archive it:'}
-      </p>
-      <ul className="-mt-2 flex flex-col gap-1.5 text-sm text-muted-foreground">
-        {LIFECYCLE_CONSEQUENCES[archived ? 'restore' : 'archive'].map(
-          (line) => (
-            <li key={line}>{line}</li>
-          ),
-        )}
-      </ul>
-      <div className="flex flex-wrap items-center gap-3">
+    <SettingRow
+      title={archived ? 'Restore workflow' : 'Archive workflow'}
+      description={
+        <>
+          {LIFECYCLE_CONSEQUENCES[archived ? 'restore' : 'archive'].join(' ')}
+          {canManage ? null : (
+            <span id="lifecycle-permission" className="mt-1 block">
+              {roleLimitSentence(
+                role,
+                'workflow:publish',
+                'archive or restore workflows',
+              )}
+            </span>
+          )}
+        </>
+      }
+      action={
         <Button
           type="button"
           variant={archived ? 'default' : 'destructive'}
@@ -66,20 +64,8 @@ function LifecycleCard({
           )}
           {archived ? 'Restore workflow' : 'Archive workflow'}
         </Button>
-        {canManage ? null : (
-          <p
-            id="lifecycle-permission"
-            className="text-xs text-subtle-foreground"
-          >
-            {roleLimitSentence(
-              role,
-              'workflow:publish',
-              'archive or restore workflows',
-            )}
-          </p>
-        )}
-      </div>
-    </div>
+      }
+    />
   );
 }
 
@@ -110,17 +96,14 @@ export function LifecycleSection({
   const canManage = workspace.capabilities.includes('workflow:publish');
 
   return (
-    <SettingsSection
-      title="Lifecycle"
-      description="Archive a workflow you no longer need. Nothing is deleted."
-    >
+    <SettingsGroup title="Danger zone">
       <QueryView
         query={query}
         resource="This workflow"
         failure={settingsReadFailure}
       >
         {(shown) => (
-          <LifecycleCard
+          <LifecycleRow
             workflow={shown}
             role={workspace.role}
             canManage={canManage}
@@ -147,6 +130,6 @@ export function LifecycleSection({
           setIntent(undefined);
         }}
       />
-    </SettingsSection>
+    </SettingsGroup>
   );
 }

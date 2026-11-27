@@ -139,8 +139,6 @@ it('loads the newly approved publication when opening a recently cached Versions
   );
   await screen.findByText('Published v2. This decision is complete.');
   await event.click(screen.getByRole('button', { name: 'Open Versions' }));
-  expect(
-    await screen.findByRole('button', { name: 'Preview v2' }),
-  ).toBeVisible();
+  expect(await screen.findByRole('button', { name: /^v2/u })).toBeVisible();
   expect(reads).toBeGreaterThan(0);
 });
