@@ -1,3 +1,4 @@
+import { TimedOutGlyph } from '@/components/patterns/dates/timed-out-glyph';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { Handle, Position } from '@xyflow/react';
@@ -9,10 +10,7 @@ import {
   PowerOffIcon,
 } from 'lucide-react';
 import { use, type ReactNode } from 'react';
-import {
-  StepTile,
-  TimedOutGlyph,
-} from '@/features/catalog/catalog-views.public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import { type StepPresentation, portName } from '@/features/catalog/public';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import { sampleStateLabel } from '@/features/workflow-testing/public';
