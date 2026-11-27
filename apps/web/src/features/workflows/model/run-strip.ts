@@ -1,42 +1,41 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/patterns/status/status-mark';
-
-export const RUN_STRIP_LENGTH = 20;
 
 type RecentRun = Pick<WorkflowRunReadSummary, 'status' | 'createdAt'>;
 
-export type RunTick = Readonly<{ tone: StatusTone; word: string }>;
+/** The strip on each workflow row covers the last week. */
+export const FAILURE_STRIP_DAYS = 7;
+const WINDOW_MS = FAILURE_STRIP_DAYS * 86_400_000;
 
-const TICKS: Readonly<Record<RecentRun['status'], RunTick>> = {
-  queued: { tone: 'waiting', word: 'waiting' },
-  waiting: { tone: 'waiting', word: 'waiting' },
-  running: { tone: 'live', word: 'running' },
-  succeeded: { tone: 'success', word: 'succeeded' },
-  failed: { tone: 'failure', word: 'failed' },
-  timed_out: { tone: 'failure', word: 'timed out' },
-  canceled: { tone: 'canceled', word: 'canceled' },
-  outcome_unknown: { tone: 'attention', word: 'unknown outcome' },
-};
+export type FailureTick = Readonly<{ at: string; position: number }>;
 
 /**
- * A workflow's latest runs as ticks, oldest to newest, at most the last 20.
- * Runs arrive newest first; the order is settled by their start here.
+ * A workflow's failures over the last week, as positions from 0 (a week ago)
+ * to 100 (now). The list summary carries only the latest runs, so the thread
+ * starts where that evidence starts: at the oldest loaded run when it is
+ * inside the week, otherwise at the week's start. A week without runs has no
+ * thread at all.
  */
-export function runTicks(runs: readonly RecentRun[]): readonly RunTick[] {
-  return runs
-    .slice()
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, RUN_STRIP_LENGTH)
-    .reverse()
-    .map((run) => TICKS[run.status]);
-}
+export type FailureStrip = Readonly<{
+  ticks: readonly FailureTick[];
+  start: number | undefined;
+}>;
 
-/** "3 succeeded, 1 failed" — the accessible reading of a strip. */
-export function summarizeRunTicks(ticks: readonly RunTick[]): string {
-  const counts = new Map<string, number>();
-  for (const tick of ticks)
-    counts.set(tick.word, (counts.get(tick.word) ?? 0) + 1);
-  return [...counts.entries()]
-    .map(([word, count]) => `${String(count)} ${word}`)
-    .join(', ');
+export function failureStrip(
+  runs: readonly RecentRun[],
+  nowMs: number,
+): FailureStrip {
+  const position = (run: RecentRun) =>
+    100 * (1 - (nowMs - Date.parse(run.createdAt)) / WINDOW_MS);
+  const inWeek = runs.filter((run) => {
+    const age = nowMs - Date.parse(run.createdAt);
+    return age >= 0 && age < WINDOW_MS;
+  });
+  if (inWeek.length === 0) return { ticks: [], start: undefined };
+  const olderLoaded = inWeek.length < runs.length;
+  return {
+    ticks: inWeek
+      .filter((run) => run.status === 'failed' || run.status === 'timed_out')
+      .map((run) => ({ at: run.createdAt, position: position(run) })),
+    start: olderLoaded ? 0 : Math.min(...inWeek.map(position)),
+  };
 }

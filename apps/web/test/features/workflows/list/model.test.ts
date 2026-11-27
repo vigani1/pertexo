@@ -4,10 +4,7 @@ import type {
   WorkflowGraphContract,
   WorkflowSummary,
 } from '@pertexo/contracts';
-import {
-  runTicks,
-  summarizeRunTicks,
-} from '@/features/workflows/model/run-strip';
+import { failureStrip } from '@/features/workflows/model/run-strip';
 import {
   countWorkflowStates,
   parseWorkflowListSearch,
@@ -207,34 +204,42 @@ describe('workflow list view', () => {
   });
 });
 
-describe('run strips', () => {
-  const run = (workflowId: string, status: string, second: number) =>
+describe('failure strips', () => {
+  const now = Date.parse('2026-09-14T12:00:00.000Z');
+  const run = (status: string, hoursAgo: number) =>
     ({
-      workflowId,
       status,
-      createdAt: `2026-09-14T10:00:${String(second).padStart(2, '0')}.000Z`,
-    }) as Parameters<typeof runTicks>[0][number];
+      createdAt: new Date(now - hoursAgo * 3_600_000).toISOString(),
+    }) as Parameters<typeof failureStrip>[0][number];
 
-  it('reads a workflow’s latest runs oldest to newest, capped at 20', () => {
-    const ticks = runTicks([
-      run('a', 'failed', 3),
-      run('a', 'succeeded', 1),
-      run('a', 'running', 2),
+  it('ticks failures and timeouts of the last week where they happened', () => {
+    const strip = failureStrip(
+      [
+        run('failed', 12),
+        run('succeeded', 24),
+        run('timed_out', 84),
+        run('failed', 24 * 8),
+      ],
+      now,
+    );
+    expect(strip.ticks.map((tick) => Math.round(tick.position))).toEqual([
+      93, 50,
     ]);
-    expect(ticks.map((tick) => tick.word)).toEqual([
-      'succeeded',
-      'running',
-      'failed',
-    ]);
-    expect(ticks[1]?.tone).toBe('live');
-    expect(
-      runTicks(
-        Array.from({ length: 25 }, (_, index) =>
-          run('c', 'succeeded', 30 + index),
-        ),
-      ),
-    ).toHaveLength(20);
-    expect(summarizeRunTicks(ticks)).toBe('1 succeeded, 1 running, 1 failed');
+    // An older run was loaded, so the thread covers the whole week.
+    expect(strip.start).toBe(0);
+  });
+
+  it('starts the thread at the oldest loaded run inside the week', () => {
+    const strip = failureStrip([run('succeeded', 84)], now);
+    expect(strip.ticks).toEqual([]);
+    expect(strip.start).toBe(50);
+  });
+
+  it('has no thread for a week without runs', () => {
+    expect(failureStrip([run('failed', 24 * 9)], now)).toEqual({
+      ticks: [],
+      start: undefined,
+    });
   });
 });
 

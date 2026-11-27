@@ -25,7 +25,7 @@ import {
   workflowTriggerKinds,
   type TriggerKind,
 } from '../../model/shape';
-import { runTicks } from '../../model/run-strip';
+import { failureStrip } from '../../model/run-strip';
 import type { WorkflowShape } from '../../model/shape';
 import { PatternGlyph, PatternGlyphPlaceholder } from '../pattern-glyph';
 import { RunStrip } from './run-strip';
@@ -41,7 +41,7 @@ import { WorkflowRowMenu } from './workflow-row-menu';
  * thread, so the bead never sits on anything.
  */
 export const WORKFLOW_ROW_COLUMNS =
-  'grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_auto] lg:grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_8.5rem_4.5rem_8.75rem_5.5rem_6rem]';
+  'grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_auto] lg:grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_4.5rem_7rem_5.5rem_6rem]';
 
 const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
@@ -97,16 +97,19 @@ function RowGlyph({
   return <PatternGlyphPlaceholder state="unavailable" />;
 }
 
-/** The name, opening the workflow, and its path in words once it's read. */
+/** The name, opening the workflow, and its state on one quiet line. */
 function RowTitle({
   workspaceId,
   workflow,
   graph,
+  state,
 }: Readonly<{
   workspaceId: string;
   workflow: WorkflowSummary;
   graph: WorkflowShape | undefined;
+  state: ReturnType<typeof describeWorkflowState>;
 }>) {
+  const describeStep = useStepDescriptions();
   return (
     <div className="min-w-0">
       <Link
@@ -116,16 +119,20 @@ function RowTitle({
       >
         {workflow.name}
       </Link>
-      {/* One line tall in every state, so a row never grows when its path
-          arrives: first load and every filter change keep the list still. */}
-      <div className="mt-0.5 flex h-4 items-center">
-        <RowPath graph={graph} />
-      </div>
+      {/* The shape glyph draws the path; its words are for screen readers. */}
+      {graph === undefined ? null : (
+        <span className="sr-only">
+          {describeWorkflowPath(graph, undefined, describeStep)}
+        </span>
+      )}
+      <StatusMark tone={state.tone} className="mt-1">
+        {state.label}
+      </StatusMark>
     </div>
   );
 }
 
-/** The workflow's own latest runs as a strip, or why there isn't one. */
+/** The workflow's failures this week as a strip, or why there isn't one. */
 function RowRuns({
   summary,
 }: Readonly<{ summary: WorkflowSummary['listSummary'] }>) {
@@ -135,7 +142,7 @@ function RowRuns({
         Couldn’t load
       </span>
     );
-  return <RunStrip ticks={runTicks(summary.recentRuns)} />;
+  return <RunStrip strip={failureStrip(summary.recentRuns, Date.now())} />;
 }
 
 function UpdatedAt({ at }: Readonly<{ at: string }>) {
@@ -232,19 +239,19 @@ export function WorkflowRow({
         }
       : undefined;
 
-  // The divider is a straight inset line, not the top border of a rounded
-  // row, so its ends don't curl. A lit row hides the lines on both its
-  // edges: its own above it and the next row's below it.
-  // One set of cells: on phones the facts wrap under the name; from `lg`
-  // their wrapper dissolves (`contents`) so each fact takes its own column.
+  // One line per workflow: on phones and tablets the name and its state;
+  // from `lg` the facts' wrapper dissolves (`contents`) into their columns.
   return (
     <li
       onKeyDown={(event) => {
         runShortcut(event, run);
       }}
-      className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg px-3 py-3 transition-colors duration-150 before:pointer-events-none before:absolute before:inset-x-3 before:top-0 before:h-px before:bg-border first:before:hidden focus-within:bg-select hover:bg-select hover:before:opacity-0 focus-within:before:opacity-0 [:focus-within+&]:before:opacity-0 [:hover+&]:before:opacity-0 hover:inset-ring hover:inset-ring-border motion-reduce:transition-none`}
+      className={cn(
+        'group/row row-divider grid items-center gap-x-3 gap-y-1 rounded-lg px-3 py-2 focus-within:bg-select hover:bg-select',
+        WORKFLOW_ROW_COLUMNS,
+      )}
     >
-      <div className="row-span-2 flex items-center gap-2 lg:row-span-1">
+      <div className="flex items-center gap-2">
         {selectionControl == null ? null : (
           <span className="relative z-10 flex size-4 shrink-0">
             {selectionControl}
@@ -252,24 +259,24 @@ export function WorkflowRow({
         )}
         <RowGlyph graph={graph} muted={workflow.publishedVersionId === null} />
       </div>
-      <RowTitle workspaceId={workspace.id} workflow={workflow} graph={graph} />
-      <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 lg:contents">
-        <div className="min-w-0">
-          <StatusMark tone={state.tone} className="text-label">
-            {state.label}
-          </StatusMark>
-        </div>
+      <RowTitle
+        workspaceId={workspace.id}
+        workflow={workflow}
+        graph={graph}
+        state={state}
+      />
+      <div className="hidden lg:contents">
         <div>
           <TriggerIcons graph={graph} />
         </div>
-        <div className="hidden lg:block">
+        <div>
           {showRuns ? <RowRuns summary={workflow.listSummary} /> : null}
         </div>
         <div>
           <UpdatedAt at={workflow.updatedAt} />
         </div>
       </div>
-      <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-7">
+      <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-6">
         {runnable ? (
           <RowRunButton
             workflow={workflow}
@@ -290,20 +297,8 @@ export function WorkflowRow({
         )}
       </div>
       {tags == null ? null : (
-        <div className="col-start-2 row-start-3 min-w-0 lg:row-start-2">
-          {tags}
-        </div>
+        <div className="col-start-2 row-start-2 min-w-0">{tags}</div>
       )}
     </li>
-  );
-}
-
-function RowPath({ graph }: Readonly<{ graph: WorkflowShape | undefined }>) {
-  const describeStep = useStepDescriptions();
-  if (graph === undefined) return null;
-  return (
-    <p className="truncate text-xs/4 text-subtle-foreground">
-      {describeWorkflowPath(graph, undefined, describeStep)}
-    </p>
   );
 }
