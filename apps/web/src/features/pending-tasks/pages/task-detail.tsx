@@ -27,7 +27,7 @@ import type {
   PendingTaskDetail,
   PendingTaskListQuery,
 } from '@pertexo/contracts';
-import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
+import { TimedOutGlyph } from '@/components/patterns/dates/timed-out-glyph';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
