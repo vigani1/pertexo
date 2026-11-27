@@ -166,7 +166,7 @@ export class ConvergingThreadsScene extends CanvasScene {
     const halo = this.context.createRadialGradient(x, y, 0, x, y, radius * 2.4);
     halo.addColorStop(0, `rgba(${primary?.rgb ?? FALLBACK_RGB},0.1)`);
     halo.addColorStop(0.5, `rgba(${secondary?.rgb ?? FALLBACK_RGB},0.04)`);
-    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    halo.addColorStop(1, 'transparent');
     this.context.fillStyle = halo;
     this.context.fillRect(0, 0, this.width, this.height);
   }

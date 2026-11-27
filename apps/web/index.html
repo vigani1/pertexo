@@ -21,64 +21,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>Pertexo</title>
-    <!-- The boot screen's look before any stylesheet arrives: the dev server
-         injects CSS from script, so without this a refresh paints the
-         wordmark as plain text on white. Values mirror globals.css. -->
-    <style>
-      /* Only the page's ground and the boot screen itself: the app's own
-         stylesheet owns everything else, its font included. */
-      html {
-        --boot-ground: #111316;
-        --boot-ink: #e2e2e6;
-        --boot-muted: #7f8b8e;
-        --boot-accent: #d0bcff;
-        background: var(--boot-ground);
-        color-scheme: dark;
-      }
-      html[data-theme='light'] {
-        --boot-ground: #f7f9f8;
-        --boot-ink: #16262b;
-        --boot-muted: #4e5c60;
-        --boot-accent: #6550b9;
-        color-scheme: light;
-      }
-      .boot-first-frame {
-        display: grid;
-        min-height: 100svh;
-        place-items: center;
-        text-align: center;
-        color: var(--boot-ink);
-        font-family: ui-sans-serif, system-ui, sans-serif;
-      }
-      .boot-first-frame .boot-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-      }
-      .boot-first-frame p {
-        margin: 0;
-      }
-      .boot-first-frame .boot-core {
-        width: 15rem;
-        height: 15rem;
-      }
-      @media (min-width: 40rem) {
-        .boot-first-frame .boot-core {
-          width: 18rem;
-          height: 18rem;
-        }
-      }
-      .boot-first-frame .boot-name {
-        font-size: 1.5rem;
-        font-weight: 620;
-      }
-      .boot-first-frame .boot-line {
-        color: var(--boot-muted);
-        font-family: ui-monospace, monospace;
-        font-size: 0.75rem;
-      }
-    </style>
+    <link rel="stylesheet" href="/src/styles/globals.css" />
   </head>
   <body>
     <div id="root">
@@ -89,25 +32,19 @@
            it is checking a session or opening a workspace, and a generic line
            here read as a second loading screen. -->
       <div
-        class="boot-first-frame relative grid min-h-svh place-items-center overflow-hidden bg-background px-5"
+        class="relative grid min-h-svh place-items-center overflow-hidden px-5"
       >
         <div class="ambient" aria-hidden="true"></div>
         <div class="relative z-10 w-full">
-          <div
-            class="boot-column mx-auto flex flex-col items-center gap-4 text-center"
-          >
-            <div class="boot-core size-60 sm:size-72"></div>
+          <div class="mx-auto flex flex-col items-center gap-4 text-center">
+            <div class="size-60 sm:size-72"></div>
             <p
-              class="boot-name font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
+              class="font-display text-2xl [--display-optical-size:24] [--display-width:80%]"
             >
-              Pertexo<span
-                class="text-secondary"
-                style="color: var(--boot-accent)"
-                >.</span
-              >
+              Pertexo<span class="text-foreground">.</span>
             </p>
             <p
-              class="boot-line font-mono text-xs text-subtle-foreground"
+              class="font-mono text-xs text-subtle-foreground"
               aria-hidden="true"
             >
               &nbsp;

@@ -1,3 +1,4 @@
+import { tabTileClass } from '@/components/ui/tabs';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link, type LinkProps } from '@tanstack/react-router';
@@ -192,7 +193,7 @@ export function WorkflowHubBar({
       </div>
       <nav
         aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-surface-ink/6 bg-recess-ink/25 p-px sm:p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
+        className="order-last flex w-full items-center gap-1 overflow-x-auto p-0.5 min-[1728px]:order-none min-[1728px]:w-auto"
       >
         {hubTabs(workspace).map((link) => (
           <Link
@@ -201,12 +202,7 @@ export function WorkflowHubBar({
             params={{ workspaceId: workspace.id, workflowId }}
             activeOptions={{ exact: true }}
             aria-current={link.tab === activeTab ? 'page' : undefined}
-            className={cn(
-              // Horizontal overflow keeps one fixed-height row, including Comments.
-              'shrink-0 rounded-sm px-2 py-2 text-center text-label font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
-              link.tab === activeTab &&
-                'bg-action/10 text-accent-foreground inset-ring inset-ring-action-line',
-            )}
+            className={cn(tabTileClass, 'px-2 sm:px-3')}
           >
             {link.label}
           </Link>

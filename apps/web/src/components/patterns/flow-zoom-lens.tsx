@@ -55,7 +55,7 @@ export function FlowZoomLens<NodeType extends Node>({
           nodeStrokeWidth={14}
           // Pixels; React Flow scales it to the map (the CSS variable isn't).
           maskStrokeWidth={1}
-          className="!static !m-0 !hidden overflow-hidden rounded-sm [--xy-minimap-background-color:color-mix(in_srgb,var(--background)_45%,transparent)] [--xy-minimap-mask-background-color:color-mix(in_srgb,var(--background)_55%,transparent)] [--xy-minimap-mask-stroke-color:color-mix(in_srgb,var(--primary)_55%,transparent)] [--xy-minimap-node-background-color:color-mix(in_srgb,var(--accent-foreground)_35%,transparent)] sm:!block"
+          className="!static !m-0 !hidden overflow-hidden rounded-sm flow-minimap sm:!block"
         />
       ) : null}
       <div className="flex flex-col gap-1">

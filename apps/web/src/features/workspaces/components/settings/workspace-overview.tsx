@@ -103,7 +103,7 @@ function OverviewTile({
         {loading ? (
           <Skeleton className="h-8 w-10" />
         ) : (
-          <span className="font-display text-5xl leading-none tabular-nums [--display-optical-size:40]">
+          <span className="font-display text-figure leading-none tabular-nums [--display-optical-size:40]">
             {failed || count === undefined ? '—' : figure({ count, more })}
           </span>
         )}

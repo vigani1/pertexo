@@ -1,24 +1,8 @@
 import type { CanvasFlowNode } from './notes/canvas-note-identity';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { useEditorStore } from '../../model/state/context';
-import type { WorkflowFlowNode } from '../../model/graph/adapter';
 
-// Family colours, as on the step tiles: trigger cyan, action ice, logic
-// lavender, transform mint, output neutral.
-const familyFill: Readonly<Record<WorkflowFlowNode['data']['family'], string>> =
-  {
-    trigger: 'var(--primary)',
-    action: 'color-mix(in srgb, var(--accent-foreground) 70%, transparent)',
-    logic: 'color-mix(in srgb, var(--secondary) 80%, transparent)',
-    transform: 'color-mix(in srgb, var(--success) 75%, transparent)',
-    output: 'color-mix(in srgb, var(--muted-foreground) 70%, transparent)',
-    unknown: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
-  };
-
-/**
- * The editor's zoom lens: each step on the overview map in its family's
- * colour, the selected one outlined, and fit using the editor's framing.
- */
+/** An overview of the canvas, with a ring around the selected step. */
 export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
   // An empty draft has nothing to map, so no empty frame either.
   const empty = useEditorStore(
@@ -31,10 +15,12 @@ export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
       fitLabel="Fit workflow to screen"
       showMap={!empty}
       nodeColor={(node) =>
-        node.type === 'note' ? 'var(--secondary)' : familyFill[node.data.family]
+        node.type === 'note'
+          ? 'var(--subtle-foreground)'
+          : 'var(--muted-foreground)'
       }
       nodeStrokeColor={(node) =>
-        (node.selected ?? false) ? 'var(--primary)' : 'transparent'
+        (node.selected ?? false) ? 'var(--action)' : 'transparent'
       }
       onFit={onFit}
       className="lg:!left-[var(--editor-left-inset,0.75rem)]"
