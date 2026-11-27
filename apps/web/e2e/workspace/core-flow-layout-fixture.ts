@@ -139,7 +139,11 @@ const tasks = [
 /** Every read the core-flow pages make, answered with the day above. */
 export async function installCoreFlowRoutes(
   page: Page,
-  options: Readonly<{ live?: boolean }> = {},
+  options: Readonly<{
+    live?: boolean;
+    /** The draft on the canvas; the invoice workflow unless given. */
+    graph?: ReturnType<typeof invoiceGraph>;
+  }> = {},
 ) {
   await page.route('**/v1/**', (route) => {
     if (process.env.PERTEXO_CORE_FLOW_SHOTS !== undefined)
@@ -147,20 +151,24 @@ export async function installCoreFlowRoutes(
     return route.fulfill({ status: 404 });
   });
   await page.route('**/presence/*', (route) => route.fulfill({ status: 204 }));
-  await installEditorRoutes(page, remoteDraft(invoiceGraph()), {
-    definitions: platformBrowserNodeDefinitionCatalog().definitions,
-    workflowName: 'Invoice intake',
-    accessibleWorkspace: {
-      ...workspace,
-      role: 'owner',
-      capabilities: [
-        ...workspace.capabilities,
-        'workflow:create',
-        'run:replay',
-        'member:read',
-      ],
+  await installEditorRoutes(
+    page,
+    remoteDraft(options.graph ?? invoiceGraph()),
+    {
+      definitions: platformBrowserNodeDefinitionCatalog().definitions,
+      workflowName: 'Invoice intake',
+      accessibleWorkspace: {
+        ...workspace,
+        role: 'owner',
+        capabilities: [
+          ...workspace.capabilities,
+          'workflow:create',
+          'run:replay',
+          'member:read',
+        ],
+      },
     },
-  });
+  );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
     (route) =>

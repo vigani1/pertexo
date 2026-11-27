@@ -68,3 +68,49 @@ export function invoiceGraph() {
     settings: {},
   };
 }
+
+/**
+ * Support triage with AI steps: guardrails, then a classifier whose
+ * categories open lanes, then an agent drafting the billing reply.
+ */
+export function triageGraph() {
+  const classify = node('sort', 'ai.classify', 'Sort the ticket', [900, 200]);
+  return {
+    nodes: [
+      node('ticket', 'core.manual', 'New ticket', [0, 200]),
+      node('guard', 'ai.guardrails', 'Check for personal data', [300, 200]),
+      node('stop', 'core.set', 'Stop run', [600, 420]),
+      node('check', 'core.validate', 'Check the ticket', [600, 200]),
+      {
+        ...classify,
+        config: {
+          categories: [
+            {
+              id: 'category-01',
+              label: 'billing',
+              description: 'Invoices, refunds and payments.',
+            },
+            {
+              id: 'category-02',
+              label: 'bug',
+              description: 'Something in the product is broken.',
+            },
+          ],
+        },
+      },
+      node('reply', 'ai.agent', 'Draft reply', [1200, 200]),
+      node('bugs', 'slack.send_message', 'Post to #bugs', [1200, 40]),
+      node('queue', 'core.set', 'Add to queue', [1200, 380]),
+    ],
+    edges: [
+      edge('ticket', 'guard'),
+      edge('guard', 'check', 'pass'),
+      edge('guard', 'stop', 'fail'),
+      edge('check', 'sort'),
+      edge('sort', 'reply', 'category-01'),
+      edge('sort', 'bugs', 'category-02'),
+      edge('sort', 'queue', 'other'),
+    ],
+    settings: {},
+  };
+}
