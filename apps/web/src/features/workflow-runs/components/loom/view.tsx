@@ -1,3 +1,4 @@
+import { cn } from '@/lib/class-names';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { useEffect, useMemo, useRef } from 'react';
 import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
@@ -64,7 +65,7 @@ export function RunLoom({
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="@container relative overflow-hidden rounded-xl border border-surface-ink/6 bg-linear-to-b from-select to-transparent transition-[height] duration-300 ease-out motion-reduce:transition-none"
+        className="@container relative overflow-hidden transition-[height] duration-300 ease-out motion-reduce:transition-none"
         style={{ height }}
       >
         <LoomCanvas model={model} label={summary} />
@@ -84,7 +85,13 @@ export function RunLoom({
                 : 'size-12 @min-[640px]:size-28'
             }
           />
-          <p className="absolute inset-x-0 bottom-0 text-center font-mono text-caption font-semibold text-glint @max-[639px]:hidden">
+          <p
+            className={cn(
+              'absolute inset-x-0 bottom-0 text-center font-mono text-caption font-semibold @max-[639px]:hidden',
+              // Live work is the one thing here that earns colour.
+              model.liveCount > 0 ? 'text-glint' : 'text-subtle-foreground',
+            )}
+          >
             {String(model.liveCount)} running
           </p>
         </div>
