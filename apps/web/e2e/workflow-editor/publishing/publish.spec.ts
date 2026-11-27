@@ -68,14 +68,15 @@ for (const width of [375, 1280]) {
       const issues = page.getByRole('region', { name: 'Issues' });
       await expect(issues).toContainText('This draft has no steps yet');
       const issuesBox = await issues.boundingBox();
-      const lowerBoundary =
-        width < 1024
-          ? (
-              await page
-                .getByRole('navigation', { name: 'Editor panels' })
-                .boundingBox()
-            )?.y
-          : page.viewportSize()?.height;
+      // It rests on the bottom controls: the panel buttons below 1024px,
+      // the canvas toolbar from there.
+      const lowerBoundary = (
+        await (
+          width < 1024
+            ? page.getByRole('navigation', { name: 'Editor panels' })
+            : page.getByRole('toolbar', { name: 'Canvas toolbar' })
+        ).boundingBox()
+      )?.y;
       expect(lowerBoundary).toBeDefined();
       expect((issuesBox?.y ?? 0) + (issuesBox?.height ?? 0)).toBeGreaterThan(
         (lowerBoundary ?? 0) - 48,
