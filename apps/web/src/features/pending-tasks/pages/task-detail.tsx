@@ -108,11 +108,11 @@ export function TaskDetailPage({
             </section>
             {task.kind !== 'approval' || task.output === null ? null : (
               <section aria-labelledby="task-decision" className="grid gap-2">
-                <RuleHeading id="task-decision">Decision</RuleHeading>
-                <StatusMark tone={taskTone(task.status)} className="text-sm">
+                <RuleHeading id="task-decision">
+                  <StatusMark display="mark" tone={taskTone(task.status)} />
                   {task.completedByName ?? 'Workspace member'}{' '}
                   {task.output.decision} this request
-                </StatusMark>
+                </RuleHeading>
                 <p className="font-mono text-meta text-subtle-foreground">
                   {formatDateTime(task.output.decidedAt)}
                 </p>
