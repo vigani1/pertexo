@@ -35,7 +35,7 @@ function ThreadStroke({ phase }: Readonly<{ phase: TestPhase }>) {
             d={THREAD}
             pathLength={100}
             strokeDasharray="8 24"
-            className="stroke-accent-foreground drop-shadow-[0_0_4px_var(--primary)] motion-safe:animate-[thread-drift_1.1s_linear_infinite]"
+            className="stroke-accent-foreground drop-shadow-live motion-safe:animate-[thread-drift_1.1s_linear_infinite]"
           />
         </>
       );

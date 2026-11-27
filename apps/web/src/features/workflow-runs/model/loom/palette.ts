@@ -35,6 +35,7 @@ export function toneColor(palette: Palette, tone: StatusTone): Rgb {
       return palette.pending;
     case 'attention':
       return palette.warning;
+    case 'off':
     case 'canceled':
     case 'neutral':
     case 'skipped':

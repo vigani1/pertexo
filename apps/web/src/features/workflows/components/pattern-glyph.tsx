@@ -154,7 +154,5 @@ function nodeFill({
   trigger,
 }: Readonly<{ muted: boolean; trigger: boolean }>): string {
   if (muted) return 'fill-subtle-foreground';
-  return trigger
-    ? 'fill-primary drop-shadow-[0_0_3px_var(--primary)]'
-    : 'fill-accent-foreground';
+  return trigger ? 'fill-primary drop-shadow-live' : 'fill-accent-foreground';
 }

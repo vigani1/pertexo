@@ -9,11 +9,3 @@ export function formatInitials(name: string, fallback = 'P'): string {
     .join('');
   return (initials === '' ? fallback.charAt(0) || 'P' : initials).toUpperCase();
 }
-
-/** A stable small index for a string, used to pick decorative variants. */
-export function stableIndex(value: string, modulo: number): number {
-  let hash = 0;
-  for (const character of value)
-    hash = (hash * 31 + character.charCodeAt(0)) | 0;
-  return Math.abs(hash) % modulo;
-}

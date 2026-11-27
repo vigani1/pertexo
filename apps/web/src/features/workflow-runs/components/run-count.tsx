@@ -12,16 +12,8 @@ export function RunCount({
   count,
   label,
 }: Readonly<{ tone: StatusTone; count: number; label: string }>) {
-  // A zero is worth knowing but not worth looking at: it steps back.
   return (
-    <StatusMark
-      tone={tone}
-      still={count === 0}
-      className={cn(
-        'font-mono text-xs font-normal',
-        count === 0 && 'opacity-55',
-      )}
-    >
+    <StatusMark tone={tone} still={count === 0} className="font-mono">
       <span className="text-subtle-foreground">
         <b
           className={cn(

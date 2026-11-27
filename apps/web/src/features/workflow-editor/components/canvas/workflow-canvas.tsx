@@ -127,7 +127,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_40%,transparent_30%,color-mix(in_srgb,var(--background)_85%,transparent)_90%)]"
+        className="pointer-events-none absolute inset-0 canvas-shade"
       />
       <CanvasActionsContext value={actions}>
         <ReactFlow<CanvasFlowNode, WorkflowFlowEdge>

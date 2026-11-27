@@ -3,13 +3,13 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { isAdministrativeRole } from '@pertexo/contracts';
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { CheckIcon, PlusIcon, SearchIcon } from 'lucide-react';
+import { CheckIcon, PlusIcon } from 'lucide-react';
 import type { SharingPrincipals } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { sharingPrincipalsQueryOptions } from '@/lib/resource-sharing/principals.queries';
 import { principalIdentifier } from '@/lib/resource-sharing/principal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { SharingEntry } from './entry';
 
@@ -84,12 +84,7 @@ export function SharingPrincipalPicker({
         ) : null}
       </div>
       <div className="relative">
-        <SearchIcon
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="search"
+        <SearchInput
           aria-label={
             kind === 'member'
               ? 'Search people by name or email'
@@ -100,7 +95,7 @@ export function SharingPrincipalPicker({
           }
           autoComplete="off"
           maxLength={128}
-          className="pl-9"
+
           value={search}
           disabled={disabled}
           onChange={(event) => {

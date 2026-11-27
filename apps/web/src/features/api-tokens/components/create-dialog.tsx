@@ -7,11 +7,11 @@ import {
 } from '@/features/auth/auth-routing.public';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useApiTokenIssue } from '../data/api-tokens.mutations';
@@ -67,14 +67,14 @@ export function CreateTokenDialog({
       });
   }
   return (
-    <Dialog
+    <Sheet
       open
       disablePointerDismissal={request.pending || view.kind === 'secret'}
       onOpenChange={(open) => {
         if (!open && !request.pending && view.kind !== 'secret') onClose();
       }}
     >
-      <DialogContent>
+      <SheetContent variant="form">
         {view.kind === 'secret' ? (
           <TokenSecretReceipt
             secret={view.secret}
@@ -84,12 +84,12 @@ export function CreateTokenDialog({
         ) : null}
         {view.kind === 'unconfirmed' ? (
           <>
-            <DialogTitle>Check your tokens</DialogTitle>
-            <DialogDescription>
+            <SheetTitle>Check your tokens</SheetTitle>
+            <SheetDescription>
               Creation could not be confirmed, or its one-time secret is no
               longer available. The token may exist, but Pertexo cannot show its
               secret again.
-            </DialogDescription>
+            </SheetDescription>
             <Notice tone="warning" className="mt-5">
               Close this dialog and refresh the list. Revoke the token you
               cannot use before creating a replacement.
@@ -108,10 +108,10 @@ export function CreateTokenDialog({
         ) : null}
         {view.kind === 'form' ? (
           <>
-            <DialogTitle>Create API token</DialogTitle>
-            <DialogDescription>
+            <SheetTitle>Create API token</SheetTitle>
+            <SheetDescription>
               {`For your scripts in this workspace. Creation needs a sign-in from the last ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`}
-            </DialogDescription>
+            </SheetDescription>
             {view.feedback === undefined ? null : (
               <Notice
                 tone="destructive"
@@ -143,7 +143,7 @@ export function CreateTokenDialog({
             />
           </>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  CalendarRangeIcon,
-  ChevronDownIcon,
-  SearchIcon,
-  XIcon,
-} from 'lucide-react';
+import { XIcon } from 'lucide-react';
 import type { AuditFilter } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,14 +7,8 @@ import {
   localDateOf,
   shiftDays,
 } from '@/components/ui/date-time-parts';
-import { DayRangeForm } from '@/components/patterns/dates/day-range-form';
-import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { DayRangePicker } from '@/components/patterns/dates/day-range-picker';
+import { SearchInput } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -72,91 +61,43 @@ function TimeRange({
   filters: AuditFilter;
   onApply: (filters: AuditFilter) => void;
 }>) {
-  const [open, setOpen] = useState(false);
-  const label = rangeLabel(filters);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="font-normal text-foreground"
-            aria-label={`When: ${label ?? 'Any time'}`}
-          />
-        }
-      >
-        <CalendarRangeIcon aria-hidden="true" />
-        <span className="max-w-48 truncate">{label ?? 'Any time'}</span>
-        <ChevronDownIcon aria-hidden="true" className="opacity-60" />
-      </PopoverTrigger>
-      <PopoverContent className="w-[min(24rem,calc(100vw-2rem))]">
-        <PopoverTitle>When it happened</PopoverTitle>
-        <div
-          className="mt-3 grid grid-cols-3 gap-1.5"
-          role="group"
-          aria-label="Quick ranges"
-        >
-          {PRESETS.map((preset) => (
-            <Button
-              key={preset.label}
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                onApply({
-                  ...without(filters, 'from', 'until'),
-                  from: new Date(Date.now() - preset.ms).toISOString(),
-                });
-                setOpen(false);
-              }}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-        <DayRangeForm
-          initial={{
-            from:
-              filters.from === undefined
-                ? ''
-                : localDateOf(new Date(filters.from)),
-            to:
-              filters.until === undefined
-                ? ''
-                : localDateOf(new Date(Date.parse(filters.until) - 1)),
-          }}
-          onApply={(first, last) => {
-            const from = dateOf(first);
-            const until = dateOf(shiftDays(last, 1));
-            if (from === undefined || until === undefined)
-              return 'Pick both days again.';
-            onApply({
-              ...filters,
-              from: from.toISOString(),
-              until: until.toISOString(),
-            });
-            setOpen(false);
-            return undefined;
-          }}
-        />
-        {label === undefined ? null : (
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className="mt-3"
-            onClick={() => {
-              onApply(without(filters, 'from', 'until'));
-              setOpen(false);
-            }}
-          >
-            Any time
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
+    <DayRangePicker
+      title="When it happened"
+      label={rangeLabel(filters)}
+      presets={PRESETS.map((preset) => ({
+        label: preset.label,
+        apply: () => {
+          onApply({
+            ...without(filters, 'from', 'until'),
+            from: new Date(Date.now() - preset.ms).toISOString(),
+          });
+        },
+      }))}
+      initial={{
+        from:
+          filters.from === undefined ? '' : localDateOf(new Date(filters.from)),
+        to:
+          filters.until === undefined
+            ? ''
+            : localDateOf(new Date(Date.parse(filters.until) - 1)),
+      }}
+      onApply={(first, last) => {
+        const from = dateOf(first);
+        const until = dateOf(shiftDays(last, 1));
+        if (from === undefined || until === undefined)
+          return 'Pick both days again.';
+        onApply({
+          ...filters,
+          from: from.toISOString(),
+          until: until.toISOString(),
+        });
+        return undefined;
+      }}
+      onClear={() => {
+        onApply(without(filters, 'from', 'until'));
+      }}
+    />
   );
 }
 
@@ -194,12 +135,7 @@ export function AuditFilters({
             );
           }}
         >
-          <SearchIcon
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-subtle-foreground"
-          />
-          <Input
-            type="search"
+          <SearchInput
             aria-label="Person"
             placeholder="Who did it"
             maxLength={256}
@@ -210,7 +146,7 @@ export function AuditFilters({
               if (event.target.value === '' && filters.person !== undefined)
                 onApply(without(filters, 'person'));
             }}
-            className="h-8 w-52 pl-8"
+            className="w-52 max-w-full"
           />
         </form>
         <Select
@@ -243,9 +179,9 @@ export function AuditFilters({
             <li className="min-w-0">
               <Button
                 type="button"
-                variant="outline"
+                variant="chip"
                 size="sm"
-                className="h-auto min-h-7 max-w-full rounded-full py-1 text-left whitespace-normal"
+                className="text-left"
                 aria-label={`Show every kind of event, not only “${actionWords ?? filters.action}”`}
                 onClick={() => {
                   onApply(without(filters, 'action'));
@@ -260,9 +196,9 @@ export function AuditFilters({
             <li className="min-w-0">
               <Button
                 type="button"
-                variant="outline"
+                variant="chip"
                 size="sm"
-                className="h-auto min-h-7 max-w-full rounded-full py-1 text-left whitespace-normal"
+                className="text-left"
                 aria-label="Show events for everything, not only one item"
                 onClick={() => {
                   onApply(without(filters, 'targetId'));

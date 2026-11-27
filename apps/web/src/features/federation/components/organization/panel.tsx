@@ -1,3 +1,4 @@
+import { tabTileClass } from '@/components/ui/tabs';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -29,14 +30,24 @@ export function OrganizationPanel({
     <>
       <nav
         aria-label="Single sign-on sections"
-        className="flex gap-5 border-b border-border"
+        className="flex flex-wrap gap-1"
       >
         <Link
           to="/w/$workspaceId/settings/sso"
           params={{ workspaceId: workspace.id }}
           search={{ ssoSection: 'sign-in' }}
-          aria-current={section === 'sign-in' ? 'page' : undefined}
-          className={`border-b-2 pb-2 text-sm font-medium outline-none focus-ring ${section === 'sign-in' ? 'border-action text-foreground' : 'border-transparent text-muted-foreground'}`}
+          activeOptions={{
+            exact: true,
+            includeSearch: true,
+            explicitUndefined: true,
+          }}
+          activeProps={{
+            'aria-current': section === 'sign-in' ? 'page' : undefined,
+          }}
+          inactiveProps={{
+            'aria-current': section === 'sign-in' ? 'page' : undefined,
+          }}
+          className={tabTileClass}
         >
           Sign-in providers
         </Link>
@@ -44,8 +55,12 @@ export function OrganizationPanel({
           to="/w/$workspaceId/settings/sso"
           params={{ workspaceId: workspace.id }}
           search={{ ssoSection: 'directory' }}
-          aria-current={section === 'directory' ? 'page' : undefined}
-          className={`border-b-2 pb-2 text-sm font-medium outline-none focus-ring ${section === 'directory' ? 'border-action text-foreground' : 'border-transparent text-muted-foreground'}`}
+          activeOptions={{
+            exact: true,
+            includeSearch: true,
+            explicitUndefined: true,
+          }}
+          className={tabTileClass}
         >
           Directory
         </Link>

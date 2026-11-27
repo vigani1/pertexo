@@ -38,7 +38,7 @@ export function LoopBodySection({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-2 rounded-lg border border-dashed border-secondary/30 bg-secondary/[0.04] p-3 text-sm"
+      className="flex flex-col gap-2 rounded-lg border border-dashed border-secondary/30 bg-waiting-soft p-3 text-sm"
     >
       <h3 id={headingId} className="font-semibold">
         Runs once per item

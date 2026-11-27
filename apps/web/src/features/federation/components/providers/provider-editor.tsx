@@ -1,14 +1,14 @@
 import { CurrentProviderSettings } from './revision-notice';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import type { ReactNode } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -38,16 +38,19 @@ export function ProviderDialog({
   children: ReactNode;
 }>) {
   return (
-    <Dialog
+    <Sheet
       open
       disablePointerDismissal={locked}
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
+      <SheetContent
+        variant="form"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden"
+      >
+        <SheetTitle>{title}</SheetTitle>
+        <SheetDescription>{description}</SheetDescription>
         {unavailable ? (
           <Notice tone="warning">
             This provider was removed in another tab. Your inputs are kept, but
@@ -55,8 +58,8 @@ export function ProviderDialog({
           </Notice>
         ) : null}
         {children}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 export function ProviderFooter({
@@ -113,7 +116,7 @@ export function ProviderFooter({
         Changing a required provider needs another tested provider first, or
         required SSO turned off. Provider changes end its existing sessions.
       </p>
-      <DialogFooter className="pt-2">
+      <SheetFooter className="pt-2">
         <Button
           type="button"
           variant="ghost"
@@ -130,7 +133,7 @@ export function ProviderFooter({
         >
           Save provider
         </ProgressButton>
-      </DialogFooter>
+      </SheetFooter>
     </>
   );
 }

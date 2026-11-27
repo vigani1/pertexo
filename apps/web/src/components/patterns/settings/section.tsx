@@ -1,3 +1,4 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { useId, type ReactNode } from 'react';
 import { cn } from '@/lib/class-names';
 
@@ -24,23 +25,20 @@ export function SettingsSection({
   return (
     <section
       aria-labelledby={headingId}
-      className={cn(
-        'grid gap-x-10 gap-y-5 border-t border-border py-8 first:border-t-0 first:pt-2 lg:grid-cols-[14rem_minmax(0,1fr)]',
-        className,
-      )}
+      className={cn('grid min-w-0 gap-y-4 py-5 first:pt-2', className)}
     >
-      <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-col gap-3">
         <div>
-          <h2 id={headingId} className="text-lg font-semibold">
-            {title}
-          </h2>
+          <RuleHeading id={headingId}>{title}</RuleHeading>
           {description === undefined ? null : (
             <div className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
               {description}
             </div>
           )}
         </div>
-        {action}
+        {action === undefined ? null : (
+          <div className="self-start">{action}</div>
+        )}
       </div>
       <div className="flex min-w-0 flex-col gap-4">{children}</div>
     </section>

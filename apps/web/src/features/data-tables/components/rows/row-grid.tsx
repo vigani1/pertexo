@@ -85,7 +85,7 @@ export function RowsGrid({
     <div className="relative max-w-full overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{table.name} rows</caption>
-        <thead className="bg-surface-ink/[0.025]">
+        <thead className="bg-select">
           <tr className="border-b border-surface-ink/8">
             {table.columns.map((column) => {
               const look = COLUMN_TYPES[column.type];
@@ -175,7 +175,7 @@ function DataRow({
   onDelete: (row: DataTableRow) => void;
 }>) {
   return (
-    <tr className="group/row border-b border-surface-ink/5 transition-colors last:border-0 hover:bg-surface-ink/[0.03] motion-reduce:transition-none">
+    <tr className="group/row border-b border-surface-ink/5 transition-colors last:border-0 hover:bg-select motion-reduce:transition-none">
       {table.columns.map((column) => (
         <td
           key={column.name}

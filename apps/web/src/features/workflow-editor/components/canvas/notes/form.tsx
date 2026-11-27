@@ -5,11 +5,11 @@ import {
   type WorkflowNote,
 } from '@pertexo/workflow-model';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -90,21 +90,19 @@ export function NoteForm({
     validation.change(key, noteFieldErrors(next)[key]);
   }
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-lg">
+      <SheetContent variant="form">
         <div className="flex flex-col gap-2">
-          <DialogTitle>
-            {mode === 'add' ? 'Add a note' : 'Edit note'}
-          </DialogTitle>
-          <DialogDescription>
+          <SheetTitle>{mode === 'add' ? 'Add a note' : 'Edit note'}</SheetTitle>
+          <SheetDescription>
             Documentation for this workflow. Saving updates the draft; notes
             never run.
-          </DialogDescription>
+          </SheetDescription>
         </div>
         <form
           noValidate
@@ -203,8 +201,8 @@ export function NoteForm({
             </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

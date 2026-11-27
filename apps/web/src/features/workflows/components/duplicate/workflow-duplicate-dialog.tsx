@@ -1,4 +1,4 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { useCallback, useState, type ComponentProps } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
@@ -8,11 +8,11 @@ import {
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -30,7 +30,7 @@ type WorkflowDuplicateDialogProps = Readonly<{
   allowed?: boolean;
   onClose: () => void;
   onCreated: (workflowId: string) => void;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus?: ComponentProps<typeof SheetContent>['finalFocus'];
   scope: Readonly<{
     apiClient: ApiClient;
     userId: string;
@@ -69,15 +69,15 @@ export function WorkflowDuplicateDialog({
   const pending = state.kind === 'sending' || state.kind === 'loading';
   const locked = pending || command.uncertain;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent finalFocus={finalFocus}>
-        <DialogTitle>Duplicate workflow</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form" finalFocus={finalFocus}>
+        <SheetTitle>Duplicate workflow</SheetTitle>
+        <SheetDescription>
           {state.kind === 'denied' ? (
             'Your access to this source changed.'
           ) : (
@@ -86,7 +86,7 @@ export function WorkflowDuplicateDialog({
               draft; nothing runs until you publish it.
             </>
           )}
-        </DialogDescription>
+        </SheetDescription>
         <form
           noValidate
           className="mt-5 flex flex-col gap-5"
@@ -137,7 +137,7 @@ export function WorkflowDuplicateDialog({
               {state.error}
             </Notice>
           )}
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="ghost"
@@ -162,10 +162,10 @@ export function WorkflowDuplicateDialog({
             >
               {command.uncertain ? 'Retry exact copy' : 'Duplicate workflow'}
             </ProgressButton>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 function DuplicateSourceReview({

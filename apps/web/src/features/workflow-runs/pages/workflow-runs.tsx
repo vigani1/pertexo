@@ -63,7 +63,7 @@ export function WorkflowRunsPage({
           />
         </div>
       </div>
-      <RunFilters search={search} onSearchChange={onSearchChange} />
+      <RunFilters runs={runs} search={search} onSearchChange={onSearchChange} />
       <RunResults
         search={search}
         onSearchChange={onSearchChange}

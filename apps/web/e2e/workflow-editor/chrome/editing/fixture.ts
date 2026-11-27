@@ -90,3 +90,24 @@ export async function expectHeaderBounds(
     width,
   );
 }
+
+export async function expectCanvasBesideWorkspace(
+  page: Page,
+  canvas: Locator,
+  width: number,
+) {
+  const canvasBox = await canvas.boundingBox();
+  const workspaceNav = page.getByRole('navigation', { name: 'Workspace' });
+  const navBox = await workspaceNav.boundingBox();
+  expect(navBox).not.toBeNull();
+  expect(canvasBox?.width).toBeGreaterThan(width - (width >= 768 ? 100 : 30));
+  if (width >= 768) {
+    expect(canvasBox?.x).toBeGreaterThanOrEqual(
+      (navBox?.x ?? 0) + (navBox?.width ?? 0),
+    );
+  } else {
+    expect((canvasBox?.y ?? 0) + (canvasBox?.height ?? 0)).toBeLessThanOrEqual(
+      navBox?.y ?? 0,
+    );
+  }
+}

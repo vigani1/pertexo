@@ -16,7 +16,7 @@ export function NotificationRoute({
   return (
     <figure
       aria-label="Where your notices go"
-      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
+      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-select p-5 sm:flex-row sm:items-center sm:gap-0"
     >
       <Stop
         icon={<SparkleIcon aria-hidden="true" className="size-4" />}
@@ -68,7 +68,7 @@ function Stop({
         className={cn(
           'grid size-9 shrink-0 place-items-center rounded-full border',
           tone === 'action' &&
-            'border-action/50 bg-action/8 text-accent-foreground shadow-[0_0_0_4px_color-mix(in_srgb,var(--action)_8%,transparent)]',
+            'border-action/50 bg-action/8 text-accent-foreground shadow-selection',
           tone === 'muted' && 'border-border text-subtle-foreground',
           tone === 'plain' && 'border-surface-ink/12 text-muted-foreground',
         )}

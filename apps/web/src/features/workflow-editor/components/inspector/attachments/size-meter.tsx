@@ -64,7 +64,7 @@ export function AttachmentSizeMeter({ size }: Readonly<{ size: Size }>) {
           {size.unknown === 0 || size.over ? null : (
             <span
               aria-hidden="true"
-              className="absolute top-1/2 h-0.5 w-10 -translate-y-1/2 bg-[repeating-linear-gradient(90deg,var(--subtle-foreground)_0_3px,transparent_3px_7px)] opacity-60"
+              className="absolute top-1/2 h-0.5 w-10 -translate-y-1/2 thread-dashes opacity-60"
               style={{
                 left: `min(calc(${String(fill * 100)}% + 0.375rem), calc(100% - 2.5rem))`,
               }}

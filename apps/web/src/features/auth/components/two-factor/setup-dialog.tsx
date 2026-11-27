@@ -1,4 +1,4 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { encode } from 'uqr';
 import type { ApiClient } from '@/lib/api/client';
@@ -6,11 +6,11 @@ import { isApiError } from '@/lib/api/error';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { CopyButton } from '@/components/ui/copy-button';
 import { PasswordField } from '../../forms/password-field';
@@ -137,17 +137,17 @@ export function TwoFactorSetupDialog({
     else onComplete();
   }
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !busy && stage.kind !== 'codes') onClose();
       }}
     >
-      <DialogContent aria-busy={busy || undefined}>
-        <DialogTitle ref={title} tabIndex={-1} className="outline-none">
+      <SheetContent variant="form" aria-busy={busy || undefined}>
+        <SheetTitle ref={title} tabIndex={-1} className="outline-none">
           {stage.kind === 'codes' ? 'Save your recovery codes' : copy.title}
-        </DialogTitle>
-        <DialogDescription>{copy.description}</DialogDescription>
+        </SheetTitle>
+        <SheetDescription>{copy.description}</SheetDescription>
         <SetupStage
           stage={stage}
           password={
@@ -167,8 +167,8 @@ export function TwoFactorSetupDialog({
           onComplete={onComplete}
           closing={closing}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -218,7 +218,7 @@ function PasswordSetup({
           }
         />
       )}
-      <DialogFooter>
+      <SheetFooter>
         <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
           Cancel
         </Button>
@@ -230,7 +230,7 @@ function PasswordSetup({
         >
           {action === 'enable' ? 'Continue' : title}
         </ProgressButton>
-      </DialogFooter>
+      </SheetFooter>
     </form>
   );
 }

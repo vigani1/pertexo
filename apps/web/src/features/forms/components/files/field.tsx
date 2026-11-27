@@ -82,9 +82,9 @@ export function FileFieldControl({
           [summaryId, helpId, errorId].filter(Boolean).join(' ') || undefined
         }
         className={cn(
-          'min-h-24 transition-[border-color,background-color,box-shadow] has-[[data-dragging=true]]:border-warning/80 has-[[data-dragging=true]]:bg-warning/[0.06] has-[[data-dragging=true]]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--warning)_14%,transparent)] max-sm:min-h-28 motion-reduce:transition-none',
+          'min-h-24 transition-[border-color,background-color,box-shadow] has-[[data-dragging=true]]:border-warning/80 has-[[data-dragging=true]]:bg-warn-soft has-[[data-dragging=true]]:ring-4 has-[[data-dragging=true]]:ring-warn-soft max-sm:min-h-28 motion-reduce:transition-none',
           full && 'border-solid opacity-100',
-          settled && 'border-success/35 bg-success/[0.04]',
+          settled && 'border-success/35 bg-select',
           error !== undefined && 'border-destructive/60',
         )}
         onChooseFiles={(files) => {
@@ -98,7 +98,7 @@ export function FileFieldControl({
           >
             <span
               className={cn(
-                'grid size-11 shrink-0 place-items-center rounded-full border border-surface-ink/10 bg-surface-ink/[0.04] text-action transition-transform duration-300 ease-unspool motion-reduce:transition-none',
+                'grid size-11 shrink-0 place-items-center rounded-full border border-surface-ink/10 bg-select text-action transition-transform duration-300 ease-unspool motion-reduce:transition-none',
                 dragging && '-translate-y-0.5 -rotate-12 text-warning',
                 settled && 'text-success',
               )}

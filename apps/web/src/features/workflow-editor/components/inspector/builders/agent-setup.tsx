@@ -227,7 +227,7 @@ function AgentToolSetup({
   const toolId = fieldControlId(form.nodeId, 'agent-tool');
   const toolSchemas = agentToolSchemas(schema);
   return (
-    <fieldset className="flex min-w-0 flex-col gap-4 border-l-2 border-border pl-3">
+    <fieldset className="flex min-w-0 flex-col gap-4 border-l border-border pl-3">
       <legend className="mb-3 text-sm font-semibold">Tool setup</legend>
       <Field>
         <FieldLabel htmlFor={toolId}>Agent tool</FieldLabel>

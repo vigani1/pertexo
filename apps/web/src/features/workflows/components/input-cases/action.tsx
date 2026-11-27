@@ -3,12 +3,12 @@ import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,7 +67,7 @@ function InputCasesDialog({
     setLoaded(undefined);
   }, []);
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         if (next || !locked) {
@@ -78,7 +78,7 @@ function InputCasesDialog({
         if (!next) setLoaded(undefined);
       }}
     >
-      <DialogTrigger
+      <SheetTrigger
         render={
           <Button
             type="button"
@@ -89,8 +89,9 @@ function InputCasesDialog({
         }
       >
         Input cases
-      </DialogTrigger>
-      <DialogContent
+      </SheetTrigger>
+      <SheetContent
+        variant="form"
         ref={popupRef}
         finalFocus={() => {
           const popup = popupRef.current;
@@ -109,10 +110,10 @@ function InputCasesDialog({
         }}
         className="max-h-[calc(100svh-2rem)] overflow-y-auto"
       >
-        <DialogTitle>Input cases</DialogTitle>
-        <DialogDescription>
+        <SheetTitle>Input cases</SheetTitle>
+        <SheetDescription>
           Browse shared run inputs. Nothing here starts or tests a workflow.
-        </DialogDescription>
+        </SheetDescription>
         {/* Let the popup unmount its focused content after the exit transition;
             removing it on close queues focus repair into the next open menu. */}
         <div className="mt-5 flex flex-col gap-5">
@@ -160,7 +161,7 @@ function InputCasesDialog({
             Close input cases
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

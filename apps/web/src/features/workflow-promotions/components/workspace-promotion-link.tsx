@@ -19,7 +19,7 @@ export function PromotionLink({
   return (
     <figure
       aria-label={label}
-      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-surface-ink/[0.02] p-5 sm:flex-row sm:items-center sm:gap-0"
+      className="flex flex-col gap-3 rounded-xl border border-surface-ink/7 bg-select p-5 sm:flex-row sm:items-center sm:gap-0"
     >
       <Workspace name={workspaceName} caption="This workspace" lit />
       <span

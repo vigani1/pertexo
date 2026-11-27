@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import type {
   CommentDraftChange,
   CommentDraftState,
@@ -238,22 +238,22 @@ function CommentLeaveDialog({
   guard,
 }: Readonly<{ guard: ReturnType<typeof useCommentDraftGuard> }>) {
   return (
-    <Dialog
+    <Sheet
       open={guard.blocker.status === 'blocked'}
       onOpenChange={(open) => {
         if (!open && guard.blocker.status === 'blocked') guard.blocker.reset();
       }}
     >
-      <DialogContent>
-        <DialogTitle>
+      <SheetContent variant="form">
+        <SheetTitle>
           {guard.unresolved
             ? 'Resolve the discussion change before leaving'
             : 'Discard the unfinished discussion?'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {commentLeaveReason(guard.unresolved, guard.uncertain)}
-        </DialogDescription>
-        <DialogFooter>
+        </SheetDescription>
+        <SheetFooter>
           <Button
             variant="ghost"
             onClick={() => {
@@ -267,9 +267,9 @@ function CommentLeaveDialog({
               Discard and leave
             </Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

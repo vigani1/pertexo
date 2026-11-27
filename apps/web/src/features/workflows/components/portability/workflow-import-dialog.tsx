@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { ApiClient } from '@/lib/api/client';
@@ -87,25 +87,25 @@ function WorkflowImportSession({
         unresolved={draft.unresolved}
         onReopen={() => onReopen?.()}
       />
-      <Dialog
+      <Sheet
         open={open}
         onOpenChange={(open) => {
           if (!open) onClose();
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-          <DialogTitle>
+        <SheetContent variant="form">
+          <SheetTitle>
             {example === undefined
               ? 'Import workflow'
               : 'Start from an example'}
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             {importDescription({
               denied: draft.denied,
               fromExample: example !== undefined,
               workspaceName: workspace.name,
             })}
-          </DialogDescription>
+          </SheetDescription>
           {draft.denied ? null : (
             <div className="mt-5 flex flex-col gap-5">
               <WorkflowImportSourceFields
@@ -188,8 +188,8 @@ function WorkflowImportSession({
               </ProgressButton>
             ) : null}
           </WorkflowImportActions>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

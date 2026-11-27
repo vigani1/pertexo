@@ -16,8 +16,7 @@ const chipVariants = cva(
         reference: 'bg-accent text-accent-foreground',
         code: 'bg-secondary/10 text-secondary',
         value: 'bg-surface-ink/6 text-muted-foreground',
-        missing:
-          'text-subtle-foreground shadow-[inset_0_0_0_1px_var(--border-strong)]',
+        missing: 'text-subtle-foreground inset-ring inset-ring-border-strong',
       } satisfies Record<MappingSourceTone, string>,
     },
   },

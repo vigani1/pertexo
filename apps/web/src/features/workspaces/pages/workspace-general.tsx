@@ -77,8 +77,7 @@ export function WorkspaceGeneralPage({
               name={markName}
               className={cn(
                 'size-14 rounded-xl text-lg transition-[box-shadow] duration-200 motion-reduce:transition-none',
-                draftName !== undefined &&
-                  'shadow-[0_0_0_2px_var(--background),0_0_0_3.5px_color-mix(in_srgb,var(--action)_60%,transparent)]',
+                draftName !== undefined && 'shadow-selection',
               )}
             />
             <div className="flex min-w-0 flex-col gap-1">

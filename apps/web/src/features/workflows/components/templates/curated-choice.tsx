@@ -79,8 +79,8 @@ export function CuratedTemplateChoice({
             className={cn(
               'grid grid-cols-1 items-center gap-x-3 gap-y-2 rounded-lg border p-2.5 transition-colors motion-reduce:transition-none sm:grid-cols-[8.25rem_minmax(0,1fr)]',
               selected
-                ? 'border-primary/45 bg-primary/[0.06]'
-                : 'border-border bg-surface-ink/[0.02] hover:border-border-strong',
+                ? 'border-primary/45 bg-live-soft'
+                : 'border-border bg-select hover:border-border-strong',
             )}
           >
             <span

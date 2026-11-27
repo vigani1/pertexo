@@ -15,85 +15,32 @@ function percent(value: number): string {
 function segmentClass(segment: RunTimelineSegment): string {
   switch (segment.kind) {
     case 'wait':
-      return 'h-0 border-t-2 border-dashed border-current opacity-75';
+      return 'h-0 border-t border-dashed border-current opacity-75';
     case 'skipped':
-      return 'h-0 border-t-2 border-dashed border-current opacity-50';
+      return 'h-0 border-t border-dashed border-current opacity-50';
     case 'pending':
-      return 'h-0 border-t-2 border-dotted border-current opacity-45';
+      return 'h-0 border-t border-dotted border-current opacity-45';
     case 'attempt':
       return segment.tone === 'live' && segment.endMs === null
-        ? 'h-[3px] rounded-full bg-linear-to-r from-primary/30 via-primary to-accent-foreground shadow-[0_0_6px_color-mix(in_srgb,var(--primary)_45%,transparent)]'
+        ? 'h-[3px] rounded-full bg-linear-to-r from-primary/30 via-primary to-accent-foreground shadow-live'
         : 'h-[3px] rounded-full bg-current opacity-85';
   }
 }
 
 function SegmentEnd({ segment }: Readonly<{ segment: RunTimelineSegment }>) {
-  const base = 'absolute top-1/2 right-0 -translate-y-1/2';
   if (
-    segment.kind === 'attempt' &&
-    segment.tone === 'live' &&
-    segment.endMs === null
+    segment.end === undefined &&
+    !(segment.kind === 'attempt' && segment.endMs === null)
   )
-    return (
-      <span
-        className={cn(
-          base,
-          'size-3 translate-x-1/2 rounded-full bg-[radial-gradient(circle,var(--surface-ink)_0_18%,var(--accent-foreground)_30%,color-mix(in_srgb,var(--primary)_35%,transparent)_55%,transparent_72%)] motion-safe:animate-tip',
-        )}
-      />
-    );
-  switch (segment.end) {
-    case 'knot':
-      return (
-        <span
-          className={cn(
-            base,
-            'size-2.5 translate-x-1/2 rounded-full bg-current shadow-[0_0_0_3px_color-mix(in_srgb,currentColor_15%,transparent)] motion-safe:animate-knot',
-          )}
-        />
-      );
-    case 'fray':
-      return (
-        <svg
-          viewBox="0 0 22 16"
-          className={cn(
-            base,
-            'h-4 w-5 translate-x-full motion-safe:animate-fray',
-          )}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        >
-          <path d="M0 8h7M10 4l8 8M18 4l-8 8" />
-        </svg>
-      );
-    case 'bar':
-      return (
-        <span className={cn(base, 'h-3.5 w-0.5 rounded-full bg-current')} />
-      );
-    case 'cut':
-      return (
-        <span
-          className={cn(
-            base,
-            'h-3 w-0.5 translate-x-1 rotate-[20deg] bg-current',
-          )}
-        />
-      );
-    case 'gap':
-      return (
-        <span
-          className={cn(
-            base,
-            'w-4 translate-x-full border-t-2 border-dotted border-current motion-safe:animate-blink',
-          )}
-        />
-      );
-    case undefined:
-    default:
-      return null;
-  }
+    return null;
+  return (
+    <StatusMark
+      display="mark"
+      tone={segment.tone}
+      aria-hidden="true"
+      className="absolute top-1/2 right-0 translate-x-2 -translate-y-1/2"
+    />
+  );
 }
 
 /**

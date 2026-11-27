@@ -55,7 +55,7 @@ function ProductFacts() {
       aria-label="About Pertexo"
       className="relative z-10 mx-auto hidden w-full max-w-[27.25rem] px-4 pt-4 pb-12 min-[900px]:absolute min-[900px]:block min-[900px]:bottom-11 min-[900px]:left-11 min-[900px]:mx-0 min-[900px]:w-auto min-[900px]:max-w-[min(35rem,calc(100vw-34.5rem))] min-[900px]:p-0 min-[900px]:[@media(max-height:40.625rem)]:hidden"
     >
-      <p className="font-display text-[clamp(2.25rem,4.4vw,3.625rem)] leading-[0.92] text-balance [--display-optical-size:96] [--display-width:74%]">
+      <p className="font-display text-display md:text-hero leading-[0.92] text-balance [--display-optical-size:96] [--display-width:74%]">
         Workflows that <span className="text-action">finish</span> what they
         start.
       </p>

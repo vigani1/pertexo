@@ -30,7 +30,7 @@ export function StepError({
   const copy = describeStepError(code, definitionKey);
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
-    <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-label leading-relaxed">
+    <div className="mt-2 rounded-md border border-destructive/20 bg-fail-soft p-3 text-label leading-relaxed">
       <p className="break-words whitespace-pre-wrap text-foreground">
         {summary ?? copy.sentence}
       </p>

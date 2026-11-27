@@ -3,13 +3,13 @@ import { useState, type ReactNode } from 'react';
 import { UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { LabelledField } from '@/components/ui/field';
 import { FileDrop } from '@/components/ui/file-drop';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -57,20 +57,20 @@ function ScopedUpload(props: Props) {
   const open = openedFor === props.targetKey && !(props.disabled ?? false);
   if (openedFor !== undefined && !open) setOpenedFor(undefined);
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpenedFor(next ? props.targetKey : undefined);
       }}
     >
-      <DialogTrigger
+      <SheetTrigger
         disabled={props.disabled}
         render={<Button type="button" variant="outline" size="sm" />}
       >
         <UploadIcon data-icon="inline-start" />
         {props.label ?? 'Upload file'}
-      </DialogTrigger>
-      <DialogContent className="flex flex-col gap-5">
+      </SheetTrigger>
+      <SheetContent variant="form" className="flex flex-col gap-5">
         {open ? (
           <UploadSession
             {...props}
@@ -79,8 +79,8 @@ function ScopedUpload(props: Props) {
             }}
           />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -117,8 +117,8 @@ function UploadSession({
   return (
     <>
       <div>
-        <DialogTitle>Upload a file</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
+        <SheetTitle>Upload a file</SheetTitle>
+        <SheetDescription>{description}</SheetDescription>
       </div>
       <LabelledField
         id="upload-file"
@@ -156,7 +156,7 @@ function UploadSession({
         input cases and runs keep their files. Unused finalized files expire
         after {formatCount(DATA_RETENTION_DAYS.unusedUploads, 'day')}.
       </p>
-      <DialogFooter>
+      <SheetFooter>
         <Button type="button" variant="ghost" onClick={close}>
           {upload.pending ? 'Cancel upload' : 'Cancel'}
         </Button>
@@ -195,7 +195,7 @@ function UploadSession({
         >
           {useLabel}
         </Button>
-      </DialogFooter>
+      </SheetFooter>
     </>
   );
 }

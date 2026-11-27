@@ -24,7 +24,7 @@ const dialogViewportVariants = cva(
 );
 
 const dialogContentVariants = cva(
-  'lens relative w-full overflow-y-auto shadow-2xl outline-none transition-[transform,opacity] motion-reduce:transition-none',
+  'lens relative w-full overflow-y-auto outline-none transition-[transform,opacity] duration-(--duration-enter) motion-reduce:transition-none',
   {
     variants: {
       placement: {

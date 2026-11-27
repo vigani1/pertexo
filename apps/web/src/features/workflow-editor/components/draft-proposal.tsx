@@ -7,12 +7,12 @@ import { useState, type ComponentProps } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -43,10 +43,10 @@ export function DraftProposal({
   graph,
   onFix,
 }: Readonly<{
-  handle: NonNullable<ComponentProps<typeof Dialog>['handle']>;
+  handle: NonNullable<ComponentProps<typeof Sheet>['handle']>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  finalFocus: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus: ComponentProps<typeof SheetContent>['finalFocus'];
   graph: WorkflowGraphContract;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
@@ -70,7 +70,7 @@ export function DraftProposal({
   }
 
   return (
-    <Dialog
+    <Sheet
       handle={handle}
       open={open}
       onOpenChange={(next) => {
@@ -79,12 +79,12 @@ export function DraftProposal({
         if (next) void loadDisclosure();
       }}
     >
-      <DialogContent finalFocus={finalFocus}>
-        <DialogTitle>
+      <SheetContent variant="form" finalFocus={finalFocus}>
+        <SheetTitle>
           {review === undefined
             ? 'Describe your workflow change'
             : 'Review proposed draft'}
-        </DialogTitle>
+        </SheetTitle>
         <div className="mt-4 grid gap-4">
           {review === undefined ? (
             <ProposalRequest
@@ -110,10 +110,10 @@ export function DraftProposal({
           stale={stale}
           outcome={feedback?.kind}
         />
-        <DialogFooter className="mt-5">
-          <DialogClose render={<Button variant="outline" disabled={pending} />}>
+        <SheetFooter className="mt-5">
+          <SheetClose render={<Button variant="outline" disabled={pending} />}>
             Cancel
-          </DialogClose>
+          </SheetClose>
           {action.kind === 'regenerate' || action.kind === 'apply' ? (
             <Button
               variant="outline"
@@ -156,9 +156,9 @@ export function DraftProposal({
               Apply to draft
             </Button>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

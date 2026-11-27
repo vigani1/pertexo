@@ -71,14 +71,14 @@ export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
           );
         }}
         className={cn(
-          'group/note flex size-full flex-col overflow-hidden rounded-lg border bg-[color-mix(in_srgb,var(--note-accent)_5%,var(--card))] text-card-foreground shadow-sm outline-none focus-ring',
+          'group/note flex size-full flex-col overflow-hidden rounded-lg border canvas-note-paint text-card-foreground shadow-sm outline-none focus-ring',
           colors[note.color],
         )}
       >
         <header className="canvas-note-handle flex shrink-0 cursor-grab items-center gap-2 border-b border-border bg-raised/50 px-2 py-1.5 active:cursor-grabbing">
           <StickyNoteIcon
             aria-hidden="true"
-            className="size-3.5 text-[var(--note-accent)]"
+            className="size-3.5 canvas-note-ink"
           />
           <span className="grow text-xs font-semibold text-muted-foreground">
             Note

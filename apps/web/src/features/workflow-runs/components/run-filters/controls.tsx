@@ -1,3 +1,5 @@
+import type { WorkflowRunReadSummary } from '@pertexo/contracts';
+import { localDateValue } from '../../model/list/run-search';
 import { BusinessValueFilter } from './business-value';
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -53,11 +55,13 @@ export function RunFilters({
   onSearchChange,
   workflowFilter,
   workflowName,
+  runs,
 }: Readonly<{
   search: RunSearch;
   onSearchChange: (search: RunSearch) => void;
   workflowFilter?: ReactNode;
   workflowName?: string;
+  runs: readonly WorkflowRunReadSummary[];
 }>) {
   const chips = runFilterChips(search, workflowName);
   return (
@@ -81,6 +85,7 @@ export function RunFilters({
                 {item.value === null ? null : (
                   <StatusMark
                     display="mark"
+                    aria-hidden="true"
                     tone={describeRunStatus({ status: item.value }).tone}
                   />
                 )}
@@ -89,7 +94,15 @@ export function RunFilters({
             ))}
           </SelectContent>
         </Select>
-        <TimeRangeFilter search={search} onSearchChange={onSearchChange} />
+        <TimeRangeFilter
+          search={search}
+          onSearchChange={onSearchChange}
+          markedDays={
+            new Set(
+              runs.map((run) => localDateValue(Date.parse(run.createdAt))),
+            )
+          }
+        />
         <Select
           items={triggerItems}
           value={search.trigger ?? null}
@@ -121,12 +134,14 @@ export function RunFilters({
           className="flex min-w-0 flex-wrap items-center gap-1.5"
         >
           {chips.map((chip) => (
-            <button
+            <Button
+              variant="chip"
+              size="sm"
               key={chip.key}
               type="button"
               title={chip.label}
               aria-label={`Remove filter ${chip.label}`}
-              className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-action/25 bg-action/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-action/50 focus-ring"
+              className="min-w-0"
               onClick={() => {
                 onSearchChange(
                   chip.key === 'time'
@@ -137,7 +152,7 @@ export function RunFilters({
             >
               <span className="min-w-0 truncate">{chip.label}</span>
               <XIcon aria-hidden="true" className="size-3 shrink-0" />
-            </button>
+            </Button>
           ))}
           {/* One chip clears with its ×; several also clear at once, here
               beside them rather than as another row in the toolbar. */}

@@ -49,6 +49,7 @@ const viewports = [
   [360, 740],
   [768, 1024],
   [1024, 768],
+  [1280, 900],
   [1440, 900],
   [1920, 1080],
 ] as const;
@@ -291,6 +292,8 @@ for (const [width, height] of viewports)
         ['tables', `${root}/data-tables`],
         ['table-detail', `${root}/data-tables/${tableId}`],
         ['connections', `${root}/connections`],
+        ['account', `${root}/account`],
+        ['workflow-settings', `${editorUrl.replace(/\/$/u, '')}/settings`],
         ['team', `${root}/team`],
         ...[
           '',
@@ -328,6 +331,14 @@ for (const [width, height] of viewports)
           }
         }
         await shot(name);
+        if (name === 'settings-audit' || name === 'runs') {
+          await page.getByRole('button', { name: 'When: Any time' }).click();
+          const day = page.locator('button[aria-current="date"]');
+          await day.click();
+          await expect(day).toHaveAttribute('aria-pressed', 'true');
+          await shot(`${name}-calendar`);
+          await page.keyboard.press('Escape');
+        }
       }
       await page.goto(`${root}/workflows`);
       await page
@@ -339,6 +350,10 @@ for (const [width, height] of viewports)
       await page
         .getByRole('button', { name: 'New table', exact: true })
         .click();
+      const newTable = page.getByRole('dialog', { name: 'New data table' });
+      const drawerBounds = await newTable.boundingBox();
+      expect(drawerBounds).not.toBeNull();
+      if (width < 600) expect(drawerBounds?.width).toBe(width);
       await shot('new-table');
       await page.keyboard.press('Escape');
       await page.goto(`${root}/data-tables/${tableId}`);

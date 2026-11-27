@@ -1,4 +1,7 @@
-import type { StatusTone } from '@/components/patterns/status/status-mark';
+import {
+  StatusMark,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { toneLineStyle } from '../model/presentation/tone-styles';
@@ -34,58 +37,19 @@ export function RunDurationBar({
             'block w-full',
             style === 'solid' && 'h-0.5 rounded-full bg-current opacity-80',
             style === 'dashed' &&
-              'border-t-2 border-dashed border-current opacity-75',
+              'border-t border-dashed border-current opacity-75',
             style === 'dotted' &&
-              'border-t-2 border-dotted border-current opacity-70',
+              'border-t border-dotted border-current opacity-70',
             tone === 'live' &&
-              'bg-linear-to-r from-primary/25 to-accent-foreground opacity-100 shadow-[0_0_5px_color-mix(in_srgb,var(--primary)_45%,transparent)]',
+              'bg-linear-to-r from-primary/25 to-accent-foreground opacity-100 shadow-live',
           )}
         />
-        <RunDurationBarEnd tone={tone} />
+        <StatusMark
+          display="mark"
+          tone={tone}
+          className="absolute top-1/2 right-0 translate-x-2 -translate-y-1/2"
+        />
       </span>
     </span>
   );
-}
-
-function RunDurationBarEnd({ tone }: Readonly<{ tone: StatusTone }>) {
-  const base = 'absolute top-1/2 -right-1 -translate-y-1/2';
-  switch (tone) {
-    case 'live':
-      return (
-        <span
-          className={cn(
-            base,
-            'size-2 rounded-full bg-accent-foreground shadow-[0_0_10px_var(--primary)] motion-safe:animate-tip',
-          )}
-        />
-      );
-    case 'success':
-      return <span className={cn(base, 'size-1.5 rounded-full bg-current')} />;
-    case 'failure':
-    case 'timeout':
-      return (
-        <svg
-          viewBox="0 0 10 10"
-          className={cn(base, '-right-2.5 size-2.5 overflow-visible')}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        >
-          {tone === 'failure' ? (
-            <path d="M2 1.5l7 7M9 1.5l-7 7" />
-          ) : (
-            <path d="M3 1v8" />
-          )}
-        </svg>
-      );
-    case 'attention':
-    case 'canceled':
-    case 'neutral':
-    case 'queued':
-    case 'skipped':
-    case 'waiting':
-    default:
-      return null;
-  }
 }

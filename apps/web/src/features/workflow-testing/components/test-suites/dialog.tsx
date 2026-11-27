@@ -1,13 +1,13 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { SuitePreparation } from './preparation';
 import { EvaluationSetup } from './evaluation';
 import { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { TestSuites } from '../../data/test-suites/workflow-test-suites.mutations';
@@ -19,22 +19,25 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
   const preparation = suites.preparation;
   const evaluation = suites.caseSource === 'table';
   return (
-    <Dialog
+    <Sheet
       open={suites.open}
       onOpenChange={(value) => {
         if (!locked || suites.start.expired) suites.setOpen(value);
       }}
     >
-      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto">
-        <DialogTitle>
+      <SheetContent
+        variant="form"
+        className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto"
+      >
+        <SheetTitle>
           {evaluation ? 'Evaluate data table' : 'Run all tests'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {evaluation
             ? 'Runs one case for each row in the table you select. Test results stay for '
             : 'Runs every saved input case against this saved draft, one after another. Pins replace their steps. Test results stay for '}
           {formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.
-        </DialogDescription>
+        </SheetDescription>
         {suites.preparing ? (
           <p role="status">Saving and preparing cases…</p>
         ) : null}
@@ -63,8 +66,8 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
             void suites.prepare(suites.caseSource);
           }}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -85,7 +88,7 @@ function SuiteStartActions({
     preparation.cases.length === 0 ||
     (preparation.effectfulSteps.length > 0 && !acknowledged);
   return (
-    <DialogFooter>
+    <SheetFooter>
       <Button
         variant="ghost"
         disabled={locked && !suites.start.expired}
@@ -123,6 +126,6 @@ function SuiteStartActions({
           )}
         </>
       )}
-    </DialogFooter>
+    </SheetFooter>
   );
 }

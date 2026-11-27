@@ -27,7 +27,7 @@ export function FileFieldSetup({
   const prefix = `${id}-${field.id}`;
   const megabytes = Math.max(1, Math.round(field.maxBytes / MEBIBYTE));
   return (
-    <div className="flex min-w-0 flex-col gap-4 rounded-lg border border-surface-ink/8 bg-surface-ink/[0.02] p-3">
+    <div className="flex min-w-0 flex-col gap-4 rounded-lg border border-surface-ink/8 bg-select p-3">
       <div className="flex min-w-0 flex-col gap-2">
         <span
           id={`${prefix}-accept`}

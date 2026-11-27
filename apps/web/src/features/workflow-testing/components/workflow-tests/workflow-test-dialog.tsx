@@ -13,11 +13,11 @@ import {
 } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
@@ -37,20 +37,23 @@ type WorkflowTestDialogProps = Readonly<{
 export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
   const model = useWorkflowTestForm(props);
   return (
-    <Dialog
+    <Sheet
       open={model.tests.open}
       onOpenChange={(open) => {
         if (!model.locked || model.tests.start.expired) model.setOpen(open);
       }}
     >
-      <DialogContent className="flex h-[44rem] flex-col gap-4 overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11">
+      <SheetContent
+        variant="form"
+        className="flex h-[44rem] flex-col gap-4 overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11"
+      >
         <div className="shrink-0">
-          <DialogTitle>Test workflow</DialogTitle>
-          <DialogDescription>
+          <SheetTitle>Test workflow</SheetTitle>
+          <SheetDescription>
             Runs the saved draft. Pins replace their steps; every other step
             runs for real. Test data stays for{' '}
             {formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.
-          </DialogDescription>
+          </SheetDescription>
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
           <ConfirmationDetails>
@@ -167,8 +170,8 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
             }}
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

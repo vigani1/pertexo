@@ -24,7 +24,7 @@ export function RadioChoice<Value extends string>({
       value={value}
       disabled={disabled}
       className={cn(
-        'inline-flex w-fit items-center gap-0.5 rounded-md border border-surface-ink/7 bg-surface-ink/[0.035] p-[3px]',
+        'flex w-fit flex-wrap items-center gap-x-4 gap-y-1',
         className,
       )}
       onValueChange={(next) => {
@@ -35,8 +35,14 @@ export function RadioChoice<Value extends string>({
         <Radio.Root
           key={option.value}
           value={option.value}
-          className="inline-flex h-7 items-center rounded-sm px-3 text-label font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-checked:bg-surface-ink/8 data-checked:text-foreground max-sm:min-h-[var(--control-min-size,2.75rem)]"
+          className="group inline-flex min-h-7 items-center gap-2 rounded-sm text-label text-muted-foreground outline-none hover:text-foreground focus-ring disabled:opacity-45 data-checked:text-foreground pointer-coarse:min-h-10"
         >
+          <span
+            aria-hidden="true"
+            className="grid size-4 place-items-center rounded-full border border-border-strong group-data-checked:border-action"
+          >
+            <Radio.Indicator className="size-2 rounded-full bg-action" />
+          </span>
           {option.label}
         </Radio.Root>
       ))}

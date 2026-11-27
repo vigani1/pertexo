@@ -26,7 +26,7 @@ export function TooltipContent({
           className={cn(
             popupSurface,
             // Tiny and all text: the glass stays nearly solid.
-            'max-w-64 px-2.5 py-1.5 text-xs text-foreground [--glass-popup:var(--tooltip-background)]',
+            'max-w-64 rounded-sm px-2.5 py-1.5 text-caption text-foreground [--glass-popup:var(--tooltip-background)]',
             className,
           )}
           {...props}

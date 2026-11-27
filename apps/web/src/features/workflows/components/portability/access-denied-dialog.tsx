@@ -1,12 +1,12 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 /** Permission changes unmount the owner of private files and reviewed graphs. */
 export function PortabilityAccessDeniedDialog({
@@ -18,30 +18,30 @@ export function PortabilityAccessDeniedDialog({
   operation: 'import' | 'export';
   open?: boolean;
   onClose: () => void;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus?: ComponentProps<typeof SheetContent>['finalFocus'];
 }>) {
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose();
       }}
     >
-      <DialogContent finalFocus={finalFocus}>
-        <DialogTitle>
+      <SheetContent variant="form" finalFocus={finalFocus}>
+        <SheetTitle>
           {operation === 'import' ? 'Import workflow' : 'Export workflow'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {operation === 'import'
             ? 'Access changed. The file, preview and retained command have been cleared.'
             : 'Access changed. The reviewed source has been cleared.'}
-        </DialogDescription>
-        <DialogFooter className="mt-5">
+        </SheetDescription>
+        <SheetFooter className="mt-5">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

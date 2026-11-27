@@ -1,14 +1,14 @@
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
-import { DialogFooter } from '@/components/ui/dialog';
+import { SheetFooter } from '@/components/ui/sheet';
 import { useId, useRef, useState } from 'react';
 import { directoryCredentialCreateSchema } from '@pertexo/contracts';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,20 +81,20 @@ export function DirectoryCredentialDialog({
       });
   }
   return (
-    <Dialog
+    <Sheet
       open
       disablePointerDismissal={request.pending || view.kind === 'secret'}
       onOpenChange={(open) => {
         if (!open && !request.pending && view.kind !== 'secret') onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>{credentialTitle[view.kind]}</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>{credentialTitle[view.kind]}</SheetTitle>
+        <SheetDescription>
           {view.kind === 'form'
             ? 'This credential can provision users and groups across the linked workspaces. Keep it in your identity provider’s secret settings.'
             : 'Pertexo shows the bearer secret once. It cannot be retrieved later.'}
-        </DialogDescription>
+        </SheetDescription>
         {view.kind === 'secret' ? (
           <DirectoryCredentialReceipt
             id={id}
@@ -137,7 +137,7 @@ export function DirectoryCredentialDialog({
                 />
               )}
             </LabelledField>
-            <DialogFooter>
+            <SheetFooter>
               <Button
                 type="button"
                 variant="ghost"
@@ -154,11 +154,11 @@ export function DirectoryCredentialDialog({
               >
                 Create credential
               </ProgressButton>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -40,7 +40,7 @@ export function SlotWheel({
           cx={CENTRE}
           cy={CENTRE}
           r={radius}
-          className="fill-none stroke-surface-ink/[0.06]"
+          className="fill-none stroke-border"
           strokeWidth={1}
         />
         {Array.from({ length: shown }, (_, index) => {
@@ -57,7 +57,7 @@ export function SlotWheel({
               r={bead}
               className={cn(
                 running &&
-                  'fill-primary stroke-primary drop-shadow-[0_0_4px_var(--primary)] motion-loop:animate-tip',
+                  'fill-primary stroke-primary drop-shadow-live motion-loop:animate-tip',
                 held && 'fill-background stroke-secondary',
                 !running && !held && 'fill-background stroke-border-strong',
               )}
@@ -111,7 +111,7 @@ export function StorageArc({
           cx={CENTRE}
           cy={CENTRE}
           r={radius}
-          className="fill-none stroke-surface-ink/[0.07]"
+          className="fill-none stroke-border"
           strokeWidth={7}
           strokeLinecap="round"
           strokeDasharray={`${String(length * sweep)} ${String(length)}`}

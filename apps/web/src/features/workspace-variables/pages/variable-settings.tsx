@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { SearchIcon } from 'lucide-react';
 import { VariableUsageDialog } from '../components/variable-usage';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -10,7 +9,7 @@ import { WORKSPACE_VARIABLE_LIMITS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -28,15 +27,10 @@ function VariableFilter({
 }: Readonly<{ value: string; onChange: (value: string) => void }>) {
   return (
     <div className="relative max-w-xs">
-      <SearchIcon
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-subtle-foreground"
-      />
-      <Input
-        type="search"
+      <SearchInput
         aria-label="Filter variables"
         placeholder="Filter by name or value"
-        className="pl-8"
+
         value={value}
         onChange={(event) => {
           onChange(event.currentTarget.value);

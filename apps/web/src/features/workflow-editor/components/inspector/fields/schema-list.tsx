@@ -36,7 +36,7 @@ export function SchemaFieldList({
         ) : (
           <fieldset
             key={group.parent.key}
-            className="flex min-w-0 flex-col gap-4 border-l-2 border-border pl-3"
+            className="flex min-w-0 flex-col gap-4 border-l border-border pl-3"
           >
             <legend className="mb-3 text-sm font-semibold text-foreground">
               {group.parent.label}

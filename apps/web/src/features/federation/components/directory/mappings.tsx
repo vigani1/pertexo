@@ -162,9 +162,7 @@ export function DirectoryMappingsEditor({
         />
       ) : null}
       <CommandFeedback command={command} />
-      {saved ? (
-        <StatusMark tone="success">Group mappings saved.</StatusMark>
-      ) : null}
+      {saved && <StatusMark tone="success">Group mappings saved</StatusMark>}
       {editable ? (
         <ProgressButton
           type="button"

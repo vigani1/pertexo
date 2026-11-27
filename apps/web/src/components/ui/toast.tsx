@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Toast } from '@base-ui/react/toast';
 import { XIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
@@ -8,6 +8,7 @@ import {
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { LoadingOrb } from './loading-orb';
+import { NoticeTimer } from '@/components/patterns/notices/notice-timer';
 
 const TONE_BY_TYPE: Record<string, StatusTone> = {
   success: 'success',
@@ -15,13 +16,6 @@ const TONE_BY_TYPE: Record<string, StatusTone> = {
   info: 'live',
   undo: 'queued',
   attention: 'attention',
-};
-
-const TIMER_COLOR_BY_TYPE: Record<string, string> = {
-  success: 'text-success',
-  info: 'text-primary',
-  undo: 'text-secondary',
-  attention: 'text-warning',
 };
 
 function ToastLeading({ type }: Readonly<{ type: string | undefined }>) {
@@ -33,15 +27,13 @@ function ToastLeading({ type }: Readonly<{ type: string | undefined }>) {
 
 function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {
   const timeout = toast.timeout ?? 0;
-  const timerColor = TIMER_COLOR_BY_TYPE[toast.type ?? ''];
   return (
     <Toast.Root
       toast={toast}
       className={cn(
-        'popup-lens group/toast relative grid w-full grid-cols-[1rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-lg py-3 pr-2.5 pl-3 text-sm outline-none',
+        'popup-lens group/toast relative grid w-full grid-cols-[1.25rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-lg py-3 pr-2.5 pl-3 text-sm outline-none',
         'transition-[opacity,transform] duration-300 ease-unspool data-ending-style:translate-x-6 data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-3 data-starting-style:opacity-0 motion-reduce:transition-none',
         toast.type === 'loading' && 'live-edge',
-        toast.type === 'error' && 'ring-1 ring-destructive/30',
       )}
     >
       <ToastLeading type={toast.type} />
@@ -52,22 +44,14 @@ function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {
       <Toast.Action className={buttonVariants({ size: 'sm' })} />
       <Toast.Close
         aria-label="Dismiss notification"
-        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+        className={cn(
+          buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+          'relative rounded-full',
+        )}
       >
         <XIcon aria-hidden="true" />
+        <NoticeTimer timeout={timeout} />
       </Toast.Close>
-      {timeout > 0 && timerColor !== undefined ? (
-        <span
-          aria-hidden="true"
-          style={{ '--toast-timeout': `${String(timeout)}ms` } as CSSProperties}
-          className={cn(
-            'absolute bottom-1.5 left-3 h-0.5 w-[calc(100%-1.5rem)] rounded-full bg-current',
-            'animate-[thread-timer_var(--toast-timeout)_linear_forwards] group-data-expanded/toast:[animation-play-state:paused] motion-reduce:animate-none',
-            'after:absolute after:-top-0.5 after:-right-0.5 after:size-1.5 after:rounded-full after:bg-current after:shadow-[0_0_6px_currentColor]',
-            timerColor,
-          )}
-        />
-      ) : null}
     </Toast.Root>
   );
 }
@@ -79,7 +63,7 @@ function ToastList() {
 
 /**
  * App-wide notification viewport: bottom-right lenses, at most three visible,
- * each with a thread that counts down its timeout and pauses on hover/focus.
+ * each with a ring that counts down its timeout and pauses on hover/focus.
  * While a side sheet is open the stack steps aside (see `globals.css`).
  * Modal dialogs place it below their backdrop so actions stay unobstructed.
  * Errors never time out. Use `useNotifications` to raise one.

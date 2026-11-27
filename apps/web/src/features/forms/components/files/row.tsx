@@ -32,7 +32,7 @@ export function FileRow({
         failed ? 'border-destructive/35' : 'border-surface-ink/8',
       )}
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-ink/8 bg-surface-ink/[0.03] text-muted-foreground">
+      <span className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-ink/8 bg-select text-muted-foreground">
         <FileGroupGlyph group={fileGroupOf(row.name)} className="size-4" />
       </span>
       <div className="min-w-0 flex-1">

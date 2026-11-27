@@ -3,12 +3,12 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   diffWorkflowGraphs,
@@ -38,12 +38,12 @@ export function ConflictCompareDialog({
   );
   const lines = comparison.lines;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogTitle>Your copy and theirs</DialogTitle>
-        <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent variant="form">
+        <SheetTitle>Your copy and theirs</SheetTitle>
+        <SheetDescription>
           Keep mine saves your copy over theirs. Load theirs replaces your copy.
-        </DialogDescription>
+        </SheetDescription>
         <Tabs defaultValue="steps" className="mt-4">
           <TabsList>
             <TabsTrigger value="steps">Changes</TabsTrigger>
@@ -82,12 +82,12 @@ export function ConflictCompareDialog({
           </TabsContent>
         </Tabs>
         <div className="mt-6 flex justify-end">
-          <DialogClose render={<Button type="button" variant="ghost" />}>
+          <SheetClose render={<Button type="button" variant="ghost" />}>
             Close
-          </DialogClose>
+          </SheetClose>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 

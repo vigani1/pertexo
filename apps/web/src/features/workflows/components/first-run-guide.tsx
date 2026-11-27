@@ -74,7 +74,7 @@ export function FirstRunGuide({
                 step.done && 'border-success bg-success text-background',
                 !step.done &&
                   step.key === next &&
-                  'border-primary text-primary shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_18%,transparent)]',
+                  'border-primary text-primary ring-2 ring-live-soft',
                 !step.done &&
                   step.key !== next &&
                   'border-surface-ink/20 text-subtle-foreground',

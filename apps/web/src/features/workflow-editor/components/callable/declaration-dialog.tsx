@@ -2,11 +2,11 @@ import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { DeclarationForm } from './declaration-form';
 
@@ -17,7 +17,7 @@ export function DeclarationDialog({
 }: Readonly<{
   editable: boolean;
   children: ReactNode;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  finalFocus?: ComponentProps<typeof SheetContent>['finalFocus'];
 }>) {
   const store = useEditorStoreApi();
   const inConflict = useEditorStore(
@@ -37,7 +37,7 @@ export function DeclarationDialog({
     else close();
   }
   return (
-    <Dialog
+    <Sheet
       open={session !== null}
       onOpenChange={(open) => {
         if (open)
@@ -50,17 +50,17 @@ export function DeclarationDialog({
       }}
     >
       {children}
-      <DialogContent
-        placement="top"
+      <SheetContent
+        variant="form"
         finalFocus={finalFocus}
         className="flex max-w-2xl flex-col overflow-hidden p-0"
       >
         <div className="shrink-0 px-6 pt-6 pb-4">
-          <DialogTitle>Workflow contract</DialogTitle>
-          <DialogDescription>
+          <SheetTitle>Workflow contract</SheetTitle>
+          <SheetDescription>
             Define accepted input and the value returned by completed runs.
             Contracts apply after you publish.
-          </DialogDescription>
+          </SheetDescription>
         </div>
         {session === null ? null : (
           <DeclarationForm
@@ -106,7 +106,7 @@ export function DeclarationDialog({
             },
           }}
         ></ConfirmDialog>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

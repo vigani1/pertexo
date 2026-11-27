@@ -17,31 +17,35 @@ function dayWords(day: LocalDate): string {
 
 /**
  * Whole days in the person's own time zone, picked on one calendar: the
- * first tap starts the range and the next ends it. `onApply` answers with a
+ * first tap picks one day and the next extends the range. `onApply` answers with a
  * message when the owner refuses the range.
  */
 export function DayRangeForm({
   initial,
+  markedDays,
   onApply,
 }: Readonly<{
   /** Days already chosen; empty text where an end is still open. */
-  initial?: Readonly<{ from: string; to: string }>;
+  initial?: Readonly<{ from: string; to: string }> | undefined;
+  markedDays?: ReadonlySet<LocalDate> | undefined;
   onApply: (from: LocalDate, to: LocalDate) => string | undefined;
 }>) {
   const [from, setFrom] = useState(initial?.from ?? '');
   const [to, setTo] = useState(initial?.to ?? '');
+  const [extending, setExtending] = useState(false);
   const [error, setError] = useState<string>();
   const today = localDateOf(new Date());
 
-  // The first tap starts a range and the next ends it; a tap before the
-  // start moves the start, and a tap once both are set starts over.
   function pick(day: LocalDate) {
     setError(undefined);
-    if (from === '' || to !== '') {
+    if (extending && from !== '') {
+      setFrom(day < from ? day : from);
+      setTo(day < from ? from : day);
+    } else {
       setFrom(day);
-      setTo('');
-    } else if (day < from) setFrom(day);
-    else setTo(day);
+      setTo(day);
+    }
+    setExtending(!extending);
   }
 
   function apply(event: SyntheticEvent<HTMLFormElement>) {
@@ -51,7 +55,7 @@ export function DayRangeForm({
   }
 
   return (
-    <form className="mt-4 border-t border-border pt-4" onSubmit={apply}>
+    <form className="min-w-0" onSubmit={apply}>
       <p className="text-xs font-medium text-muted-foreground">Custom days</p>
       <p aria-live="polite" className="mt-1 text-sm">
         {rangeCaption(from, to)}
@@ -60,6 +64,7 @@ export function DayRangeForm({
         <Calendar
           value={undefined}
           max={today}
+          markedDays={markedDays}
           range={{
             ...(from === '' ? {} : { from }),
             ...(to === '' ? {} : { to }),
@@ -68,8 +73,8 @@ export function DayRangeForm({
         />
       </div>
       <p className="mt-2 text-xs text-subtle-foreground">
-        Whole days in your time zone, {localTimeZone()}. Pick a day twice for
-        just that day.
+        Your time zone is {localTimeZone()}. Pick another day to extend the
+        range.
       </p>
       {error === undefined ? null : (
         <FieldError className="mt-2">{error}</FieldError>

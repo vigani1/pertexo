@@ -8,12 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Dialog,
-  DialogFooter,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetFooter,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useTableCommand } from '../data/tables.mutations';
 import type { TableScope } from '../data/tables.api';
 import { TableCommandFeedback } from './command-feedback';
@@ -38,19 +38,19 @@ export function ImportTableCsv({
   );
   const locked = command.pending || command.uncertain || reading;
   return (
-    <Dialog
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
     >
-      <DialogContent>
-        <DialogTitle>Import CSV</DialogTitle>
-        <DialogDescription>
+      <SheetContent variant="form">
+        <SheetTitle>Import CSV</SheetTitle>
+        <SheetDescription>
           Up to {IMPORT_SIZE} and{' '}
           {formatCount(DATA_TABLE_LIMITS.batchRows, 'row')}; split larger files.
           Every row must match {table.name}. The whole import is saved together.
-        </DialogDescription>
+        </SheetDescription>
         <form
           className="mt-5 grid gap-4"
           onSubmit={(event) => {
@@ -117,7 +117,7 @@ export function ImportTableCsv({
           </p>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="ghost"
@@ -133,9 +133,9 @@ export function ImportTableCsv({
             >
               {command.pending ? 'Importing…' : 'Import rows'}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

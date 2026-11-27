@@ -49,10 +49,10 @@ export function SheetTabs({
           '-mt-px flex h-9 min-w-0 items-start gap-1 overflow-x-auto overscroll-x-contain pr-1 [scrollbar-width:none]',
           // Fades the last tab so a row wider than the panel reads as scrollable.
           others.length > 0 &&
-            'pr-6 [mask-image:linear-gradient(to_right,#000_calc(100%-1.5rem),transparent)]',
+            'pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]',
         )}
       >
-        <span className="relative flex h-8 shrink-0 items-center rounded-b-md border border-t-0 border-surface-ink/8 bg-recess-ink/15 px-2.5 shadow-[inset_0_-2px_0_var(--action)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring has-[[aria-invalid=true]]:shadow-[inset_0_-2px_0_var(--destructive)]">
+        <span className="relative flex h-8 shrink-0 items-center rounded-b-md border border-t-0 border-surface-ink/8 bg-recess-ink/15 px-2.5 shadow-selection has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring has-[[aria-invalid=true]]:inset-ring has-[[aria-invalid=true]]:inset-ring-destructive">
           <input
             id={input.id}
             aria-label={input.label}

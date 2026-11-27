@@ -54,10 +54,10 @@ export function FormatTiles({
             value={format}
             aria-label={TILES[format].label}
             className={cn(
-              'group/tile relative flex h-[4.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-surface-ink/8 bg-surface-ink/[0.025] px-1 text-muted-foreground',
+              'group/tile relative flex h-[4.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-surface-ink/8 bg-select px-1 text-muted-foreground',
               'transition-[transform,box-shadow,border-color,background-color,color] duration-200 ease-unspool motion-reduce:transition-none',
               'hover:border-surface-ink/16 hover:text-foreground',
-              'data-pressed:-translate-y-px data-pressed:border-transparent data-pressed:bg-action/[0.07] data-pressed:text-foreground data-pressed:shadow-lens data-pressed:outline-2 data-pressed:outline-offset-0 data-pressed:outline-ring/70 motion-reduce:data-pressed:translate-y-0',
+              'data-pressed:-translate-y-px data-pressed:border-transparent data-pressed:bg-action-soft data-pressed:text-foreground data-pressed:shadow-lens data-pressed:outline-2 data-pressed:outline-offset-0 data-pressed:outline-ring/70 motion-reduce:data-pressed:translate-y-0',
               'max-sm:min-h-[4.25rem]',
             )}
           >
