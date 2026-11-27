@@ -67,7 +67,7 @@ describe('alert destinations', () => {
     ).toBeVisible();
     expect(within(sheet).queryByRole('heading', { name: /add/iu })).toBeNull();
   });
-  it('names each destination in words with a success-toned Enabled switch', async () => {
+  it('names each destination in words with an action-toned Enabled switch', async () => {
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
@@ -81,7 +81,10 @@ describe('alert destinations', () => {
       name: 'Send alerts to #C0123456789 via Incident Slack',
     });
     expect(toggle).toBeChecked();
-    expect(toggle.className).toContain('data-checked:bg-success');
+    // Success is neutral ink in Weft, so an enabled switch takes the action
+    // colour instead of a green one.
+    expect(toggle.className).toContain('data-checked:bg-action');
+    expect(toggle.className).not.toContain('success');
     expect(screen.queryByText(/Version 1/u)).not.toBeInTheDocument();
   });
   it('shows channel names from one bounded lookup per connection, and the ID with why when a name is unknown', async () => {

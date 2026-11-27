@@ -64,7 +64,12 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       },
     ]);
 
-    await choose(event, 'Runs', 'Custom cron rule');
+    await choose(
+      event,
+      'Runs',
+      'Custom cron rule',
+      within(screen.getByRole('main')),
+    );
     fireEvent.change(screen.getByLabelText('Cron rule'), {
       target: { value: '0 25 * * *' },
     });

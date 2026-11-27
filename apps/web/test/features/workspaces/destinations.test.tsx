@@ -103,7 +103,14 @@ describe('workspace destinations by role', () => {
   it.each([
     {
       role: 'viewer',
-      rail: ['General', 'Usage', 'Variables', 'Notifications', 'API tokens'],
+      rail: [
+        'General',
+        'Usage',
+        'Variables',
+        'Notifications',
+        'API tokens',
+        'Account',
+      ],
       advanced: [],
     },
     {
@@ -115,6 +122,7 @@ describe('workspace destinations by role', () => {
         'Alerts',
         'Notifications',
         'API tokens',
+        'Account',
         'Promotion',
       ],
       advanced: ['Promotion'],
@@ -128,6 +136,7 @@ describe('workspace destinations by role', () => {
         'Alerts',
         'Notifications',
         'API tokens',
+        'Account',
         'Promotion',
         'Audit log',
         'Single sign-on',

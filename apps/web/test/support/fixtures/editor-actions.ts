@@ -9,8 +9,18 @@ export function pressSave() {
   fireEvent.keyDown(window, { key: 's', metaKey: true });
 }
 
-export async function choose(event: UserEvent, label: string, option: string) {
-  await event.click(screen.getByLabelText(label));
+/**
+ * Picks an option from a labelled select. Pass `within` when the label is not
+ * unique on the page (the workspace rail also names places like "Runs"); the
+ * options list opens in a portal, so it is always read from the whole screen.
+ */
+export async function choose(
+  event: UserEvent,
+  label: string,
+  option: string,
+  scope: Pick<typeof screen, 'getByLabelText'> = screen,
+) {
+  await event.click(scope.getByLabelText(label));
   await event.click(await screen.findByRole('option', { name: option }));
 }
 

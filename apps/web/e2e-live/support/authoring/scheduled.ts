@@ -22,7 +22,8 @@ export async function authorScheduledNestedGraph(
     /Schedule/u,
     'Minute schedule',
   );
-  await page.getByLabel('Runs', { exact: true }).click();
+  // The workspace rail also has a "Runs" link.
+  await page.getByRole('main').getByLabel('Runs', { exact: true }).click();
   await page
     .getByRole('option', { name: 'Every N minutes or hours', exact: true })
     .click();

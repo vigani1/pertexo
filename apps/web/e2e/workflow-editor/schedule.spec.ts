@@ -46,8 +46,10 @@ const scheduleDefinition = {
   ports: { inputs: [], outputs: ['out'] },
 };
 
+// The workspace rail also names places like "Runs", so labels are read from
+// the page's main content.
 async function choose(page: Page, label: string, option: string) {
-  await page.getByLabel(label, { exact: true }).click();
+  await page.getByRole('main').getByLabel(label, { exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
