@@ -1,6 +1,5 @@
-import { useState, type SyntheticEvent } from 'react';
+import { useState } from 'react';
 import { formatDate, localTimeZone } from '@/lib/format/time';
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
   dateOf,
@@ -16,9 +15,9 @@ function dayWords(day: LocalDate): string {
 }
 
 /**
- * Whole days in the person's own time zone, picked on one calendar: the
- * first tap picks one day and the next extends the range. `onApply` answers with a
- * message when the owner refuses the range.
+ * Whole days in the person's own time zone, picked on one calendar: one tap
+ * picks a day and applies it, the next extends it into a range and applies
+ * that. `onApply` answers with a message when the owner refuses the range.
  */
 export function DayRangeForm({
   initial,
@@ -40,25 +39,20 @@ export function DayRangeForm({
   const today = localDateOf(new Date());
 
   function pick(day: LocalDate) {
-    setError(undefined);
-    if (extending && from !== '') {
-      setFrom(day < from ? day : from);
-      setTo(day < from ? from : day);
-    } else {
-      setFrom(day);
-      setTo(day);
-    }
+    const [first, last] =
+      extending && from !== ''
+        ? day < from
+          ? [day, from]
+          : [from, day]
+        : [day, day];
+    setFrom(first);
+    setTo(last);
     setExtending(!extending);
-  }
-
-  function apply(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (from === '' || to === '') return;
-    setError(onApply(from, to));
+    setError(onApply(first, last));
   }
 
   return (
-    <form className="min-w-0" onSubmit={apply}>
+    <div className="min-w-0">
       <p className="text-xs font-medium text-muted-foreground">Custom days</p>
       <p aria-live="polite" className="mt-1 text-sm">
         {rangeCaption(from, to)}
@@ -82,17 +76,7 @@ export function DayRangeForm({
       {error === undefined ? null : (
         <FieldError className="mt-2">{error}</FieldError>
       )}
-      {/* Nothing to apply until the range has both ends. */}
-      <Button
-        type="submit"
-        variant="primary"
-        size="sm"
-        className="mt-3 w-full"
-        disabled={from === '' || to === ''}
-      >
-        Apply range
-      </Button>
-    </form>
+    </div>
   );
 }
 

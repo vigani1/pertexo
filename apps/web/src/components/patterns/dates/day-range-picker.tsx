@@ -92,11 +92,9 @@ export function DayRangePicker({
           <DayRangeForm
             initial={initial}
             markedDays={markedDays}
-            onApply={(from, to) => {
-              const error = onApply(from, to);
-              if (error === undefined) setOpen(false);
-              return error;
-            }}
+            // Each tap applies at once; the calendar stays open so a second
+            // tap can extend the day into a range.
+            onApply={onApply}
           />
         </div>
       </PopoverContent>

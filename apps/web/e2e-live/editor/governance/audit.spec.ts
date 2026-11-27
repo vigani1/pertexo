@@ -52,7 +52,6 @@ for (const width of [1280, 375]) {
     const today = page.locator('button[aria-current="date"]');
     await today.click();
     await expect(today).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: 'Apply range' }).click();
     await expect(page).toHaveURL(/[?&]from=/u);
     await expect(events.getByRole('listitem')).toHaveCount(1);
     const download = page.waitForEvent('download');

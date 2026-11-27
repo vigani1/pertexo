@@ -90,7 +90,6 @@ describe('workspace runs', () => {
     const today = await screen.findByRole('button', { current: 'date' });
     await event.click(today);
     expect(today).toHaveAttribute('aria-pressed', 'true');
-    await event.click(screen.getByRole('button', { name: 'Apply range' }));
     const now = new Date();
     const localFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       .toISOString()
