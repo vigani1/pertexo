@@ -80,7 +80,7 @@ test('reviews the removed and added link endpoints and the changed configuration
     },
   } satisfies DraftProposalResult;
   await requestProposal(page, draftProposalResultSchema.parse(result));
-  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+  const review = page.getByRole('complementary', { name: 'Assistant' });
   await expect(review).toContainText('Manual input (out) → Next step (in)');
   await expect(review).toContainText('Manual input (out) → Target (in)');
   await expect(review).toContainText('Target · Configuration version 1 → 2');
@@ -184,7 +184,7 @@ test('shows field changes within the width of a phone', async ({
     },
     'menu',
   );
-  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+  const review = page.getByRole('complementary', { name: 'Assistant' });
   for (const text of [
     'intervalMinutes',
     '15',
@@ -236,13 +236,11 @@ async function requestProposal(
     await page.getByRole('button', { name: 'More workflow actions' }).click();
   await page
     .getByRole(from === 'menu' ? 'menuitem' : 'button', {
-      name: 'Ask assistant',
+      name: 'Ask the assistant',
       exact: true,
     })
     .click();
-  const request = page.getByRole('dialog', {
-    name: 'Describe your workflow change',
-  });
+  const request = page.getByRole('complementary', { name: 'Assistant' });
   await request
     .getByLabel('What should the workflow do?')
     .fill('Connect the next step.');

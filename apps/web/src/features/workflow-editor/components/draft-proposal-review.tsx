@@ -9,6 +9,7 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   describeStepChange,
   diffWorkflowGraphs,
@@ -39,10 +40,7 @@ export function DraftProposalReview({
         <DraftChanges before={result.base.graph} after={result.draft.graph} />
       ) : null}
       {groups.length > 0 ? (
-        <section
-          aria-labelledby="proposal-issues"
-          className="rounded-md border p-3"
-        >
+        <section aria-labelledby="proposal-issues">
           <h3 id="proposal-issues" className="text-sm font-medium">
             {result.kind === 'rejected'
               ? 'Proposal issues'
@@ -57,6 +55,8 @@ export function DraftProposalReview({
             />
           </div>
         </section>
+      ) : result.kind === 'inspected' ? (
+        <StatusMark tone="success">No publication issues</StatusMark>
       ) : null}
     </div>
   );
@@ -73,18 +73,22 @@ function DraftChanges({
   };
   const groups: readonly {
     label: string;
+    glyph: string;
     items: readonly { id: string; text: string; fields?: ReactNode }[];
   }[] = [
     {
       label: 'Added',
+      glyph: '+',
       items: diff.added.map((node) => ({ id: node.id, text: name(node) })),
     },
     {
       label: 'Removed',
+      glyph: '−',
       items: diff.removed.map((node) => ({ id: node.id, text: name(node) })),
     },
     {
       label: 'Changed',
+      glyph: '~',
       items: diff.changed.map(
         ({ before: previous, after: node, aspects, settings, mappings }) => {
           const details = [
@@ -122,9 +126,14 @@ function DraftChanges({
         },
       ),
     },
-    { label: 'Links added', items: linkChanges(after, diff.addedLinks, name) },
+    {
+      label: 'Links added',
+      glyph: '→',
+      items: linkChanges(after, diff.addedLinks, name),
+    },
     {
       label: 'Links removed',
+      glyph: '×',
       items: linkChanges(before, diff.removedLinks, name),
     },
   ];
@@ -138,14 +147,27 @@ function DraftChanges({
       </h3>
       {groups
         .filter(({ items }) => items.length > 0)
-        .map(({ label, items }) => (
+        .map(({ label, glyph, items }) => (
           <div key={label}>
-            <h4 className="font-medium">{label}</h4>
-            <ul className="text-muted-foreground">
+            <h4 className="text-meta font-medium text-muted-foreground">
+              {label}
+            </h4>
+            <ul className="divide-y divide-border">
               {items.map(({ id, text, fields }) => (
-                <li key={id} className="min-w-0 [overflow-wrap:anywhere]">
-                  {text}
-                  {fields}
+                <li
+                  key={id}
+                  className="grid min-w-0 grid-cols-[0.875rem_minmax(0,1fr)] gap-2 py-2 [overflow-wrap:anywhere]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="font-mono text-subtle-foreground"
+                  >
+                    {glyph}
+                  </span>
+                  <div className="min-w-0">
+                    {text}
+                    {fields}
+                  </div>
                 </li>
               ))}
             </ul>

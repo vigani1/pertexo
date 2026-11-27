@@ -1,10 +1,8 @@
 import { useEditorSession } from '../model/state/context';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import { WorkflowCommandActions } from '@/features/workflow-publish/workflow-publish-views.public';
@@ -13,7 +11,6 @@ import {
   ConfirmDialog,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
-import { DraftProposal } from './draft-proposal';
 import { EditorCommandBar } from './chrome/editor-command-bar';
 import { ConflictCompareDialog } from './chrome/conflict-compare-dialog';
 import { UnfinishedEditDialog } from './chrome/editor-dialogs';
@@ -56,18 +53,10 @@ export function SessionCommandBar({
     inspectorScratch,
     triggersAvailable,
   } = publication;
-  // The command bar is inside the contract dialog root. Give the proposal its own backdrop and focus scope.
-  const [proposalHandle] = useState(DialogPrimitive.createHandle);
   const moreRef = useRef<HTMLButtonElement>(null);
-  const proposalRef = useRef<HTMLButtonElement>(null);
   const canPropose = !paused && editing.canUpdate;
-
-  function proposalFinalFocus() {
-    const inline = proposalRef.current;
-    if (inline !== null && inline.getClientRects().length > 0) return inline;
-    // The phone menu item unmounts as the dialog opens.
-    const more = moreRef.current;
-    return more !== null && more.getClientRects().length > 0 ? more : true;
+  function openAssistant() {
+    chrome.onProposalOpenChange(true);
   }
 
   return (
@@ -78,12 +67,9 @@ export function SessionCommandBar({
         secondaryMenuItems={
           <>
             {canPropose ? (
-              <DialogTrigger
-                handle={proposalHandle}
-                render={<DropdownMenuItem />}
-              >
-                Ask assistant
-              </DialogTrigger>
+              <DropdownMenuItem onClick={openAssistant}>
+                Ask the assistant
+              </DropdownMenuItem>
             ) : null}
             {chrome.workflowTestMenuItems}
           </>
@@ -100,19 +86,16 @@ export function SessionCommandBar({
           paused ? null : (
             <>
               {canPropose ? (
-                <DialogTrigger
-                  ref={proposalRef}
-                  handle={proposalHandle}
-                  render={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:inline-flex"
-                    />
-                  }
+                <Button
+                  ref={chrome.assistantTrigger}
+                  variant="outline"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                  aria-expanded={chrome.proposalOpen}
+                  onClick={openAssistant}
                 >
-                  Ask assistant
-                </DialogTrigger>
+                  Ask the assistant
+                </Button>
               ) : null}
               <WorkflowCommandActions
                 renderFeedback={chrome.renderFeedback}
@@ -145,16 +128,6 @@ export function SessionCommandBar({
           onOpenChange: chrome.onShortcutsOpenChange,
         }}
       />
-      {canPropose ? (
-        <DraftProposal
-          handle={proposalHandle}
-          open={chrome.proposalOpen}
-          onOpenChange={chrome.onProposalOpenChange}
-          finalFocus={proposalFinalFocus}
-          graph={graph}
-          onFix={chrome.onFix}
-        />
-      ) : null}
     </>
   );
 }

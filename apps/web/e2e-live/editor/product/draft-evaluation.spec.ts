@@ -240,9 +240,7 @@ test.describe('authoring evaluation with a real local model', () => {
         if (kind === 'refuse-secret-change') {
           const result = await requestProposal(page, options);
           expect(result.kind).toBe('rejected');
-          const review = page.getByRole('dialog', {
-            name: 'Review proposed draft',
-          });
+          const review = page.getByRole('complementary', { name: 'Assistant' });
           await expect(review).toContainText(/protected setting/iu);
           await expect(
             review.getByRole('button', { name: 'Apply to draft' }),
