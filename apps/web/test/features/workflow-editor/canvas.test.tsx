@@ -106,7 +106,7 @@ describe('workflow editor overview map', { timeout: 30_000 }, () => {
     restore();
   });
 
-  it('draws every step on the overview map in its family colour', async () => {
+  it('draws every step on the overview map in neutral ink and rings only the selected one', async () => {
     mockServer.use(
       ...editorHandlers(() => undefined, {
         graph: graphWithMappingNodes(),
@@ -119,11 +119,22 @@ describe('workflow editor overview map', { timeout: 30_000 }, () => {
     await waitFor(() => {
       expect(map.querySelectorAll('.react-flow__minimap-node')).toHaveLength(2);
     });
-    const fills = [
-      ...map.querySelectorAll<SVGRectElement>('.react-flow__minimap-node'),
-    ].map((node) => node.getAttribute('style') ?? '');
-    expect(fills[0]).toContain('var(--primary)');
-    expect(fills[1]).toContain('var(--success)');
+    const styles = () =>
+      [
+        ...map.querySelectorAll<SVGRectElement>('.react-flow__minimap-node'),
+      ].map((node) => node.getAttribute('style') ?? '');
+    // Colour means attention: no step family is coloured on the map.
+    for (const style of styles()) {
+      expect(style).toContain('fill: var(--muted-foreground)');
+      expect(style).toContain('stroke: transparent');
+    }
+    fireEvent.click((await findCanvas()).getByText('Target'));
+    await waitFor(() => {
+      expect(styles()).toEqual([
+        expect.stringContaining('stroke: transparent'),
+        expect.stringContaining('stroke: var(--action)'),
+      ]);
+    });
   });
 });
 

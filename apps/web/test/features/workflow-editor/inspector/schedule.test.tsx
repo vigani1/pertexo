@@ -217,7 +217,12 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     fireEvent.click((await findCanvas()).getByText('Nightly'));
     expect(await screen.findByText('Not scheduled yet')).toBeVisible();
 
-    await choose(event, 'Runs', 'Weekdays at a time');
+    await choose(
+      event,
+      'Runs',
+      'Weekdays at a time',
+      within(screen.getByRole('main')),
+    );
     await choose(event, 'Timezone', 'Europe/Berlin');
     fireEvent.change(screen.getByLabelText('At'), {
       target: { value: '08:30' },
@@ -237,7 +242,12 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     });
     expect(screen.queryByText('Not scheduled yet')).toBeNull();
 
-    await choose(event, 'Runs', 'Custom cron rule');
+    await choose(
+      event,
+      'Runs',
+      'Custom cron rule',
+      within(screen.getByRole('main')),
+    );
     const rule = screen.getByLabelText('Cron rule');
     expect(rule).toHaveValue('30 8 * * 1-5');
     fireEvent.change(rule, { target: { value: 'H 8 * * *' } });
@@ -247,7 +257,12 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       screen.getByText('An edit isn’t valid yet, so it isn’t saved.'),
     ).toBeVisible();
 
-    await choose(event, 'Runs', 'Every N minutes or hours');
+    await choose(
+      event,
+      'Runs',
+      'Every N minutes or hours',
+      within(screen.getByRole('main')),
+    );
     fireEvent.change(screen.getByLabelText('Every'), {
       target: { value: '2' },
     });

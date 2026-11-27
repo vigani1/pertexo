@@ -94,7 +94,7 @@ export async function provisionDirectory({
     .getByRole('button', { name: 'Save group mappings', exact: true })
     .click();
   await expect(
-    page.getByText('Group mappings saved.', { exact: true }),
+    page.getByText('Group mappings saved', { exact: true }),
   ).toBeVisible();
   await mkdir(temporaryTestPath('pertexo-scim-screenshots'), {
     recursive: true,
