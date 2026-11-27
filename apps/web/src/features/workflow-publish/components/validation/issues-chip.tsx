@@ -19,6 +19,8 @@ export const ISSUES_CHIP_ID = 'editor-issues-chip';
  * An empty draft says what to add first instead of claiming “No issues”,
  * unless the server found some. Phones keep a readable label beside the
  * glyph and count; longer check messages truncate and retain a tooltip.
+ * The marks are hidden from assistive technology: the chip's words already
+ * say the state, so its name stays "2 issues", not "Failed 2 issues".
  */
 export function IssuesChip({
   state,
@@ -63,7 +65,7 @@ export function IssuesChip({
         <ChipLabel state={state} count={count} />
       ) : (
         <>
-          <StatusMark display="mark" tone="neutral" />
+          <StatusMark display="mark" tone="neutral" aria-hidden="true" />
           <Words>
             {hint.label === 'Add a trigger to start'
               ? 'Add trigger'
@@ -106,12 +108,22 @@ function ChipLabel({
   if (count === undefined)
     return state.error === undefined ? (
       <>
-        <StatusMark display="mark" tone="neutral" className="sm:hidden" />
+        <StatusMark
+          display="mark"
+          tone="neutral"
+          aria-hidden="true"
+          className="sm:hidden"
+        />
         <Words>{describeChip(state, count)}</Words>
       </>
     ) : (
       <>
-        <StatusMark display="mark" tone="attention" className="text-warning" />
+        <StatusMark
+          display="mark"
+          tone="attention"
+          aria-hidden="true"
+          className="text-warning"
+        />
         <Words>{describeChip(state, count)}</Words>
       </>
     );
@@ -124,7 +136,7 @@ function ChipLabel({
     );
   return (
     <>
-      <StatusMark display="mark" tone="failure" />
+      <StatusMark display="mark" tone="failure" aria-hidden="true" />
       {count} <Words>{pluralWord(count, 'issue')}</Words>
     </>
   );
