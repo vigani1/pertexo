@@ -21,73 +21,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatByteLength } from '@/lib/format/bytes';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
-import { ColumnChip, TableSwatch, UsageMeter } from './column-type';
+import { Row, RowList } from '@/components/patterns/lists/row';
 import { pluralWord } from '@/lib/format/count';
-export function TablePageActions({
-  detail,
+/** The workspace's own actions: a new table, and its limits for admins. */
+export function WorkspaceTableActions({
   editable,
   admin,
-  table,
   onDialog,
 }: Readonly<{
-  detail: boolean;
   editable: boolean;
   admin: boolean;
-  table: DataTableDefinition | undefined;
-  onDialog: (dialog: 'create' | 'limits' | 'remove' | 'columns') => void;
+  onDialog: (dialog: 'create' | 'limits') => void;
 }>) {
-  // One table's page keeps to that table; workspace limits live on the list.
-  if (detail)
-    return table === undefined || !editable ? null : (
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            onDialog('columns');
-          }}
-        >
-          Edit columns
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="More table actions"
-              />
-            }
-          >
-            <EllipsisIcon aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => {
-                onDialog('remove');
-              }}
-            >
-              Delete table
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
   return (
     <div className="flex flex-wrap gap-2">
-      {editable ? (
-        <Button
-          type="button"
-          variant="primary"
-          onClick={() => {
-            onDialog('create');
-          }}
-        >
-          New table
-        </Button>
-      ) : null}
       {admin ? (
         <Button
           type="button"
@@ -99,66 +46,78 @@ export function TablePageActions({
           Table limits
         </Button>
       ) : null}
+      {editable ? (
+        <Button
+          type="button"
+          onClick={() => {
+            onDialog('create');
+          }}
+        >
+          New table
+        </Button>
+      ) : null}
     </div>
   );
 }
-/**
- * The workspace's table capacity as two meters under the title: how many
- * tables of the limit, and how much of the storage they share.
- */
-export function TableCapacity({
-  quotas,
-}: Readonly<{ quotas: DataTablesResponse['quotas'] | undefined }>) {
-  if (quotas === undefined) return null;
+
+/** One table's actions: its columns, and delete in the menu. */
+export function TableActions({
+  onDialog,
+}: Readonly<{ onDialog: (dialog: 'remove' | 'columns') => void }>) {
   return (
-    <div className="grid max-w-xl grid-cols-1 min-[400px]:grid-cols-2 gap-6 text-sm">
-      <div className="flex flex-col gap-1.5">
-        <p className="flex items-baseline justify-between gap-2">
-          <span className="text-muted-foreground">Tables</span>
-          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
-            {quotas.tableCount} / {quotas.tableLimit}
-          </span>
-        </p>
-        <UsageMeter
-          used={quotas.tableCount}
-          limit={quotas.tableLimit}
-          label="Tables used"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <p className="flex items-baseline justify-between gap-2">
-          <span className="text-muted-foreground">Storage</span>
-          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
-            {formatByteLength(quotas.storedBytes)} /{' '}
-            {formatByteLength(quotas.byteLimit)}
-          </span>
-        </p>
-        <UsageMeter
-          used={quotas.storedBytes}
-          limit={quotas.byteLimit}
-          label="Table storage used"
-        />
-      </div>
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          onDialog('columns');
+        }}
+      >
+        Edit columns
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="More table actions"
+            />
+          }
+        >
+          <EllipsisIcon aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => {
+              onDialog('remove');
+            }}
+          >
+            Delete table
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
 
-// Chips a card shows before folding the rest into "+N".
-const SHOWN_COLUMNS = 4;
-
 /**
- * Every table as a card: its woven swatch, its name and key, its columns as
- * typed chips, and how many rows it holds of the limit.
+ * Every table as a row: its name and key, how many rows it holds. The
+ * chosen one lifts; the storage they share sits under the list.
  */
-export function TableCollection({
+export function TableList({
   tables,
   unavailableTables,
-  rowLimit,
+  quotas,
+  selectedId,
   workspaceId,
 }: Readonly<{
   tables: DataTablesResponse['tables'] | undefined;
   unavailableTables?: DataTablesResponse['unavailableTables'];
-  rowLimit: number | undefined;
+  quotas: DataTablesResponse['quotas'] | undefined;
+  selectedId: string | undefined;
   workspaceId: string;
 }>) {
   if (tables?.length === 0 && (unavailableTables?.length ?? 0) === 0)
@@ -175,72 +134,66 @@ export function TableCollection({
       </Empty>
     );
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {unavailableTables?.map((item) => (
-        <li key={item.id} className="min-w-0">
-          <UnavailableDataTable name={item.name} />
-        </li>
-      ))}
-      {tables?.map((item) => {
-        const more = item.columns.length - SHOWN_COLUMNS;
-        return (
-          <li key={item.id} className="min-w-0">
-            <Link
-              to="/w/$workspaceId/data-tables/$tableId"
-              params={{ workspaceId, tableId: item.id }}
-              className="group flex h-full min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-select p-4 outline-none transition-colors duration-150 hover:border-surface-ink/14 hover:bg-select focus-ring motion-reduce:transition-none"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <TableSwatch columns={item.columns} rowCount={item.rowCount} />
-                <div className="min-w-0">
-                  <p className="wrap-anywhere font-medium group-hover:text-accent-foreground">
+    <nav aria-label="Tables" className="flex min-w-0 flex-col">
+      <h2 className="flex min-w-0 items-center gap-3 font-heading text-section font-semibold">
+        Tables
+        {quotas === undefined ? null : (
+          <span className="font-mono text-caption font-medium text-subtle-foreground">
+            {quotas.tableCount} of {quotas.tableLimit}
+          </span>
+        )}
+        <span
+          aria-hidden="true"
+          className="h-px min-w-3 flex-1 bg-linear-to-r from-border-strong to-border"
+        />
+      </h2>
+      {/* The chosen damaged table says so in the detail, not twice. */}
+      {unavailableTables
+        ?.filter((item) => item.id !== selectedId)
+        .map((item) => (
+          <div key={item.id} className="mt-2">
+            <UnavailableDataTable name={item.name} />
+          </div>
+        ))}
+      <RowList className="mt-2">
+        {tables?.map((item) => {
+          const selected = item.id === selectedId;
+          return (
+            <Row key={item.id} selected={selected} className="p-0">
+              <Link
+                to="/w/$workspaceId/data-tables/$tableId"
+                params={{ workspaceId, tableId: item.id }}
+                aria-current={selected ? 'page' : undefined}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-3.5 py-3 outline-none focus-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-lead font-semibold">
                     {item.name}
-                  </p>
-                  <p className="text-xs text-subtle-foreground">
-                    {item.columns.length}{' '}
-                    {pluralWord(item.columns.length, 'column')}
-                    {item.keyColumn === null ? '' : ' · unique key'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex min-w-0 flex-wrap gap-1.5">
-                {item.columns.slice(0, SHOWN_COLUMNS).map((column) => (
-                  <ColumnChip
-                    key={column.name}
-                    column={column}
-                    isKey={column.name === item.keyColumn}
-                  />
-                ))}
-                {more > 0 ? (
-                  <span className="self-center font-mono text-caption text-subtle-foreground">
-                    +{more}
                   </span>
-                ) : null}
-              </div>
-              <div className="mt-auto flex flex-col gap-1.5">
-                <p className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="font-mono tabular-nums">
-                    {item.rowCount.toLocaleString(FORMAT_LOCALE)}{' '}
-                    <span className="font-sans text-muted-foreground">
-                      {pluralWord(item.rowCount, 'row')}
-                    </span>
+                  <span className="block truncate text-meta text-subtle-foreground">
+                    {item.keyColumn === null
+                      ? 'no unique key'
+                      : `key ${item.keyColumn}`}
                   </span>
-                  <span className="font-mono text-xs text-subtle-foreground">
-                    {formatByteLength(item.storedBytes)}
+                </span>
+                <span className="font-mono text-caption text-subtle-foreground tabular-nums">
+                  {item.rowCount.toLocaleString(FORMAT_LOCALE)}
+                  <span className="sr-only">
+                    {' '}
+                    {pluralWord(item.rowCount, 'row')}
                   </span>
-                </p>
-                {rowLimit === undefined ? null : (
-                  <UsageMeter
-                    used={item.rowCount}
-                    limit={rowLimit}
-                    label={`${item.name} rows used`}
-                  />
-                )}
-              </div>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+                </span>
+              </Link>
+            </Row>
+          );
+        })}
+      </RowList>
+      {quotas === undefined ? null : (
+        <p className="mt-3.5 font-mono text-caption text-subtle-foreground">
+          storage {formatByteLength(quotas.storedBytes)} of{' '}
+          {formatByteLength(quotas.byteLimit)}
+        </p>
+      )}
+    </nav>
   );
 }
