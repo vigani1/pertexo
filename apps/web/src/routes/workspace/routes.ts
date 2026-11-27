@@ -1,6 +1,11 @@
 import { workspacePage, warmWorkspacePage } from './workspace-page';
 import { parseTaskSearch } from '@/features/pending-tasks/pending-tasks-routing.public';
-import { createRoute, notFound, redirect } from '@tanstack/react-router';
+import {
+  createRoute,
+  notFound,
+  redirect,
+  type SearchSchemaInput,
+} from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   type AccessibleWorkspace,
@@ -334,6 +339,10 @@ export const requestsRoute = createRoute({
 export const requestDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'requests/$taskId',
+  // The list's filters ride along so the list beside the request keeps them;
+  // a link from elsewhere opens it with the default list.
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) =>
+    parseTaskSearch(search),
   staticData: { crumb: 'Request' },
   component: lazyRoute(() => import('./requests/detail'), 'RequestDetailRoute'),
 });

@@ -9,17 +9,16 @@ import {
   isNewWorkspace,
 } from '@/features/overview/model/first-thread';
 import { loomCaption } from '@/features/overview/model/loom-caption';
+import { homeGreeting } from '@/features/overview/model/home-greeting';
 import {
+  taskAttentionItems,
   connectionAttentionItems,
   destinationAttentionItems,
   runAttentionItems,
   workflowAttentionItems,
 } from '@/features/overview/model/needs-attention';
 import { shapeLoom } from '@/features/workflow-runs/model/loom/model';
-import {
-  groupRunsByDay,
-  threadBarScale,
-} from '@/features/workflow-runs/model/list/runs';
+import { groupRunsByDay } from '@/features/workflow-runs/model/list/runs';
 
 const now = Date.parse('2026-09-24T14:00:00.000Z');
 const minute = 60_000;
@@ -191,7 +190,7 @@ describe('loom', () => {
 });
 
 describe('run list', () => {
-  it('groups by local day and scales thread bars on a log scale', () => {
+  it('groups by local day', () => {
     const groups = groupRunsByDay(
       [
         run({
@@ -213,14 +212,45 @@ describe('run list', () => {
     );
     expect(groups.map((group) => group.runs.length)).toEqual([1, 1]);
     expect(groups[0]?.heading).toBe('Today');
-    const scale = threadBarScale([1_000, 1_200_000]);
-    expect(scale(1_200_000)).toBe(1);
-    expect(scale(2_000)).toBeGreaterThan(0.4);
-    expect(scale(undefined)).toBe(0);
+  });
+});
+
+describe('greeting', () => {
+  it('greets by first name and part of the day', () => {
+    expect(homeGreeting('Dena Okafor', 9)).toBe('Good morning, Dena.');
+    expect(homeGreeting(' Dena ', 14)).toBe('Good afternoon, Dena.');
+    expect(homeGreeting(null, 20)).toBe('Good evening.');
+    expect(homeGreeting('  ', 11)).toBe('Good morning.');
   });
 });
 
 describe('needs attention', () => {
+  it('puts requests you can answer first, soonest deadline first', () => {
+    const task = (id: string, expiresAt: string, canRespond = true) =>
+      ({
+        id,
+        title: `Approve ${id}`,
+        workflowName: 'Invoice intake',
+        status: 'pending',
+        canRespond,
+        expiresAt,
+      }) as Parameters<typeof taskAttentionItems>[0][number];
+    const items = taskAttentionItems([
+      task('later', '2026-09-25T10:00:00.000Z'),
+      task('theirs', '2026-09-24T14:10:00.000Z', false),
+      task('soon', '2026-09-24T15:00:00.000Z'),
+    ]);
+    expect(items.map((item) => item.key)).toEqual([
+      'request:soon',
+      'request:later',
+    ]);
+    expect(items[0]).toMatchObject({
+      tone: 'waiting',
+      detail: 'Invoice intake',
+      deadline: '2026-09-24T15:00:00.000Z',
+      action: { kind: 'task', taskId: 'soon' },
+    });
+  });
   it('groups problem runs by workflow with the latest run to open', () => {
     const items = runAttentionItems(
       {

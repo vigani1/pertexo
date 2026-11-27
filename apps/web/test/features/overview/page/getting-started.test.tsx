@@ -110,7 +110,7 @@ describe('getting started on Home', () => {
     expect(
       await screen.findByRole(
         'heading',
-        { name: 'Needs attention' },
+        { name: 'Recently changed' },
         coldStart,
       ),
     ).toBeVisible();

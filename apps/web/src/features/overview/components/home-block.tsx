@@ -15,12 +15,14 @@ import type { HomeBlockState } from '../model/home-block-state';
 export function HomeBlock({
   title,
   headingId,
+  count,
   actions,
   state,
   children,
 }: Readonly<{
   title: string;
   headingId: string;
+  count?: number | undefined;
   actions?: ReactNode;
   state: HomeBlockState;
   children: ReactNode;
@@ -28,7 +30,9 @@ export function HomeBlock({
   return (
     <section aria-labelledby={headingId} className="min-w-0">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <RuleHeading id={headingId}>{title}</RuleHeading>
+        <RuleHeading id={headingId} count={count}>
+          {title}
+        </RuleHeading>
         {actions}
       </div>
       <HomeBlockBody title={title} state={state}>

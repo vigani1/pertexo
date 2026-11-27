@@ -1,5 +1,6 @@
 import type {
   ConnectionResponse,
+  PendingTaskSummary,
   FailureNotificationDestinationResponse,
   WorkflowSummary,
   WorkflowRunReadSummary,
@@ -17,6 +18,7 @@ const ATTENTION_WINDOW = `the last ${formatCount(ATTENTION_WINDOW_HOURS, 'hour')
 // connections to reconnect and alert destinations that are off.
 
 export type AttentionAction =
+  | Readonly<{ kind: 'task'; taskId: string }>
   | Readonly<{ kind: 'run'; runId: string }>
   | Readonly<{ kind: 'triggers'; workflowId: string }>
   | Readonly<{ kind: 'connections' }>
@@ -28,7 +30,24 @@ export type AttentionItem = Readonly<{
   title: string;
   detail: string;
   action?: AttentionAction;
+  deadline?: string;
 }>;
+
+export function taskAttentionItems(
+  tasks: readonly PendingTaskSummary[],
+): readonly AttentionItem[] {
+  return tasks
+    .filter((task) => task.status === 'pending' && task.canRespond)
+    .sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
+    .map((task) => ({
+      key: `request:${task.id}`,
+      tone: 'waiting',
+      title: task.title,
+      detail: task.workflowName,
+      deadline: task.expiresAt,
+      action: { kind: 'task', taskId: task.id },
+    }));
+}
 
 export type ProblemRuns = Readonly<{
   failed: readonly WorkflowRunReadSummary[];

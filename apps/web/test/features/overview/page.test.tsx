@@ -43,13 +43,13 @@ describe('workspace home', () => {
     expect(
       await screen.findByRole(
         'heading',
-        { level: 1, name: 'Control Operations' },
+        { level: 1, name: /^Good (morning|afternoon|evening)/u },
         coldStart,
       ),
     ).toBeVisible();
     const attention = await screen.findByRole(
       'region',
-      { name: 'Needs attention' },
+      { name: 'Needs you' },
       coldStart,
     );
     expect(

@@ -1,3 +1,5 @@
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { useId, useState } from 'react';
 import { SearchInput } from '@/components/ui/input';
 import {
@@ -19,6 +21,16 @@ function ActionLink({
 }: Readonly<{ action: AttentionAction; workspaceId: string }>) {
   const className = buttonVariants({ size: 'sm', variant: 'outline' });
   switch (action.kind) {
+    case 'task':
+      return (
+        <Link
+          to="/w/$workspaceId/requests/$taskId"
+          params={{ workspaceId, taskId: action.taskId }}
+          className={className}
+        >
+          Review
+        </Link>
+      );
     case 'run':
       return (
         <Link
@@ -62,11 +74,6 @@ function ActionLink({
   }
 }
 
-/**
- * What needs someone: failed or uncertain runs, unhealthy triggers,
- * connections to reconnect and alerts that are off. One knotted "All clear"
- * when nothing does.
- */
 export function NeedsAttention({
   workspace,
   items,
@@ -84,6 +91,15 @@ export function NeedsAttention({
   const listId = useId();
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState('');
+  const now = useNow({
+    intervalMs: CLOCK_TICK.relativeTime,
+    enabled: items.some((item) => item.deadline !== undefined),
+  });
+  // Nothing needs you: the block is gone, not an empty promise. Partial
+  // evidence still shows, so its gap is said.
+  const loading = state.pending && !state.hasData;
+  if (items.length === 0 && !state.failed && !loading && !moreWorkflows)
+    return null;
   const needle = search.trim().toLocaleLowerCase();
   const filtered =
     needle === ''
@@ -95,8 +111,9 @@ export function NeedsAttention({
   const canReadRuns = workspace.capabilities.includes('run:read');
   return (
     <HomeBlock
-      title="Needs attention"
+      title="Needs you"
       headingId="home-attention-title"
+      count={items.length === 0 ? undefined : items.length}
       state={state}
       actions={
         canReadRuns ? (
@@ -120,48 +137,39 @@ export function NeedsAttention({
           }}
         />
       ) : null}
-      {items.length === 0 ? (
-        <div className="flex items-center gap-3 row-divider py-3.5">
-          <StatusMark
-            display="mark"
-            tone={moreWorkflows ? 'attention' : 'success'}
-          />
-          <p className="text-sm">
-            <span className="font-semibold">
-              {moreWorkflows ? 'No issues in loaded workflows.' : 'All clear.'}
-            </span>{' '}
-            <span className="text-muted-foreground">
-              {moreWorkflows
-                ? 'Review older workflows too.'
-                : 'Nothing needs you.'}
-            </span>
-          </p>
-        </div>
-      ) : (
-        <ul id={listId} aria-label="Needs attention" className="flex flex-col">
-          {shown.map((item) => (
-            <li
-              key={item.key}
-              className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 row-divider py-3"
-            >
-              <StatusMark display="mark" tone={item.tone} />
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-sm font-semibold">
-                  {item.title}
-                </p>
-                <p className="mt-0.5 line-clamp-2 text-xs text-subtle-foreground">
-                  {item.detail}
-                </p>
-              </div>
-              {item.action === undefined ? (
-                <span />
-              ) : (
-                <ActionLink action={item.action} workspaceId={workspace.id} />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul id={listId} aria-label="Needs you" className="flex flex-col">
+        {shown.map((item) => (
+          <li
+            key={item.key}
+            className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 row-divider py-3"
+          >
+            <StatusMark display="mark" tone={item.tone} />
+            <div className="min-w-0">
+              <p className="line-clamp-2 text-sm font-semibold">{item.title}</p>
+              <p className="mt-0.5 line-clamp-2 text-xs text-subtle-foreground">
+                {item.detail}
+                {item.deadline === undefined ? null : (
+                  <>
+                    {' '}
+                    ·{' '}
+                    <time
+                      dateTime={item.deadline}
+                      title={formatDateTime(item.deadline)}
+                    >
+                      Expires {formatRelativeTime(item.deadline, now, 'long')}
+                    </time>
+                  </>
+                )}
+              </p>
+            </div>
+            {item.action === undefined ? (
+              <span />
+            ) : (
+              <ActionLink action={item.action} workspaceId={workspace.id} />
+            )}
+          </li>
+        ))}
+      </ul>
       {moreWorkflows ? (
         <p className="border-t border-surface-ink/6 pt-2 text-xs text-subtle-foreground">
           <span>

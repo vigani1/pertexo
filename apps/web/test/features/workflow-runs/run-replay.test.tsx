@@ -215,7 +215,7 @@ describe('run replay', () => {
     });
     await router.navigate({ to: '/w/$workspaceId', params: { workspaceId } });
     const attention = await screen.findByRole('region', {
-      name: 'Needs attention',
+      name: 'Needs you',
     });
     expect(
       await within(attention).findByRole('link', { name: 'Open run' }),

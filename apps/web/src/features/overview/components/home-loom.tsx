@@ -1,3 +1,4 @@
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
@@ -16,10 +17,30 @@ import { mergedBlockState } from '../model/home-block-state';
 import { loomCaption } from '../model/loom-caption';
 
 const windows = {
-  '1h': { ms: 3_600_000, label: '1 hour', phrase: 'the last hour' },
-  '6h': { ms: 21_600_000, label: '6 hours', phrase: 'the last 6 hours' },
-  '24h': { ms: 86_400_000, label: '24 hours', phrase: 'the last 24 hours' },
-  '7d': { ms: 604_800_000, label: '7 days', phrase: 'the last 7 days' },
+  '1h': {
+    ms: 3_600_000,
+    label: '1 hour',
+    title: 'The last hour',
+    phrase: 'the last hour',
+  },
+  '6h': {
+    ms: 21_600_000,
+    label: '6 hours',
+    title: 'The last 6 hours',
+    phrase: 'the last 6 hours',
+  },
+  '24h': {
+    ms: 86_400_000,
+    label: '24 hours',
+    title: 'The last 24 hours',
+    phrase: 'the last 24 hours',
+  },
+  '7d': {
+    ms: 604_800_000,
+    label: '7 days',
+    title: 'The last 7 days',
+    phrase: 'the last 7 days',
+  },
 } as const;
 
 type LoomWindow = keyof typeof windows;
@@ -79,10 +100,8 @@ export function HomeLoom({
       : loomCaption({ phrase: selected.phrase, capped, total });
   return (
     <section aria-labelledby="home-loom-title" className="flex flex-col gap-3">
-      <h2 id="home-loom-title" className="sr-only">
-        Runs over {selected.phrase}
-      </h2>
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <RuleHeading id="home-loom-title">{selected.title}</RuleHeading>
         <ToggleGroup
           aria-label="Time window"
           value={[windowKey]}

@@ -210,7 +210,7 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Control Operations' }),
   ).toBeVisible();
-  const attention = page.getByRole('region', { name: 'Needs attention' });
+  const attention = page.getByRole('region', { name: 'Needs you' });
   await expect(
     attention.getByText('Daily intake failed once in the last 24 hours'),
   ).toBeVisible();

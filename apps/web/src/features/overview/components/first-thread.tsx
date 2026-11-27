@@ -4,6 +4,7 @@ import { ArrowRightIcon, PlayIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { GuideLink } from '@/components/patterns/guidance/guide-link';
 import { HELP_LINKS } from '@/lib/help/guides';
 import type {
@@ -119,20 +120,14 @@ export function FirstThread({
 }>) {
   const done = steps.filter((step) => step.done).length;
   return (
-    <section
-      aria-labelledby="first-thread-title"
-      className={cn(
-        'rounded-xl border border-surface-ink/6 bg-linear-to-b from-select to-transparent',
-        compact ? 'p-4 sm:p-5' : 'p-5 sm:p-7',
-      )}
-    >
-      <h2
+    <section aria-labelledby="first-thread-title" className="min-w-0">
+      <RuleHeading
         id="first-thread-title"
-        className={cn('font-semibold', compact ? 'text-lg' : 'text-2xl')}
+        count={`${String(done)} of ${String(steps.length)}`}
       >
         Getting started
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+      </RuleHeading>
+      <p className="mt-2 text-sm text-muted-foreground">
         {String(done)} of {String(steps.length)} done.
         {compact
           ? ' The rest are here whenever you want them.'
@@ -142,7 +137,7 @@ export function FirstThread({
         Read the first-workflow guide
       </GuideLink>
       {firstRun === undefined ? null : (
-        <div className="mt-5 flex flex-col items-start gap-2 rounded-lg bg-select-raised p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col items-start gap-2 row-divider py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
             <span className="font-semibold">See a run in about a minute.</span>{' '}
             <span className="text-muted-foreground">

@@ -17,6 +17,7 @@ import {
 } from '@/features/workflow-runs/workflow-runs-views.public';
 import type { RunStatistics } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { formatShortTime } from '@/lib/format/time';
+import { homeGreeting } from '../model/home-greeting';
 import { shortcut } from '@/lib/shortcut-keys';
 
 /**
@@ -26,12 +27,14 @@ import { shortcut } from '@/lib/shortcut-keys';
  */
 export function HomeHeader({
   workspace,
+  name,
   statistics,
   refreshing,
   onRefresh,
   onOpenSearch,
 }: Readonly<{
   workspace: AccessibleWorkspace;
+  name: string | null;
   statistics: RunStatistics | undefined;
   refreshing: boolean;
   onRefresh: () => void;
@@ -41,7 +44,7 @@ export function HomeHeader({
     <PageHeader>
       <div className="min-w-0">
         <PageHeaderTitle className="break-words sm:text-5xl">
-          {workspace.name}
+          {homeGreeting(name, new Date().getHours())}
         </PageHeaderTitle>
         {/* The figures' line is held while they load, so the actions under
             it on a phone don't drop when they arrive. */}

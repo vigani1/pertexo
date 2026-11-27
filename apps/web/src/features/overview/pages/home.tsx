@@ -88,6 +88,7 @@ export function HomePage({
       <div className="flex flex-col gap-10">
         <HomeHeader
           workspace={workspace}
+          name={user.displayName}
           statistics={undefined}
           refreshing={false}
           onRefresh={refresh}
@@ -114,6 +115,7 @@ export function HomePage({
     <div className="flex flex-col gap-10">
       <HomeHeader
         workspace={workspace}
+        name={user.displayName}
         statistics={shownData(statistics)}
         refreshing={refreshing}
         onRefresh={refresh}
@@ -131,6 +133,11 @@ export function HomePage({
               firstRun={firstRun}
             />
           ) : null}
+          <AttentionSection
+            apiClient={apiClient}
+            userId={user.id}
+            workspace={workspace}
+          />
           {!newWorkspace && canReadRuns ? (
             <HomeLoom
               apiClient={apiClient}
@@ -147,20 +154,13 @@ export function HomePage({
               compact
             />
           )}
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-            <AttentionSection
+          {canReadWorkflows ? (
+            <RecentlyChanged
               apiClient={apiClient}
               userId={user.id}
-              workspace={workspace}
+              workspaceId={workspace.id}
             />
-            {canReadWorkflows ? (
-              <RecentlyChanged
-                apiClient={apiClient}
-                userId={user.id}
-                workspaceId={workspace.id}
-              />
-            ) : null}
-          </div>
+          ) : null}
         </>
       ) : (
         <SkeletonLines label="Loading Home" lines={4} className="min-h-80" />
