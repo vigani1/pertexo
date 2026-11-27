@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DownloadIcon, FileTextIcon } from 'lucide-react';
 import { useState } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { describeReadError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { formatByteLength } from '@/lib/format/bytes';

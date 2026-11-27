@@ -2,7 +2,7 @@ import type {
   ScheduleTriggerHealthResponse,
   WebhookTriggerHealthResponse,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 type TriggerState = Readonly<{ tone: StatusTone; label: string }>;
 type TriggerHealth = Pick<

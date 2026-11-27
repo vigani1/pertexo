@@ -3,8 +3,8 @@ import {
   workflowRunStatusSchema,
   type UsageTrendsResponse,
 } from '@pertexo/contracts';
-import { Status } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import { Status } from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { describeRunStatus } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';

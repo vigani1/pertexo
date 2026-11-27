@@ -1,6 +1,6 @@
 import type { FederationSettings } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { TestProvider } from './test';
 import { pluralWord } from '@/lib/format/count';

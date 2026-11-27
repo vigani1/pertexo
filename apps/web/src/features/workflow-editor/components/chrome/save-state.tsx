@@ -1,4 +1,4 @@
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatShortTime } from '@/lib/format/time';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { cn } from '@/lib/class-names';

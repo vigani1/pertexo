@@ -3,7 +3,7 @@ import type { FocusEvent } from 'react';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { stepTitle } from '../../../model/graph/step-title';
 import type { GraphLevel } from '../../../model/graph/scopes';

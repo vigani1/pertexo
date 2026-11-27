@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { promotionFailureMessage } from '../model/promotion-failures';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 export function PromotionCommandFeedback({
   command,
   retryLabel,

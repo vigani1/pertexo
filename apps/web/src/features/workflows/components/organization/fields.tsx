@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/contracts';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValidation } from '@/components/ui/use-field-validation';

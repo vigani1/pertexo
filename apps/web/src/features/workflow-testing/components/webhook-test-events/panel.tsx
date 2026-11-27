@@ -4,8 +4,8 @@ import {
   WEBHOOK_LISTENER_STATUS,
 } from '../../model/webhook-listener';
 import { useEffect, useRef } from 'react';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useListenerClock } from './use-clock';
 import type { SampleScope } from '../../data/samples/step-samples.api';

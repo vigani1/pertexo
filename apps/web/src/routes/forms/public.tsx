@@ -1,6 +1,6 @@
 import { useRouteContext } from '@tanstack/react-router';
 import { FormPage } from '@/features/forms/pages/published-form';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 export function PublicFormRoute() {
   const { publicForm } = useRouteContext({ from: '/forms/$publicId' });
   return (

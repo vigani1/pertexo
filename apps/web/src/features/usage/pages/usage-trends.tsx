@@ -12,7 +12,7 @@ import type {
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatDurationMs, formatDateTime } from '@/lib/format/time';
 import type { ApiClient } from '@/lib/api/client';
 import { usageTrendsQueryOptions } from '../data/usage.queries';

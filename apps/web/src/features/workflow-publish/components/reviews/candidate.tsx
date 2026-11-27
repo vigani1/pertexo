@@ -11,7 +11,7 @@ import {
   AGENT_SLACK_CONNECTION_SLOT,
   agentToolsAllowedWithoutApproval,
 } from '@pertexo/workflow-model';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { DescribeStep } from '@/features/catalog/public';
 
 export function ReviewCandidate({

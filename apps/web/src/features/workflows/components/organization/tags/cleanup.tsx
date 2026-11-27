@@ -8,7 +8,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/lists/load-more';

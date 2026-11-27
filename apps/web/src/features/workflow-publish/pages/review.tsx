@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatDateTime } from '@/lib/format/time';
 import { publicationReviewOptions } from '../data/reviews/publication-review.queries';
 import type { ReviewScope } from '../data/reviews/publication-review.api';

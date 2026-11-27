@@ -1,7 +1,7 @@
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { ChannelNames } from '@/features/failure-notifications/public';
 import {
   channelNameNote,

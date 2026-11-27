@@ -4,7 +4,7 @@ import { RefreshCwIcon, XIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { IssuesState } from '../../model/validation/issues-state';
 import { emptyDraftHint } from '../../model/publication/readiness';
 import type { WorkflowValidationTarget } from '../../model/validation/target';

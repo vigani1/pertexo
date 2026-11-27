@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { ConvergingThreads } from './converging-threads';
 import { Wordmark } from './wordmark';

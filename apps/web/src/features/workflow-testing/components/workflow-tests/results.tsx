@@ -9,7 +9,7 @@ import { ArtifactDownload } from '@/features/artifacts/artifacts-views.public';
 import type { WorkflowRunData } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Disclosure } from '@/components/ui/disclosure';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowTestStepLabels } from '../../model/workflow-test';

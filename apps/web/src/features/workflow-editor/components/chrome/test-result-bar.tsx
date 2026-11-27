@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { describePreviewStatus } from '@/features/workflow-testing/public';
 import { shortStepError } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';

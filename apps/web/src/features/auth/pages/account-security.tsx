@@ -14,7 +14,7 @@ import { AccountMethodsSection } from '../components/account/methods-section';
 import { AccountPasswordSection } from '../components/account/password-section';
 import { AccountProfileSection } from '../components/account/profile/section';
 import { AccountSessionsSection } from '../components/account/sessions-section';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 
 type LinkOutcome = 'returned' | 'failed';

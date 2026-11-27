@@ -1,6 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
 import type { useAutoPauseCommand } from '../../data/mutations/use-auto-pause-command';
 export type Scope = Readonly<{

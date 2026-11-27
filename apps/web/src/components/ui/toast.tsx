@@ -3,7 +3,10 @@ import { Toast } from '@base-ui/react/toast';
 import { XIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
 import { buttonVariants } from './button-variants';
-import { StatusGlyph, type StatusTone } from './status';
+import {
+  StatusGlyph,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import { LoadingOrb } from './loading-orb';
 
 const TONE_BY_TYPE: Record<string, StatusTone> = {

@@ -13,7 +13,7 @@ import {
   FieldError,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Disclosure } from '@/components/ui/disclosure';
 import { ChoiceSelect } from './fields/choice-select';
 import { MappingValueEditor } from './input-mappings/value-editor';

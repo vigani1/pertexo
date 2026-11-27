@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 export function ExpiredAttemptNotice({
   onNewAttempt,

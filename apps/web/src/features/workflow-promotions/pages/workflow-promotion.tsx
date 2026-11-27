@@ -23,7 +23,7 @@ import type {
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { PromotionScope } from '../data/promotions.api';

@@ -7,8 +7,8 @@ import {
   describeRecurrence,
 } from '@/features/catalog/public';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeScheduleHold } from '../../../model/triggers/occurrence-outcome';

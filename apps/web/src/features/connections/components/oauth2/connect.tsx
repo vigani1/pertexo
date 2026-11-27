@@ -2,7 +2,7 @@ import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import type { OAuth2ConnectionResponse } from '@pertexo/contracts';
 import { ExternalLinkIcon } from 'lucide-react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectSentence } from '../../model/oauth2-copy';
 

@@ -1,6 +1,6 @@
 import type { OAuth2ConnectionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';

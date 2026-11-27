@@ -2,7 +2,7 @@ import { CheckIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import type { IssuesState } from '../../model/validation/issues-state';
 import type { EmptyDraftHint } from '../../model/publication/readiness';

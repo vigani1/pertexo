@@ -2,7 +2,7 @@ import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
 import { cn } from '@/lib/class-names';
 import {

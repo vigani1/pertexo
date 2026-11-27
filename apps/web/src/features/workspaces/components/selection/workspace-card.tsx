@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { WorkspaceMark } from '../shell/workspace-mark';
 import { workspaceAvailability } from '../../model/workspace-availability';

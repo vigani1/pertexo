@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Status, StatusGlyph } from '@/components/ui/status';
+import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
 import { formatDate } from '@/lib/format/time';
 import type { ManagedRole, WorkspaceRole } from '../../model/workspace-roles';
 import { ROLE_NAMES } from '../../model/role-words';

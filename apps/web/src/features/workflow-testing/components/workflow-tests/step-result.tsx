@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { useTestHistory } from '../../hooks/use-test-history';
 import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';

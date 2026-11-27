@@ -1,7 +1,7 @@
 import { CalendarRangeIcon, ChevronDownIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { DayRangeForm } from '@/components/ui/day-range-form';
+import { DayRangeForm } from '@/components/patterns/dates/day-range-form';
 import {
   Popover,
   PopoverContent,

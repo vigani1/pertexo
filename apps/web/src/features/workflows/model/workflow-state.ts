@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 export type WorkflowState = Readonly<{ tone: StatusTone; label: string }>;
 

@@ -1,7 +1,7 @@
 import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ChevronRightIcon, LockIcon } from 'lucide-react';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 import {

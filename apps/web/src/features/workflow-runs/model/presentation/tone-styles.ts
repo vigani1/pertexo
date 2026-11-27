@@ -1,4 +1,4 @@
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 // Run visuals drawn outside a `Status` (thread segments, graph edges) use
 // the status colours from `statusToneText`, plus these borders and lines.

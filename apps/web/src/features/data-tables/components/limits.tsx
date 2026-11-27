@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useTableCommand } from '../data/tables.mutations';
 import type { TableScope } from '../data/tables.api';
 import { TableCommandFeedback } from './command-feedback';

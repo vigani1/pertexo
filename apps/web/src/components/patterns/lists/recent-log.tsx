@@ -2,8 +2,11 @@ import { useId, type ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { StatusGlyph, type StatusTone } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import {
+  StatusGlyph,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import {
   formatDateTime,
   formatDayHeading,

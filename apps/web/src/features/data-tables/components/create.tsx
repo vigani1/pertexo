@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   Dialog,
   DialogFooter,

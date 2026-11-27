@@ -4,7 +4,7 @@ import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { isApiError } from '@/lib/api/error';
 import type { GovernanceScope } from '../data/audit.api';
 import { useSettingForm } from '../data/governance-setting.mutations';

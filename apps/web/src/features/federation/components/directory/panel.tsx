@@ -6,7 +6,7 @@ import type {
   DirectorySettings,
   FederationSettings,
 } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { directoryQueryOptions } from '../../data/directory.queries';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { DirectoryCredentials } from './credentials';

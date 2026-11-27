@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { AccountSection } from '../account/section';
 import { useAccountSecurityRefresh } from '../../data/account-security/account-security.mutations';
 import { TwoFactorSetupDialog } from './setup-dialog';

@@ -7,7 +7,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { ActionDialog } from '@/components/patterns/actions/dialog';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
 import type { WorkflowOrganizationInput } from '../../../model/organization/requests';

@@ -1,5 +1,5 @@
 import { isApiError } from '@/lib/api/error';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 export function TableCommandFeedback({
   command,

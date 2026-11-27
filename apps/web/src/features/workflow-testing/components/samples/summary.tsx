@@ -1,7 +1,7 @@
 import type { StepSampleMetadata } from '@pertexo/contracts';
 import { PinIcon } from 'lucide-react';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatRelativeTime } from '@/lib/format/time';
 import { sampleStateLabel } from '../../model/step-samples';
 const SOURCE_LABEL: Readonly<

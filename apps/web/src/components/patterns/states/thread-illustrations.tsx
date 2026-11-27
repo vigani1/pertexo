@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 
 // Small decorative thread drawings for system states. Motion stops under

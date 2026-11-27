@@ -1,7 +1,7 @@
 import { PlusIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { bodyIssuesOf } from '../../model/graph/for-each-body-rules';
 import { useEditorStore } from '../../model/state/context';
 import { loopSummary } from '../../model/graph/loop-summary';

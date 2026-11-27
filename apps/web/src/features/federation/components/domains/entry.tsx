@@ -7,7 +7,7 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime } from '@/lib/format/time';
 import type { FederationScope } from '../../data/federation-settings.api';

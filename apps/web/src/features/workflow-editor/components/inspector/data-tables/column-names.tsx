@@ -5,7 +5,7 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   Dialog,
   DialogContent,

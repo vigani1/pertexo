@@ -2,7 +2,7 @@ import { EMAIL_SEND_NOTIFICATION_LIMITS } from '@pertexo/integrations';
 import type { ValueSource } from '@pertexo/workflow-model';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
 import { UploadFile } from '@/features/artifacts/artifacts-views.public';

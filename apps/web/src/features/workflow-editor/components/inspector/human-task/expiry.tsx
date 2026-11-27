@@ -5,7 +5,7 @@ import {
   type TaskExpiryChoice,
 } from '@pertexo/workflow-model';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { formatTimeSpan } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';

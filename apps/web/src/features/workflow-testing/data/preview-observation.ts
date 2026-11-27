@@ -2,7 +2,7 @@ import type {
   NodeValidationResponse,
   PreviewRunSummary,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { getWorkflowNodePreview } from './node-test.api';
 import { UserFacingError } from '@/lib/api/error';

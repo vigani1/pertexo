@@ -1,4 +1,4 @@
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /**
  * An unknown outcome isn't a failure: Pertexo lost contact mid-step. Say so

@@ -1,5 +1,5 @@
 import type { AuditEvent } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { pluralWord } from '@/lib/format/count';
 
 type Phrase = Readonly<{ words: string; tone?: StatusTone }>;

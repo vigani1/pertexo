@@ -1,7 +1,7 @@
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 import { KeyRoundIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { statusToneText } from '@/components/ui/status-tone';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';

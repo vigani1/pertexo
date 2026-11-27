@@ -8,8 +8,8 @@ import type {
   FormSubmissionResponse,
 } from '@pertexo/contracts';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
-import { Status } from '@/components/ui/status';
-import { Notice } from '@/components/ui/notice';
+import { Status } from '@/components/patterns/status/status-mark';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryView } from '@/components/patterns/states/query-view';

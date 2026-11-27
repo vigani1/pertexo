@@ -4,7 +4,7 @@ import { dataTableCsvValue, type DataTableQuery } from '@pertexo/node-sdk';
 import { FilterIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { TableChoice } from './choice';
 import { tableCellText } from '../model/values';
 const OPERATORS = [

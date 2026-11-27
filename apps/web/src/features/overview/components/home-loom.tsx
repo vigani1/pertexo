@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { StatusGlyph, type StatusTone } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import {
+  StatusGlyph,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { RunLoom } from '@/features/workflow-runs/workflow-runs-views.public';
 import {

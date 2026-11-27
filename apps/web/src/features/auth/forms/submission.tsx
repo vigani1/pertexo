@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { DialogFooter } from '@/components/ui/dialog';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
 

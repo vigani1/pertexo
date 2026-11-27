@@ -1,4 +1,4 @@
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 
 export function MembershipThread({
   state,

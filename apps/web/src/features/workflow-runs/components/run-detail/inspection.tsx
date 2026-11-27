@@ -16,7 +16,7 @@ import {
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { stepTag } from '../../model/step-inspection/copy';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { shortRunId } from '../../model/list/runs';

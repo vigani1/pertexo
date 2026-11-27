@@ -1,6 +1,6 @@
 import type { WebhookDeliveryResponse } from '@pertexo/contracts';
 import { describeCoordinatedEvent } from '@/features/trigger-events/public';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 type DeliveryOutcome = Readonly<{
   tone: StatusTone;

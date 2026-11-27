@@ -4,7 +4,7 @@ import { fieldLabel } from '@/lib/schema-fields/units';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { WrenchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { useStepDescriptions } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import type {

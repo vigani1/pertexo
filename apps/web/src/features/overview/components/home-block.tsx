@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { describeReadError } from '@/lib/api/error-copy';
 import type { HomeBlockState } from '../model/home-block-state';
 

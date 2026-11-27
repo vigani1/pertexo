@@ -1,6 +1,6 @@
 import { describeRunFailureReason } from '../presentation/run-failure-reason';
 import type { WorkflowRunEvent } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 
 type EventType = WorkflowRunEvent['type'];

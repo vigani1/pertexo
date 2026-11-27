@@ -16,7 +16,7 @@ import {
   type FormValues,
 } from '@pertexo/workflow-model';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   draftFromValues,
   valuesFromDraft,

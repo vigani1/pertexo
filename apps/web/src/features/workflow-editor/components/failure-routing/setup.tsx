@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import {
   failureLink,

@@ -1,7 +1,7 @@
 import { DialogFooter } from '@/components/ui/dialog';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { useWorkflowImportCommand } from '../../data/portability/mutations';

@@ -6,8 +6,8 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeadlineField } from '@/components/ui/deadline-field';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { formatDateTime } from '@/lib/format/time';
 import { runDeadlineProblem } from '../../model/commands/run-intent';

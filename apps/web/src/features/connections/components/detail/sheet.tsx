@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LockIcon } from 'lucide-react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Separator } from '@/components/ui/separator';
 import { useNotifications } from '@/components/ui/use-notifications';
 import {
@@ -18,7 +18,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { isReadAccessLost } from '@/lib/api/read-denial';

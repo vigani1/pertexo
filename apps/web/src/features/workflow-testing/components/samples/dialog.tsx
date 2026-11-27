@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { SampleScope } from '../../data/samples/step-samples.api';
 import { stepSampleQueryOptions } from '../../data/samples/step-samples.queries';

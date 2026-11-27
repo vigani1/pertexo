@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';

@@ -1,12 +1,12 @@
-import type { StatusTone } from '@/components/ui/status';
-import { StatusGlyph } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { segmentPlacement } from '../../../model/timeline/geometry';
 import type {
   RunTimelineSegment,
   RunTimelineModel,
 } from '../../../model/timeline/runs';
-import { statusToneText } from '@/components/ui/status-tone';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 
 function percent(value: number): string {
   return `${String(Math.round(value * 100) / 100)}%`;

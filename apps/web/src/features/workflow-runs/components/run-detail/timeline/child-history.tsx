@@ -1,6 +1,6 @@
 import type { WorkflowCallSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 export function ChildHistory({
   call,

@@ -1,4 +1,4 @@
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { stepTag } from '../../../model/step-inspection/copy';
 import type { RunTimelineModel } from '../../../model/timeline/runs';

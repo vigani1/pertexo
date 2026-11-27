@@ -10,7 +10,7 @@ import { canonicalJson, type ValueSource } from '@pertexo/workflow-model';
 import jsonata from 'jsonata';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {

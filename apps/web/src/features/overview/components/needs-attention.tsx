@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { AttentionAction, AttentionItem } from '../model/needs-attention';
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';

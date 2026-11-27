@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { WorkflowPromotionResult } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 export function PromotionResult({
   result,
 }: {

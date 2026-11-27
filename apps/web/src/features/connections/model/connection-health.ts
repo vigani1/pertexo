@@ -3,7 +3,7 @@ import type {
   ConnectionResponse,
   ConnectionTestResponse,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatElapsedTime } from '@/lib/format/time';
 import { oauth2ShortStatus } from './oauth2-copy';
 import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';

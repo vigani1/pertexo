@@ -4,7 +4,7 @@ import type { FormValues } from '@pertexo/workflow-model';
 import { FormResponse } from '@/features/forms/forms-views.public';
 import { newUploadSession } from '@/features/forms/forms-queries.public';
 import { ResponseFiles } from '@/features/artifacts/artifacts-views.public';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';
 import {

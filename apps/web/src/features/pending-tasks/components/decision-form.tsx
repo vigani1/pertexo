@@ -3,7 +3,7 @@ import type { PendingTaskDetail } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { TaskScope } from '../data/tasks.api';
 import { useTaskResponse } from '../data/task-response.mutations';

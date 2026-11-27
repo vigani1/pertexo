@@ -1,4 +1,4 @@
-import type { StatusTone } from './status';
+import type { StatusTone } from './status-mark';
 
 /** The one colour per status tone, for glyphs and threads drawn outside `Status`. */
 export const statusToneText: Readonly<Record<StatusTone, string>> = {

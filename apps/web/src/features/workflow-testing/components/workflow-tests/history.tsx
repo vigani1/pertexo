@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/select';
 import { formatDate, formatClock } from '@/lib/format/time';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
-import { Notice } from '@/components/ui/notice';
+import { Status } from '@/components/patterns/status/status-mark';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   describeRunStatus,
   isActiveRunStatus,

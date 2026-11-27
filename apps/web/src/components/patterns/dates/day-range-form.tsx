@@ -1,9 +1,13 @@
 import { useState, type SyntheticEvent } from 'react';
 import { formatDate, localTimeZone } from '@/lib/format/time';
-import { Button } from './button';
-import { Calendar } from './calendar';
-import { dateOf, localDateOf, type LocalDate } from './date-time-parts';
-import { FieldError } from './field';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  dateOf,
+  localDateOf,
+  type LocalDate,
+} from '@/components/ui/date-time-parts';
+import { FieldError } from '@/components/ui/field';
 
 /** A picked day in words, e.g. "Sep 14, 2026". */
 function dayWords(day: LocalDate): string {

@@ -4,7 +4,7 @@ import {
   type EventCoordinationStatus,
 } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 const reasons: Record<EventCoordinationReason, string> = {
   duplicate_key: 'An event with this key was already accepted in this window.',
   newer_event: 'A newer event replaced this input. Only the latest will run.',

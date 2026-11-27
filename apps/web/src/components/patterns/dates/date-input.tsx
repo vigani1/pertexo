@@ -1,11 +1,15 @@
 import { useState, type Ref } from 'react';
 import { CalendarIcon } from 'lucide-react';
-import { Button } from './button';
-import { Calendar } from './calendar';
-import { dateOf, typedDate } from './date-time-parts';
-import type { LabelledControlProps } from './field';
-import { Input } from './input';
-import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { dateOf, typedDate } from '@/components/ui/date-time-parts';
+import type { LabelledControlProps } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 /**
  * A calendar day in Weft's own controls rather than the browser's date

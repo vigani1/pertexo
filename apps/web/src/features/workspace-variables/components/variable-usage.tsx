@@ -7,7 +7,7 @@ import {
 import type { WorkspaceVariableUsageResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { isAccessLost, readFailureReason } from '@/lib/api/error-copy';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
