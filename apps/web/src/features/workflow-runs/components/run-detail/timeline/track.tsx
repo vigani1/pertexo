@@ -37,7 +37,6 @@ function SegmentEnd({ segment }: Readonly<{ segment: RunTimelineSegment }>) {
     <StatusMark
       display="mark"
       tone={segment.tone}
-      aria-hidden="true"
       className="absolute top-1/2 right-0 translate-x-2 -translate-y-1/2"
     />
   );

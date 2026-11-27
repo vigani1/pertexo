@@ -65,7 +65,7 @@ export function IssuesChip({
         <ChipLabel state={state} count={count} />
       ) : (
         <>
-          <StatusMark display="mark" tone="neutral" aria-hidden="true" />
+          <StatusMark display="mark" tone="neutral" />
           <Words>
             {hint.label === 'Add a trigger to start'
               ? 'Add trigger'
@@ -108,22 +108,12 @@ function ChipLabel({
   if (count === undefined)
     return state.error === undefined ? (
       <>
-        <StatusMark
-          display="mark"
-          tone="neutral"
-          aria-hidden="true"
-          className="sm:hidden"
-        />
+        <StatusMark display="mark" tone="neutral" className="sm:hidden" />
         <Words>{describeChip(state, count)}</Words>
       </>
     ) : (
       <>
-        <StatusMark
-          display="mark"
-          tone="attention"
-          aria-hidden="true"
-          className="text-warning"
-        />
+        <StatusMark display="mark" tone="attention" className="text-warning" />
         <Words>{describeChip(state, count)}</Words>
       </>
     );
@@ -136,7 +126,7 @@ function ChipLabel({
     );
   return (
     <>
-      <StatusMark display="mark" tone="failure" aria-hidden="true" />
+      <StatusMark display="mark" tone="failure" />
       {count} <Words>{pluralWord(count, 'issue')}</Words>
     </>
   );
