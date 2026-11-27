@@ -48,16 +48,25 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   const held =
     useRef<Readonly<{ id: string; x: number; y: number }>>(undefined);
 
-  const visibleArea = useCallback((): Box | undefined => {
-    const container = containerRef.current;
-    if (container === null) return undefined;
-    const canvas = container.getBoundingClientRect();
-    if (canvas.width === 0 || canvas.height === 0) return undefined;
-    const covers = [
-      ...document.querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`),
-    ].map((element) => element.getBoundingClientRect());
-    return uncoveredArea(canvas, covers);
-  }, [containerRef]);
+  const visibleArea = useCallback(
+    (reserveInspector = false): Box | undefined => {
+      const container = containerRef.current;
+      if (container === null) return undefined;
+      const canvas = container.getBoundingClientRect();
+      if (canvas.width === 0 || canvas.height === 0) return undefined;
+      const covers = [
+        ...document.querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`),
+      ]
+        .filter(
+          (element) =>
+            reserveInspector ||
+            getComputedStyle(element).visibility === 'visible',
+        )
+        .map((element) => element.getBoundingClientRect());
+      return uncoveredArea(canvas, covers);
+    },
+    [containerRef],
+  );
 
   // Opening frames at a readable zoom, starting from the left when the
   // workflow is too wide; Fit shows every step, however small that makes them.
@@ -66,7 +75,9 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       animate,
       readable = false,
     }: Readonly<{ animate: boolean; readable?: boolean | undefined }>) => {
-      const area = visibleArea();
+      // Selecting the first step opens the inspector. Keep nearby steps
+      // clear of its footprint in the initial frame.
+      const area = visibleArea(readable);
       const nodes = flow
         .getNodes()
         .filter((node) => node.parentId === undefined);

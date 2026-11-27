@@ -113,7 +113,7 @@ export function EditorLayout({
                 'lens pointer-events-auto absolute inset-x-0 top-0 bottom-16 z-40 flex-col rounded-xl md:left-auto md:w-96',
                 mobilePanel === 'inspector' ? 'flex' : 'hidden',
                 'lg:absolute lg:inset-x-auto lg:top-0 lg:right-0 lg:bottom-0 lg:z-10 lg:h-auto lg:w-86',
-                inspectorOpen ? 'lg:flex' : 'lg:hidden',
+                inspectorOpen ? 'lg:flex' : 'lg:invisible lg:flex',
               )}
             >
               {inspector}
