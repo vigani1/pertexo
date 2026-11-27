@@ -4,6 +4,7 @@ import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { cn } from '@/lib/class-names';
 import { PatternGlyphPlaceholder } from '../pattern-glyph';
+import { FAILURE_STRIP_DAYS } from '../../model/run-strip';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
 import type { WorkflowRowActions } from './workflow-row-actions';
 
@@ -46,7 +47,6 @@ export function WorkflowRowsSkeleton({
               style={{ width: `${String(width)}%` }}
             />
           </div>
-          <Skeleton className="hidden h-2.5 w-16 lg:block" />
           <Skeleton className="hidden h-2.5 w-8 lg:block" />
           <SkeletonThread order={order + 2} className="hidden lg:block" />
           <Skeleton className="hidden h-2.5 w-12 lg:block" />
@@ -82,14 +82,15 @@ export function WorkflowRows({
     >
       <div
         aria-hidden="true"
-        className={`hidden ${WORKFLOW_ROW_COLUMNS} gap-x-4 px-3 pb-2 font-mono text-caption text-subtle-foreground lg:grid`}
+        className={`hidden ${WORKFLOW_ROW_COLUMNS} gap-x-3 px-3 pb-2 font-mono text-caption text-subtle-foreground lg:grid`}
       >
         <span />
         <span>Workflow</span>
-        <span>State</span>
-        <span>Triggers</span>
+        <span>Starts on</span>
         <span>
-          {workspace.capabilities.includes('run:read') ? 'Recent runs' : ''}
+          {workspace.capabilities.includes('run:read')
+            ? `Last ${String(FAILURE_STRIP_DAYS)} days`
+            : ''}
         </span>
         <span>Updated</span>
         <span />

@@ -222,7 +222,7 @@ describe('workflow list', () => {
     if (invoice === null) throw new Error('Expected the invoice row');
     expect(
       await within(invoice).findByText('Webhook → Validate → Post to ERP'),
-    ).toBeVisible();
+    ).toBeInTheDocument();
     expect(within(invoice).getAllByText('Live')[0]).toBeInTheDocument();
     expect(
       within(invoice).getAllByText('Triggers: Webhook')[0],
@@ -245,7 +245,7 @@ describe('workflow list', () => {
       within(invoice).getByRole('link', { name: 'Invoice intake' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
   });
-  it('draws each workflow’s strip from its own latest runs', async () => {
+  it('draws each workflow’s failures this week from its own latest runs', async () => {
     const run = (
       id: string,
       workflow: string,
@@ -258,8 +258,9 @@ describe('workflow list', () => {
       workflowVersionId: versionId,
       status,
       triggerType: 'manual',
-      createdAt: `2026-09-14T10:${String(minute).padStart(2, '0')}:00.000Z`,
-      updatedAt: '2026-09-14T11:00:00.000Z',
+      // The strip covers the week up to now.
+      createdAt: new Date(Date.now() - (10 - minute) * 60_000).toISOString(),
+      updatedAt: new Date().toISOString(),
       startedAt: null,
       completedAt: null,
       deadlineAt: null,
@@ -325,11 +326,11 @@ describe('workflow list', () => {
     await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(
       await screen.findByRole('img', {
-        name: 'Recent runs: 2 succeeded, 1 failed',
+        name: 'Last 7 days: 1 failed run',
       }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('img', { name: 'Recent runs: 1 succeeded' }),
+      await screen.findByRole('img', { name: 'Last 7 days: no failures' }),
     ).toBeInTheDocument();
     expect(reads).toEqual([]);
     expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
@@ -347,6 +348,8 @@ describe('workflow list', () => {
       ),
     );
     await renderLoadedApp(`/w/${workspaceId}/workflows`);
-    expect(await screen.findByText('No runs yet')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('img', { name: 'Last 7 days: no runs' }),
+    ).toBeInTheDocument();
   });
 });

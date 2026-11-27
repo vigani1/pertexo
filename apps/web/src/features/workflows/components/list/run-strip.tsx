@@ -1,53 +1,49 @@
-import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
-import {
-  RUN_STRIP_LENGTH,
-  summarizeRunTicks,
-  type RunTick,
-} from '../../model/run-strip';
-
-const TICK_CLASS: Readonly<Record<StatusTone, string>> = {
-  live: 'bg-primary shadow-live motion-safe:animate-blink',
-  queued: 'bg-secondary',
-  waiting: 'bg-secondary',
-  success: 'bg-success/75',
-  failure: 'bg-destructive',
-  timeout: 'bg-destructive',
-  attention: 'bg-warning',
-  canceled: 'bg-subtle-foreground/60',
-  off: 'bg-subtle-foreground/60',
-  skipped: 'bg-subtle-foreground/40',
-  neutral: 'bg-muted-foreground/50',
-};
+import { formatCount } from '@/lib/format/count';
+import { formatDateTime } from '@/lib/format/time';
+import { FAILURE_STRIP_DAYS, type FailureStrip } from '../../model/run-strip';
 
 /**
- * One tick per run, oldest to newest, padded on the left with empty ticks
- * while a workflow has run fewer than 20 times.
+ * The last week as one quiet thread ending in a knot at now, with a short red
+ * tick for each failure. A week without runs is a faint dashed line.
  */
-export function RunStrip({ ticks }: Readonly<{ ticks: readonly RunTick[] }>) {
-  if (ticks.length === 0)
-    return (
-      <span className="font-mono text-caption text-subtle-foreground">
-        No runs yet
-      </span>
-    );
-  const padding = Math.max(0, RUN_STRIP_LENGTH - ticks.length);
+export function RunStrip({ strip }: Readonly<{ strip: FailureStrip }>) {
+  const window = `Last ${String(FAILURE_STRIP_DAYS)} days`;
+  const label =
+    strip.start === undefined
+      ? `${window}: no runs`
+      : strip.ticks.length === 0
+        ? `${window}: no failures`
+        : `${window}: ${formatCount(strip.ticks.length, 'failed run')}`;
   return (
-    <span
-      role="img"
-      aria-label={`Recent runs: ${summarizeRunTicks(ticks)}`}
-      className="flex h-4 items-end gap-[3px]"
-    >
-      {Array.from({ length: padding }, (_, index) => (
+    <span role="img" aria-label={label} className="relative block h-4 w-full">
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute top-1/2 right-0 -translate-y-1/2',
+          strip.start === undefined
+            ? 'left-0 border-t border-dashed border-border'
+            : 'h-px bg-border-strong',
+        )}
+        style={
+          strip.start === undefined
+            ? undefined
+            : { left: `${String(strip.start)}%` }
+        }
+      />
+      {strip.start === undefined ? null : (
         <span
-          key={`empty-${String(index)}`}
-          className="h-3.5 w-1 rounded-[2px] bg-surface-ink/7"
+          aria-hidden="true"
+          className="absolute top-1/2 right-0 size-1 -translate-y-1/2 rounded-full bg-subtle-foreground"
         />
-      ))}
-      {ticks.map((tick, index) => (
+      )}
+      {strip.ticks.map((tick, index) => (
         <span
-          key={String(index)}
-          className={cn('h-3.5 w-1 rounded-[2px]', TICK_CLASS[tick.tone])}
+          key={`${tick.at}:${String(index)}`}
+          aria-hidden="true"
+          title={`Failed ${formatDateTime(tick.at)}`}
+          className="absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive"
+          style={{ left: `${String(tick.position)}%` }}
         />
       ))}
     </span>
