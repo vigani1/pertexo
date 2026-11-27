@@ -125,6 +125,12 @@ async function installRoutes(page: Page) {
         },
       }),
   );
+  // Needs you also lists requests waiting on this person: none here.
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/pending-tasks?**`,
+    (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null, pendingCount: 0 } }),
+  );
   // The navigation fixture retains run summaries, but no source graphs.
   for (const resource of [
     'draft{,?include=graphDigest}',
@@ -207,8 +213,12 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
   const queries = await installRoutes(page);
   await page.goto(`/w/${workspaceId}`);
 
+  // Home greets the person; the workspace's name is on its switcher above.
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Control Operations' }),
+    page.getByRole('heading', {
+      level: 1,
+      name: /^Good (morning|afternoon|evening)\b/u,
+    }),
   ).toBeVisible();
   const attention = page.getByRole('region', { name: 'Needs you' });
   await expect(
