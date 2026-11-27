@@ -33,9 +33,16 @@ export const workflowListQuerySchema = z
   })
   .strict();
 
+/** The opt-in additions to a version: older clients decode the default. */
+export const workflowVersionsIncludeSchema = z.enum([
+  'graphDigest',
+  'publishedBy',
+  'graphDigest,publishedBy',
+]);
+
 export const workflowVersionsQuerySchema = z
   .object({
-    include: z.literal('graphDigest').optional(),
+    include: workflowVersionsIncludeSchema.optional(),
     limit: workflowPageLimitSchema.optional(),
     after: workflowCursorSchema.optional(),
     versionId: z

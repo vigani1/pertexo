@@ -139,14 +139,25 @@ export async function serializeWorkflowPublication(
   };
 }
 
+/** What a version read adds on request; older clients decode the default. */
+export type VersionAdditions = Readonly<{
+  graphDigest: boolean;
+  publishedBy: boolean;
+}>;
+
+const NO_VERSION_ADDITIONS: VersionAdditions = {
+  graphDigest: false,
+  publishedBy: false,
+};
+
 export async function serializeWorkflowVersions(
   items: readonly WorkflowVersionRecord[],
   nextCursor: string | null,
-  includeGraphDigest = false,
+  additions = NO_VERSION_ADDITIONS,
 ): Promise<WorkflowVersionsResponse> {
   return {
     items: await Promise.all(
-      items.map((version) => workflowVersion(version, includeGraphDigest)),
+      items.map((version) => workflowVersion(version, additions)),
     ),
     nextCursor,
   };
@@ -202,17 +213,25 @@ export function workflowSummary(
 
 async function workflowVersion(
   version: WorkflowVersionRecord,
-  includeGraphDigest = false,
+  additions = NO_VERSION_ADDITIONS,
 ): Promise<WorkflowVersionResponse> {
   return workflowVersionResponseSchema.parse({
     id: version.id,
     workflowId: version.workflowId,
     versionNumber: version.versionNumber,
     graph: parseWorkflowGraphDraft(version.graphJson),
-    ...(includeGraphDigest
+    ...(additions.graphDigest
       ? { graphDigest: await portableGraphDigest(version.graphJson) }
       : {}),
     checksum: version.checksum,
     publishedAt: version.publishedAt.toISOString(),
+    ...(additions.publishedBy
+      ? {
+          publishedBy: {
+            id: version.publishedBy,
+            displayName: version.publisherName,
+          },
+        }
+      : {}),
   });
 }
