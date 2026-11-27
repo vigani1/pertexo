@@ -53,7 +53,14 @@ export function CanvasToolbar({
           </Button>
         </>
       ) : null}
-      <Button type="button" size="sm" variant="ghost" onClick={onFit}>
+      {/* The same name as the zoom lens's fit below 1024px. */}
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label="Fit workflow to screen"
+        onClick={onFit}
+      >
         Fit
       </Button>
       <Button
