@@ -1,10 +1,11 @@
-import type {
-  AccessibleWorkspace,
-  UserProfileResponse,
+import {
+  WORKSPACE_PEOPLE_SEARCH_MAX_CHARACTERS,
+  type AccessibleWorkspace,
+  type UserProfileResponse,
 } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
@@ -77,7 +78,7 @@ function describeInvitationAvailability({
   if (failed)
     return {
       message:
-        'Invitation availability couldn’t be checked. Retry on the Invitations tab.',
+        'Invitation availability couldn’t be checked. Retry in the Invitations section.',
       tone: 'warning' as const,
     };
   return {
@@ -107,8 +108,13 @@ function TeamHeader({
         <div className="flex flex-col gap-3">
           <PageHeaderTitle>Team</PageHeaderTitle>
           <p className="text-meta text-subtle-foreground">
-            Who can do what in {workspaceName}. {memberCount}{' '}
-            {pluralWord(Number.parseInt(memberCount, 10), 'member')}.
+            Who can do what in {workspaceName}.{' '}
+            {memberCount === '' ? null : (
+              <>
+                {memberCount}{' '}
+                {pluralWord(Number.parseInt(memberCount, 10), 'member')}.
+              </>
+            )}
           </p>
         </div>
         {canManage ? (
@@ -160,8 +166,14 @@ export function WorkspaceMembersPage({
   const canManage = workspace.capabilities.includes('member:manage');
   const [commandLoss, setCommandLoss] = useState<AccessLoss>();
   const [memberSearch, setMemberSearch] = useState('');
+  const q = useDeferredValue(memberSearch.trim());
   const members = useInfiniteQuery({
-    ...workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
+    ...workspaceMembersInfiniteQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+      q,
+    ),
     enabled: canRead,
   });
   const invitations = useInfiniteQuery({
@@ -200,12 +212,12 @@ export function WorkspaceMembersPage({
   const blocked = blockedCopy({ role: workspace.role, canRead, losses });
   if (blocked !== undefined)
     return <UnavailablePage heading="Team" {...blocked} />;
-
-  const openInvite = () => {
-    onSearchChange({ ...search, invite: true });
-  };
-  const memberCount = `${String(memberItems.length)}${members.hasNextPage ? '+' : ''}`;
-
+  const memberCount = describeMemberCount(
+    q,
+    members.data !== undefined,
+    memberItems.length,
+    members.hasNextPage,
+  );
   return (
     <div className="flex max-w-260 flex-col gap-8">
       <TeamHeader
@@ -213,7 +225,9 @@ export function WorkspaceMembersPage({
         memberCount={memberCount}
         canManage={canManage}
         invitationAvailability={invitationAvailability}
-        onInvite={openInvite}
+        onInvite={() => {
+          onSearchChange({ ...search, invite: true });
+        }}
       />
       {canManage && pendingInvitations > 0 ? (
         <p className="-mt-4 flex items-center gap-2 text-meta">
@@ -236,6 +250,7 @@ export function WorkspaceMembersPage({
         className="w-full sm:w-85"
         placeholder="Find a member by name or email"
         aria-label="Find a member by name or email"
+        maxLength={WORKSPACE_PEOPLE_SEARCH_MAX_CHARACTERS}
         value={memberSearch}
         onChange={(event) => {
           setMemberSearch(event.target.value);
@@ -247,7 +262,7 @@ export function WorkspaceMembersPage({
         workspace={workspace}
         query={members}
         members={memberItems}
-        search={memberSearch}
+        search={q}
       />
       {canManage ? (
         <section
@@ -268,7 +283,6 @@ export function WorkspaceMembersPage({
       <Disclosure summary="Compare roles">
         <RolesMatrix yourRole={workspace.role} />
       </Disclosure>
-
       {canManage && (issuanceAvailable ?? false) ? (
         <InvitePeopleSheet
           open={
@@ -283,4 +297,14 @@ export function WorkspaceMembersPage({
       ) : null}
     </div>
   );
+}
+
+function describeMemberCount(
+  search: string,
+  ready: boolean,
+  loaded: number,
+  hasMore: boolean,
+): string {
+  if (search !== '' || !ready) return '';
+  return `${String(loaded)}${hasMore ? '+' : ''}`;
 }

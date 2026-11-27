@@ -8,6 +8,11 @@ import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
+export const SCHEDULE_FIRE_WINDOW_HOURS = 24;
+export const SCHEDULE_FIRE_WINDOW_MS = SCHEDULE_FIRE_WINDOW_HOURS * 60 * 60_000;
+// A minute-resolution schedule can fire at both ends of the window.
+const SCHEDULE_FIRE_WINDOW_ITEMS = SCHEDULE_FIRE_WINDOW_HOURS * 60 + 1;
+
 const SCHEDULES_BOUNDS = Object.freeze({
   timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
   nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
@@ -147,17 +152,28 @@ const scheduleFireTimeCountSchema = z.coerce
   .min(1)
   .max(SCHEDULES_BOUNDS.scheduleFireTimeCountMaximum);
 export const scheduleNextRunsQuerySchema = z
-  .object({ count: scheduleFireTimeCountSchema.optional() })
+  .object({
+    count: scheduleFireTimeCountSchema.optional(),
+    window: z.literal('day').optional(),
+  })
   .strict();
-export const scheduleFireTimesResponseSchema = responseSchema(
-  z
-    .object({
-      observedAt: z.iso.datetime(),
-      items: z
-        .array(z.object({ scheduledAt: z.iso.datetime() }).strict())
-        .max(SCHEDULES_BOUNDS.scheduleFireTimesPageItems),
-    })
-    .strict(),
+function scheduleFireTimesPage(maximum: number) {
+  return responseSchema(
+    z
+      .object({
+        observedAt: z.iso.datetime(),
+        items: z
+          .array(z.object({ scheduledAt: z.iso.datetime() }).strict())
+          .max(maximum),
+      })
+      .strict(),
+  );
+}
+export const scheduleFireTimesResponseSchema = scheduleFireTimesPage(
+  SCHEDULES_BOUNDS.scheduleFireTimesPageItems,
+);
+export const scheduleWindowFireTimesResponseSchema = scheduleFireTimesPage(
+  SCHEDULE_FIRE_WINDOW_ITEMS,
 );
 
 const scheduleStepMisfirePolicySchema = z

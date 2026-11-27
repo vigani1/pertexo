@@ -91,6 +91,7 @@ export class WorkspaceMembersController {
   ) {
     return this.members.execute({
       ...serviceCaller(caller),
+      ...(query.q === undefined ? {} : { q: query.q }),
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });

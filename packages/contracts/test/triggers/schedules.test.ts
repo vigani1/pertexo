@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   scheduleFireTimesResponseSchema,
+  scheduleWindowFireTimesResponseSchema,
   scheduleManagementCommandResponseSchema,
   scheduleNextRunsQuerySchema,
   scheduleOccurrenceListQuerySchema,
@@ -110,6 +111,28 @@ describe('schedule public contracts', () => {
     ).toEqual({ limit: 10, after: 'x' });
     for (const query of [{ limit: '0' }, { limit: '101' }, { order: 'asc' }])
       expect(() => scheduleOccurrenceListQuerySchema.parse(query)).toThrow();
+  });
+
+  it('accepts a day window and its minute-resolution fire times', () => {
+    expect(scheduleNextRunsQuerySchema.parse({ window: 'day' })).toEqual({
+      window: 'day',
+    });
+    expect(() =>
+      scheduleNextRunsQuerySchema.parse({ window: 'week' }),
+    ).toThrow();
+    const times = {
+      observedAt: '2026-08-26T00:00:00.000Z',
+      items: Array.from({ length: 1441 }, () => ({
+        scheduledAt: '2026-08-26T01:00:00.000Z',
+      })),
+    };
+    expect(scheduleWindowFireTimesResponseSchema.parse(times)).toEqual(times);
+    expect(() =>
+      scheduleWindowFireTimesResponseSchema.parse({
+        ...times,
+        items: [...times.items, ...times.items.slice(0, 1)],
+      }),
+    ).toThrow();
   });
 
   it('bounds fire-time reads to ten instants', () => {

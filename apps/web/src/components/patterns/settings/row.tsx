@@ -37,11 +37,11 @@ export function SettingRow({
 }>) {
   const headingId = useId();
   return (
-    <Row
-      lift="none"
-      className="grid-cols-[minmax(0,1fr)_auto] items-start py-4"
-    >
-      <section aria-labelledby={headingId} className="contents">
+    <Row lift="none" className="py-4">
+      <section
+        aria-labelledby={headingId}
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1"
+      >
         <div className="flex min-w-0 flex-col gap-1">
           <h3 id={headingId} className="text-lead font-semibold">
             {title}

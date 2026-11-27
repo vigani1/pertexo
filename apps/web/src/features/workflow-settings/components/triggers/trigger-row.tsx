@@ -7,6 +7,7 @@ import { Disclosure } from '@/components/ui/disclosure';
  * doing, the one switch only schedules have, and its controls folded away.
  */
 export function TriggerRow({
+  id,
   label,
   icon,
   name,
@@ -17,6 +18,7 @@ export function TriggerRow({
   details,
   detailsLabel = 'Manage',
 }: Readonly<{
+  id?: string;
   /** The row's accessible name, such as “Schedule: Nightly check”. */
   label: string;
   icon: ReactNode;
@@ -33,11 +35,12 @@ export function TriggerRow({
   detailsLabel?: string;
 }>) {
   return (
-    <Row
-      lift="none"
-      className="grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start sm:grid-cols-[2.25rem_minmax(0,1fr)_10rem_3rem]"
-    >
-      <article aria-label={label} className="contents">
+    <Row lift="none">
+      <article
+        id={id}
+        aria-label={label}
+        className="grid min-w-0 grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 sm:grid-cols-[2.25rem_minmax(0,1fr)_10rem_3rem]"
+      >
         <span className="pt-0.5">{icon}</span>
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="truncate text-lead font-semibold">{name}</h3>

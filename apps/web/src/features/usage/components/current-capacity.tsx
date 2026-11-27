@@ -67,7 +67,7 @@ export function CurrentCapacity({
       <p className="text-meta text-subtle-foreground">
         Right now{' '}
         <span className="font-mono text-muted-foreground">
-          {execution.activeCapacityConsumed.toLocaleString(FORMAT_LOCALE)}
+          {execution.activeRuns.toLocaleString(FORMAT_LOCALE)}
         </span>
         {limit === null ? (
           ' runs are going at once'

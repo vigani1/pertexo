@@ -22,6 +22,7 @@ import {
 import { formatDateTime } from '@/lib/format/time';
 import {
   shortChecksum,
+  publisherLabel,
   type HistoryVersion,
 } from '../../model/versions/history';
 import { stepCountLabel } from '../../model/versions/steps';
@@ -64,16 +65,18 @@ export function VersionDetail({
         >
           {label}
         </h2>
-        <StatusMark tone={isLive ? 'success' : 'off'}>
-          {isLive ? liveLabel : 'Not live'}
-        </StatusMark>
+        {live === undefined ? null : (
+          <StatusMark tone={isLive ? 'success' : 'off'}>
+            {isLive ? liveLabel : 'Not live'}
+          </StatusMark>
+        )}
       </div>
       <p className="mt-3 text-meta text-subtle-foreground">
         Published{' '}
         <time dateTime={version.publishedAt}>
           {formatDateTime(version.publishedAt)}
         </time>{' '}
-        by {version.publishedBy.displayName} ·{' '}
+        by {publisherLabel(version)} ·{' '}
         {stepCountLabel(version.graph.nodes.length)}
       </p>
       <p className="mt-1 truncate font-mono text-caption text-subtle-foreground">
@@ -98,7 +101,9 @@ export function VersionDetail({
               actions.onCompare?.(version);
             }}
           >
-            Compare with {liveLabel.toLowerCase()}
+            {live === undefined
+              ? 'Compare versions'
+              : `Compare with ${liveLabel.toLowerCase()}`}
           </Button>
         )}
         <Button
@@ -125,7 +130,7 @@ export function VersionDetail({
         aria-labelledby="version-changes"
         className="mt-10 flex flex-col gap-2"
       >
-        <RuleHeading id="version-changes" className="text-lead">
+        <RuleHeading id="version-changes" appearance="compact">
           {previous === undefined
             ? 'The first version'
             : `What changed from v${String(previous.versionNumber)}`}

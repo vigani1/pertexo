@@ -3,7 +3,10 @@ import { Row, RowList } from '@/components/patterns/lists/row';
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatMoment } from '@/lib/format/time';
-import type { HistoryVersion } from '../../model/versions/history';
+import {
+  publisherLabel,
+  type HistoryVersion,
+} from '../../model/versions/history';
 
 /**
  * The draft, then every published version, newest first. Choosing a version
@@ -74,7 +77,7 @@ export function VersionList({
                     >
                       {formatMoment(version.publishedAt)}
                     </time>{' '}
-                    · {version.publishedBy.displayName}
+                    · {publisherLabel(version)}
                   </span>
                 </span>
               </button>

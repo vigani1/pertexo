@@ -218,6 +218,10 @@ async function listWorkspaceMembers(
           and(
             eq(workspaceMemberships.workspaceId, workspaceId),
             inArray(workspaceMemberships.status, ['active', 'suspended']),
+            input.q
+              ? sql`(strpos(lower(${users.displayName}), lower(${input.q})) > 0
+                  or strpos(lower(${users.email}), lower(${input.q})) > 0)`
+              : undefined,
             sql`(${afterCreatedAt ?? null}::timestamptz is null or (${workspaceMemberships.createdAt}, ${workspaceMemberships.userId})>(${afterCreatedAt ?? null}::timestamptz, ${afterUserId ?? null}::uuid))`,
           ),
         )

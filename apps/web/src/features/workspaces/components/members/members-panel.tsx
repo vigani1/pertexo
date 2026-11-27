@@ -55,14 +55,20 @@ export function MembersPanel({
         )}
         isEmpty={() => members.length === 0}
         empty={
-          <Empty>
-            <EmptyTitle>No members to show</EmptyTitle>
-            <EmptyDescription>
-              Nobody else can see this workspace yet.{' '}
-              {sentenceStart(whoCan('member:manage'))} can invite people from
-              here.
-            </EmptyDescription>
-          </Empty>
+          search !== '' ? (
+            <p className="py-6 text-sm text-muted-foreground">
+              No member matches “{search}”.
+            </p>
+          ) : (
+            <Empty>
+              <EmptyTitle>No members to show</EmptyTitle>
+              <EmptyDescription>
+                Nobody else can see this workspace yet.{' '}
+                {sentenceStart(whoCan('member:manage'))} can invite people from
+                here.
+              </EmptyDescription>
+            </Empty>
+          )
         }
       >
         {() => (
@@ -71,7 +77,6 @@ export function MembersPanel({
             user={user}
             workspace={workspace}
             members={members}
-            search={search}
           />
         )}
       </QueryView>

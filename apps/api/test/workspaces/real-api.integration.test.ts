@@ -1022,6 +1022,17 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       second.json<{ items: { userId: string }[] }>().items[0]?.userId,
     ).not.toBe((firstBody.items[0] as { userId: string }).userId);
 
+    const matching = await caseFixture.application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${primaryWorkspaceId}/members?limit=1&q=mEmBeR%20B`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(matching.statusCode, matching.body).toBe(200);
+    expect(matching.json()).toMatchObject({
+      items: [{ userId: memberB.id, displayName: 'Member B' }],
+      nextCursor: null,
+    });
+
     const crossTenant = await caseFixture.application.inject({
       method: 'GET',
       url: `/v1/workspaces/${randomUUID()}/members`,

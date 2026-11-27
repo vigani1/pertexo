@@ -4,8 +4,12 @@ import type { WorkflowVersionResponse } from '@pertexo/contracts';
 export type HistoryVersion = WorkflowVersionResponse &
   Readonly<{
     graphDigest: string;
-    publishedBy: NonNullable<WorkflowVersionResponse['publishedBy']>;
+    publishedBy: Exclude<WorkflowVersionResponse['publishedBy'], undefined>;
   }>;
+
+export function publisherLabel(version: HistoryVersion): string {
+  return version.publishedBy?.displayName ?? 'A former member';
+}
 
 /** The version shown first: the chosen one, else the live one, else the newest. */
 export function shownVersion(

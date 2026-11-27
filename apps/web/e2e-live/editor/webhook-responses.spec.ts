@@ -156,6 +156,11 @@ test('a browser-authored response reaches its original signed caller and work co
   await page.goto(`${editorUrl}/triggers`);
   await page
     .getByRole('article', { name: 'Webhook: Incoming request', exact: true })
+    .locator('summary')
+    .filter({ hasText: /^Manage$/u })
+    .click();
+  await page
+    .getByRole('article', { name: 'Webhook: Incoming request', exact: true })
     .getByRole('button', { name: 'Create endpoint', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
@@ -248,6 +253,10 @@ test('changes authentication through settings and answers a real browser caller 
     exact: true,
   });
   await card
+    .locator('summary')
+    .filter({ hasText: /^Manage$/u })
+    .click();
+  await card
     .getByRole('button', { name: 'Create endpoint', exact: true })
     .click();
   const reveal = page.getByRole('dialog', {
@@ -306,7 +315,9 @@ test('changes authentication through settings and answers a real browser caller 
   );
   await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(card).toContainText('Authentication: Secret URL');
+  await expect(
+    card.getByText('Webhook · secret address', { exact: true }),
+  ).toBeVisible();
   await expect(
     card.getByRole('button', { name: 'Rotate secret', exact: true }),
   ).toHaveCount(0);
@@ -355,7 +366,9 @@ test('changes authentication through settings and answers a real browser caller 
   expect(old.status).toBe(401);
   await old.arrayBuffer();
   await page.reload();
-  await expect(card).toContainText('Authentication: Secret URL');
+  await expect(
+    card.getByText('Webhook · secret address', { exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: temporaryTestPath('pertexo-webhook-auth-phone.png'),
     animations: 'disabled',

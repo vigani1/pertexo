@@ -106,6 +106,7 @@ function PollingRow({
   const status = pollStatus(trigger);
   return (
     <TriggerRow
+      id={trigger.id}
       label={`${title}: ${name}`}
       icon={<StepTile step={describeStep(pollingStepKey(title))} />}
       name={name}

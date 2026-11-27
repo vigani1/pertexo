@@ -31,6 +31,7 @@ import {
   webhookTriggersQueryOptions,
   workflowVersionsQueryOptions,
 } from '../data/workflow-settings.queries';
+import { workflowAutoPauseQueryOptions } from '../data/auto-pause.queries';
 import { shownData } from '@/lib/api/error-copy';
 import { hasNoPublishedTriggers } from '../model/triggers/published';
 import { whoCan } from '@/features/workspaces/public';
@@ -72,8 +73,15 @@ function TriggersSession({
     workspace,
     workflowId,
   });
-  const { versions, summary, form, onFailure, pollingTitle, publicationKnown } =
-    publication;
+  const {
+    versions,
+    summary,
+    form,
+    formsPaused,
+    onFailure,
+    pollingTitle,
+    publicationKnown,
+  } = publication;
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName: TriggerStepName = (trigger, fallback) =>
@@ -120,6 +128,7 @@ function TriggersSession({
           versions: versions.data?.items,
           publishedVersionId: summary.data?.publishedVersionId,
           form,
+          formsPaused,
           onFailure,
         }}
       />
@@ -291,6 +300,16 @@ function useTriggerPublication({
     shownData(summary)?.publishedVersionId,
   );
   const form = kinds?.includes('core.form') ?? false;
+  const pause = useQuery({
+    ...workflowAutoPauseQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+      workflowId,
+    ),
+    enabled: form,
+  });
+  const formsPaused = shownData(pause)?.pauseState === 'paused';
   const onFailure = kinds?.includes('core.workflow_error') ?? false;
 
   const publicationKnown =
@@ -307,6 +326,7 @@ function useTriggerPublication({
     summary,
     kinds,
     form,
+    formsPaused,
     onFailure,
     pollingTitle,
     publicationKnown,

@@ -11,7 +11,7 @@ import {
   addCsrfCookie,
   editorUrl,
 } from '../workflow-editor/support';
-import { mockIdentity } from './auth/fixture';
+import { mockIdentity, workspace } from './auth/fixture';
 
 import {
   captureInboxArrival,
@@ -19,6 +19,27 @@ import {
   runId,
   tableId,
 } from './polish-layout-fixture';
+
+import { WORKSPACE_TEXT_LIMITS } from '@pertexo/workflow-model';
+
+test('keeps a maximum-length workspace slug inside the General header on a phone', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const slug = 'm'.repeat(WORKSPACE_TEXT_LIMITS.slugCharacters);
+  await mockIdentity(page, {
+    authenticated: true,
+    workspaces: [{ ...workspace, slug }],
+  });
+  await page.goto(`/w/${workspaceId}/settings`);
+  const metadata = page.locator('main header p').filter({ hasText: slug });
+  await expect(metadata).toBeVisible();
+  expect(
+    await metadata.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+});
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -151,21 +172,16 @@ for (const [width, height] of viewports)
       for (const [name, path] of screens) {
         await page.goto(path);
         if (name === 'settings-usage') {
-          const capacity = page.getByRole('region', {
-            name: 'Current capacity',
-          });
-          for (const title of ['Runs at once', 'Storage']) {
-            const heading = capacity.getByRole('heading', {
-              name: title,
-              exact: true,
-            });
-            await expect(heading).toBeVisible();
-            expect(
-              await heading.evaluate(
-                (element) => element.getBoundingClientRect().height,
-              ),
-            ).toBeLessThanOrEqual(24);
-          }
+          const capacity = page.getByRole('region', { name: 'Room left' });
+          await expect(
+            capacity.getByRole('heading', { name: 'Room left' }),
+          ).toBeVisible();
+          await expect(
+            capacity.getByText(/Right now .* runs at once/u),
+          ).toBeVisible();
+          await expect(
+            capacity.getByRole('img', { name: /of file storage used/u }),
+          ).toBeVisible();
         }
         await shot(name);
         if (name === 'settings-audit' || name === 'runs') {

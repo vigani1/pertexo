@@ -151,7 +151,7 @@ const NO_VERSION_ADDITIONS: VersionAdditions = {
 };
 
 export async function serializeWorkflowVersions(
-  items: readonly WorkflowVersionRecord[],
+  items: readonly VersionRead[],
   nextCursor: string | null,
   additions = NO_VERSION_ADDITIONS,
 ): Promise<WorkflowVersionsResponse> {
@@ -211,10 +211,14 @@ export function workflowSummary(
   };
 }
 
+type VersionRead = WorkflowVersionRecord &
+  Readonly<{ publisherName?: string | null }>;
+
 async function workflowVersion(
-  version: WorkflowVersionRecord,
+  version: VersionRead,
   additions = NO_VERSION_ADDITIONS,
 ): Promise<WorkflowVersionResponse> {
+  const publisherName = version.publisherName ?? undefined;
   return workflowVersionResponseSchema.parse({
     id: version.id,
     workflowId: version.workflowId,
@@ -227,10 +231,13 @@ async function workflowVersion(
     publishedAt: version.publishedAt.toISOString(),
     ...(additions.publishedBy
       ? {
-          publishedBy: {
-            id: version.publishedBy,
-            displayName: version.publisherName,
-          },
+          publishedBy:
+            publisherName === undefined
+              ? null
+              : {
+                  id: version.publishedBy,
+                  displayName: publisherName,
+                },
         }
       : {}),
   });

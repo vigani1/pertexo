@@ -311,7 +311,7 @@ for (const theme of ['light', 'dark'] as const)
       await page.goto(
         `/w/${workspaceId}/connections?connection=${connectionId}`,
       );
-      const details = page.getByRole('dialog', {
+      const details = page.getByRole('article', {
         name: 'Billing API',
         exact: true,
       });

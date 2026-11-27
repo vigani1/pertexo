@@ -2,7 +2,7 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
   workflowFailureNotificationPolicyResponseSchema,
   type WorkflowFailureNotificationPolicyResponse,
-  scheduleFireTimesResponseSchema,
+  scheduleWindowFireTimesResponseSchema,
   scheduleManagementCommandResponseSchema,
   scheduleOccurrenceListResponseSchema,
   scheduleTriggerListResponseSchema,
@@ -64,11 +64,11 @@ export function getScheduleNextRuns({
   signal?: AbortSignal | undefined;
 }>): Promise<ScheduleFireTimesResponse> {
   return apiClient.request({
-    path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/next-runs?${searchParams({ count: 3 })}`,
+    path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/next-runs?${searchParams({ window: 'day' })}`,
     ...(signal === undefined ? {} : { signal }),
     response: {
       kind: 'json',
-      decode: (value) => scheduleFireTimesResponseSchema.parse(value),
+      decode: (value) => scheduleWindowFireTimesResponseSchema.parse(value),
     },
   });
 }

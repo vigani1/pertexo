@@ -6,7 +6,9 @@ import { z } from 'zod';
 
 import { responseReference } from '../openapi-primitives.js';
 import {
+  SCHEDULE_FIRE_WINDOW_HOURS,
   scheduleFireTimesResponseSchema,
+  scheduleWindowFireTimesResponseSchema,
   scheduleManagementCommandRequestSchema,
   scheduleManagementCommandResponseSchema,
   scheduleNextRunsQuerySchema,
@@ -146,8 +148,11 @@ export const scheduleRoutes = {
     rateLimit: 'authenticated_read',
     success: {
       status: 200,
-      description: 'Upcoming fire times of a published schedule',
-      body: fireTimes,
+      description: `Upcoming fire times of a published schedule. With window=day, includes all fires in the next ${String(SCHEDULE_FIRE_WINDOW_HOURS)} hours in addition to the requested count.`,
+      body: named(
+        'ScheduleWindowFireTimesResponse',
+        scheduleWindowFireTimesResponseSchema,
+      ),
     },
     problems: readProblems,
   }),

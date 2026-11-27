@@ -20,7 +20,7 @@ describe('workspace Usage', () => {
       'One more place is held for a queued run about to start.',
     );
     expect(room).toHaveTextContent(
-      'Right now 3 of 5 runs at once are going, with 4 queued behind them.',
+      'Right now 2 of 5 runs at once are going, with 4 queued behind them.',
     );
     expect(
       within(room).getByRole('img', { name: /% of file storage used$/u }),
@@ -28,6 +28,9 @@ describe('workspace Usage', () => {
     const perDay = screen.getByRole('region', { name: 'Runs per day' });
     expect(await within(perDay).findByText('3')).toBeVisible();
     expect(perDay).toHaveTextContent('Over 90 UTC days.');
+    expect(
+      within(perDay).getByRole('img', { name: /Daily runs by outcome, UTC/u }),
+    ).toBeVisible();
     expect(
       await within(
         screen.getByRole('region', { name: 'By workflow' }),
@@ -162,7 +165,7 @@ describe('workspace Usage', () => {
       );
       expect(
         screen.getByRole('region', { name: 'Room left' }),
-      ).toHaveTextContent('3 of 5 runs at once');
+      ).toHaveTextContent('2 of 5 runs at once');
     },
   );
 

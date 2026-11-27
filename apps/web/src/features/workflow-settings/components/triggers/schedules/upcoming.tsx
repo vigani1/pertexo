@@ -1,5 +1,11 @@
 import { useQueries } from '@tanstack/react-query';
-import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
+import {
+  SCHEDULE_FIRE_WINDOW_HOURS,
+  type ScheduleTriggerHealthResponse,
+} from '@pertexo/contracts';
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
+import { SkeletonRows } from '@/components/patterns/states/loading';
+import { shownData } from '@/lib/api/error-copy';
 import { Row, RowList } from '@/components/patterns/lists/row';
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ApiClient } from '@/lib/api/client';
@@ -49,28 +55,46 @@ export function UpcomingRuns({
       }),
     ),
   });
+  const failed = readings.find((reading) => reading.isError);
+  const pending = readings.some((reading) => reading.isPending);
+  const windowLabel = `Next ${String(SCHEDULE_FIRE_WINDOW_HOURS)} hours`;
   const runs = upcomingRuns(
-    active.map((trigger, index) => ({
-      triggerId: trigger.id,
-      name: stepNameFor(trigger),
-      times:
-        readings[index]?.data?.items.map(({ scheduledAt }) => scheduledAt) ??
-        [],
-    })),
+    active.map((trigger, index) => {
+      const reading = readings[index];
+      const data = reading === undefined ? undefined : shownData(reading);
+      return {
+        triggerId: trigger.id,
+        name: stepNameFor(trigger),
+        times: data?.items.map(({ scheduledAt }) => scheduledAt) ?? [],
+      };
+    }),
     now,
   );
   return (
     <section aria-labelledby="upcoming-runs" className="flex flex-col gap-3">
-      <RuleHeading id="upcoming-runs">Next 24 hours</RuleHeading>
+      <RuleHeading id="upcoming-runs">{windowLabel}</RuleHeading>
       <p className="text-meta text-subtle-foreground">
         Only schedules are known ahead. Webhooks and forms start runs when they
         arrive.
       </p>
-      {runs.length === 0 ? (
+      {failed === undefined ? null : (
+        <ReadRecovery
+          resource="Upcoming schedule runs"
+          error={failed.error}
+          retrying={readings.some((reading) => reading.isFetching)}
+          retry={() => {
+            for (const reading of readings)
+              if (reading.isError) void reading.refetch();
+          }}
+        />
+      )}
+      {pending ? <SkeletonRows label="Loading upcoming schedule runs" /> : null}
+      {runs.length === 0 && failed === undefined && !pending ? (
         <p className="text-sm text-muted-foreground">
-          No schedule runs in the next 24 hours.
+          No schedule runs in the next {SCHEDULE_FIRE_WINDOW_HOURS} hours.
         </p>
-      ) : (
+      ) : null}
+      {runs.length === 0 ? null : (
         <>
           <div aria-hidden="true" className="relative mt-4 mb-2 h-6">
             <span className="absolute inset-x-0 top-1/2 h-px bg-border-strong" />
@@ -85,7 +109,7 @@ export function UpcomingRuns({
               />
             ))}
           </div>
-          <RowList aria-label="Next 24 hours">
+          <RowList aria-label={windowLabel}>
             {runs.map((run) => (
               <Row
                 key={`${run.triggerId}:${run.scheduledAt}`}

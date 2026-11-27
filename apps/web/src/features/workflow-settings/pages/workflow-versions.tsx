@@ -34,7 +34,7 @@ import {
   shownVersion,
   type HistoryVersion,
 } from '../model/versions/history';
-import { workflowVersionsQueryOptions } from '../data/workflow-settings.queries';
+import { workflowVersionHistoryQueryOptions } from '../data/workflow-settings.queries';
 import { shownData } from '@/lib/api/error-copy';
 
 type Version = HistoryVersion;
@@ -84,7 +84,12 @@ export function WorkflowVersionsPage({
   workflowId: string;
 }>) {
   const versions = useQuery(
-    workflowVersionsQueryOptions(apiClient, user.id, workspace.id, workflowId),
+    workflowVersionHistoryQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+      workflowId,
+    ),
   );
   const summary = useQuery(
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
@@ -119,6 +124,8 @@ export function WorkflowVersionsPage({
           const live = listed.items.find(
             (version) => version.id === liveVersionId,
           );
+          const comparison =
+            live ?? listed.items.find((version) => version.id !== shown?.id);
           return (
             <ListDetail
               showing={chosen.showing}
@@ -155,14 +162,14 @@ export function WorkflowVersionsPage({
                           }
                         : undefined,
                       onCompare:
-                        live === undefined
+                        comparison === undefined || listed.items.length < 2
                           ? undefined
                           : (version) => {
                               // Older first, so the changes read forwards.
                               const [from, to] =
-                                version.versionNumber < live.versionNumber
-                                  ? [version, live]
-                                  : [live, version];
+                                version.versionNumber < comparison.versionNumber
+                                  ? [version, comparison]
+                                  : [comparison, version];
                               setOverlay({ kind: 'compare', from, to });
                             },
                       promotionWorkspaceId: canRestore

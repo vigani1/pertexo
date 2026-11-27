@@ -25,7 +25,10 @@ test('shows delivered run rejection, explicit recovery, stale-evidence fences an
   await page.context().addCookies(seed.cookies);
   const path = `/w/${seed.workspaceId}/connections?connection=${seed.connectionId}`;
   const detailPath = `/v1/workspaces/${seed.workspaceId}/connections/${seed.connectionId}`;
-  const lens = page.locator('[data-slot="sheet-content"]');
+  const lens = page.getByRole('article', {
+    name: 'Incident Slack',
+    exact: true,
+  });
   const readDetail = () =>
     page.waitForResponse(
       (response) =>

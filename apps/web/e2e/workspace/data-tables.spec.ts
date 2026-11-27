@@ -232,7 +232,15 @@ test(
       path: testInfo.outputPath('mixed-table-collection.png'),
       fullPage: true,
     });
-    await page.getByRole('link', { name: /Healthy/ }).click();
+    const tables = page.getByRole('navigation', {
+      name: 'Tables',
+      exact: true,
+    });
+    const healthy = tables.getByRole('link', { name: /^Healthy/u });
+    await expect(healthy).toContainText('no unique key');
+    await expect(healthy).toContainText(/1 row\b/u);
+    await expect(tables.getByText('storage 25 B of 50 MB')).toBeVisible();
+    await healthy.click();
     await expect(
       page.getByRole('cell', { name: 'retained', exact: true }),
     ).toBeVisible();

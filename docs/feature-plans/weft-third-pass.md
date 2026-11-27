@@ -75,11 +75,14 @@ width.
 
 In: every screen on the "Third pass" page, desktop and phone, both themes.
 
-Backend, the only two additions:
+Backend changes use existing endpoints:
 
-- Versions show who published them: `published_by` is already stored; add it
-  to the version response and show the member's name.
-- Team search uses the existing people search (`q`), with "Show all" per role.
+- Version history requests the workspace-visible publisher. If the reader
+  cannot see the publisher as a current member, history says “A former member”.
+- Team's member list accepts the bounded people search (`q`), with "Show all"
+  per role.
+- Schedule next runs accepts a day window for the Triggers strip. The existing
+  occurrence count still governs the per-schedule preview.
 
 Out, removed from the designs because the code has no source for them:
 recently sent alerts, which workflows use a data table, per-trigger switches

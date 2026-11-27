@@ -309,10 +309,11 @@ export function leaveWorkspace(
 export function getWorkspaceMembersPage(
   apiClient: ApiClient,
   workspaceId: string,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+  input: Readonly<{ after?: string; q?: string; signal?: AbortSignal }> = {},
 ): Promise<WorkspaceMembersResponse> {
   const parsed = workspaceMembersQuerySchema.parse({
     limit: 50,
+    ...(input.q === undefined ? {} : { q: input.q }),
     ...(input.after === undefined ? {} : { after: input.after }),
   });
   return apiClient.request({

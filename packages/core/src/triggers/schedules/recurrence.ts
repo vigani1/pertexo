@@ -352,12 +352,21 @@ export function projectScheduleOccurrences(
   recurrence: ScheduleRecurrence,
   anchorAt: Date,
   observedAt: Date,
-  count: number,
+  { count, untilMs }: Readonly<{ count: number; untilMs?: number }>,
 ): readonly Date[] {
   const occurrences: Date[] = [];
   let cursor = observedAt;
-  while (occurrences.length < count) {
+  while (
+    occurrences.length < count ||
+    (untilMs !== undefined && cursor.getTime() < untilMs)
+  ) {
     cursor = resolveScheduleObservation(recurrence, anchorAt, cursor).nextAt;
+    if (
+      occurrences.length >= count &&
+      untilMs !== undefined &&
+      cursor.getTime() > untilMs
+    )
+      break;
     occurrences.push(cursor);
   }
   return Object.freeze(occurrences);

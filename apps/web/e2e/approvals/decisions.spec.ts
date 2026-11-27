@@ -187,6 +187,9 @@ for (const width of [1280, 375])
           },
         }),
     );
+    await page.route(`**/pending-tasks/${taskId}`, (route) =>
+      route.fulfill({ json: { task } }),
+    );
     const writes: unknown[] = [];
     await page.route(`**/pending-tasks/${taskId}/decide`, (route) => {
       writes.push(route.request().postDataJSON());
@@ -212,6 +215,20 @@ for (const width of [1280, 375])
       });
     });
     await page.goto(`/w/${workspaceId}/requests?kind=all&view=all&status=all`);
+    if (width === 375) {
+      const row = page.getByRole('link', { name: task.title, exact: true });
+      await row.focus();
+      await row.press('Enter');
+      await expect(
+        page.getByRole('heading', { name: task.title, exact: true }),
+      ).toBeVisible();
+      await expect(row).toBeHidden();
+      const back = page.getByRole('button', { name: 'Back to requests' });
+      await expect(back).toBeFocused();
+      await back.press('Enter');
+      await expect(row).toBeFocused();
+      expect(new URL(page.url()).searchParams.get('status')).toBe('all');
+    }
     // A finished request says who ended it and offers no decision.
     await expect(
       page.getByText('Ada Admin approved', { exact: true }),

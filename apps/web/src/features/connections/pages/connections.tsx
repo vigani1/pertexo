@@ -18,7 +18,7 @@ import type {
 } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
@@ -171,6 +171,7 @@ function ConnectionsSession({
   search,
   onSearchChange,
 }: ConnectionsPageProps) {
+  const [sharingLocked, setSharingLocked] = useState(false);
   const canRead = workspace.capabilities.includes('connection:read');
   const canBrowse = canRead && isWorkspaceBrowsable(workspace);
   const canTest = workspace.capabilities.includes('connection:use');
@@ -231,6 +232,7 @@ function ConnectionsSession({
       <ListDetail
         showing={search.connection === undefined ? 'list' : 'detail'}
         backLabel="All connections"
+        backDisabled={sharingLocked}
         onBack={() => {
           onSearchChange(withoutLens);
         }}
@@ -242,10 +244,12 @@ function ConnectionsSession({
             canManage={canManage}
             view={search.view === 'revoked' ? 'revoked' : 'current'}
             onViewChange={(view) => {
+              if (sharingLocked) return;
               onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
             }}
             selectedId={chosenId}
             onOpen={(connection) => {
+              if (sharingLocked) return;
               onSearchChange({ ...withoutLens, connection });
             }}
           />
@@ -254,6 +258,7 @@ function ConnectionsSession({
           chosenId === undefined ? null : (
             <ConnectionDetail
               scope={scope}
+              onCloseLockChange={setSharingLocked}
               connectionId={chosenId}
               placeholder={items.find((item) => item.id === chosenId)}
               permissions={{

@@ -2,33 +2,15 @@ import {
   strongEtagSchema,
   workflowVersionRestoreRequestSchema,
   workflowVersionRestoreResponseSchema,
-  workflowVersionsResponseSchema,
-  workflowVersionResponseSchema,
+  workflowVersionReviewPageSchema,
+  workflowVersionHistoryPageSchema,
 } from '@pertexo/contracts';
 import {
   decodeWorkflowDraftSnapshot,
   type WorkflowDraftSnapshot,
 } from '@/features/workflow-drafts/public';
 import type { ApiClient } from '@/lib/api/client';
-import type { z } from 'zod';
 import { collectPages } from '@/lib/api/pagination';
-
-const reviewedVersionsSchema = workflowVersionsResponseSchema.extend({
-  items: workflowVersionResponseSchema
-    .required({ graphDigest: true })
-    .array()
-    .max(100),
-});
-
-// The version history also names who published each version.
-const historySchema = workflowVersionsResponseSchema.extend({
-  items: workflowVersionResponseSchema
-    .required({ graphDigest: true, publishedBy: true })
-    .array()
-    .max(100),
-});
-
-type WorkflowVersionHistory = z.infer<typeof historySchema>;
 
 function versionsPath(workspaceId: string, workflowId: string) {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/versions` as const;
@@ -44,59 +26,87 @@ function versionsQuery(
   return query.toString();
 }
 
+type VersionPageRequest = Readonly<{
+  after?: string;
+  versionId?: string;
+  signal?: AbortSignal | undefined;
+}>;
+
+function readVersionsPage<Page>(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  {
+    input,
+    include,
+    schema,
+  }: Readonly<{
+    input: VersionPageRequest;
+    include: 'graphDigest' | 'graphDigest,publishedBy';
+    schema: Readonly<{ parse: (value: unknown) => Page }>;
+  }>,
+) {
+  return apiClient.request({
+    path: `${versionsPath(workspaceId, workflowId)}?${versionsQuery(include, input)}`,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    response: { kind: 'json', decode: (value) => schema.parse(value) },
+  });
+}
+
 export function getWorkflowVersionsPage(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
-  input: Readonly<{
-    after?: string;
-    versionId?: string;
-    signal?: AbortSignal;
-  }> = {},
+  input: VersionPageRequest = {},
 ) {
-  return apiClient.request({
-    path: `${versionsPath(workspaceId, workflowId)}?${versionsQuery('graphDigest', input)}`,
-    ...(input.signal === undefined ? {} : { signal: input.signal }),
-    response: {
-      kind: 'json',
-      decode: (value) => reviewedVersionsSchema.parse(value),
-    },
+  return readVersionsPage(apiClient, workspaceId, workflowId, {
+    input,
+    include: 'graphDigest',
+    schema: workflowVersionReviewPageSchema,
   });
 }
 
-function readHistoryPage(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  signal: AbortSignal | undefined,
-) {
-  return (after: string | undefined) =>
-    apiClient.request({
-      path: `${versionsPath(workspaceId, workflowId)}?${versionsQuery(
-        'graphDigest,publishedBy',
-        after === undefined ? {} : { after },
-      )}`,
-      ...(signal === undefined ? {} : { signal }),
-      response: {
-        kind: 'json',
-        decode: (value) => historySchema.parse(value),
-      },
-    });
-}
-
-/** Every published version, with who published each one. */
-export async function getAllWorkflowVersions(
+/** Every published version for callers that need the immutable graph. */
+export function getAllWorkflowVersions(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
   signal?: AbortSignal,
-): Promise<WorkflowVersionHistory> {
+) {
+  return collectVersions(
+    (input) =>
+      getWorkflowVersionsPage(apiClient, workspaceId, workflowId, input),
+    signal,
+  );
+}
+
+/** Every published version with the workspace-visible publisher. */
+export function getWorkflowVersionHistory(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal?: AbortSignal,
+) {
+  return collectVersions(
+    (input) =>
+      readVersionsPage(apiClient, workspaceId, workflowId, {
+        input,
+        include: 'graphDigest,publishedBy',
+        schema: workflowVersionHistoryPageSchema,
+      }),
+    signal,
+  );
+}
+
+async function collectVersions<Item>(
+  readPage: (
+    input: VersionPageRequest,
+  ) => Promise<{ items: Item[]; nextCursor: string | null }>,
+  signal: AbortSignal | undefined,
+) {
   const items = await collectPages(
-    readHistoryPage(apiClient, workspaceId, workflowId, signal),
-    {
-      read: 'Workflow version discovery',
-      signal,
-    },
+    (after) => readPage({ ...(after === undefined ? {} : { after }), signal }),
+    { read: 'Workflow version discovery', signal },
   );
   return { items: [...items], nextCursor: null };
 }

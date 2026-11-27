@@ -1,5 +1,4 @@
-/** How far ahead the Triggers tab lists schedule runs. */
-const UPCOMING_WINDOW_MS = 24 * 60 * 60 * 1000;
+import { SCHEDULE_FIRE_WINDOW_MS } from '@pertexo/contracts';
 
 export type UpcomingRun = Readonly<{
   triggerId: string;
@@ -18,7 +17,7 @@ export function upcomingRuns(
     times: readonly string[];
   }>[],
   now: number,
-  windowMs = UPCOMING_WINDOW_MS,
+  windowMs = SCHEDULE_FIRE_WINDOW_MS,
 ): readonly UpcomingRun[] {
   return schedules
     .flatMap(({ triggerId, name, times }) =>
@@ -35,7 +34,7 @@ export function upcomingRuns(
 export function positionInWindow(
   scheduledAt: string,
   now: number,
-  windowMs = UPCOMING_WINDOW_MS,
+  windowMs = SCHEDULE_FIRE_WINDOW_MS,
 ): number {
   return Math.min(1, Math.max(0, (Date.parse(scheduledAt) - now) / windowMs));
 }

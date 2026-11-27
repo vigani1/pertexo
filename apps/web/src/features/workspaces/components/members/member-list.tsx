@@ -269,23 +269,14 @@ export function MemberList({
   members,
   actorUserId,
   control,
-  search,
 }: Readonly<{
   members: readonly WorkspaceMember[];
   actorUserId: string;
   control: MemberRowControl;
-  search: string;
 }>) {
-  const groups = groupMembers(members, search);
-  if (groups.length === 0)
-    return (
-      <p className="py-6 text-sm text-muted-foreground">
-        No member matches “{search.trim()}”.
-      </p>
-    );
   return (
     <div aria-label="Members" role="group" className="flex flex-col gap-8">
-      {groups.map((group) => (
+      {groupMembers(members).map((group) => (
         <MemberGroupSection
           key={group.role}
           group={group}

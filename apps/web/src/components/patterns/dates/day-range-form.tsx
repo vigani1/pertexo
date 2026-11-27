@@ -31,9 +31,11 @@ export function DayRangeForm({
 }>) {
   const [from, setFrom] = useState(initial?.from ?? '');
   const [to, setTo] = useState(initial?.to ?? '');
-  // A range reopened with only its start set waits for its last day.
+  // A single applied day can still be extended when the calendar reopens.
   const [extending, setExtending] = useState(
-    initial !== undefined && initial.from !== '' && initial.to === '',
+    initial !== undefined &&
+      initial.from !== '' &&
+      (initial.to === '' || initial.to === initial.from),
   );
   const [error, setError] = useState<string>();
   const today = localDateOf(new Date());

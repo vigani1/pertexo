@@ -3,7 +3,6 @@ import { expect } from '@playwright/test';
 import {
   usageCapacityResponseSchema,
   usageTrendsResponseSchema,
-  workflowRunStatisticsResponseSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 
@@ -28,16 +27,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
         .endsWith(`/v1/workspaces/${seed.workspaceId}/usage-capacity`) &&
       response.status() === 200,
   );
-  const oneHourResponse = page.waitForResponse(
-    (response) =>
-      response
-        .url()
-        .includes(`/v1/workspaces/${seed.workspaceId}/run-statistics?`) &&
-      new URL(response.url()).searchParams.get('window') === '1h' &&
-      new URL(response.url()).searchParams.get('breakdown') === 'workflow' &&
-      response.status() === 200,
-  );
-  const path = `/w/${seed.workspaceId}/settings/usage?window=1h`;
+  const path = `/w/${seed.workspaceId}/settings/usage?period=30d`;
   await page.goto(path);
   await expect(
     page.getByRole('heading', { name: 'Usage', exact: true }),
@@ -58,77 +48,50 @@ test('reports real current capacity and retained activity with exact drilldowns'
     byteLimit: '1073741824',
     artifactCountLimit: 1000,
   });
-  const current = page.getByRole('region', { name: 'Current capacity' });
+  const current = page.getByRole('region', { name: 'Room left' });
   await expect(current.getByTitle('11 bytes')).toHaveText('11 B');
   await expect(
-    current.getByRole('figure', { name: '11 B stored of 1 GB' }),
+    current.getByRole('img', { name: '0% of file storage used' }),
   ).toBeVisible();
-  await expect(current).toContainText('/ 1 GB');
-  await expect(current).toContainText('4 / 5');
-  const oneHour = workflowRunStatisticsResponseSchema.parse(
-    await (await oneHourResponse).json(),
+  await expect(current).toContainText('Files use 11 B of 1 GB');
+  await expect(current).toContainText(
+    'Right now 4 of 5 runs at once are going, with 1 queued behind them.',
   );
-  expect(oneHour.window.total).toBe(6);
-  const activity = page.getByRole('region', { name: 'Recent runs' });
-  const renderedTotal = activity
-    .locator('p')
-    .filter({ hasText: /runs? started in the last/u });
-  await expect(renderedTotal).toHaveText('6 runs started in the last hour');
-  const sixHourResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/run-statistics?') &&
-      new URL(response.url()).searchParams.get('window') === '6h' &&
-      new URL(response.url()).searchParams.get('breakdown') === 'workflow' &&
-      response.status() === 200,
-  );
-  await page.getByRole('button', { name: '6 hours' }).click();
-  const sixHour = workflowRunStatisticsResponseSchema.parse(
-    await (await sixHourResponse).json(),
-  );
-  expect(sixHour.window.total).toBe(7);
-  await expect(renderedTotal).toHaveText('7 runs started in the last 6 hours');
-  await expect(page).toHaveURL(/window=6h/u);
-  const failed = page
-    .getByRole('list', { name: 'Activity by current run status' })
-    .getByRole('link', { name: 'Failed 1' });
-  const href = new URL((await failed.getAttribute('href')) ?? '', page.url());
-  expect(href.searchParams.get('createdAtFrom')).toBe(
-    sixHour.window.createdAtFrom,
-  );
-  expect(href.searchParams.get('createdAtBefore')).toBe(
-    sixHour.window.createdAtBefore,
-  );
-  expect(href.searchParams.get('status')).toBe('failed');
-  await failed.click();
+
+  const activity = page.getByRole('region', { name: 'Runs per day' });
   await expect(
-    page.getByRole('heading', { name: 'Runs', exact: true }),
+    activity.getByRole('img', { name: /Daily runs by outcome, UTC/u }),
   ).toBeVisible();
+  const ranking = page.getByRole('region', { name: 'By workflow' });
+  const workflow = ranking.getByRole('link', { name: /.+/u }).first();
+  await expect(workflow).toHaveAttribute(
+    'href',
+    `/w/${seed.workspaceId}/workflows/${seed.workflowId}`,
+  );
+  await workflow.click();
+  await expect(page).toHaveURL(
+    new RegExp(`/workflows/${seed.workflowId}$`, 'u'),
+  );
+
   await page.goto(path);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(current.getByTitle('11 bytes')).toHaveText('11 B');
-  await page.getByRole('button', { name: '6 hours' }).focus();
-  await page.keyboard.press('Space');
-  await expect(page).toHaveURL(/window=6h/u);
-  // A fresh cached window may render without issuing a read. Manual refresh
-  // gives the final mobile evidence its own completed authoritative snapshot.
   const mobileResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/run-statistics?') &&
-      new URL(response.url()).searchParams.get('window') === '6h' &&
-      new URL(response.url()).searchParams.get('breakdown') === 'workflow' &&
+      response.url().includes('/usage-trends?period=90d') &&
       response.status() === 200,
   );
-  await page.getByRole('button', { name: 'Refresh recent runs' }).click();
-  const mobile = workflowRunStatisticsResponseSchema.parse(
+  await page.getByRole('button', { name: '90 days' }).focus();
+  await page.keyboard.press('Space');
+  await expect(page).toHaveURL(/period=90d/u);
+  const mobile = usageTrendsResponseSchema.parse(
     await (await mobileResponse).json(),
   );
-  expect(mobile.window.total).toBe(7);
-  await expect(renderedTotal).toHaveText('7 runs started in the last 6 hours');
+  expect(mobile.total).toBe(8);
+  expect(mobile.days).toHaveLength(90);
+  await expect(activity).toContainText('8 runs');
   await expect(
-    page.getByRole('button', { name: 'Refresh recent runs' }),
-  ).toBeEnabled();
-  await expect(
-    activity.getByRole('link', { name: 'View these runs' }),
+    activity.getByRole('link', { name: 'Durations and failures by workflow' }),
   ).toBeVisible();
   expect(
     await page.evaluate(
