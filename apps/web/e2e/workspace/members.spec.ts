@@ -43,7 +43,7 @@ test('keeps the member directory reachable and bounded on mobile', async ({
   await expect(bar.getByRole('button', { name: 'More' })).toBeVisible();
   await expect(page.getByText('Ada Operator')).toBeVisible();
   await expect(
-    page.getByRole('list', { name: 'Members' }).getByText('Owner'),
+    page.getByRole('list', { name: 'Owner' }).getByText('Ada Operator'),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -208,7 +208,7 @@ test('creates an invitation and refreshes the authoritative pending list', async
     page.getByText('Invitation sent to new.builder@example.test'),
   ).toBeVisible();
 
-  await page.getByRole('tab', { name: /Invitations/u }).click();
+  // Invitations sit under the members on the same page.
   const row = page
     .getByRole('list', { name: 'Invitations' })
     .getByRole('listitem')

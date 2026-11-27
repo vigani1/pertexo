@@ -8,14 +8,15 @@ import { useState } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
-  PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SearchInput } from '@/components/ui/input';
+import { Disclosure } from '@/components/ui/disclosure';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';
 import { InvitePeopleSheet } from '../components/invitations/invite-people-sheet';
@@ -85,15 +86,17 @@ function describeInvitationAvailability({
   };
 }
 
-/** The title, how many people and pending invitations, and Invite. */
+/** The title, who the team is for, and Invite. */
 function TeamHeader({
-  pendingInvitations,
+  workspaceName,
+  memberCount,
   canManage,
   invitationAvailability,
   onInvite,
 }: Readonly<{
+  workspaceName: string;
   /** "12" or "50+" once the members have loaded. */
-  pendingInvitations: number;
+  memberCount: string;
   canManage: boolean;
   invitationAvailability: ReturnType<typeof describeInvitationAvailability>;
   onInvite: () => void;
@@ -101,18 +104,12 @@ function TeamHeader({
   return (
     <>
       <PageHeader>
-        <div>
+        <div className="flex flex-col gap-3">
           <PageHeaderTitle>Team</PageHeaderTitle>
-          {/* The Members tab counts people; the header only flags what's
-            waiting on someone. */}
-          {pendingInvitations > 0 ? (
-            <PageHeaderMeta>
-              <StatusMark tone="queued">
-                {pendingInvitations}{' '}
-                {pluralWord(pendingInvitations, 'invitation')} pending
-              </StatusMark>
-            </PageHeaderMeta>
-          ) : null}
+          <p className="text-meta text-subtle-foreground">
+            Who can do what in {workspaceName}. {memberCount}{' '}
+            {pluralWord(Number.parseInt(memberCount, 10), 'member')}.
+          </p>
         </div>
         {canManage ? (
           <PageHeaderActions>
@@ -162,6 +159,7 @@ export function WorkspaceMembersPage({
   const canRead = workspace.capabilities.includes('member:read');
   const canManage = workspace.capabilities.includes('member:manage');
   const [commandLoss, setCommandLoss] = useState<AccessLoss>();
+  const [memberSearch, setMemberSearch] = useState('');
   const members = useInfiniteQuery({
     ...workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
     enabled: canRead,
@@ -203,71 +201,73 @@ export function WorkspaceMembersPage({
   if (blocked !== undefined)
     return <UnavailablePage heading="Team" {...blocked} />;
 
-  const tab =
-    canManage && search.tab === 'invitations' ? 'invitations' : 'members';
   const openInvite = () => {
     onSearchChange({ ...search, invite: true });
   };
   const memberCount = `${String(memberItems.length)}${members.hasNextPage ? '+' : ''}`;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex max-w-260 flex-col gap-8">
       <TeamHeader
-        pendingInvitations={pendingInvitations}
+        workspaceName={workspace.name}
+        memberCount={memberCount}
         canManage={canManage}
         invitationAvailability={invitationAvailability}
         onInvite={openInvite}
       />
-
-      {/* The roles matrix reads below the list as a settings band, so its
-          abilities have the width they need instead of wrapping. */}
-      <div className="flex flex-col gap-8">
-        <Tabs
-          value={tab}
-          onValueChange={(next) => {
-            onSearchChange({
-              ...((search.invite ?? false) ? { invite: true } : {}),
-              ...(next === 'invitations' ? { tab: 'invitations' } : {}),
-            });
-          }}
+      {canManage && pendingInvitations > 0 ? (
+        <p className="-mt-4 flex items-center gap-2 text-meta">
+          <StatusMark tone="queued">
+            {pendingInvitations} {pluralWord(pendingInvitations, 'invitation')}{' '}
+            pending
+          </StatusMark>
+          <span aria-hidden="true" className="text-subtle-foreground">
+            ·
+          </span>
+          <a
+            href="#invitations"
+            className="text-muted-foreground hover:text-foreground focus-ring"
+          >
+            Review
+          </a>
+        </p>
+      ) : null}
+      <SearchInput
+        className="w-full sm:w-85"
+        placeholder="Find a member by name or email"
+        aria-label="Find a member by name or email"
+        value={memberSearch}
+        onChange={(event) => {
+          setMemberSearch(event.target.value);
+        }}
+      />
+      <MembersPanel
+        apiClient={apiClient}
+        user={user}
+        workspace={workspace}
+        query={members}
+        members={memberItems}
+        search={memberSearch}
+      />
+      {canManage ? (
+        <section
+          id="invitations"
+          aria-labelledby="invitations-heading"
+          className="flex flex-col gap-2"
         >
-          <TabsList>
-            <TabsTrigger value="members">
-              Members
-              <span className="font-mono text-xs text-subtle-foreground">
-                {memberCount}
-              </span>
-            </TabsTrigger>
-            {canManage ? (
-              <TabsTrigger value="invitations">
-                Invitations
-                <span className="font-mono text-xs text-subtle-foreground">
-                  {pendingInvitations}
-                </span>
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-          <TabsContent value="members" className="pt-3">
-            <MembersPanel
-              apiClient={apiClient}
-              user={user}
-              workspace={workspace}
-              query={members}
-              members={memberItems}
-            />
-          </TabsContent>
-          {canManage ? (
-            <TabsContent value="invitations" className="pt-3">
-              <InvitationsPanel
-                query={invitations}
-                invitations={invitationItems}
-                command={command}
-              />
-            </TabsContent>
-          ) : null}
-        </Tabs>
+          <RuleHeading id="invitations-heading" count={pendingInvitations}>
+            Invitations
+          </RuleHeading>
+          <InvitationsPanel
+            query={invitations}
+            invitations={invitationItems}
+            command={command}
+          />
+        </section>
+      ) : null}
+      <Disclosure summary="Compare roles">
         <RolesMatrix yourRole={workspace.role} />
-      </div>
+      </Disclosure>
 
       {canManage && (issuanceAvailable ?? false) ? (
         <InvitePeopleSheet

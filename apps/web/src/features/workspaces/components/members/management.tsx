@@ -86,12 +86,15 @@ type MemberManagementProps = Readonly<{
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   members: readonly WorkspaceMember[];
+  /** Keeps only members whose name or email holds it. */
+  search: string;
 }>;
 export function MemberManagement({
   apiClient,
   user,
   workspace,
   members,
+  search,
 }: MemberManagementProps) {
   const notifications = useNotifications();
   const [proposal, setProposal] = useState<Proposal>();
@@ -164,7 +167,12 @@ export function MemberManagement({
   };
   return (
     <>
-      <MemberList members={members} actorUserId={user.id} control={control} />
+      <MemberList
+        members={members}
+        actorUserId={user.id}
+        control={control}
+        search={search}
+      />
       {lastRemoved === undefined ||
       members.some((member) => member.userId === lastRemoved.userId) ? null : (
         <div
