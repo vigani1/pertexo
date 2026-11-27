@@ -102,7 +102,6 @@
   --color-ring: var(--ring);
 
   --shadow-node: var(--node-shadow);
-  --shadow-node-issue: var(--node-issue-shadow);
   --shadow-lens: var(--lens-shadow);
 
   --radius-xs: 0.375rem;
@@ -121,7 +120,6 @@
   --animate-tip: tip-pulse 1.2s ease-in-out infinite;
   --animate-knot: knot-pop 0.6s var(--ease-unspool);
   --animate-fray: fray-in 0.5s ease-out;
-  --animate-node-live: node-live 1.9s ease-in-out infinite;
 }
 
 :root {
@@ -196,7 +194,6 @@
   --core-waiting: var(--waiting);
   --core-succeeded: var(--muted-foreground);
   --node-shadow: var(--raised-shadow);
-  --node-issue-shadow: 0 0 0 1px var(--fail-soft);
   --glass-fallback: var(--card);
   --glass-popup-fallback: var(--card);
   --tooltip-background: var(--card);
@@ -531,14 +528,6 @@
     transparent 1px 12px
   );
   mask-image: linear-gradient(180deg, black, transparent 32%);
-}
-
-/* A step the last run is working in: a live outline; the halo breathes
-   with animate-node-live. */
-@utility node-live {
-  box-shadow:
-    inset 0 0 0 1px var(--live-line),
-    var(--raised-shadow);
 }
 
 /* A branch's lane behind its steps on the canvas: a soft band between
@@ -1107,15 +1096,6 @@
 }
 
 /* editor slice */
-/* A running step breathes: a live outline and a soft halo that swells. */
-@keyframes node-live {
-  50% {
-    box-shadow:
-      inset 0 0 0 1px var(--live-line),
-      0 0 0 6px var(--live-soft),
-      var(--raised-shadow);
-  }
-}
 @keyframes editor-edge-flow {
   to {
     stroke-dashoffset: -16;

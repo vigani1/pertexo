@@ -41,9 +41,7 @@ function PageNotFound() {
       <p className="font-mono text-meta text-muted-foreground">
         404 · The thread ends here
       </p>
-      <SystemStateTitle className="sm:text-hero">
-        This page doesn’t exist
-      </SystemStateTitle>
+      <SystemStateTitle size="hero">This page doesn’t exist</SystemStateTitle>
       <SystemStateDescription>
         This address doesn’t lead anywhere in {workspace.name}. Go home, or
         search for what you were looking for.

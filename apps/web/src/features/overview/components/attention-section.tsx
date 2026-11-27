@@ -2,7 +2,10 @@ import { tasksQueryOptions } from '@/features/pending-tasks/pending-tasks-querie
 import { shownData } from '@/lib/api/error-copy';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { attentionRunsQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
+import {
+  attentionRunsQueryOptions,
+  runStatisticsQueryOptions,
+} from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -31,10 +34,15 @@ export function AttentionSection({
 }>) {
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
-  const runs = useQuery({
-    ...attentionRunsQueryOptions(apiClient, userId, workspace.id),
+  const statistics = useQuery({
+    ...runStatisticsQueryOptions(apiClient, userId, workspace.id),
     enabled: can('run:read'),
   });
+  const snapshot = can('run:read') ? shownData(statistics) : undefined;
+  const runs = useQuery(
+    attentionRunsQueryOptions(apiClient, userId, workspace.id, snapshot),
+  );
+  const problemRuns = shownData(runs);
   const requests = useInfiniteQuery({
     ...tasksQueryOptions(
       { apiClient, userId, workspaceId: workspace.id },
@@ -53,7 +61,8 @@ export function AttentionSection({
   const setup = useSetupReads({ apiClient, userId, workspace });
   const { connections, destinations } = setup;
   const reads: BlockQuery[] = [
-    ...(can('run:read') ? [runs, requests] : []),
+    ...(can('run:read') ? [statistics, requests] : []),
+    ...(snapshot === undefined ? [] : [runs]),
     ...(can('workflow:read') ? [workflows] : []),
     ...(setup.canReadConnections ? [connections] : []),
     ...(setup.canReadDestinations ? [destinations] : []),
@@ -62,15 +71,15 @@ export function AttentionSection({
     ...taskAttentionItems(
       shownData(requests)?.pages.flatMap((page) => page.items) ?? [],
     ),
-    ...(runs.data === undefined
+    ...(problemRuns === undefined
       ? []
       : runAttentionItems(
           {
-            failed: runs.data.failed.runs,
-            timedOut: runs.data.timedOut.runs,
-            outcomeUnknown: runs.data.outcomeUnknown.runs,
+            failed: problemRuns.failed.runs,
+            timedOut: problemRuns.timedOut.runs,
+            outcomeUnknown: problemRuns.outcomeUnknown.runs,
           },
-          runs.data.asOf,
+          problemRuns.asOf,
         )),
     ...workflowAttentionItems(
       workflows.data?.pages.flatMap((page) => page.items) ?? [],
@@ -94,10 +103,10 @@ export function AttentionSection({
   const [main, ...others] = reads;
   if (main === undefined) return null;
   const hasMoreFailedRuns =
-    runs.data !== undefined &&
-    (runs.data.failed.more ||
-      runs.data.timedOut.more ||
-      runs.data.outcomeUnknown.more);
+    problemRuns !== undefined &&
+    (problemRuns.failed.more ||
+      problemRuns.timedOut.more ||
+      problemRuns.outcomeUnknown.more);
   return (
     <NeedsAttention
       workspace={workspace}

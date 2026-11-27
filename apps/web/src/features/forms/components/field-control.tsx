@@ -64,7 +64,7 @@ export function FormFieldControl({
             <select
               {...control}
               ref={inputRef}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
+              className="h-9 w-full rounded-md pointer-coarse:min-h-10 border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
               value={text}
               onChange={(event) => {
                 onChange(event.target.value);

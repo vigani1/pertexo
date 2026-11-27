@@ -1,15 +1,20 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
+import {
+  workflowRunStatisticsResponseSchema,
+  type AccessibleWorkspace,
+} from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderLoadedApp } from '../../support/render-app';
-import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs-queries.public';
+import { attentionRunsQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import {
   apiBase,
   fixtureIds,
   fixtureRun,
+  fixtureStatistics,
+  statisticsHandler,
   identityHandlers,
   sseEvents,
   coldStart,
@@ -176,8 +181,14 @@ describe('run replay', () => {
 
   it('refreshes cached Home runs as soon as a replay is accepted', async () => {
     let attentionReads = 0;
+    const statistics = fixtureStatistics({ byStatus: { failed: 1 } });
     installRunHandlers();
     mockServer.use(
+      statisticsHandler((query) =>
+        query.get('window') === '24h'
+          ? statistics
+          : fixtureStatistics({ window: query.get('window') ?? '1h' }),
+      ),
       http.post(`${apiBase}/runs/${sourceRunId}/replay`, () =>
         HttpResponse.json(
           { run: acceptedRun(replayRunId), replayed: false },
@@ -194,11 +205,17 @@ describe('run replay', () => {
       }),
     );
 
-    const { queryClient, router } = await renderLoadedApp(
+    const { apiClient, queryClient, router } = await renderLoadedApp(
       `/w/${workspaceId}/runs/${sourceRunId}`,
     );
-    const sample = { count: 0, more: false, runs: [] };
-    queryClient.setQueryData(workflowRunKeys.attention(userId, workspaceId), {
+    const sample = { more: false, runs: [] };
+    const attentionKey = attentionRunsQueryOptions(
+      apiClient,
+      userId,
+      workspaceId,
+      workflowRunStatisticsResponseSchema.parse(statistics),
+    ).queryKey;
+    queryClient.setQueryData(attentionKey, {
       asOf: Date.now(),
       failed: sample,
       timedOut: sample,

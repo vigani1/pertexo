@@ -21,8 +21,7 @@ import { cardClassName, cardIdentity, handleClass } from './style';
  * A step on the canvas: family tile, title and human type (with a summary
  * of its setup), the wired ports of branching steps, then one line of facts
  * and marks for issues, missing connections and steps that are disabled.
- * Under the card, what the step did in the last run. The selected card
- * animates its scan edge; a step the last run is working in breathes.
+ * Under the card, what the step did in the last run.
  */
 export function WorkflowNodeCard({
   id,
@@ -46,10 +45,8 @@ export function WorkflowNodeCard({
     <article
       data-selected={selected}
       className={cardClassName({
-        hasIssues: data.issueCount > 0,
         selected,
         disabled: data.disabled,
-        running: data.running ?? false,
         passedBy: data.lastRun?.kind === 'not-taken',
       })}
     >

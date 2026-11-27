@@ -20,8 +20,12 @@ export function useWorkspaceChrome({
     overflowRef,
     renderFeedback: (feedback) =>
       feedbackTarget === null ? null : createPortal(feedback, feedbackTarget),
-    renderTestAction: (runItems) => (
-      <WorkflowTestButton tests={tests} runItems={runItems} />
+    renderTestAction: (runItems, runPending) => (
+      <WorkflowTestButton
+        tests={tests}
+        runItems={runItems}
+        runPending={runPending}
+      />
     ),
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,

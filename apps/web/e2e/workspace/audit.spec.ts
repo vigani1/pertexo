@@ -232,3 +232,63 @@ for (const width of [375, 1280])
       expect(exports).toBe(2);
     },
   );
+
+test('applies a rolling Last 24 hours window and clears the previous upper bound', async ({
+  page,
+}) => {
+  const now = new Date('2026-11-17T15:24:00.000Z');
+  await page.clock.setFixedTime(now);
+  await installEditorRoutes(page, remoteDraft(), {
+    accessibleWorkspace: {
+      ...workspace,
+      capabilities: [...workspace.capabilities, 'audit:read'],
+    },
+  });
+  const audit = '/governance/audit';
+  await page.route(`**${audit}?*`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.goto(
+    `/w/${workspaceId}/settings/audit?until=2026-11-17T00%3A00%3A00.000Z`,
+  );
+  await page.getByRole('button', { name: /^When:/u }).click();
+  const rolling = page.getByRole('button', {
+    name: 'Last 24 hours',
+    exact: true,
+  });
+  await expect(rolling).toBeVisible();
+  const request = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith(audit) && url.searchParams.has('from');
+  });
+  await rolling.click();
+  const bounds = new URL((await request).url()).searchParams;
+  expect(bounds.get('from')).toBe('2026-11-16T15:24:00.000Z');
+  expect(bounds.has('until')).toBe(false);
+});
+
+for (const width of [390, 768])
+  test(`a long workspace name wraps in the Audit header at ${String(width)}px`, async ({
+    page,
+  }) => {
+    const name = 'W'.repeat(128);
+    await page.setViewportSize({ width, height: 844 });
+    await installEditorRoutes(page, remoteDraft(), {
+      accessibleWorkspace: {
+        ...workspace,
+        name,
+        capabilities: [...workspace.capabilities, 'audit:read'],
+      },
+    });
+    await page.route('**/governance/audit?*', (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await page.goto(`/w/${workspaceId}/settings/audit`);
+    await expect(
+      page.getByRole('heading', { name: 'Audit log' }),
+    ).toBeVisible();
+    await expect(page.getByText(`Who changed what in ${name}`)).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+  });

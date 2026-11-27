@@ -1,9 +1,14 @@
+import {
+  normalizeWorkflowRunCreatedAt,
+  workflowRunStatisticsQuerySchema,
+} from '@pertexo/contracts';
 import type { Page } from '@playwright/test';
 import { formConfigSchema } from '@pertexo/workflow-model';
 import { workflowListBody } from '../../workflows/list-support';
 import {
   fixtureRun,
   fixtureStatistics,
+  type RunFixtureStatus,
   minutesAgo,
 } from '../../../test/support/fixtures/run';
 import { user, workflowId, workspaceId } from '../../workflow-editor/support';
@@ -17,13 +22,21 @@ export const taskId = '11000000-0000-4000-8000-000000000003';
 export const requestId = '11000000-0000-4000-8000-000000000004';
 export const reviewId = '11000000-0000-4000-8000-000000000005';
 export const formId = '11000000-0000-4000-8000-000000000001';
+export const succeededRunId = '11000000-0000-4000-8000-000000000002';
 export const form = formConfigSchema.parse({
   title: 'Submit a supplier invoice',
   instructions: 'Send the invoice and purchase order to Finance.',
   fields: [
     { id: 'company', name: 'company', label: 'Your company', type: 'text' },
     { id: 'invoice', name: 'invoice', label: 'Invoice number', type: 'text' },
-    { id: 'amount', name: 'amount', label: 'Amount in EUR', type: 'number' },
+    {
+      id: 'currency',
+      name: 'currency',
+      label: 'Currency',
+      type: 'select',
+      options: ['EUR', 'USD'],
+    },
+    { id: 'amount', name: 'amount', label: 'Amount', type: 'number' },
     {
       id: 'file',
       name: 'file',
@@ -42,25 +55,27 @@ export const form = formConfigSchema.parse({
 });
 
 export async function installActivityRoutes(page: Page) {
-  const running = fixtureRun(runId, 'running', {
-    workflowId,
-    workflowName: workflowSummary.workflow.name,
-    workflowVersionId: liveVersionId,
-    createdAt: minutesAgo(8),
-    startedAt: minutesAgo(8),
-  });
-  const succeeded = fixtureRun(
-    '11000000-0000-4000-8000-000000000002',
-    'succeeded',
-    {
-      ...running,
-      id: '11000000-0000-4000-8000-000000000002',
-      status: 'succeeded',
-      createdAt: minutesAgo(38),
-      startedAt: minutesAgo(38),
-      completedAt: minutesAgo(32),
-    },
+  const running = activityRun(runId, 'running', 8);
+  const succeeded = activityRun(succeededRunId, 'succeeded', 38, 32);
+  const failed = activityRun(
+    '11000000-0000-4000-8000-000000000007',
+    'failed',
+    15,
+    12,
   );
+  const timedOut = activityRun(
+    '11000000-0000-4000-8000-000000000008',
+    'timed_out',
+    20,
+    17,
+  );
+  const unknown = activityRun(
+    '11000000-0000-4000-8000-000000000021',
+    'outcome_unknown',
+    25,
+    22,
+  );
+  const runs = [running, failed, timedOut, unknown, succeeded];
   await page.route(`${workspaceApi}/workflows?**`, (route) =>
     route.fulfill({
       json: workflowListBody(route.request().url(), [workflowSummary.workflow]),
@@ -69,13 +84,19 @@ export async function installActivityRoutes(page: Page) {
   for (const path of [`${workspaceApi}/runs?**`, `${workflowApi}/runs?**`])
     await page.route(path, (route) =>
       route.fulfill({
-        json: { items: [running, succeeded], nextCursor: null },
+        json: {
+          items: activityRuns(
+            runs,
+            new URL(route.request().url()).searchParams,
+          ),
+          nextCursor: null,
+        },
       }),
     );
-  await page.route(`${workspaceApi}/runs/${runId}`, (route) =>
+  await page.route(`${workspaceApi}/runs/${succeededRunId}`, (route) =>
     route.fulfill({
       json: {
-        run: { ...succeeded, id: runId },
+        run: succeeded,
         nodes: ['start', 'extract', 'post'].map((nodeId, index) => ({
           id: `11000000-0000-4000-8000-00000000001${String(index)}`,
           nodeId,
@@ -90,16 +111,57 @@ export async function installActivityRoutes(page: Page) {
       },
     }),
   );
-  await page.route(`${workspaceApi}/run-statistics?**`, (route) =>
-    route.fulfill({
-      json: fixtureStatistics({
-        window:
-          new URL(route.request().url()).searchParams.get('window') ?? '24h',
-        current: { running: 1 },
-        byStatus: { running: 1, succeeded: 1 },
-      }),
-    }),
-  );
+  for (const run of [running, failed, timedOut, unknown])
+    await page.route(`${workspaceApi}/runs/${run.id}`, (route) =>
+      route.fulfill({ json: { run, nodes: [] } }),
+    );
+  await page.route(`${workspaceApi}/run-statistics?**`, (route) => {
+    const asOf = new Date();
+    const query = new URL(route.request().url()).searchParams;
+    const { window = '24h', breakdown } =
+      workflowRunStatisticsQuerySchema.parse(Object.fromEntries(query));
+    const hours = { '1h': 1, '6h': 6, '24h': 24, '7d': 24 * 7 }[window];
+    const createdAtFrom = normalizeWorkflowRunCreatedAt(
+      new Date(asOf.getTime() - hours * 3_600_000).toISOString(),
+    );
+    const createdAtBefore = normalizeWorkflowRunCreatedAt(asOf.toISOString());
+    const windowedRuns = activityRuns(
+      runs,
+      new URLSearchParams({ createdAtFrom, createdAtBefore }),
+    );
+    const byStatus: Partial<Record<RunFixtureStatus, number>> = {};
+    for (const run of windowedRuns) {
+      byStatus[run.status] = (byStatus[run.status] ?? 0) + 1;
+    }
+    const statistics = fixtureStatistics({
+      window,
+      current: {
+        running: runs.filter((run) => run.status === 'running').length,
+      },
+      byStatus,
+    });
+    return route.fulfill({
+      json: {
+        ...statistics,
+        asOf: createdAtBefore,
+        window: { ...statistics.window, createdAtFrom, createdAtBefore },
+        workflows:
+          breakdown === 'workflow'
+            ? {
+                items: [
+                  {
+                    workflowId,
+                    workflowName: workflowSummary.workflow.name,
+                    total: statistics.window.total,
+                    byStatus: statistics.window.byStatus,
+                  },
+                ],
+                truncated: false,
+              }
+            : null,
+      },
+    });
+  });
   await page.route(`${workspaceApi}/governance/audit?**`, (route) =>
     route.fulfill({
       json: {
@@ -120,6 +182,45 @@ export async function installActivityRoutes(page: Page) {
     }),
   );
   await installReviewRoutes(page);
+}
+
+function activityRun(
+  id: string,
+  status: RunFixtureStatus,
+  startedMinutesAgo: number,
+  completedMinutesAgo?: number,
+) {
+  const startedAt = minutesAgo(startedMinutesAgo);
+  const completedAt =
+    completedMinutesAgo === undefined ? null : minutesAgo(completedMinutesAgo);
+  return fixtureRun(id, status, {
+    workspaceId,
+    workflowId,
+    workflowName: workflowSummary.workflow.name,
+    workflowVersionId: liveVersionId,
+    createdAt: startedAt,
+    startedAt,
+    completedAt,
+    updatedAt: completedAt ?? startedAt,
+  });
+}
+
+function activityRuns(
+  runs: readonly ReturnType<typeof fixtureRun>[],
+  query: URLSearchParams,
+) {
+  const status = query.get('status');
+  const from = query.get('createdAtFrom');
+  const before = query.get('createdAtBefore');
+  const limit = query.get('limit');
+  return runs
+    .filter(
+      (run) =>
+        (status === null || run.status === status) &&
+        (from === null || Date.parse(run.createdAt) >= Date.parse(from)) &&
+        (before === null || Date.parse(run.createdAt) < Date.parse(before)),
+    )
+    .slice(0, limit === null ? runs.length : Number(limit));
 }
 
 async function installReviewRoutes(page: Page) {

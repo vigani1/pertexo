@@ -4,7 +4,7 @@ import type {
   WorkflowRunStatisticsResponse,
   WorkflowRunStatisticsWindow,
 } from '@pertexo/contracts';
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from '../model/list/run-search';
 import type { RunStatus } from '../model/presentation/run-status';
@@ -20,7 +20,6 @@ const STATUS_PAGE_SIZE = 100;
 
 /** Home's attention list reads the runs that went wrong in this many hours. */
 export const ATTENTION_WINDOW_HOURS = 24;
-const ATTENTION_WINDOW_MS = ATTENTION_WINDOW_HOURS * 60 * 60 * 1_000;
 
 const LOOM_RUN_CAP = 300;
 
@@ -30,8 +29,7 @@ const ACTIVE_RUN_STATUSES = ['running', 'waiting', 'queued'] as const;
 export type RunStatistics = WorkflowRunStatisticsResponse;
 
 type StatusSample = Readonly<{
-  count: number;
-  /** More runs exist than the page could hold. */
+  /** The list omits some runs the statistics snapshot counted. */
   more: boolean;
   runs: WorkflowRunListResponse['items'];
 }>;
@@ -51,14 +49,6 @@ export type LoomWindowRuns = Readonly<{
   capped: boolean;
 }>;
 
-function sample(page: WorkflowRunListResponse): StatusSample {
-  return {
-    count: page.items.length,
-    more: page.nextCursor !== null,
-    runs: page.items,
-  };
-}
-
 function statusPages({
   apiClient,
   workspaceId,
@@ -71,18 +61,17 @@ function statusPages({
   statuses: readonly RunStatus[];
   filters: RunHistoryFilters;
   signal: AbortSignal;
-}>): Promise<StatusSample[]> {
+}>): Promise<WorkflowRunListResponse['items'][]> {
   return Promise.all(
-    statuses.map(async (status) =>
-      sample(
-        await getWorkflowRunsPage(
-          apiClient,
-          workspaceId,
-          { ...filters, status },
-          { limit: STATUS_PAGE_SIZE, signal },
-        ),
-      ),
-    ),
+    statuses.map(async (status) => {
+      const page = await getWorkflowRunsPage(
+        apiClient,
+        workspaceId,
+        { ...filters, status },
+        { limit: STATUS_PAGE_SIZE, signal },
+      );
+      return page.items;
+    }),
   );
 }
 
@@ -149,35 +138,57 @@ export function loomStatisticsQueryOptions(
   });
 }
 
-/** Failed, timed-out and unknown-outcome runs from the last 24 hours. */
+/** The failed, timed-out and unknown runs that explain the header's counts. */
 export function attentionRunsQueryOptions(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
+  statistics: RunStatistics | undefined,
 ) {
+  const window = statistics?.window;
   return queryOptions({
-    queryKey: workflowRunKeys.attention(userId, workspaceId),
-    queryFn: async ({ signal }): Promise<AttentionRuns> => {
-      const asOf = Date.now();
-      const createdAtFrom = new Date(asOf - ATTENTION_WINDOW_MS).toISOString();
-      const [failed, timedOut, outcomeUnknown] = await statusPages({
-        apiClient,
-        workspaceId,
-        statuses: ['failed', 'timed_out', 'outcome_unknown'],
-        filters: { createdAtFrom },
-        signal,
-      });
-      if (
-        failed === undefined ||
-        timedOut === undefined ||
-        outcomeUnknown === undefined
-      )
-        throw new Error('Runs needing attention are incomplete.');
-      return { asOf, failed, timedOut, outcomeUnknown };
-    },
+    queryKey: [
+      ...workflowRunKeys.attention(userId, workspaceId),
+      window,
+    ] as const,
+    queryFn:
+      window === undefined
+        ? skipToken
+        : async ({ signal }): Promise<AttentionRuns> => {
+            const { createdAtFrom, createdAtBefore, byStatus } = window;
+            const [failed, timedOut, outcomeUnknown] = await statusPages({
+              apiClient,
+              workspaceId,
+              statuses: ['failed', 'timed_out', 'outcome_unknown'],
+              filters: { createdAtFrom, createdAtBefore },
+              signal,
+            });
+            if (
+              failed === undefined ||
+              timedOut === undefined ||
+              outcomeUnknown === undefined
+            )
+              throw new Error('Runs needing attention are incomplete.');
+            return {
+              asOf: Date.parse(createdAtBefore),
+              failed: withinCount(failed, byStatus.failed),
+              timedOut: withinCount(timedOut, byStatus.timed_out),
+              outcomeUnknown: withinCount(
+                outcomeUnknown,
+                byStatus.outcome_unknown,
+              ),
+            };
+          },
     staleTime: QUERY_FRESHNESS.standard,
-    refetchInterval: QUERY_POLLING.summary,
   });
+}
+
+// The lists can observe status changes after the statistics snapshot.
+function withinCount(
+  runs: WorkflowRunListResponse['items'],
+  count: number,
+): StatusSample {
+  return { runs: runs.slice(0, count), more: runs.length < count };
 }
 
 /**
@@ -212,7 +223,7 @@ export function runLoomQueryOptions(
       return {
         asOf,
         windowMs,
-        runs: [...window.runs, ...earlier.flatMap(({ runs }) => runs)],
+        runs: [...window.runs, ...earlier.flat()],
         capped: window.capped,
       };
     },

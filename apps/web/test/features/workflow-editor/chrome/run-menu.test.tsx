@@ -33,7 +33,9 @@ it('keeps an open Run menu mounted and usable across background refetches', asyn
   const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
   const user = userEvent.setup();
   await findCanvas();
-  const trigger = await screen.findByRole('button', { name: 'Run' });
+  const trigger = await screen.findByRole('button', {
+    name: /^Test and run actions$/u,
+  });
   await waitFor(() => {
     expect(trigger).toBeEnabled();
   });

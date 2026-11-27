@@ -37,12 +37,20 @@ export const homeRoute = createRoute({
     warmPrefetches(context, [
       ...(can('run:read')
         ? [
-            queryClient.query(
-              runStatisticsQueryOptions(apiClient, user.id, workspace.id),
-            ),
-            queryClient.query(
-              attentionRunsQueryOptions(apiClient, user.id, workspace.id),
-            ),
+            queryClient
+              .query(
+                runStatisticsQueryOptions(apiClient, user.id, workspace.id),
+              )
+              .then((statistics) =>
+                queryClient.query(
+                  attentionRunsQueryOptions(
+                    apiClient,
+                    user.id,
+                    workspace.id,
+                    statistics,
+                  ),
+                ),
+              ),
             queryClient.query(
               anyRunQueryOptions(apiClient, user.id, workspace.id),
             ),

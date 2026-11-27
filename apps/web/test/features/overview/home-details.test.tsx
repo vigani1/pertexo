@@ -15,6 +15,7 @@ import {
   emptyGraph,
   fixtureIds,
   fixtureRun,
+  fixtureStatistics,
   fixtureVersion,
   fixtureWorkflow,
   fixtureWorkspace,
@@ -60,7 +61,12 @@ function failedRun() {
 function homeReads() {
   return [
     ...identityHandlers(capabilities),
-    statisticsHandler(),
+    statisticsHandler((query) =>
+      fixtureStatistics({
+        window: query.get('window') ?? '24h',
+        byStatus: { failed: 1 },
+      }),
+    ),
     http.get(`${apiBase}/runs`, ({ request }) =>
       HttpResponse.json({
         items:

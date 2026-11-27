@@ -22,7 +22,7 @@ import { useWorkspaceChrome } from '../hooks/use-workspace-chrome';
 
 export type EditorChrome = Readonly<{
   overflowRef: RefObject<HTMLButtonElement | null>;
-  renderTestAction: (runItems: ReactNode) => ReactNode;
+  renderTestAction: (runItems: ReactNode, runPending: boolean) => ReactNode;
   renderFeedback: (feedback: ReactNode) => ReactNode;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;

@@ -21,6 +21,7 @@ import { AUDIT_SUBJECTS } from '../model/audit-ledger';
 
 const SUBJECTS = [{ value: 'any', label: 'Anything' }, ...AUDIT_SUBJECTS];
 const PRESETS = [
+  { label: 'Last 24 hours', ms: 86_400_000 },
   { label: 'Last 7 days', ms: 7 * 86_400_000 },
   { label: 'Last 30 days', ms: 30 * 86_400_000 },
 ] as const;

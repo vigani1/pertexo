@@ -4,8 +4,15 @@ import {
   workflowId,
   workspaceId,
 } from '../../workflow-editor/support';
-import { runId, showInboxArrival } from '../polish-layout-fixture';
-import { form, formId, requestId, reviewId, taskId } from './activity-data';
+import { showInboxArrival } from '../polish-layout-fixture';
+import {
+  form,
+  formId,
+  requestId,
+  reviewId,
+  succeededRunId,
+  taskId,
+} from './activity-data';
 import { tables } from './workspace-data';
 
 type Screen = Readonly<{
@@ -29,7 +36,7 @@ export const workspaceScreens: readonly Screen[] = [
   { name: 'runs', path: `${root}/runs`, ready: heading('Runs') },
   {
     name: 'run-detail',
-    path: `${root}/runs/${runId}`,
+    path: `${root}/runs/${succeededRunId}`,
     ready: heading(/Succeeded in/u),
   },
   {
@@ -115,7 +122,8 @@ export const workspaceScreens: readonly Screen[] = [
         .getByLabel('Your company', { exact: true })
         .fill('Fjord Supplies');
       await page.getByLabel('Invoice number', { exact: true }).fill('INV-2318');
-      await page.getByLabel('Amount in EUR', { exact: true }).fill('7480');
+      await page.getByLabel('Currency', { exact: true }).selectOption('EUR');
+      await page.getByLabel('Amount', { exact: true }).fill('7480');
     },
     ready: heading(form.title),
   },

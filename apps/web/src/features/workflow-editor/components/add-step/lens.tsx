@@ -22,6 +22,7 @@ export function AddStepLens({
     collapsed: boolean;
     searchRef: Ref<HTMLInputElement>;
     toggle: () => void;
+    focus: () => void;
   }>;
   onAdd: (choice: StepChoice) => void;
 }>) {
@@ -37,7 +38,7 @@ export function AddStepLens({
           variant="ghost"
           aria-label="Show steps"
           aria-expanded="false"
-          onClick={onToggleCollapsed}
+          onClick={fold.focus}
         >
           <PanelLeftOpenIcon />
         </Button>

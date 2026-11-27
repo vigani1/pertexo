@@ -7,7 +7,6 @@ import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDate, formatDateTime } from '@/lib/format/time';
 import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
-import { cn } from '@/lib/class-names';
 import {
   DangerZone,
   WorkspaceLifecycleControls,
@@ -51,10 +50,8 @@ export function WorkspaceGeneralPage({
       <header className="flex items-center gap-5">
         <WorkspaceMark
           name={markName}
-          className={cn(
-            'size-14 shrink-0 rounded-xl text-lg transition-[box-shadow] duration-200 motion-reduce:transition-none',
-            draftName !== undefined && 'shadow-selection',
-          )}
+          size="preview"
+          editing={draftName !== undefined}
         />
         <div className="min-w-0">
           <p className="font-mono text-micro tracking-[0.08em] text-subtle-foreground uppercase">

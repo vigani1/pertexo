@@ -47,7 +47,13 @@ export function fixtureWorkspace(
 }
 
 export type RunFixtureStatus =
-  'queued' | 'running' | 'waiting' | 'succeeded' | 'failed' | 'outcome_unknown';
+  | 'queued'
+  | 'running'
+  | 'waiting'
+  | 'succeeded'
+  | 'failed'
+  | 'timed_out'
+  | 'outcome_unknown';
 
 export function fixtureRun(
   id: string,

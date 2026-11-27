@@ -1,3 +1,4 @@
+import { deferred } from '../../../test/support/fixtures/workflow-editor';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 
@@ -169,12 +170,27 @@ for (const width of [375, 1280]) {
         path: temporaryTestPath(`pertexo-245-${action}-${String(width)}.png`),
       });
       if (action === 'menu') {
+        const response = deferred<undefined>();
+        await page.route(
+          '**/v1/workspaces/*/workflows/*/runs',
+          async (route) => {
+            await response.promise;
+            await route.fallback();
+          },
+        );
         await page
           .getByRole('button', { name: 'Test and run actions', exact: true })
           .click();
         await page
           .getByRole('menuitem', { name: 'Run published version' })
           .click();
+        try {
+          await expect(
+            page.getByText('Starting…', { exact: true }),
+          ).toBeVisible();
+        } finally {
+          response.resolve(undefined);
+        }
       } else {
         await page
           .getByRole('button', { name: 'Run now', exact: true })

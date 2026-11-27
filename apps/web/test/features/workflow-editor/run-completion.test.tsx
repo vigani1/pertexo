@@ -99,7 +99,11 @@ it.each(['succeeded', 'outcome_unknown'] as const)(
     await renderLoadedApp(editorPath);
     await findCanvas();
     const event = userEvent.setup();
-    await event.click(await screen.findByRole('button', { name: 'Run' }));
+    await event.click(
+      await screen.findByRole('button', {
+        name: /^Test and run actions$/u,
+      }),
+    );
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),
     );

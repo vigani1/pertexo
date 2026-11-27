@@ -24,10 +24,7 @@ export function InvitationHeading({
   return (
     <div className="flex flex-col items-center text-center">
       <span className="relative grid size-16 place-items-center rounded-full p-1 before:absolute before:inset-0 before:rounded-full before:bg-conic before:from-primary before:via-secondary before:to-primary before:opacity-70 before:[mask:radial-gradient(circle,transparent_calc(50%-2px),black_calc(50%-1.5px))]">
-        <WorkspaceMark
-          name={workspaceName}
-          className="size-12 rounded-full text-base"
-        />
+        <WorkspaceMark name={workspaceName} size="invitation" />
       </span>
       <AuthLensTitle id="invitation-title" className="mt-5 text-balance">
         {children}

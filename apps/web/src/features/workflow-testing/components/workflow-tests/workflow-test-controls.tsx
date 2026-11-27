@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/class-names';
+import { LoadingOrb } from '@/components/ui/loading-orb';
 import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
 
 function testBusy(tests: WorkflowTests) {
@@ -21,7 +21,12 @@ function testBusy(tests: WorkflowTests) {
 export function WorkflowTestButton({
   tests,
   runItems = null,
-}: Readonly<{ tests: WorkflowTests; runItems?: ReactNode }>) {
+  runPending = false,
+}: Readonly<{
+  tests: WorkflowTests;
+  runItems?: ReactNode;
+  runPending?: boolean;
+}>) {
   if (!tests.enabled && runItems === null) return null;
   return (
     <div className="inline-flex">
@@ -29,7 +34,7 @@ export function WorkflowTestButton({
         <Button
           variant="outline"
           size="sm"
-          className="rounded-r-none"
+          joined="start"
           disabled={testBusy(tests)}
           aria-label="Test workflow"
           onClick={() => void tests.prepare()}
@@ -40,18 +45,27 @@ export function WorkflowTestButton({
       )}
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label="Test and run actions"
-          className={
-            tests.enabled
-              ? cn(
-                  buttonVariants({ variant: 'outline', size: 'icon-sm' }),
-                  '-ml-px rounded-l-none',
-                )
-              : buttonVariants({ variant: 'outline', size: 'sm' })
-          }
+          aria-label={runPending ? 'Starting…' : 'Test and run actions'}
+          aria-busy={runPending || undefined}
+          disabled={runPending}
+          data-pending={runPending ? '' : undefined}
+          className={buttonVariants({
+            variant: 'outline',
+            size: tests.enabled && !runPending ? 'icon-sm' : 'sm',
+            joined: tests.enabled ? 'end' : undefined,
+          })}
         >
-          {tests.enabled ? null : 'Run'}
-          <ChevronDownIcon aria-hidden="true" />
+          {runPending ? (
+            <>
+              <LoadingOrb data-icon="inline-start" />
+              Starting…
+            </>
+          ) : (
+            <>
+              {tests.enabled ? null : 'Run'}
+              <ChevronDownIcon aria-hidden="true" />
+            </>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           {tests.enabled ? <WorkflowTestMenuItems tests={tests} /> : null}
