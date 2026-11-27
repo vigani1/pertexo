@@ -16,6 +16,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import {
   canRunWorkflow,
   describeWorkflowState,
@@ -136,13 +137,15 @@ function RowTitle({
 function RowRuns({
   summary,
 }: Readonly<{ summary: WorkflowSummary['listSummary'] }>) {
+  // The week slides with the clock, so a list left open stays honest.
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.chart });
   if (summary?.recentRuns === undefined)
     return (
       <span className="font-mono text-caption text-subtle-foreground">
         Couldn’t load
       </span>
     );
-  return <RunStrip strip={failureStrip(summary.recentRuns, Date.now())} />;
+  return <RunStrip strip={failureStrip(summary.recentRuns, nowMs)} />;
 }
 
 function UpdatedAt({ at }: Readonly<{ at: string }>) {

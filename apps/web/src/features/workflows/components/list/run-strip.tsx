@@ -8,13 +8,7 @@ import { FAILURE_STRIP_DAYS, type FailureStrip } from '../../model/run-strip';
  * tick for each failure. A week without runs is a faint dashed line.
  */
 export function RunStrip({ strip }: Readonly<{ strip: FailureStrip }>) {
-  const window = `Last ${String(FAILURE_STRIP_DAYS)} days`;
-  const label =
-    strip.start === undefined
-      ? `${window}: no runs`
-      : strip.ticks.length === 0
-        ? `${window}: no failures`
-        : `${window}: ${formatCount(strip.ticks.length, 'failed run')}`;
+  const label = `Last ${String(FAILURE_STRIP_DAYS)} days: ${stripSummary(strip)}`;
   return (
     <span role="img" aria-label={label} className="relative block h-4 w-full">
       <span
@@ -48,4 +42,10 @@ export function RunStrip({ strip }: Readonly<{ strip: FailureStrip }>) {
       ))}
     </span>
   );
+}
+
+function stripSummary(strip: FailureStrip): string {
+  if (strip.start === undefined) return 'no runs';
+  if (strip.ticks.length === 0) return 'no failures';
+  return formatCount(strip.ticks.length, 'failed run');
 }
