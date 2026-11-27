@@ -1,8 +1,11 @@
 import type {
+  PendingTaskDetail,
   PendingTaskSummary,
   PendingTaskListQuery,
 } from '@pertexo/contracts';
 import { formatTimeSpan } from '@/lib/format/time';
+import { formatCount } from '@/lib/format/count';
+import { listRoles } from '@/features/workspaces/public';
 
 type TaskWindow = Pick<
   PendingTaskSummary,
@@ -139,3 +142,28 @@ const OUTCOME_VERBS: Readonly<
   rejected: 'rejected',
   submitted: 'answered',
 };
+
+/**
+ * Who a request went to, from its audience: "It went to owners and admins
+ * and 2 named members. The first decision counts."
+ */
+export function audienceSentence(
+  task: Pick<PendingTaskDetail, 'kind' | 'audience'>,
+): string {
+  const { roles, memberIds } = task.audience;
+  const people =
+    memberIds.length === 0
+      ? undefined
+      : formatCount(memberIds.length, 'named member');
+  let to = people ?? '';
+  if (roles.length > 0)
+    to =
+      people === undefined
+        ? listRoles(roles)
+        : `${listRoles(roles)} and ${people}`;
+  // Whether the run's starter may decide is the step's own setting, which
+  // the request doesn't carry; input is open to the starter.
+  return task.kind === 'approval'
+    ? `It went to ${to}. The first decision counts.`
+    : `It went to ${to}. The first response counts, including from the person who started the run.`;
+}

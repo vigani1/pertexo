@@ -326,3 +326,40 @@ it.each([
     ).not.toBeInTheDocument();
   },
 );
+
+it('shows an approval beside the waiting list with who decides and what each answer does', async () => {
+  const task = detail('approval');
+  mockServer.use(
+    ...identityHandlers(ownerWorkspace),
+    http.get(base, () =>
+      HttpResponse.json({
+        items: [summary()],
+        nextCursor: null,
+        pendingCount: 1,
+      }),
+    ),
+    http.get(`${base}/${taskId}`, () => HttpResponse.json({ task })),
+  );
+  await renderLoadedApp(`/w/${workspaceId}/requests/${taskId}`);
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'Review payment' }),
+  ).toBeVisible();
+  const who = screen.getByRole('region', { name: 'Who decides' });
+  expect(who).toHaveTextContent(
+    'It went to owners and admins. The first decision counts. You can answer it.',
+  );
+  const outcomes = screen.getByRole('region', {
+    name: 'What each answer does',
+  });
+  expect(outcomes).toHaveTextContent(
+    'ApproveThe run carries on along the step’s Approved path.',
+  );
+  expect(outcomes).toHaveTextContent(
+    'this step fails. A failure route takes over if the workflow has one.',
+  );
+  // The list beside it marks this request as the open one.
+  const list = screen.getByRole('list', { name: 'Requests' });
+  expect(
+    within(list).getByRole('link', { name: 'Review payment' }),
+  ).toHaveAttribute('aria-current', 'page');
+});

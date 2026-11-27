@@ -16,9 +16,18 @@ export function PageHeader({ className, ...props }: ComponentProps<'header'>) {
   );
 }
 
-export function PageHeaderTitle({ className, ...props }: ComponentProps<'h1'>) {
+/**
+ * The page's title. Beside a detail that owns the page's title (list and
+ * detail), the list's title steps down to a second-level heading.
+ */
+export function PageHeaderTitle({
+  className,
+  level = 1,
+  ...props
+}: ComponentProps<'h1'> & Readonly<{ level?: 1 | 2 }>) {
+  const Heading = level === 1 ? 'h1' : 'h2';
   return (
-    <h1
+    <Heading
       data-slot="page-header-title"
       className={cn(
         'font-display text-4xl leading-tight [--display-width:80%] sm:text-display',

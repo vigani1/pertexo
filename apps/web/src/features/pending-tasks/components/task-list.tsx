@@ -48,10 +48,12 @@ export function TaskList({
   scope,
   filters,
   compact = false,
+  selectedTaskId,
 }: Readonly<{
   scope: TaskScope;
   filters: Omit<PendingTaskListQuery, 'after'>;
   compact?: boolean;
+  selectedTaskId?: string | undefined;
 }>) {
   const query = useInfiniteQuery(tasksQueryOptions(scope, filters));
   // Expiry reads "expires in 12 minutes"; a minute's tick keeps it honest.
@@ -64,6 +66,12 @@ export function TaskList({
     >
       {(data) => {
         const items = data.pages.flatMap((page) => page.items);
+        // Waiting requests come soonest deadline first, within the pages
+        // loaded so far.
+        const ordered =
+          filters.status === 'pending'
+            ? [...items].sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
+            : items;
         return (
           <div>
             {items.length === 0 ? (
@@ -72,13 +80,16 @@ export function TaskList({
                 waiting={filters.status === 'pending'}
               />
             ) : (
-              <ul className="-mx-3">
-                {(compact ? items.slice(0, 5) : items).map((task) => (
+              <ul aria-label="Requests" className="-mx-3">
+                {(compact ? ordered.slice(0, 5) : ordered).map((task) => (
                   <TaskRow
                     key={task.id}
                     scope={scope}
                     task={task}
                     nowMs={nowMs}
+                    selected={task.id === selectedTaskId}
+                    inDetail={selectedTaskId !== undefined}
+                    filters={filters}
                   />
                 ))}
               </ul>
