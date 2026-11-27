@@ -1,7 +1,7 @@
 import { tabTileClass } from '@/components/ui/tabs';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { Link, type LinkProps } from '@tanstack/react-router';
+import { Link, useNavigate, type LinkProps } from '@tanstack/react-router';
 import { ArrowLeftIcon, EllipsisIcon, MessageSquareIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
@@ -193,7 +193,9 @@ export function WorkflowHubBar({
             aria-current={activeTab === 'comments' ? 'page' : undefined}
             className={cn(
               buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-              'aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground',
+              // A phone keeps its row for the name and save state; Comments
+              // waits in ⋯ there.
+              'aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground max-sm:hidden',
             )}
           >
             <MessageSquareIcon aria-hidden="true" />
@@ -251,6 +253,7 @@ function HubSecondaryActions({
 }>) {
   const [dialog, setDialog] = useState<'export' | 'cases' | 'duplicate'>();
   const phone = useMediaQuery(PHONE_MEDIA_QUERY);
+  const navigate = useNavigate();
   const localRef = useRef<HTMLButtonElement>(null);
   const moreRef = overflowRef ?? localRef;
   function finalFocus() {
@@ -301,6 +304,21 @@ function HubSecondaryActions({
                   Input cases
                 </DropdownMenuItem>
               </>
+            ) : null}
+            {phone ? (
+              <DropdownMenuItem
+                onClick={() =>
+                  void navigate({
+                    to: '/w/$workspaceId/workflows/$workflowId/comments',
+                    params: {
+                      workspaceId: workspace.id,
+                      workflowId: workflow.id,
+                    },
+                  })
+                }
+              >
+                Comments
+              </DropdownMenuItem>
             ) : null}
             {canDuplicateWorkflow(workspace, workflow) ? (
               <DropdownMenuItem
