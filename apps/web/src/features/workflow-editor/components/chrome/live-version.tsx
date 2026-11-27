@@ -43,7 +43,7 @@ export function LiveVersion({
   // In the state word's colour, so it reads as one phrase: "Live v4".
   const { tone } = describeWorkflowState(workflow);
   return (
-    <span className={cn('-ml-1.5', statusToneText[tone])}>
+    <span className={cn('sm:-ml-1.5', statusToneText[tone])}>
       v{version.data.versionNumber}
     </span>
   );

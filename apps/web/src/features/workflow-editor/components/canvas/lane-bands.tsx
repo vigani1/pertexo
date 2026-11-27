@@ -52,7 +52,10 @@ export function LaneBands() {
             height: band.height,
           }}
         >
-          <span className="absolute top-1.5 left-5 font-mono text-micro tracking-wide text-subtle-foreground">
+          <span
+            className="absolute top-1.5 font-mono text-micro tracking-wide whitespace-nowrap text-subtle-foreground"
+            style={{ left: band.labelX }}
+          >
             {band.label}
           </span>
         </div>
@@ -82,6 +85,8 @@ function laneBands(
     const top = Math.min(...laneBoxes.map((box) => box.y));
     if (laneBoxes.some((box) => box.y - top > ROW_TOLERANCE)) return null;
     const bottom = Math.max(...laneBoxes.map((box) => box.y + box.height));
+    // Named above the lane's first step, which a fitted view always shows.
+    const start = Math.min(...laneBoxes.map((box) => box.x));
     const opener =
       lane.opener === null ? undefined : byId.get(lane.opener.nodeId);
     bands.push({
@@ -92,6 +97,7 @@ function laneBands(
           ? 'main'
           : `${opener.label ?? opener.definition.key} · ${branchName(opener, lane.opener.port)}`,
       x: left,
+      labelX: start - left,
       y: top - BAND_PADDING.top,
       width: right - left,
       height: bottom - top + BAND_PADDING.top + BAND_PADDING.bottom,
