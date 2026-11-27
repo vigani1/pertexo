@@ -48,6 +48,13 @@ for (const width of [1280, 375]) {
     await expect(events.getByRole('listitem')).toHaveCount(1);
     await events.getByText('Details', { exact: true }).click();
     await expect(events.getByText('30', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'When: Any time' }).click();
+    const today = page.locator('button[aria-current="date"]');
+    await today.click();
+    await expect(today).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Apply range' }).click();
+    await expect(page).toHaveURL(/[?&]from=/u);
+    await expect(events.getByRole('listitem')).toHaveCount(1);
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export these events' }).click();
     const result = await download;
