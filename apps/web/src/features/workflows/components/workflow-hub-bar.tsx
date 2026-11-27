@@ -2,7 +2,7 @@ import { tabTileClass } from '@/components/ui/tabs';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { ArrowLeftIcon, EllipsisIcon } from 'lucide-react';
+import { ArrowLeftIcon, EllipsisIcon, MessageSquareIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,11 +57,6 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
     });
   tabs.push(
     {
-      tab: 'comments',
-      label: 'Comments',
-      to: '/w/$workspaceId/workflows/$workflowId/comments',
-    },
-    {
       tab: 'triggers',
       label: 'Triggers',
       to: '/w/$workspaceId/workflows/$workflowId/triggers',
@@ -88,7 +83,8 @@ const TITLE_CLASS =
 
 /**
  * The floating command bar shared by every tab of a workflow: identity on
- * the left (editors rename it in place), tabs in the middle, the active
+ * the left (editors rename it in place) with its discussion, the five tabs
+ * (Build, Runs, Triggers, Versions, Settings) in the middle, the active
  * tab's own actions on the right. `glyph` sits before the name (the
  * editor's pattern glyph) and `detail` under it (e.g. its save state).
  */
@@ -188,6 +184,20 @@ export function WorkflowHubBar({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {presence}
+          {/* The discussion sits beside who's here, not among the five
+              tabs that build and run the workflow. */}
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/comments"
+            params={{ workspaceId: workspace.id, workflowId }}
+            aria-label="Comments"
+            aria-current={activeTab === 'comments' ? 'page' : undefined}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+              'aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground',
+            )}
+          >
+            <MessageSquareIcon aria-hidden="true" />
+          </Link>
           {actions === undefined ? secondaryActions : null}
         </div>
       </div>
