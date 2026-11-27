@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { within, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -107,14 +107,14 @@ describe('connections page', () => {
       lens().getByText('Last tested').nextElementSibling,
     ).toHaveTextContent('Never');
     expect(lens().getByText('From a workflow run')).toBeVisible();
-    expect(await lens().findByText('Live as version 2')).toBeVisible();
+    expect(await lens().findByText(/Live as version 2$/u)).toBeVisible();
     await userEvent
       .setup()
       .click(lens().getByRole('button', { name: 'Load more' }));
     expect(
       // Both versions belong to one workflow, so they share its row.
       await lens().findByText(
-        'Live as version 2, 1 older version still used by runs (archived workflow)',
+        /Live as version 2, 1 older version still used by runs \(archived workflow\)/u,
       ),
     ).toBeVisible();
     expect(
@@ -193,7 +193,9 @@ describe('connections page', () => {
     const { queryClient } = await renderLoadedApp(
       `/w/${workspaceId}/connections`,
     );
-    expect(await screen.findByText('Primary Slack')).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: /^Primary Slack,/u }),
+    ).toBeVisible();
     expect(screen.getByText('Unknown')).toBeVisible();
     expect(screen.getByText('never tested')).toBeVisible();
 
@@ -204,12 +206,18 @@ describe('connections page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Couldn’t refresh. Showing results from/u,
     );
-    expect(screen.getByText('Primary Slack')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: /^Primary Slack,/u }),
+    ).toBeVisible();
 
     response = 'ok';
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Retry' }));
+      .click(
+        within(screen.getByRole('alert')).getByRole('button', {
+          name: 'Retry',
+        }),
+      );
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
@@ -226,7 +234,7 @@ describe('connections page', () => {
     expect(
       screen.queryByRole('button', { name: 'Add connection' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('Primary Slack')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Primary Slack')).toHaveLength(0);
   });
   it('paginates safe connection metadata and shows health in words', async () => {
     mockServer.use(
@@ -260,7 +268,9 @@ describe('connections page', () => {
     );
 
     await renderLoadedApp(`/w/${workspaceId}/connections`);
-    expect(await screen.findByText('Primary Slack')).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: /^Primary Slack,/u }),
+    ).toBeVisible();
     expect(screen.getByText('last test failed · invalid token')).toBeVisible();
     expect(screen.getByText('1 needs reconnecting')).toBeVisible();
     await userEvent

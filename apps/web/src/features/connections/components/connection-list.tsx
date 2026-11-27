@@ -1,9 +1,8 @@
 import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
-import { ChevronRightIcon, LockIcon } from 'lucide-react';
+import { LockIcon } from 'lucide-react';
+import { Row, RowList } from '@/components/patterns/lists/row';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { formatRelativeTime } from '@/lib/format/time';
-import { cn } from '@/lib/class-names';
 import {
   describeConnectionHealth,
   describeConnectionStatus,
@@ -12,17 +11,19 @@ import {
   connectionDefinition,
   describeConnectionKind,
 } from '../model/connection-providers';
-import { ProviderTile } from './provider-tile';
 
 function ConnectionRow({
   connection,
+  selected,
   onOpen,
 }: Readonly<{
   connection: ConnectionResponse;
+  selected: boolean;
   onOpen: (connectionId: string) => void;
 }>) {
   const status = describeConnectionStatus(connection.status, connection.health);
   const definitions = useConnectionDefinitions();
+  // Only a connection that needs something says more than its kind.
   const health = describeConnectionHealth(
     connection,
     undefined,
@@ -33,18 +34,19 @@ function ConnectionRow({
     ),
   );
   return (
-    <li className="row-divider">
+    <Row selected={selected} className="p-0">
       <button
         type="button"
-        aria-label={`${connection.name}, ${status.label}, ${health.text}`}
-        className="group/row grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-card focus-ring sm:grid-cols-[auto_minmax(0,1fr)_10rem_minmax(0,13rem)_6rem_auto]"
+        aria-current={selected ? 'true' : undefined}
+        aria-label={`${connection.name}, ${status.label}`}
+        className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-3 rounded-lg px-3.5 py-3 text-left outline-none focus-ring"
         onClick={() => {
           onOpen(connection.id);
         }}
       >
-        <ProviderTile provider={connection.providerKey} />
+        <StatusMark tone={status.tone} display="mark" />
         <span className="min-w-0">
-          <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+          <span className="flex min-w-0 items-center gap-1.5 text-lead font-semibold">
             <span className="truncate">{connection.name}</span>
             {connection.accessMode === 'restricted' ? (
               <LockIcon
@@ -54,56 +56,43 @@ function ConnectionRow({
               />
             ) : null}
           </span>
-          <span className="block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-meta text-subtle-foreground">
             {describeConnectionKind(
               definitions,
               connection.providerKey,
               connection.authType,
             )}
           </span>
+          {health.tone === 'attention' ? (
+            <span className="block truncate font-mono text-caption text-warning">
+              {health.text}
+            </span>
+          ) : null}
         </span>
-        <StatusMark tone={status.tone} className="max-sm:hidden">
-          {status.label}
-        </StatusMark>
-        <span
-          className={cn(
-            'col-start-2 truncate font-mono text-caption sm:col-start-auto',
-            health.tone === 'attention'
-              ? 'text-warning'
-              : 'text-subtle-foreground',
-          )}
-        >
-          <span className="sm:hidden">{status.label} · </span>
-          {health.text}
-        </span>
-        <span className="hidden font-mono text-caption text-subtle-foreground sm:block">
-          {formatRelativeTime(connection.updatedAt)}
-        </span>
-        <ChevronRightIcon
-          aria-hidden="true"
-          className="col-start-3 row-span-2 row-start-1 size-4 text-subtle-foreground transition-transform group-hover/row:translate-x-0.5 sm:col-start-auto sm:row-span-1 sm:row-start-auto"
-        />
       </button>
-    </li>
+    </Row>
   );
 }
 
 export function ConnectionList({
   connections,
+  selectedId,
   onOpen,
 }: Readonly<{
   connections: readonly ConnectionResponse[];
+  selectedId: string | undefined;
   onOpen: (connectionId: string) => void;
 }>) {
   return (
-    <ul aria-label="Connections" className="flex flex-col">
+    <RowList aria-label="Connections">
       {connections.map((connection) => (
         <ConnectionRow
           key={connection.id}
           connection={connection}
+          selected={connection.id === selectedId}
           onOpen={onOpen}
         />
       ))}
-    </ul>
+    </RowList>
   );
 }

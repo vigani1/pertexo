@@ -25,7 +25,6 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { HowItWorks } from '@/components/patterns/guidance/how-it-works';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +38,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
-import { ConnectionDetailSheet } from '../components/detail/panel';
+import { ConnectionDetail } from '../components/detail/panel';
+import { ListDetail } from '@/components/patterns/lists/list-detail';
 import { ProviderSockets } from '../components/provider-sockets';
 import { connectionsInfiniteQueryOptions } from '../data/connections.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
@@ -66,6 +66,11 @@ function ConnectionsHeader({
     <PageHeader>
       <div>
         <PageHeaderTitle>Connections</PageHeaderTitle>
+        <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">
+          Steps such as HTTP request, Send Slack message, Send email and HMAC
+          signature pick a connection, and so do Slack and email alerts. Secrets
+          are stored encrypted and never shown again.
+        </p>
         {hasConnections ? (
           <PageHeaderMeta>
             <span>
@@ -226,8 +231,15 @@ function ConnectionsSession({
     ...(search.view === undefined ? {} : { view: search.view }),
   };
 
+  const visible = items.filter((item) =>
+    search.view === 'revoked'
+      ? item.status === 'revoked'
+      : item.status !== 'revoked',
+  );
+  const chosenId = search.connection ?? visible[0]?.id;
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <ConnectionsHeader
         counts={counts}
         hasConnections={items.length > 0}
@@ -237,54 +249,47 @@ function ConnectionsSession({
         }}
       />
 
-      {canManage ? <ProviderSockets onConnect={openAdd} /> : null}
+      {canManage && items.length === 0 ? (
+        <ProviderSockets onConnect={openAdd} />
+      ) : null}
 
-      <ConnectionsBody
-        connections={connections}
-        items={items}
-        revokedCount={counts.revoked}
-        canManage={canManage}
-        view={search.view === 'revoked' ? 'revoked' : 'current'}
-        onViewChange={(view) => {
-          onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
-        }}
-        onOpen={(connection) => {
-          onSearchChange({ ...withoutLens, connection });
-        }}
-      />
-
-      <HowItWorks
-        title="How connections work"
-        className="border-t border-border pt-8"
-        steps={[
-          {
-            title: 'Connect a service',
-            body: 'Add a Slack bot token, an API’s headers, a Resend API key, an SMTP login or a signing key. It’s stored encrypted, and nobody, including you, can see it again.',
-          },
-          {
-            title: 'Keep it working',
-            body: 'Test it from its page to see the service still answers, and replace the secret there when it changes.',
-          },
-          {
-            title: 'Use it in steps and alerts',
-            body: 'Steps such as HTTP request, Send Slack message, Send email and HMAC signature pick a connection, and so do Slack and email alerts.',
-          },
-        ]}
-      />
-
-      <ConnectionDetailSheet
-        scope={scope}
-        connectionId={search.connection}
-        placeholder={items.find((item) => item.id === search.connection)}
-        permissions={{
-          canTest,
-          canManage,
-          canReadUsage,
-          canFollow: workspace.status === 'active',
-        }}
-        onClose={() => {
+      <ListDetail
+        showing={search.connection === undefined ? 'list' : 'detail'}
+        backLabel="All connections"
+        onBack={() => {
           onSearchChange(withoutLens);
         }}
+        list={
+          <ConnectionsBody
+            connections={connections}
+            items={items}
+            revokedCount={counts.revoked}
+            canManage={canManage}
+            view={search.view === 'revoked' ? 'revoked' : 'current'}
+            onViewChange={(view) => {
+              onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
+            }}
+            selectedId={chosenId}
+            onOpen={(connection) => {
+              onSearchChange({ ...withoutLens, connection });
+            }}
+          />
+        }
+        detail={
+          chosenId === undefined ? null : (
+            <ConnectionDetail
+              scope={scope}
+              connectionId={chosenId}
+              placeholder={items.find((item) => item.id === chosenId)}
+              permissions={{
+                canTest,
+                canManage,
+                canReadUsage,
+                canFollow: workspace.status === 'active',
+              }}
+            />
+          )
+        }
       />
       {canManage ? (
         <AddConnectionSheet

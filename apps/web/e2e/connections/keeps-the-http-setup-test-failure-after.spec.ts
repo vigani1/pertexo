@@ -87,12 +87,16 @@ for (const width of [390, 1280]) {
     ).toBeVisible();
     await lens.getByRole('button', { name: 'Done' }).click();
     await expect(
-      page.getByText('last test failed · address not found'),
+      page
+        .getByRole('list', { name: 'Connections' })
+        .getByText('last test failed · address not found'),
     ).toBeVisible();
     await expect(page.getByText('never tested')).toHaveCount(0);
     await page.reload();
     await expect(
-      page.getByText('last test failed · address not found'),
+      page
+        .getByRole('list', { name: 'Connections' })
+        .getByText('last test failed · address not found'),
     ).toBeVisible();
     expect(
       await page.evaluate(

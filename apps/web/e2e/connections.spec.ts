@@ -235,18 +235,18 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
     .getByRole('button', { name: /Incident Slack, Needs reauthorization/u })
     .focus();
   await page.keyboard.press('Enter');
-  const lens = page.locator('[data-slot="sheet-content"]');
+  const lens = page.locator('[data-slot="connection-detail"]');
   await expect(
     lens.getByText('run credential rejected · Slack token revoked'),
   ).toBeVisible();
   await expect(
     lens.getByText('Last tested').locator('xpath=following-sibling::dd[1]'),
   ).toHaveText('Never');
-  await expect(lens.getByText('Live as version 2')).toBeVisible();
+  await expect(lens.getByText(/Live as version 2$/u)).toBeVisible();
   await lens.getByRole('button', { name: 'Load more' }).click();
   await expect(
     lens.getByText(
-      'Live as version 2, 1 older version still used by runs (archived workflow)',
+      /Live as version 2, 1 older version still used by runs \(archived workflow\)/u,
     ),
   ).toBeVisible();
   await page.screenshot({

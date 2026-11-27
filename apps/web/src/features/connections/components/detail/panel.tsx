@@ -8,16 +8,7 @@ import { LockIcon } from 'lucide-react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Separator } from '@/components/ui/separator';
 import { useNotifications } from '@/components/ui/use-notifications';
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { QueryView } from '@/components/patterns/states/query-view';
@@ -177,7 +168,7 @@ function DetailBody({
     setMode('overview');
   };
   return (
-    <SheetBody className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <ConnectionState connection={connection} />
       {mode === 'overview' ? (
         <>
@@ -187,17 +178,15 @@ function DetailBody({
             permissions={permissions}
             onMode={setMode}
           />
-          <Separator />
           <ConnectionFacts connection={connection} />
-          <Separator />
           <ConnectionUsage
             scope={scope}
             connectionId={connection.id}
+            connectionName={connection.name}
             canRead={permissions.canReadUsage ?? false}
           />
           {permissions.canFollow === false ? null : (
             <>
-              <Separator />
               <NoticeSubjectActions
                 scope={scope}
                 subject={{
@@ -211,10 +200,9 @@ function DetailBody({
           {/* Last, after everything it would stop. */}
           {permissions.canManage && connection.status !== 'revoked' ? (
             <>
-              <Separator />
               <section
                 aria-label="Danger zone"
-                className="flex flex-wrap items-center justify-between gap-3"
+                className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"
               >
                 <p className="max-w-64 text-sm text-muted-foreground">
                   Revoking stops every step and alert that uses it.
@@ -260,26 +248,24 @@ function DetailBody({
           onDone={back}
         />
       ) : null}
-    </SheetBody>
+    </div>
   );
 }
 
 /**
- * The detail lens, backed by the single-connection read. Test, replace and
- * revoke live here instead of in every row.
+ * The chosen connection beside the list, backed by the single-connection
+ * read. Test, replace and revoke live here instead of in every row.
  */
 function ConnectionDetailSession({
   scope,
   connectionId,
   placeholder,
   permissions,
-  onClose,
 }: Readonly<{
   scope: ConnectionMutationScope;
-  connectionId: string | undefined;
+  connectionId: string;
   placeholder: ConnectionResponse | undefined;
   permissions: ConnectionPermissions;
-  onClose: () => void;
 }>) {
   const definitions = useConnectionDefinitions();
   const [mode, setMode] = useState<Mode>('overview');
@@ -297,90 +283,85 @@ function ConnectionDetailSession({
       scope.apiClient,
       scope.userId,
       scope.workspaceId,
-      connectionId ?? '',
+      connectionId,
     ),
-    enabled: connectionId !== undefined,
     ...(placeholder === undefined ? {} : { placeholderData: placeholder }),
   });
   return (
-    <Sheet
-      open={connectionId !== undefined}
-      onOpenChange={(open) => {
-        if (!open && !sharing.closeLocked) onClose();
-      }}
+    <QueryView
+      query={detail}
+      resource="This connection"
+      loading={<ConnectionLoading />}
+      failure={(error) =>
+        isReadAccessLost(error) ? (
+          <ConnectionUnreadable error={error} />
+        ) : undefined
+      }
+      error={({ error, retrying, retry }) => (
+        <ConnectionUnreadable
+          error={error}
+          retrying={retrying}
+          onRetry={retry}
+        />
+      )}
     >
-      <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
-        {connectionId === undefined ? null : (
-          <QueryView
-            query={detail}
-            resource="This connection"
-            loading={<ConnectionLoading />}
-            failure={(error) =>
-              isReadAccessLost(error) ? (
-                <ConnectionUnreadable error={error} />
-              ) : undefined
-            }
-            error={({ error, retrying, retry }) => (
-              <ConnectionUnreadable
-                error={error}
-                retrying={retrying}
-                onRetry={retry}
-              />
-            )}
-          >
-            {(connection) => (
-              <>
-                <SheetHeader className="flex-row items-center gap-3">
-                  <ProviderTile provider={connection.providerKey} size="lg" />
-                  <div className="min-w-0">
-                    <SheetTitle className="truncate">
-                      {connection.name}
-                    </SheetTitle>
-                    <SheetDescription>
-                      {describeConnectionKind(
-                        definitions,
-                        connection.providerKey,
-                        connection.authType,
-                      )}
-                    </SheetDescription>
-                    {connection.accessMode === 'restricted' ? (
-                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <LockIcon aria-hidden="true" className="size-3" />
-                        Only chosen people can use it
-                      </p>
-                    ) : null}
-                  </div>
-                </SheetHeader>
-                <DetailBody
-                  key={connection.id}
-                  scope={scope}
-                  connection={connection}
-                  permissions={permissions}
-                  sharing={sharing}
-                  mode={mode}
-                  onMode={setMode}
-                />
-              </>
-            )}
-          </QueryView>
-        )}
-      </SheetContent>
-    </Sheet>
+      {(connection) => (
+        <article
+          data-slot="connection-detail"
+          aria-labelledby="connection-name"
+          className="flex min-w-0 flex-col gap-5"
+        >
+          <header className="flex items-center gap-3">
+            <ProviderTile provider={connection.providerKey} size="lg" />
+            <div className="min-w-0">
+              <h2
+                id="connection-name"
+                className="truncate font-heading text-2xl font-semibold"
+              >
+                {connection.name}
+              </h2>
+              <p className="text-meta text-subtle-foreground">
+                {describeConnectionKind(
+                  definitions,
+                  connection.providerKey,
+                  connection.authType,
+                )}
+                , stored encrypted
+              </p>
+              {connection.accessMode === 'restricted' ? (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <LockIcon aria-hidden="true" className="size-3" />
+                  Only chosen people can use it
+                </p>
+              ) : null}
+            </div>
+          </header>
+          <DetailBody
+            key={connection.id}
+            scope={scope}
+            connection={connection}
+            permissions={permissions}
+            sharing={sharing}
+            mode={mode}
+            onMode={setMode}
+          />
+        </article>
+      )}
+    </QueryView>
   );
 }
 
-export function ConnectionDetailSheet(
+export function ConnectionDetail(
   props: Readonly<{
     scope: ConnectionMutationScope;
-    connectionId: string | undefined;
+    connectionId: string;
     placeholder: ConnectionResponse | undefined;
     permissions: ConnectionPermissions;
-    onClose: () => void;
   }>,
 ) {
   return (
     <ConnectionDetailSession
-      key={`${props.scope.userId}:${props.scope.workspaceId}:${props.connectionId ?? 'closed'}`}
+      key={`${props.scope.userId}:${props.scope.workspaceId}:${props.connectionId}`}
       {...props}
     />
   );
