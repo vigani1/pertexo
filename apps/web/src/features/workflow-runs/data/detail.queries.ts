@@ -15,15 +15,20 @@ export function workflowRunQueryOptions(
   userId: string,
   workspaceId: string,
   runId: string,
+  surface: 'page' | 'canvas' = 'page',
 ) {
-  const queryKey = workflowRunKeys.detail(userId, workspaceId, runId);
+  const runKey = workflowRunKeys.detail(userId, workspaceId, runId);
+  // Leaving the canvas cancels its in-flight read when its observer unmounts.
+  // The route loader needs its own request to survive that transition.
+  const queryKey =
+    surface === 'canvas' ? ([...runKey, surface] as const) : runKey;
   return queryOptions({
     queryKey,
     queryFn: async ({ signal, client }) => {
       try {
         return await getWorkflowRun(apiClient, workspaceId, runId, signal);
       } catch (error: unknown) {
-        await forgetUnavailableRunReads(client, queryKey, queryKey, error);
+        await forgetUnavailableRunReads(client, runKey, queryKey, error);
         throw error;
       }
     },
