@@ -9,6 +9,7 @@ import { mockIdentity } from './auth/fixture';
 import {
   approvalId,
   failedRunId,
+  installAssistantProposal,
   installCoreFlowRoutes,
 } from './core-flow-layout-fixture';
 
@@ -31,7 +32,10 @@ async function shot(page: Page, name: string, size: string) {
   await page.evaluate(() => document.fonts.ready);
   if (capture) {
     await mkdir(capture, { recursive: true });
-    await page.screenshot({ path: `${capture}/${name}-${size}.png` });
+    await page.screenshot({
+      path: `${capture}/${name}-${size}.png`,
+      fullPage: true,
+    });
   }
   expect
     .soft(
@@ -105,3 +109,30 @@ test('the canvas shows a live run as it happens', async ({ page, context }) => {
   await page.goto(editorUrl);
   await shot(page, 'build-live', '1440x900-dark');
 });
+
+for (const colorScheme of ['dark', 'light'] as const)
+  test(`the assistant proposes beside the canvas in ${colorScheme}`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+    await mockIdentity(page, { authenticated: false });
+    await installCoreFlowRoutes(page);
+    await installAssistantProposal(page);
+    await addCsrfCookie(context);
+    await page.goto(editorUrl);
+    await page.getByRole('button', { name: 'Ask the assistant' }).click();
+    const panel = page.getByRole('complementary', { name: 'Assistant' });
+    await panel
+      .getByLabel('What should the workflow do?')
+      .fill('If the receipt email fails, post it to #finance in Slack.');
+    await panel.getByRole('button', { name: 'Send to model' }).click();
+    await expect(
+      panel.getByText('Post to #finance', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Workflow canvas' }),
+    ).toBeVisible();
+    await shot(page, 'build-assistant', `1440x900-${colorScheme}`);
+  });
