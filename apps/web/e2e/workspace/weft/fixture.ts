@@ -5,6 +5,7 @@ import {
   workspaceId,
 } from '../../workflow-editor/support';
 import { installPolishRoutes } from '../polish-layout-fixture';
+import { connectionUsage, connections } from './workspace-data';
 import {
   liveVersionId,
   nextRuns,
@@ -48,6 +49,25 @@ const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
 export async function installWorkspaceRoutes(page: Page) {
   await installPolishRoutes(page);
   await installWorkflowTabRoutes(page);
+  await installWorkspaceDataRoutes(page);
+}
+
+const workspaceApi = `**/v1/workspaces/${workspaceId}`;
+
+async function installWorkspaceDataRoutes(page: Page) {
+  await page.route(`${workspaceApi}/connections?**`, (route) =>
+    route.fulfill({ json: { items: connections, nextCursor: null } }),
+  );
+  await page.route(`${workspaceApi}/connections/*`, (route) =>
+    route.fulfill({
+      json:
+        connections.find((item) => route.request().url().endsWith(item.id)) ??
+        connections[0],
+    }),
+  );
+  await page.route(`${workspaceApi}/connections/*/usage?**`, (route) =>
+    route.fulfill({ json: connectionUsage }),
+  );
 }
 
 async function installWorkflowTabRoutes(page: Page) {

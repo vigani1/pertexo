@@ -8,18 +8,26 @@ import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionUsageQueryOptions } from '../../data/connections.queries';
 import type { ConnectionUsageResponse } from '@pertexo/contracts';
 import { pluralWord } from '@/lib/format/count';
+import { useState } from 'react';
+import { Row, RowList } from '@/components/patterns/lists/row';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
+import { SearchInput } from '@/components/ui/input';
+
+/** How many workflows the thread drawing shows before "and N more". */
+const THREADED_WORKFLOWS = 5;
 
 /** Retained published versions, not drafts or an inferred current graph. */
 export function ConnectionUsage({
   scope,
   connectionId,
+  connectionName,
   canRead,
 }: Readonly<{
   scope: ConnectionMutationScope;
   connectionId: string;
+  connectionName: string;
   canRead: boolean;
 }>) {
-  const describeStep = useStepDescriptions();
   const usage = useInfiniteQuery({
     ...connectionUsageQueryOptions(
       scope.apiClient,
@@ -29,15 +37,22 @@ export function ConnectionUsage({
     ),
     enabled: canRead,
   });
+  const workflows = usedByWorkflow(
+    usage.data?.pages.flatMap((page) => page.items) ?? [],
+  );
   return (
-    <section aria-label="Used by" className="flex flex-col gap-3">
-      <div>
-        <h3 className="font-semibold">Used by</h3>
-        <p className="text-xs text-muted-foreground">
-          Published versions that use it, including older ones runs still rely
-          on. Drafts aren’t counted.
-        </p>
-      </div>
+    <section aria-labelledby="used-by" className="flex flex-col gap-2">
+      <RuleHeading
+        id="used-by"
+        className="text-lead"
+        {...(workflows.length === 0 ? {} : { count: workflows.length })}
+      >
+        Used by
+      </RuleHeading>
+      <p className="text-meta text-subtle-foreground">
+        Published versions that use it, including older ones runs still rely on.
+        Drafts aren’t counted.
+      </p>
       {!canRead ? (
         <p className="text-sm text-muted-foreground">
           Workflow-read permission is needed to see usage.
@@ -57,33 +72,21 @@ export function ConnectionUsage({
               </p>
             }
           >
-            {(data) => (
-              <ul className="flex flex-col gap-3">
-                {usedByWorkflow(data.pages.flatMap((page) => page.items)).map(
-                  (workflow) => (
-                    <li key={workflow.workflowId} className="min-w-0 text-sm">
-                      <Link
-                        to="/w/$workspaceId/workflows/$workflowId/settings"
-                        params={{
-                          workspaceId: scope.workspaceId,
-                          workflowId: workflow.workflowId,
-                        }}
-                        className="block truncate rounded-sm text-action underline-offset-4 hover:underline focus-ring"
-                      >
-                        {workflow.workflowName}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {describeVersions(workflow)}
-                      </p>
-                      <p className="text-xs text-subtle-foreground">
-                        {workflow.operationKeys
-                          .map((key) => describeStep(key).name)
-                          .join(', ')}
-                      </p>
-                    </li>
-                  ),
-                )}
-              </ul>
+            {() => (
+              <>
+                <UsageThreads
+                  workspaceId={scope.workspaceId}
+                  connectionName={connectionName}
+                  workflows={workflows}
+                />
+                {workflows.length > THREADED_WORKFLOWS ? (
+                  <AllWorkflows
+                    workspaceId={scope.workspaceId}
+                    connectionName={connectionName}
+                    workflows={workflows}
+                  />
+                ) : null}
+              </>
             )}
           </QueryView>
           <LoadMore
@@ -95,6 +98,200 @@ export function ConnectionUsage({
             onLoadMore={() => void usage.fetchNextPage()}
           />
         </>
+      )}
+    </section>
+  );
+}
+
+/** Row height of a threaded workflow, in px, shared by the rows and the drawing. */
+const THREAD_ROW = 56;
+
+/**
+ * Threads from this connection to the first workflows that use it. Only the
+ * chosen connection draws them, so the page never fills with lines.
+ */
+function UsageThreads({
+  workspaceId,
+  connectionName,
+  workflows,
+}: Readonly<{
+  workspaceId: string;
+  connectionName: string;
+  workflows: readonly WorkflowUsage[];
+}>) {
+  const shown = workflows.slice(0, THREADED_WORKFLOWS);
+  const more = workflows.length - shown.length;
+  const ends = shown.length + (more > 0 ? 1 : 0);
+  const height = ends * THREAD_ROW;
+  const middle = height / 2;
+  return (
+    <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-x-3 sm:grid-cols-[12.75rem_minmax(0,1fr)]">
+      <div
+        aria-hidden="true"
+        className="relative max-sm:hidden"
+        style={{ height }}
+      >
+        <svg
+          width="204"
+          height={height}
+          viewBox={`0 0 204 ${String(height)}`}
+          className="absolute inset-0 overflow-visible"
+        >
+          {Array.from({ length: ends }, (_, index) => {
+            const y = index * THREAD_ROW + THREAD_ROW / 2;
+            const last = more > 0 && index === ends - 1;
+            return (
+              <g key={y}>
+                <path
+                  d={`M115 ${String(middle)} C 160 ${String(middle)}, 160 ${String(y)}, 196 ${String(y)}`}
+                  fill="none"
+                  className={last ? 'stroke-border' : 'stroke-border-strong'}
+                  strokeWidth="1.2"
+                  strokeDasharray={last ? '3 4' : undefined}
+                />
+                <circle
+                  cx="200"
+                  cy={y}
+                  r="2.8"
+                  className={
+                    last
+                      ? 'fill-none stroke-subtle-foreground'
+                      : 'fill-muted-foreground'
+                  }
+                />
+              </g>
+            );
+          })}
+          <circle
+            cx="110"
+            cy={middle}
+            r="10"
+            className="fill-none stroke-border-strong"
+          />
+          <circle
+            cx="110"
+            cy={middle}
+            r="5"
+            className="fill-muted-foreground"
+          />
+        </svg>
+        <span
+          className="absolute right-26 left-0 -translate-y-1/2 truncate text-right text-sm font-semibold"
+          style={{ top: middle }}
+        >
+          {connectionName}
+        </span>
+      </div>
+      <ul aria-label="Workflows using it" className="flex min-w-0 flex-col">
+        {shown.map((workflow) => (
+          <li
+            key={workflow.workflowId}
+            className="flex h-14 min-w-0 flex-col justify-center"
+          >
+            <WorkflowLink workspaceId={workspaceId} workflow={workflow} />
+          </li>
+        ))}
+        {more > 0 ? (
+          <li className="flex h-14 items-center">
+            <a
+              href="#all-workflows"
+              className="text-sm text-muted-foreground hover:text-foreground focus-ring"
+            >
+              and {String(more)} more {pluralWord(more, 'workflow')}
+            </a>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+function WorkflowLink({
+  workspaceId,
+  workflow,
+}: Readonly<{ workspaceId: string; workflow: WorkflowUsage }>) {
+  const describeStep = useStepDescriptions();
+  return (
+    <>
+      <Link
+        to="/w/$workspaceId/workflows/$workflowId"
+        params={{ workspaceId, workflowId: workflow.workflowId }}
+        className="block truncate rounded-sm text-sm font-semibold hover:underline focus-ring"
+      >
+        {workflow.workflowName}
+      </Link>
+      <span className="block truncate font-mono text-caption text-subtle-foreground">
+        {workflow.operationKeys
+          .map((key) => describeStep(key).name)
+          .join(' · ')}
+        {' · '}
+        {describeVersions(workflow)}
+      </span>
+    </>
+  );
+}
+
+/** Every workflow that uses it, searchable by workflow or step name. */
+function AllWorkflows({
+  workspaceId,
+  connectionName,
+  workflows,
+}: Readonly<{
+  workspaceId: string;
+  connectionName: string;
+  workflows: readonly WorkflowUsage[];
+}>) {
+  const describeStep = useStepDescriptions();
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLocaleLowerCase();
+  const matching = workflows.filter(
+    (workflow) =>
+      needle === '' ||
+      workflow.workflowName.toLocaleLowerCase().includes(needle) ||
+      workflow.operationKeys.some((key) =>
+        describeStep(key).name.toLocaleLowerCase().includes(needle),
+      ),
+  );
+  return (
+    <section
+      id="all-workflows"
+      aria-labelledby="all-workflows-heading"
+      className="mt-8 flex flex-col gap-2"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3
+          id="all-workflows-heading"
+          className="font-heading text-section font-semibold"
+        >
+          All {String(workflows.length)} workflows
+        </h3>
+        <SearchInput
+          className="w-full sm:w-70"
+          placeholder="Find a workflow or step"
+          aria-label={`Find a workflow or step that uses ${connectionName}`}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+      </div>
+      {matching.length === 0 ? (
+        <p className="py-4 text-sm text-muted-foreground">
+          No workflow or step matches “{query.trim()}”.
+        </p>
+      ) : (
+        <RowList aria-label={`All workflows using ${connectionName}`}>
+          {matching.map((workflow) => (
+            <Row
+              key={workflow.workflowId}
+              className="grid-cols-[minmax(0,1fr)]"
+            >
+              <span className="min-w-0">
+                <WorkflowLink workspaceId={workspaceId} workflow={workflow} />
+              </span>
+            </Row>
+          ))}
+        </RowList>
       )}
     </section>
   );

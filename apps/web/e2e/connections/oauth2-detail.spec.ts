@@ -64,7 +64,7 @@ async function showConnection(page: Page, body: unknown): Promise<void> {
   await page.goto(`/w/${workspaceId}/connections?connection=${connectionId}`);
 }
 
-const lens = (page: Page) => page.locator('[data-slot="sheet-content"]');
+const lens = (page: Page) => page.locator('[data-slot="connection-detail"]');
 
 // Detail, active facts: one sentence per kind of grant.
 for (const [name, grant, text] of [
@@ -251,7 +251,7 @@ test('form: server to server hides what it has no use for', async ({
   ]);
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/connections?add=http`);
-  const sheet = lens(page);
+  const sheet = page.locator('[data-slot="sheet-content"]');
   await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
   await expect(
     sheet.getByLabel('Authorization URL', { exact: true }),
@@ -309,7 +309,7 @@ test('form: server to server names only the token host', async ({ page }) => {
     }),
   );
   await page.goto(`/w/${workspaceId}/connections?add=http`);
-  const sheet = lens(page);
+  const sheet = page.locator('[data-slot="sheet-content"]');
   await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
   await sheet
     .getByRole('radio', { name: 'Server to server', exact: true })
