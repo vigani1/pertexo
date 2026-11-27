@@ -7,8 +7,8 @@ import {
 } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
-import { Button } from './button';
-import { Calendar } from './calendar';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   dateOf,
   defaultClock,
@@ -17,11 +17,20 @@ import {
   normalizeClock,
   splitDateTime,
   typedDate,
-} from './date-time-parts';
-import { Field, FieldControl, FieldDescription, FieldError } from './field';
-import { Input } from './input';
-import { Popover, PopoverContent, PopoverTrigger } from './popover';
-import { ToggleGroup, ToggleGroupItem } from './toggle-group';
+} from '@/components/ui/date-time-parts';
+import {
+  Field,
+  FieldControl,
+  FieldDescription,
+  FieldError,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type Choice = 'none' | 'hour' | 'day' | 'custom';
 

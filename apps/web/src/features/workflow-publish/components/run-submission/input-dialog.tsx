@@ -16,7 +16,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { type RunIntent, useRunInput } from '@/features/workflow-runs/public';
-import { DeadlineField } from '@/components/ui/deadline-field';
+import { DeadlineField } from '@/components/patterns/dates/deadline-field';
 import { runInputAvailability } from '../../model/run-input/availability';
 import { expectedRunVersion } from '../../model/run-input/version';
 import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/contracts';
