@@ -128,6 +128,7 @@ export function WorkspaceCommandPalette({
   return (
     <>
       <CommandPalette
+        workspaceName={workspace.name}
         open={open}
         onOpenChange={onOpenChange}
         groups={groups}

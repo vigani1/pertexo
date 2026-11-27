@@ -16,6 +16,7 @@ import {
 
 import {
   addStepButton,
+  openStepList,
   findCanvas,
   pressSave,
 } from '../../../support/fixtures/editor-actions';
@@ -50,6 +51,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     await waitFor(() => {
@@ -85,6 +87,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Reserve item'));
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     await waitFor(() => {
@@ -170,6 +173,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Branches'));
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     await waitFor(() => {
@@ -193,6 +197,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
+    await openStepList(event);
     await event.click(addStepButton(/Manual start/u));
     pressSave();
     await waitFor(() => {

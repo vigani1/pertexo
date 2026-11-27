@@ -56,7 +56,13 @@ for (const state of ['unchecked', 'valid', 'issues', 'unavailable'] as const) {
             }),
       );
       await page.route('**/v1/workspaces/*/workflows/*/validate', (route) => {
-        if (state === 'unavailable' || state === 'unchecked')
+        if (state === 'unchecked')
+          return new Promise<void>((resolve) => {
+            page.once('close', () => {
+              resolve();
+            });
+          });
+        if (state === 'unavailable')
           return route.fulfill({
             status: 503,
             json: {
@@ -91,15 +97,11 @@ for (const state of ['unchecked', 'valid', 'issues', 'unavailable'] as const) {
         page.getByText('Unsaved changes in another tab.', { exact: true }),
       ).toBeVisible();
       const expectedLabel = {
-        unchecked: 'Not checked yet',
+        unchecked: 'Checking…',
         valid: 'No issues',
         issues: '23 issues',
         unavailable: 'Couldn’t check',
       }[state];
-      if (state !== 'unchecked')
-        await expect(page.locator('#editor-issues-chip')).toHaveText(
-          expectedLabel,
-        );
       for (const [width, height] of [
         [375, 800],
         [390, 844],
@@ -120,11 +122,19 @@ for (const state of ['unchecked', 'valid', 'issues', 'unavailable'] as const) {
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth),
         ).toBeLessThanOrEqual(width);
-        const chip = page.locator('#editor-issues-chip');
-        await chip.focus();
-        await expect(chip).toBeFocused();
-        await expect(chip).toHaveAttribute('title', /.+/u);
-        await chip.click();
+        const overflow = page.getByRole('button', {
+          name: 'More workflow actions',
+          exact: true,
+        });
+        await overflow.focus();
+        await expect(overflow).toBeFocused();
+        await overflow.press('Enter');
+        const item = page.getByRole('menuitem', {
+          name: expectedLabel,
+          exact: true,
+        });
+        await expect(item).toBeVisible();
+        await item.press('Enter');
         await expect(
           page.getByRole('region', {
             name: state === 'issues' ? '23 issues' : 'Issues',
@@ -134,7 +144,7 @@ for (const state of ['unchecked', 'valid', 'issues', 'unavailable'] as const) {
         await page
           .getByRole('button', { name: 'Close issues', exact: true })
           .click();
-        await expect(chip).toBeFocused();
+        await expect(overflow).toBeFocused();
       }
     });
   }

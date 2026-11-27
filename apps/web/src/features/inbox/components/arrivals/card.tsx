@@ -117,7 +117,7 @@ export function InboxArrivalCard({
       )}
       <div
         data-side={data.side}
-        className="arrival-card popup-lens relative w-[min(20rem,calc(100vw-2rem))] rounded-lg px-4 pt-3 pb-4 text-sm"
+        className="arrival-card popup-lens relative w-[min(20.625rem,calc(100vw-2rem))] rounded-lg px-4 pt-3.5 pb-4.5 text-sm"
       >
         <div className="arrival-content">
           <div className="flex items-start gap-2">
@@ -134,7 +134,7 @@ export function InboxArrivalCard({
                   </>
                 )}
               </p>
-              <Toast.Title className="mt-1 truncate font-display text-lg leading-tight text-foreground [--display-optical-size:24] [--display-width:84%]">
+              <Toast.Title className="mt-1 font-heading text-section leading-tight wrap-anywhere text-foreground">
                 {view.title}
               </Toast.Title>
               <Toast.Description className="mt-1 text-label text-muted-foreground">
@@ -152,19 +152,18 @@ export function InboxArrivalCard({
               <NoticeTimer key={data.sequence} timeout={timeout} />
             </Toast.Close>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <span aria-hidden="true" className="flex items-center">
-              {view.marks.map((mark, index) => (
-                <StatusMark
-                  display="mark"
-                  // A fixed row whose order never changes.
-                  key={index}
-                  tone={mark}
-                  className="mr-1"
-                />
-              ))}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <span
+              aria-hidden="true"
+              className="order-last flex shrink-0 items-center gap-1"
+            >
+              {view.marks.length <= 1
+                ? null
+                : view.marks.map((mark, index) => (
+                    <StatusMark display="mark" key={index} tone={mark} />
+                  ))}
               {view.more === 0 ? null : (
-                <span className="ml-1.5 font-mono text-caption text-muted-foreground">
+                <span className="font-mono text-caption text-muted-foreground">
                   +{view.more}
                 </span>
               )}

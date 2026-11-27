@@ -2,7 +2,7 @@ import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import type { DirectorySettings } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
@@ -39,7 +39,8 @@ export function DirectoryCredentials({
     (credential) => credential.revokedAt === null,
   ).length;
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Provisioning credentials"
       description="Connect your identity provider to SCIM 2.0. Provisioning changes access across this organization’s linked workspaces; it never supplies passwords."
     >
@@ -160,6 +161,6 @@ export function DirectoryCredentials({
           </DialogContent>
         </Dialog>
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }

@@ -2,7 +2,7 @@ import {
   WorkflowTestHistory,
   type NodeTestHandle,
 } from '@/features/workflow-testing/workflow-testing-views.public';
-import { useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { DraftProposal } from './draft-proposal';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
@@ -21,9 +21,8 @@ import { useCanvasOverlays, useCanvasEditing } from './workspace-canvas';
 import { useWorkspaceChrome } from '../hooks/use-workspace-chrome';
 
 export type EditorChrome = Readonly<{
-  workflowTestAction: ReactNode;
-  /** The same test actions as items for the phone's ⋯ menu. */
-  workflowTestMenuItems: ReactNode;
+  overflowRef: RefObject<HTMLButtonElement | null>;
+  renderTestAction: (runItems: ReactNode) => ReactNode;
   renderFeedback: (feedback: ReactNode) => ReactNode;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
@@ -174,6 +173,7 @@ export function EditorWorkspace({
       panels={{
         editable: canUpdate,
         addStepCollapsed: addStep.collapsed,
+        onOpenAddStep: addStep.focus,
         mobilePanel: navigation.mobilePanel,
         onMobilePanelChange: navigation.setMobilePanel,
         inspectorOpen: inspectorOpen,

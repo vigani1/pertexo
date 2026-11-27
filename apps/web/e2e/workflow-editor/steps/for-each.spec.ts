@@ -10,7 +10,7 @@ import {
   workspace,
   type RemoteDraft,
 } from '../support';
-import { focusStep } from '../actions';
+import { focusStep, openStepPalette, openWorkflowMenu } from '../actions';
 
 const forEachDefinition = {
   ...definition,
@@ -277,7 +277,8 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
     'check-reserve',
   );
   // The notification's Undo comes after the command bar's in the page.
-  await page.getByRole('button', { name: 'Undo' }).last().click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
   await expect(page.getByTestId('rf__node-check')).toBeVisible();
   await expect
     .poll(() => savedBody(remote)?.nodes.map((node) => node.id), {
@@ -366,6 +367,7 @@ for (const width of [1280, 390]) {
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
+    await openStepPalette(page);
     await page
       .getByRole('complementary', { name: 'Add a step' })
       .getByRole('button', { name: /Set fields/u })

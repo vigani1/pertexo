@@ -3,6 +3,7 @@ import type {
   FailureNotificationDestinationResponse,
 } from '@pertexo/contracts';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { SettingsGroup } from '@/components/patterns/settings/row';
 import { PlusIcon } from 'lucide-react';
 import {
   FailedReadState,
@@ -72,7 +73,7 @@ export function DestinationCollection({
       }
     >
       {() => (
-        <ul aria-label="Alert destinations" className="flex flex-col">
+        <SettingsGroup title="Alert destinations">
           {items.map((destination) => (
             <DestinationRow
               key={destination.id}
@@ -84,7 +85,7 @@ export function DestinationCollection({
               onEdit={onEdit}
             />
           ))}
-        </ul>
+        </SettingsGroup>
       )}
     </QueryView>
   );

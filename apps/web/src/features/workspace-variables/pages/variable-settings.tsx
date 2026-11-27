@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/contracts';
 import { WORKSPACE_VARIABLE_LIMITS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -126,7 +126,8 @@ export function WorkspaceVariablesPage({
           </div>
         </div>
       </PageHeader>
-      <SettingsSection
+      <SettingRow
+        layout="section"
         title="Shared configuration"
         description="Text, numbers and true/false that every member can read. Secrets belong in Connections."
       >
@@ -173,7 +174,7 @@ export function WorkspaceVariablesPage({
             </>
           )}
         </QueryView>
-      </SettingsSection>
+      </SettingRow>
       {inspected === undefined ? null : (
         <VariableUsageDialog
           scope={scope}

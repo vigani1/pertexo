@@ -152,7 +152,9 @@ test('committed publish and run responses recover their exact original commands'
       await route.fulfill({ response });
     }
   });
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

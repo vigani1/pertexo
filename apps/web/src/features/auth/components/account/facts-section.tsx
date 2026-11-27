@@ -7,7 +7,7 @@ import {
   localTimeZone,
   localUtcOffset,
 } from '@/lib/format/time';
-import { AccountSection } from './section';
+import { SettingRow } from '@/components/patterns/settings/row';
 
 function Fact({
   term,
@@ -29,7 +29,8 @@ export function AccountFactsSection({
   user,
 }: Readonly<{ user: UserProfileResponse }>) {
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="This account"
       description="Its age and ID for support, and how Pertexo shows you times."
     >
@@ -60,6 +61,6 @@ export function AccountFactsSection({
         Times across Pertexo show in this zone. Each schedule keeps its own,
         shown beside its next runs.
       </p>
-    </AccountSection>
+    </SettingRow>
   );
 }

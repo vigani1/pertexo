@@ -33,7 +33,7 @@ for (const width of [1280, 375])
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
-    await addStep(page, /Convert date/u).click();
+    await (await addStep(page, /Convert date/u)).click();
     await expect.poll(() => saved()?.config).toEqual({ operation: 'to_iso' });
     const id = saved()?.id ?? '';
     await openStepSetup(page, { nodeId: id, width });

@@ -20,11 +20,14 @@ const NoteMarkdown = lazyPiece(() =>
   import('./markdown').then((module) => module.NoteMarkdown),
 );
 const colors = {
-  neutral: 'border-border-strong [--note-accent:var(--subtle-foreground)]',
-  teal: 'border-primary/45 [--note-accent:var(--primary)]',
-  violet: 'border-secondary/45 [--note-accent:var(--secondary)]',
-  sage: 'border-success/45 [--note-accent:var(--success)]',
-  amber: 'border-warning/45 [--note-accent:var(--warning)]',
+  neutral:
+    'border-border-strong [--note-accent:var(--subtle-foreground)] [--note-tint:var(--select)]',
+  teal: 'border-live-line [--note-accent:var(--glint)] [--note-tint:var(--live-soft)]',
+  violet:
+    'border-secondary/45 [--note-accent:var(--secondary)] [--note-tint:var(--waiting-soft)]',
+  sage: 'border-border-strong [--note-accent:var(--success)] [--note-tint:var(--select-raised)]',
+  amber:
+    'border-warning/45 [--note-accent:var(--warning)] [--note-tint:var(--warn-soft)]',
 };
 export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
   const { note, editable } = data;

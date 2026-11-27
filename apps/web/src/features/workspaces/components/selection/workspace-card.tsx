@@ -1,8 +1,8 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { ArrowRightIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Row } from '@/components/patterns/lists/row';
+import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { cn } from '@/lib/class-names';
 import { WorkspaceMark } from '../shell/workspace-mark';
 import { workspaceAvailability } from '../../model/workspace-availability';
 import { ROLE_NAMES } from '../../model/role-words';
@@ -22,50 +22,44 @@ export function WorkspaceCard({
 }>) {
   const availability = workspaceAvailability(workspace);
   return (
-    <button
-      type="button"
-      disabled={!availability.openable}
-      className={cn(
-        'group/card flex h-full w-full min-w-0 flex-col gap-5 rounded-xl border border-border bg-card/60 p-5 text-left transition-[border-color,background-color,transform] duration-200 ease-unspool outline-none',
-        'enabled:hover:-translate-y-px enabled:hover:border-primary/35 enabled:hover:bg-card focus-ring motion-reduce:transition-none motion-reduce:enabled:hover:translate-y-0',
-        'disabled:cursor-not-allowed disabled:opacity-70',
-      )}
-      onClick={() => {
-        onSelect(workspace);
-      }}
-    >
-      <span className="flex w-full items-start justify-between gap-3">
-        {/* A workspace wears the square mark it has in the switcher; the ring
-            is for people. */}
-        <WorkspaceMark
-          name={workspace.name}
-          className="size-11 rounded-[0.6rem] text-sm"
-        />
-        {lastOpened ? <Badge variant="default">Last opened</Badge> : null}
-      </span>
-      <span className="flex min-w-0 flex-col gap-2">
-        <span className="font-heading text-xl leading-tight font-semibold [overflow-wrap:anywhere]">
+    <Row className="grid-cols-[auto_minmax(0,1fr)] gap-x-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+      <WorkspaceMark name={workspace.name} className="size-10 rounded-lg" />
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="font-heading text-section font-semibold wrap-anywhere">
           {workspace.name}
         </span>
-        <span className="flex flex-wrap items-center gap-2">
-          <Badge variant="muted">{ROLE_NAMES[workspace.role]}</Badge>
-          <StatusMark tone={availability.tone}>
-            {availability.status}
-          </StatusMark>
-        </span>
-      </span>
-      <span className="mt-auto flex w-full items-center justify-between gap-3 text-label text-muted-foreground">
-        <span>{availability.note}</span>
-        {availability.openable ? (
-          <span className="inline-flex items-center gap-1 font-semibold text-accent-foreground">
-            {availability.action ?? 'Open'}
-            <ArrowRightIcon
-              aria-hidden="true"
-              className="size-3.5 transition-transform group-hover/card:translate-x-0.5 motion-reduce:transition-none"
-            />
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted-foreground">
+          <span>
+            {ROLE_NAMES[workspace.role]}
+            {lastOpened ? ' · Last opened' : ''}
           </span>
-        ) : null}
-      </span>
-    </button>
+          {workspace.status === 'active' ? null : (
+            <StatusMark tone={availability.tone}>
+              {availability.status}
+            </StatusMark>
+          )}
+        </div>
+        {availability.note === undefined ? null : (
+          <p className="text-meta text-muted-foreground">{availability.note}</p>
+        )}
+      </div>
+      {availability.openable ? (
+        <Button
+          type="button"
+          variant={availability.action === undefined ? 'ghost' : 'outline'}
+          size="sm"
+          className="col-start-2 justify-self-start sm:col-start-auto"
+          aria-label={`${availability.action ?? 'Open'} ${workspace.name}`}
+          onClick={() => {
+            onSelect(workspace);
+          }}
+        >
+          {availability.action ?? 'Open'}
+          {availability.action === undefined ? (
+            <ArrowRightIcon aria-hidden="true" />
+          ) : null}
+        </Button>
+      ) : null}
+    </Row>
   );
 }

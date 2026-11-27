@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingDetails } from '@/components/patterns/settings/details';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,9 @@ import { whoCan } from '@/features/workspaces/public';
 function WorkflowRule({
   settings,
   scope,
-  onSaved,
 }: Readonly<{
   settings: WorkflowAutoPauseSettings;
   scope: Scope;
-  onSaved: () => void;
 }>) {
   const [draft, setDraft] = useState<
     Readonly<{
@@ -72,7 +70,6 @@ function WorkflowRule({
     if (saved) {
       setDraft(undefined);
       notifications.success({ title: 'Auto-pause settings saved' });
-      onSaved();
     }
   }
   return (
@@ -161,7 +158,6 @@ function ruleSummary(settings: WorkflowAutoPauseSettings) {
   );
 }
 export function AutoPauseSection(scope: Scope) {
-  const [editing, setEditing] = useState(false);
   const query = useQuery(
     workflowAutoPauseQueryOptions(
       scope.apiClient,
@@ -185,26 +181,16 @@ export function AutoPauseSection(scope: Scope) {
       >
         {(settings) => (
           <>
-            <SettingSentence
+            <SettingDetails
               summary={
                 <>
                   {ruleSummary(settings)}
                   {canUpdate ? null : ' Your role can’t change this rule.'}
                 </>
               }
-              editing={editing}
-              onEditingChange={setEditing}
               {...(canUpdate
                 ? {
-                    editor: (
-                      <WorkflowRule
-                        settings={settings}
-                        scope={scope}
-                        onSaved={() => {
-                          setEditing(false);
-                        }}
-                      />
-                    ),
+                    editor: <WorkflowRule settings={settings} scope={scope} />,
                   }
                 : {})}
               rules={

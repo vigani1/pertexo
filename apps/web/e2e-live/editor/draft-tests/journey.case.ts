@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -37,6 +38,7 @@ async function appendStep({
   const before = await readEditorDraft(page, path);
   await page.getByTestId(`rf__node-${afterNodeId}`).focus();
   await page.keyboard.press('Enter');
+  await openStepPalette(page);
   await page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name: kind })
@@ -249,19 +251,21 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
     path: temporaryTestPath('pertexo-draft-tests-desktop.png'),
   });
   await page.setViewportSize({ width: 375, height: 768 });
-  // On phones the test actions join the editor's ⋯ menu.
-  await page
-    .getByRole('button', { name: 'More workflow actions', exact: true })
-    .click();
   await expect(
-    page.getByRole('menuitem', { name: 'Test workflow', exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: 'Test workflow', exact: true }),
+  ).toBeInViewport();
+  const testAndRun = page.getByRole('button', {
+    name: 'Test and run actions',
+    exact: true,
+  });
+  await expect(testAndRun).toBeInViewport();
+  await testAndRun.click();
+  await expect(
+    page.getByRole('menuitem', { name: 'Run (publish first)', exact: true }),
+  ).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(
     page.getByRole('button', { name: 'Publish v1', exact: true }),
-  ).toBeInViewport();
-  await expect(
-    page.getByRole('button', { name: 'Run (publish first)', exact: true }),
   ).toBeInViewport();
   await page.screenshot({
     path: temporaryTestPath('pertexo-draft-tests-phone.png'),
@@ -276,7 +280,7 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
   // After a reload the bar waits until asked; the last test is in history.
   await expect(history).toHaveCount(0);
   await page
-    .getByRole('button', { name: 'More test actions', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
     .click();
   await page
     .getByRole('menuitem', { name: 'Test history', exact: true })

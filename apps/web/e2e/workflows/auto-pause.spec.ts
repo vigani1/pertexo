@@ -142,7 +142,6 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
 
   await expect(page.getByText('Workflow triggers are paused')).toBeVisible();
   const autoPause = page.getByRole('region', { name: 'Automatic pause' });
-  await autoPause.getByRole('button', { name: 'Change' }).first().click();
   const threshold = page.getByRole('textbox', {
     name: 'Pause after failures in a row',
   });
@@ -169,14 +168,12 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
     thresholdOverride: 5,
     expectedSettingsRevision: 2,
   });
-  await autoPause.getByRole('button', { name: 'Change' }).last().click();
   await page.getByRole('textbox', { name: 'Workspace default' }).fill('15');
   await page.getByRole('button', { name: 'Save workspace default' }).click();
   await expect(
     page.getByText('Workspace auto-pause default saved'),
   ).toBeVisible();
   // The workflow's own rule now offers the new default.
-  await autoPause.getByRole('button', { name: 'Change' }).first().click();
   await expect(
     page.getByText(/Leave blank for the workspace default, 15/u),
   ).toBeVisible();

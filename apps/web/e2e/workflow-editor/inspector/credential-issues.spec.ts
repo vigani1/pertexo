@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../actions';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 import { slackConnection } from '../../../test/support/fixtures/slack-channels';
@@ -59,7 +60,8 @@ for (const width of [390, 1280]) {
           route.fulfill({ json: { items: [current], nextCursor: null } }),
       );
       await page.goto(editorUrl);
-      const chip = page.getByRole('button', { name: '2 issues' });
+      await openWorkflowMenu(page);
+      const chip = page.getByRole('menuitem', { name: '2 issues' });
       await expect(chip).toBeVisible();
       await chip.click();
       const fix = page.getByRole('button', {
@@ -80,12 +82,18 @@ for (const width of [390, 1280]) {
       if (status === 'missing') {
         await picker.click();
         await page.getByRole('option', { name: 'Ops bot' }).click();
+        await openWorkflowMenu(page);
         await expect(chip).toHaveCount(0);
+        await page.keyboard.press('Escape');
       } else {
         current = { ...current, status: 'active' };
         await page.reload();
       }
-      await expect(page.getByRole('button', { name: '1 issue' })).toBeVisible();
+      await openWorkflowMenu(page);
+      await expect(
+        page.getByRole('menuitem', { name: '1 issue' }),
+      ).toBeVisible();
+      await page.keyboard.press('Escape');
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -132,7 +140,8 @@ test('explains disabled server connections without claiming the owner’s role c
     }),
   );
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: '2 issues' }).click();
+  await openWorkflowMenu(page);
+  await page.getByRole('menuitem', { name: '2 issues' }).click();
   await expect(page.getByRole('region', { name: '2 issues' })).toContainText(
     'Connections are unavailable here',
   );

@@ -13,7 +13,11 @@ import { describe, expect, it } from 'vitest';
 
 import { orderLoopGraph } from '../../support/fixtures/for-each';
 
-import { checkNow, pressSave } from '../../support/fixtures/editor-actions';
+import {
+  checkNow,
+  pressSave,
+  openWorkflowMenu,
+} from '../../support/fixtures/editor-actions';
 import {
   compatibility,
   etagA,
@@ -147,7 +151,11 @@ describe('building a For each body', { timeout: 30_000 }, () => {
         coldStart,
       );
       fireEvent.change(items, { target: { value: '-' } });
-      await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
+      await event.click(
+        (await openWorkflowMenu(event)).getByRole('menuitem', {
+          name: /\d+ issues?/u,
+        }),
+      );
       await event.click(
         screen.getByRole('button', {
           name: 'Fix: Expression syntax is invalid.',
@@ -177,7 +185,11 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       expect(await screen.findByLabelText('Maximum items')).toHaveValue('-');
       expect(await screen.findByLabelText('Label')).toHaveValue('Each order');
       expect(saved.graph).toBeUndefined();
-      await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
+      await event.click(
+        (await openWorkflowMenu(event)).getByRole('menuitem', {
+          name: /\d+ issues?/u,
+        }),
+      );
       await event.click(
         screen.getByRole('button', {
           name: 'Fix: Expression syntax is invalid.',
@@ -216,10 +228,14 @@ describe('building a For each body', { timeout: 30_000 }, () => {
         maxConcurrency: 1,
       });
     });
-    await event.click(screen.getByRole('button', { name: /Undo/u }));
+    await event.click(
+      (await openWorkflowMenu(event)).getByRole('menuitem', { name: /^Undo/u }),
+    );
     expect(items).toHaveValue('100');
     expect(concurrent).toHaveValue('5');
-    await event.click(screen.getByRole('button', { name: /Redo/u }));
+    await event.click(
+      (await openWorkflowMenu(event)).getByRole('menuitem', { name: /^Redo/u }),
+    );
     expect(items).toHaveValue('1');
     expect(concurrent).toHaveValue('1');
     const maximum = WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations;

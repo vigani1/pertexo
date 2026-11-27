@@ -30,14 +30,11 @@ async function measureHeader(page: Page) {
     header.getByRole('status'),
     header.getByRole('navigation', { name: 'Workflow sections' }),
     header.getByRole('button', {
-      name:
-        (page.viewportSize()?.width ?? 1280) < 640
-          ? 'More workflow actions'
-          : 'Workflow contract',
+      name: 'More workflow actions',
       exact: true,
     }),
     header.getByRole('button', { name: /^(Publish v|No changes since v)/u }),
-    header.locator('#editor-issues-chip'),
+    header.getByRole('button', { name: 'Test and run actions' }),
   ];
   return Promise.all(
     controls.map(async (control) => {
@@ -273,7 +270,7 @@ for (const width of [390, 1280]) {
     await expect(contract).not.toBeVisible();
     await expect(
       header.getByRole('button', {
-        name: width < 640 ? 'More workflow actions' : 'Workflow contract',
+        name: 'More workflow actions',
         exact: true,
       }),
     ).toBeFocused();

@@ -8,7 +8,7 @@ import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatInitials } from '@/lib/format/initials';
-import { AccountSection } from '../section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { DisplayNameForm } from './form';
 
 /** Who you are across workspaces: initials, an editable name and email. */
@@ -27,7 +27,8 @@ export function AccountProfileSection({
   const [editing, setEditing] = useState(false);
   const email = security?.email ?? user.email;
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="Name and email"
       description="How teammates see you, in every workspace."
     >
@@ -81,7 +82,7 @@ export function AccountProfileSection({
           {<EmailVerification security={security} />}
         </dd>
       </dl>
-    </AccountSection>
+    </SettingRow>
   );
 }
 

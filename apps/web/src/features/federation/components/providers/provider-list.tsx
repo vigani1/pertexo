@@ -1,7 +1,7 @@
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { useState } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import {
   ConfirmDialog,
   ConfirmationDetails,
@@ -37,7 +37,8 @@ export function Providers({
     window.location.origin,
   ).toString();
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Identity providers"
       description="Configure OIDC or SAML identity providers. Password/social sign-in stays available until a verified domain requires SSO."
     >
@@ -119,7 +120,7 @@ export function Providers({
           setRemoving(undefined);
         }}
       />
-    </SettingsSection>
+    </SettingRow>
   );
 }
 

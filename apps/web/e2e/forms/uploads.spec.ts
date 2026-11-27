@@ -156,7 +156,13 @@ test('a public responder attaches files, sees refusals in place and sends only f
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const routes = await installUploadRoutes(page);
   await page.goto(`/forms/${publicId}#${capability}`);
+  await expect(
+    page.getByRole('progressbar', { name: '0 of 3 answered' }),
+  ).toHaveAttribute('value', '0');
   await page.getByLabel('Your name', { exact: true }).fill('Ada');
+  await expect(
+    page.getByRole('progressbar', { name: '1 of 3 answered' }),
+  ).toHaveAttribute('value', '1');
   const invoice = page.getByLabel('Invoice', { exact: true });
   await expect(invoice).toHaveAccessibleDescription(
     /PDF, Word, text · up to 5 MB.*The PDF the supplier sent you\./u,
@@ -171,6 +177,9 @@ test('a public responder attaches files, sees refusals in place and sends only f
     .click();
   await invoice.setInputFiles(pdf('March invoice.pdf'));
   await expect(invoiceFiles.getByText(/Attached/u)).toBeVisible();
+  await expect(
+    page.getByRole('progressbar', { name: '2 of 3 answered' }),
+  ).toHaveAttribute('value', '2');
   const photos = page.getByLabel('Photos (optional)', { exact: true });
   await photos.setInputFiles([
     png('front.png'),

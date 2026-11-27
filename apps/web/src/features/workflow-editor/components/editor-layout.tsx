@@ -42,6 +42,7 @@ export function EditorLayout({
   panels: Readonly<{
     inspectorOpen: boolean;
     addStepCollapsed: boolean;
+    onOpenAddStep: () => void;
     editable: boolean;
     mobilePanel: MobilePanel;
     onMobilePanelChange: (panel: MobilePanel) => void;
@@ -51,6 +52,7 @@ export function EditorLayout({
   const {
     inspectorOpen,
     addStepCollapsed,
+    onOpenAddStep,
     editable,
     mobilePanel,
     onMobilePanelChange,
@@ -68,18 +70,7 @@ export function EditorLayout({
         }
       >
         {canvas}
-        {mobilePanel === 'none' ? null : (
-          // Below 1024px a panel is a sheet: a tap anywhere outside puts it
-          // away, like any phone sheet. Its edits stay, since it stays mounted.
-          <div
-            aria-hidden="true"
-            data-slot="panel-dismiss"
-            className="fixed inset-0 z-30 bg-recess-ink/15 lg:hidden"
-            onClick={() => {
-              onMobilePanelChange('none');
-            }}
-          />
-        )}
+        <PanelScrim panel={mobilePanel} onChange={onMobilePanelChange} />
         <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3">
           {/* Above the dismiss layer: the bar stays usable with a panel open. */}
           <div className="pointer-events-auto relative z-40" {...covers}>
@@ -141,7 +132,10 @@ export function EditorLayout({
               current={mobilePanel}
               label="Add step"
               icon={<PlusIcon data-icon="inline-start" />}
-              onChange={onMobilePanelChange}
+              onChange={(panel) => {
+                if (panel === 'add') onOpenAddStep();
+                else onMobilePanelChange(panel);
+              }}
             />
           ) : null}
           <PanelButton
@@ -164,6 +158,24 @@ export function EditorLayout({
       </div>
       <div className="shrink-0 bg-background">{history}</div>
     </div>
+  );
+}
+
+/** A tap outside closes the small-screen panel and keeps its draft. */
+function PanelScrim({
+  panel,
+  onChange,
+}: Readonly<{ panel: MobilePanel; onChange: (panel: MobilePanel) => void }>) {
+  if (panel === 'none') return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-slot="panel-dismiss"
+      className="fixed inset-0 z-30 bg-recess-ink/15 lg:hidden"
+      onClick={() => {
+        onChange('none');
+      }}
+    />
   );
 }
 

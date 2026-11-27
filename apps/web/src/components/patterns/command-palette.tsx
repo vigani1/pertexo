@@ -43,10 +43,12 @@ export function CommandPalette({
   resolveQuery,
   onQueryChange,
   search,
+  workspaceName,
 }: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groups: readonly CommandGroup[];
+  workspaceName?: string;
   resolveQuery?: (query: string) => CommandGroup | undefined;
   /** Lets a caller search the server for what's being typed. */
   onQueryChange?: (query: string) => void;
@@ -84,7 +86,7 @@ export function CommandPalette({
         onOpenChange(next);
       }}
     >
-      <DialogContent placement="top" className="overflow-hidden">
+      <DialogContent placement="top" className="max-w-[40rem] overflow-hidden">
         <DialogTitle className="sr-only">Search Pertexo</DialogTitle>
         <Autocomplete.Root
           inline
@@ -146,7 +148,7 @@ export function CommandPalette({
                       onClick={() => {
                         choose(item);
                       }}
-                      className="flex cursor-default items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground [&_svg:not([class*='size-'])]:size-4"
+                      className="flex pointer-coarse:min-h-10 cursor-default items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-select-raised data-highlighted:text-foreground [&_svg:not([class*='size-'])]:size-4"
                     >
                       {item.icon}
                       <span className="min-w-0 flex-1 truncate">
@@ -164,6 +166,21 @@ export function CommandPalette({
             )}
           </Autocomplete.List>
         </Autocomplete.Root>
+        <div className="flex min-w-0 items-center gap-4 border-t border-border px-4 py-3 text-meta text-muted-foreground">
+          <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd> Move
+          </span>
+          <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
+            <Kbd>↵</Kbd> Open
+          </span>
+          <span className="hidden items-center gap-1 sm:inline-flex pointer-coarse:hidden">
+            <Kbd>Esc</Kbd> Close
+          </span>
+          <span className="ml-auto min-w-0 truncate font-mono">
+            {workspaceName}
+          </span>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -85,8 +85,16 @@ describe('getting started on Home', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const section = await checklist();
     expect(
-      await within(section).findByText('3 of 4 done.', { exact: false }),
+      await within(section).findByText('3 of 4 done · Continue', {
+        exact: true,
+      }),
     ).toBeVisible();
+    expect(
+      within(section).queryByRole('link', { name: 'Add a connection' }),
+    ).toBeNull();
+    await userEvent
+      .setup()
+      .click(within(section).getByText('3 of 4 done · Continue'));
     const connection = within(section).getByRole('link', {
       name: 'Add a connection',
     });

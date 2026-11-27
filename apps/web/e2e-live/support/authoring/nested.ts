@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import {
   workflowDraftResponseSchema,
   type WorkflowDraftResponse,
@@ -40,6 +41,7 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
       .click();
     await page.getByRole('dialog').getByRole('button', { name: kind }).click();
   }
+  await openStepPalette(page);
   const palette = page.getByRole('complementary', { name: 'Add a step' });
   await palette.getByRole('button', { name: /Set fields/u }).click();
   await expect.poll(async () => (await draft()).graph.nodes.length).toBe(1);

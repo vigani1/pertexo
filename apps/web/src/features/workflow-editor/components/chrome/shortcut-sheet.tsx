@@ -1,15 +1,7 @@
-import { KeyboardIcon } from 'lucide-react';
-import { useRef, type RefObject } from 'react';
-import { buttonVariants } from '@/components/ui/button-variants';
+import type { RefObject } from 'react';
 import { Kbd } from '@/components/ui/kbd';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover';
 import { shortcutKeys } from '@/lib/shortcut-keys';
-import { cn } from '@/lib/class-names';
 
 const shortcuts: readonly Readonly<{
   keys: readonly string[];
@@ -28,39 +20,20 @@ const shortcuts: readonly Readonly<{
 
 /**
  * The "?" cheat sheet. Shortcuts never fire while you type in a field.
- * Where its own button is hidden (a phone-width bar folds it into ⋯), the
- * sheet opens beside `fallbackAnchor` instead.
+ * The sheet opens beside the workflow menu.
  */
 export function ShortcutSheet({
   open,
   onOpenChange,
-  triggerClassName,
   fallbackAnchor,
 }: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  triggerClassName?: string;
   fallbackAnchor?: RefObject<HTMLElement | null>;
 }>) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  function focusAnchor() {
-    const trigger = triggerRef.current;
-    return trigger !== null && trigger.getClientRects().length > 0
-      ? trigger
-      : (fallbackAnchor?.current ?? undefined);
-  }
+  const focusAnchor = () => fallbackAnchor?.current ?? undefined;
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger
-        ref={triggerRef}
-        aria-label="Keyboard shortcuts"
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-          triggerClassName,
-        )}
-      >
-        <KeyboardIcon />
-      </PopoverTrigger>
       <PopoverContent
         align="end"
         className="w-80 max-w-[calc(100vw-2rem)]"

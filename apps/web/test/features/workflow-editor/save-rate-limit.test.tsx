@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
 } from '../../support/fixtures/editor-actions';
 import {
@@ -60,7 +61,9 @@ describe('a rate-limited draft save', { timeout: 30_000 }, () => {
       );
       await renderLoadedApp(editorPath);
       await findCanvas();
-      await userEvent.setup().click(addStepButton(/Set fields/u));
+      const event = userEvent.setup();
+      await openStepList(event);
+      await event.click(addStepButton(/Set fields/u));
       expect(
         await screen.findByTitle(/Saving again shortly/u),
       ).toHaveTextContent('Couldn’t save');

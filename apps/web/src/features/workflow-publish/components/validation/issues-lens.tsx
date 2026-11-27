@@ -9,16 +9,15 @@ import type { IssuesState } from '../../model/validation/issues-state';
 import { emptyDraftHint } from '../../model/publication/readiness';
 import type { WorkflowValidationTarget } from '../../model/validation/target';
 import { countIssues } from '../../model/validation/issues';
-import { ISSUES_CHIP_ID, ISSUES_LENS_ID } from './issues-chip';
 import { IssuesList } from './issues-list';
 import { formatCount } from '@/lib/format/count';
 
 /**
  * The issues lens at the bottom of the editor, opened from the command
- * bar's chip: findings grouped by step in human words, each with Fix, and
+ * bar’s overflow: findings grouped by step, each with Fix, and
  * a way to check again. It floats over the canvas instead of pushing it
  * down. Fix closes it and jumps to the field; ✕ and Escape return to the
- * chip.
+ * overflow.
  */
 export function IssuesLens({
   open,
@@ -27,6 +26,7 @@ export function IssuesLens({
   graph,
   triggersAvailable,
   onOpenChange,
+  onReturnFocus,
   onCheckAgain,
   onFix,
 }: Readonly<{
@@ -37,6 +37,7 @@ export function IssuesLens({
   /** The catalog offers a trigger to start an empty draft with. */
   triggersAvailable: boolean;
   onOpenChange: (open: boolean) => void;
+  onReturnFocus: () => void;
   onCheckAgain: () => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
@@ -50,11 +51,11 @@ export function IssuesLens({
       : emptyDraftHint({ graph, triggersAvailable });
   function close() {
     onOpenChange(false);
-    document.getElementById(ISSUES_CHIP_ID)?.focus();
+    onReturnFocus();
   }
   return (
     <section
-      id={ISSUES_LENS_ID}
+      id="editor-issues-lens"
       aria-labelledby={titleId}
       className="lens pointer-events-auto flex max-h-[min(24rem,45svh)] flex-col rounded-xl"
       onKeyDown={(event) => {

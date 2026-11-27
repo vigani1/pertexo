@@ -1,3 +1,4 @@
+import { openStepPalette } from '../actions';
 import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
@@ -40,6 +41,7 @@ for (const width of [375, 1280]) {
         .getByRole('navigation', { name: 'Editor panels' })
         .getByRole('button', { name: 'Add step', exact: true })
         .click();
+    await openStepPalette(page);
     await page
       .getByRole('complementary', { name: 'Add a step' })
       .getByRole('button', { name: /Set fields/ })

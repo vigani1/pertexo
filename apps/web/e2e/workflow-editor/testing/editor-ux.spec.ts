@@ -1,3 +1,4 @@
+import { openStepPalette } from '../actions';
 import { mkdir } from 'node:fs/promises';
 import {
   chooseTestAction,
@@ -161,6 +162,7 @@ for (const [width, height] of sizes)
       await openMobilePanel(page, 'Add step');
       await shot('palette');
       if (!baseline) {
+        await openStepPalette(page);
         const description = page
           .getByRole('complementary', { name: 'Add a step', exact: true })
           .getByText('Start when someone submits a form', { exact: true });

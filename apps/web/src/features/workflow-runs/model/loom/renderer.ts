@@ -13,6 +13,7 @@ import {
   type LoomModel,
   type LoomRun,
 } from './model';
+import { bezierPoint, drawCoreThread } from './core-thread';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { TOKENS } from './palette';
 import type { Palette } from './palette';
@@ -24,19 +25,6 @@ const MONO_FONT = '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
 
 const LABEL_FONT = '500 12px "Inter Variable", system-ui, sans-serif';
 
-function bezierPoint(
-  points: readonly number[],
-  t: number,
-): readonly [number, number] {
-  const [x0 = 0, y0 = 0, x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0] =
-    points;
-  const u = 1 - t;
-  return [
-    u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3,
-    u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3,
-  ];
-}
-
 export class LoomRenderer extends CanvasScene {
   readonly #palette: Palette;
   readonly #inkOpacity: Readonly<{
@@ -46,6 +34,7 @@ export class LoomRenderer extends CanvasScene {
   }>;
   readonly #landed = new Map<string, number>();
   #model: LoomModel;
+  #converge = false;
 
   public constructor(canvas: HTMLCanvasElement, model: LoomModel) {
     super(canvas);
@@ -66,7 +55,8 @@ export class LoomRenderer extends CanvasScene {
   }
 
   /** Swaps in fresh data; runs that just finished tie a knot once. */
-  public setModel(model: LoomModel): void {
+  public setModel(model: LoomModel, converge = false): void {
+    this.#converge = converge;
     const previouslyActive = new Set<string>();
     for (const lane of this.#model.lanes)
       for (const run of lane.runs)
@@ -96,7 +86,17 @@ export class LoomRenderer extends CanvasScene {
         if (run.tone === 'live') {
           this.#drawLive(span.x0, span.x1, y);
           tips.push([span.x1, y]);
-        } else this.#drawRun({ run, x0: span.x0, x1: span.x1, y, timeSeconds });
+        } else {
+          if (this.#converge) {
+            drawCoreThread(
+              context,
+              layout,
+              { x: span.x1, y },
+              { color: toneColor(this.#palette, run.tone), alpha: 0.22 },
+            );
+          }
+          this.#drawRun({ run, x0: span.x0, x1: span.x1, y, timeSeconds });
+        }
       }
     });
     this.#drawTips(layout, tips, timeSeconds);
@@ -331,42 +331,13 @@ export class LoomRenderer extends CanvasScene {
   ): void {
     const context = this.context;
     const palette = this.#palette;
-    const { core } = layout;
-    const targetX = core.x - core.radius * 0.18;
     tips.forEach(([x, y], index) => {
-      const bend = (targetX - x) * 0.48;
-      const curve = [
-        x,
-        y,
-        x + bend,
-        y,
-        targetX - bend,
-        core.y,
-        targetX,
-        core.y,
-      ];
-      const fade = context.createLinearGradient(x, 0, targetX, 0);
-      fade.addColorStop(0, rgba(palette.live, 0.75));
-      // Full strength up to the Core's shell, then gone before its centre.
-      const shell = Math.min(
-        1,
-        Math.max(0, (core.x - core.radius - x) / (targetX - x)),
+      const curve = drawCoreThread(
+        context,
+        layout,
+        { x, y },
+        { color: palette.live, alpha: 0.75 },
       );
-      fade.addColorStop(shell, rgba(palette.live, 0.5));
-      fade.addColorStop(1, rgba(palette.live, 0));
-      context.strokeStyle = fade;
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(x, y);
-      context.bezierCurveTo(
-        x + bend,
-        y,
-        targetX - bend,
-        core.y,
-        targetX,
-        core.y,
-      );
-      context.stroke();
       const progress = (timeSeconds * 0.5 + index * 0.37) % 1;
       const [px, py] = bezierPoint(curve, progress);
       context.fillStyle = rgba(palette.tip, Math.sin(Math.PI * progress) * 0.9);

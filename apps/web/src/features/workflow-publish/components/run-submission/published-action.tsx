@@ -1,17 +1,13 @@
 import { Link } from '@tanstack/react-router';
-import { buttonVariants } from '@/components/ui/button-variants';
+import {
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import type { WorkflowCommandSession } from '../../hooks/use-workflow-command-session';
-import { RunMenu } from './menu';
-export function PublishedRunAction({
-  form,
-  canRun,
-  submission,
-  published,
-  loading,
-  onRunNow,
-  onRunWithInput,
-  scope,
-}: Readonly<{
+
+/** Published actions sit beside draft test actions in the Build menu. */
+type PublishedRunMenuProps = Readonly<{
   form: boolean;
   canRun: boolean;
   submission: WorkflowCommandSession['runSubmission'];
@@ -20,41 +16,65 @@ export function PublishedRunAction({
   onRunNow: () => void;
   onRunWithInput: () => void;
   scope: Readonly<{ workspaceId: string; workflowId: string }>;
-}>) {
-  const { workspaceId, workflowId } = scope;
+}>;
 
-  if (
-    form &&
-    !submission.retryAvailable &&
-    submission.acceptedRunId === undefined
-  )
-    return (
-      <Link
-        to="/w/$workspaceId/forms/$workflowId"
-        params={{ workspaceId, workflowId }}
-        className={buttonVariants({
-          size: 'sm',
-          variant: 'outline',
-          className: 'max-sm:w-20 max-sm:shrink-0',
-        })}
-        aria-label="Open workflow form"
-      >
-        <span className="hidden sm:inline">Open form</span>
-        <span className="sm:hidden" aria-hidden="true">
-          Form
-        </span>
-      </Link>
-    );
-  if (!canRun) return null;
+export function PublishedRunMenuItems(props: PublishedRunMenuProps) {
   return (
-    <RunMenu
-      published={published}
-      pending={submission.pending || loading}
-      acceptedRunPending={submission.acceptedRunId !== undefined}
-      unresolvedRun={submission.retryAvailable}
-      onRunNow={onRunNow}
-      onRunWithInput={onRunWithInput}
-      onOpenAcceptedRun={() => void submission.openAcceptedRun()}
-    />
+    <>
+      <DropdownMenuSeparator />
+      {publishedRunCommands(props)}
+    </>
+  );
+}
+
+function publishedRunCommands({
+  form,
+  canRun,
+  submission,
+  published,
+  loading,
+  onRunNow,
+  onRunWithInput,
+  scope,
+}: PublishedRunMenuProps) {
+  const pending = submission.pending || loading;
+  if (submission.retryAvailable) {
+    return (
+      <DropdownMenuItem disabled={pending} onClick={onRunWithInput}>
+        Recover unconfirmed run
+      </DropdownMenuItem>
+    );
+  }
+  if (submission.acceptedRunId !== undefined) {
+    return (
+      <DropdownMenuItem
+        disabled={pending}
+        onClick={() => void submission.openAcceptedRun()}
+      >
+        Open accepted run
+      </DropdownMenuItem>
+    );
+  }
+  if (form) {
+    return (
+      <DropdownMenuLinkItem
+        render={<Link to="/w/$workspaceId/forms/$workflowId" params={scope} />}
+      >
+        Open workflow form
+      </DropdownMenuLinkItem>
+    );
+  }
+  if (!canRun) return null;
+  if (!published)
+    return <DropdownMenuItem disabled>Run (publish first)</DropdownMenuItem>;
+  return (
+    <>
+      <DropdownMenuItem disabled={pending} onClick={onRunNow}>
+        Run published version
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled={pending} onClick={onRunWithInput}>
+        Run with input…
+      </DropdownMenuItem>
+    </>
   );
 }

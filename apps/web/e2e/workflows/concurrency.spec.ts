@@ -71,7 +71,6 @@ test('workflow concurrency preserves conflict edits, fresh confirmations and Que
   );
   await page.goto(`${editorUrl}/settings`);
   const section = page.getByRole('region', { name: 'Runs at once' });
-  await section.getByRole('button', { name: 'Change' }).click();
   const input = section.getByRole('textbox', { name: 'Runs at once' });
   await input.fill('1');
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
@@ -88,7 +87,6 @@ test('workflow concurrency preserves conflict edits, fresh confirmations and Que
     expectedRevision: 3,
     overflow: 'queue',
   });
-  await section.getByRole('button', { name: 'Change' }).click();
   await section
     .getByRole('combobox', { name: 'When the limit is reached' })
     .click();
@@ -101,7 +99,6 @@ test('workflow concurrency preserves conflict edits, fresh confirmations and Que
     expectedRevision: 4,
     overflow: 'skip',
   });
-  await section.getByRole('button', { name: 'Change' }).click();
   await input.focus();
   await page.keyboard.press('Tab');
   await expect(

@@ -2,7 +2,7 @@ import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 import { useId } from 'react';
 import { federationOrganizationCreateSchema } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -29,7 +29,8 @@ export function CreateOrganization({
   });
   const locked = !editable || command.pending || command.uncertain;
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Identity organization"
       description="Group workspaces under one owner-managed sign-in policy. SSO remains optional until you require it for a verified domain."
     >
@@ -70,6 +71,6 @@ export function CreateOrganization({
         </ProgressButton>
         <CommandFeedback command={command} />
       </form>
-    </SettingsSection>
+    </SettingRow>
   );
 }

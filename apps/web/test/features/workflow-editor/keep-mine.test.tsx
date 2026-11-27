@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addStepButton,
+  openStepList,
   findCanvas,
   pressSave,
 } from '../../support/fixtures/editor-actions';
@@ -77,6 +78,7 @@ async function reachConflict() {
   await renderLoadedApp(editorPath);
   const event = userEvent.setup();
   await findCanvas();
+  await openStepList(event);
   await event.click(addStepButton(/Set fields/u));
   pressSave();
   const bar = await screen.findByRole('region', { name: 'Draft conflict' });

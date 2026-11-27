@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findCanvas,
   pressSave,
+  openWorkflowMenu,
 } from '../../../support/fixtures/editor-actions';
 import { graphWithMappingNodes } from '../../../support/fixtures/editor-graph';
 import {
@@ -120,15 +121,26 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
     });
     expect(await screen.findByText(/^Saved/u)).toBeVisible();
 
-    const undo = screen.getByRole('button', { name: 'Undo' });
-    while (!undo.hasAttribute('disabled')) await event.click(undo);
+    async function replayHistory(action: 'Undo' | 'Redo') {
+      for (;;) {
+        const menu = await openWorkflowMenu(event);
+        const item = menu.getByRole('menuitem', {
+          name: new RegExp(`^${action}`, 'u'),
+        });
+        if (item.getAttribute('aria-disabled') === 'true') {
+          await event.keyboard('{Escape}');
+          return;
+        }
+        await event.click(item);
+      }
+    }
+    await replayHistory('Undo');
     expect(
       within(screen.getByRole('region', { name: 'Inputs' })).getByText(
         /No input mappings/u,
       ),
     ).toBeVisible();
-    const redo = screen.getByRole('button', { name: 'Redo' });
-    while (!redo.hasAttribute('disabled')) await event.click(redo);
+    await replayHistory('Redo');
     expect(
       within(screen.getByRole('region', { name: 'Inputs' })).getAllByRole(
         'listitem',

@@ -1,6 +1,11 @@
-import type { Locator, Page } from '@playwright/test';
+import { installActivityRoutes, form, formId } from './activity-data';
+import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
+import { installSettingsRoutes } from './settings-data';
+import type { Page } from '@playwright/test';
 import {
-  editorUrl,
+  manualDefinition,
+  definition,
+  remoteDraft,
   user,
   workflowId,
   workspaceId,
@@ -15,122 +20,75 @@ import {
   tableRows,
   tables,
 } from './workspace-data';
-import {
-  liveVersionId,
-  nextRuns,
-  schedules,
-  versions,
-  webhooks,
-  workflowSummary,
-} from './workflow-data';
-
-type Screen = Readonly<{
-  name: string;
-  path: string;
-  /** What shows once the page's reads have answered. */
-  ready: (page: Page) => Locator;
-  /** Pages shown before anyone signs in. */
-  signedOut?: boolean;
-}>;
-
-const root = `/w/${workspaceId}`;
-const hub = editorUrl.replace(/\/$/u, '');
-const heading = (name: string | RegExp) => (page: Page) =>
-  page.getByRole('heading', { name }).first();
-
-export const workspaceScreens: readonly Screen[] = [
-  {
-    name: 'triggers',
-    path: `${hub}/triggers`,
-    ready: (page) => page.getByRole('article', { name: 'By hand' }),
-  },
-  {
-    name: 'versions',
-    path: `${hub}/versions`,
-    ready: (page) => page.getByRole('navigation', { name: 'Versions' }),
-  },
-  {
-    name: 'workflow-settings',
-    path: `${hub}/settings`,
-    ready: heading('Danger zone'),
-  },
-  {
-    name: 'connections',
-    path: `${root}/connections`,
-    ready: (page) => page.getByRole('list', { name: 'Connections' }),
-  },
-  {
-    name: 'tables',
-    path: `${root}/data-tables`,
-    ready: (page) => page.getByRole('navigation', { name: 'Tables' }),
-  },
-  {
-    name: 'table-detail',
-    path: `${root}/data-tables/${tables[0]?.id ?? ''}`,
-    ready: heading('Restock thresholds'),
-  },
-  {
-    name: 'team',
-    path: `${root}/team`,
-    ready: (page) => page.getByRole('list', { name: 'Builders' }),
-  },
-  {
-    name: 'settings',
-    path: `${root}/settings`,
-    ready: heading('How it’s known'),
-  },
-  {
-    name: 'usage',
-    path: `${root}/settings/usage`,
-    ready: heading('By workflow'),
-  },
-  { name: 'alerts', path: `${root}/settings/alerts`, ready: heading('Alerts') },
-  {
-    name: 'audit',
-    path: `${root}/settings/audit`,
-    ready: heading('Audit log'),
-  },
-  { name: 'account', path: `${root}/account`, ready: heading('Account') },
-  {
-    name: 'notifications',
-    path: `${root}/settings/notifications`,
-    ready: heading('Notifications'),
-  },
-  {
-    name: 'api-tokens',
-    path: `${root}/settings/api-tokens`,
-    ready: heading('API tokens'),
-  },
-  {
-    name: 'promotion',
-    path: `${root}/settings/promotion`,
-    ready: heading('Promotion'),
-  },
-  { name: 'sso', path: `${root}/settings/sso`, ready: heading(/sign-on/u) },
-  {
-    name: 'sign-in',
-    path: '/login',
-    signedOut: true,
-    ready: (page) => page.getByRole('button', { name: /Sign in/u }).first(),
-  },
-  {
-    name: 'workspaces',
-    path: '/workspaces',
-    ready: (page) => page.getByText('Control Operations').first(),
-  },
-  {
-    name: 'not-found',
-    path: `${root}/nowhere`,
-    ready: (page) => page.getByRole('link', { name: /home/iu }).first(),
-  },
-];
+import { installWorkflowTabRoutes, liveVersionId } from './workflow-data';
 
 const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
 
+export async function installPublicScreenRoutes(page: Page) {
+  await page.route('**/v1/auth/capabilities', (route) =>
+    route.fulfill({
+      json: {
+        password: {
+          enabled: true,
+          minimumLength: 12,
+          verificationRequired: true,
+        },
+        socialProviders: AUTHENTICATION_PROVIDERS,
+        signUp: 'open',
+      },
+    }),
+  );
+  await installFormRoutes(page);
+}
+
+async function installFormRoutes(page: Page) {
+  for (const path of [`**/v1/forms/${formId}`, `${workflowApi}/form`]) {
+    await page.route(path, (route) =>
+      route.fulfill({ json: { versionId: liveVersionId, form } }),
+    );
+  }
+}
+
 export async function installWorkspaceRoutes(page: Page) {
-  await installPolishRoutes(page);
+  const [start, extract, post] = [
+    ['start', manualDefinition, 'By hand', 0],
+    ['extract', definition, 'Read the invoice', 300],
+    ['post', definition, 'Post to ERP', 600],
+  ] as const;
+  const nodes = [start, extract, post].map(([id, step, label, x]) => ({
+    id,
+    label,
+    definition: step.definition,
+    configVersion: 1,
+    position: { x, y: 0 },
+    config: {},
+    inputMappings: {},
+    connectionRefs: {},
+  }));
+  await installPolishRoutes(page, {
+    draft: remoteDraft({
+      nodes,
+      edges: [
+        {
+          id: 'start-extract',
+          source: { nodeId: start[0], port: 'out' },
+          target: { nodeId: extract[0], port: 'in' },
+        },
+        {
+          id: 'extract-post',
+          source: { nodeId: extract[0], port: 'out' },
+          target: { nodeId: post[0], port: 'in' },
+        },
+      ],
+      settings: {},
+    }),
+    definitions: [definition, manualDefinition],
+  });
   await installWorkflowTabRoutes(page);
   await installWorkspaceDataRoutes(page);
+  await installSettingsRoutes(page);
+  await installFormRoutes(page);
+  await installActivityRoutes(page);
 }
 
 const workspaceApi = `**/v1/workspaces/${workspaceId}`;
@@ -163,52 +121,5 @@ async function installWorkspaceDataRoutes(page: Page) {
   );
   await page.route(`${workspaceApi}/connections/*/usage?**`, (route) =>
     route.fulfill({ json: connectionUsage }),
-  );
-}
-
-async function installWorkflowTabRoutes(page: Page) {
-  await page.route(`**/v1/workspaces/${workspaceId}/auto-pause`, (route) =>
-    route.fulfill({ json: { threshold: 10, revision: 1 } }),
-  );
-  await page.route(
-    `**/v1/workspaces/${workspaceId}/notifications/summary`,
-    (route) => route.fulfill({ json: { unreadCount: 3, revision: '3' } }),
-  );
-  await page.route(workflowApi, (route) =>
-    route.fulfill({ json: workflowSummary }),
-  );
-  await page.route(`${workflowApi}?**`, (route) =>
-    route.fulfill({ json: { ...workflowSummary, templateOrigin: null } }),
-  );
-  await page.route(`${workflowApi}/versions?**`, (route) =>
-    route.fulfill({ json: { items: versions, nextCursor: null } }),
-  );
-  await page.route(`${workflowApi}/triggers`, (route) =>
-    route.fulfill({ json: webhooks }),
-  );
-  await page.route(`${workflowApi}/triggers/schedules`, (route) =>
-    route.fulfill({ json: schedules }),
-  );
-  await page.route(`${workflowApi}/triggers/*/schedule/next-runs?**`, (route) =>
-    route.fulfill({ json: nextRuns(route.request().url()) }),
-  );
-  await page.route(
-    `${workflowApi}/triggers/*/schedule/occurrences?**`,
-    (route) => route.fulfill({ json: { items: [], nextCursor: null } }),
-  );
-  await page.route(`${workflowApi}/mcp`, (route) =>
-    route.fulfill({
-      json: {
-        publishedVersionId: liveVersionId,
-        eligible: true,
-        exposure: null,
-      },
-    }),
-  );
-  await page.route(`${workflowApi}/failure-notification-policy`, (route) =>
-    route.fulfill({ json: { destination: null } }),
-  );
-  await page.route(`${workflowApi}/triggers/*/webhook/deliveries?**`, (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
   );
 }

@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import { expect, type Page } from '@playwright/test';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { readEditorDraft } from './single-step';
@@ -15,6 +16,7 @@ export async function authorCollectionGraph(
       await page.keyboard.press('Enter');
     }
     const before = (await readDraft(page, workflowPath)).graph.nodes;
+    await openStepPalette(page);
     await page
       .getByRole('complementary', { name: 'Add a step' })
       .getByRole('button', { name: new RegExp(`^${name}\\b`, 'u') })

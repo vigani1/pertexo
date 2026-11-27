@@ -100,7 +100,9 @@ test('real nested execution, two-context conflict, immutable version and workspa
   if (version === undefined)
     throw new Error('Published immutable version missing');
   expect(version.graph).toEqual(authored.graph);
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();

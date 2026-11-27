@@ -106,7 +106,7 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
 
   // Run all tests lives in the Test workflow button's menu.
   await page
-    .getByRole('button', { name: 'More test actions', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
     .click();
   await page
     .getByRole('menuitem', { name: 'Run all tests', exact: true })

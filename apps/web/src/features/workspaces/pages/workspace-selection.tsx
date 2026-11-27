@@ -24,7 +24,7 @@ type WorkspaceSelectionPageProps = Readonly<{
 }>;
 /**
  * The workspace picker: rarely seen, since "/" opens the last workspace. New
- * people create their first workspace inline; everyone else picks a card.
+ * people create their first workspace inline; everyone else chooses from a list.
  */
 export function WorkspaceSelectionPage({
   apiClient,
@@ -51,7 +51,7 @@ export function WorkspaceSelectionPage({
       />
       <main
         id="main"
-        className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pt-12 pb-20 sm:px-8 sm:pt-16"
+        className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-12 pb-20 sm:px-8 sm:pt-16"
       >
         {logoutError === undefined ? null : (
           <Notice tone="destructive">{logoutError}</Notice>

@@ -81,7 +81,7 @@ export async function inspectViewerViewport(
     0,
   );
   await expect(
-    viewer.getByRole('button', { name: 'Run', exact: true }),
+    viewer.getByRole('button', { name: 'Test and run actions', exact: true }),
   ).toHaveCount(0);
   const node = viewer.getByTestId(`rf__node-${nodeId}`);
   await node.focus();
@@ -110,25 +110,16 @@ export async function inspectViewerViewport(
   expect((labelBounds?.x ?? 0) + (labelBounds?.width ?? 0)).toBeLessThanOrEqual(
     width,
   );
-  if (width >= 640) {
-    await expect(
-      viewer.getByRole('button', { name: 'Undo', exact: true }),
-    ).toBeDisabled();
-    await expect(
-      viewer.getByRole('button', { name: 'Redo', exact: true }),
-    ).toBeDisabled();
-  } else {
-    await viewer
-      .getByRole('button', { name: 'More workflow actions', exact: true })
-      .click();
-    await expect(
-      viewer.getByRole('menuitem', { name: /^Undo/u }),
-    ).toHaveAttribute('aria-disabled', 'true');
-    await expect(
-      viewer.getByRole('menuitem', { name: /^Redo/u }),
-    ).toHaveAttribute('aria-disabled', 'true');
-    await viewer.keyboard.press('Escape');
-  }
+  await viewer
+    .getByRole('button', { name: 'More workflow actions', exact: true })
+    .click();
+  await expect(
+    viewer.getByRole('menuitem', { name: /^Undo/u }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(
+    viewer.getByRole('menuitem', { name: /^Redo/u }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await viewer.keyboard.press('Escape');
   const inputsTab = viewer.getByRole('tab', {
     name: 'Inputs',
     exact: true,

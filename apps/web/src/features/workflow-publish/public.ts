@@ -6,3 +6,4 @@ export type { WorkflowIssue } from './model/validation/issues';
 export { useAutoValidation } from './hooks/use-auto-validation';
 export { useWorkflowCommandSession } from './hooks/use-workflow-command-session';
 export { unreachableStepIssues } from './model/validation/reachability';
+export { emptyDraftHint } from './model/publication/readiness';

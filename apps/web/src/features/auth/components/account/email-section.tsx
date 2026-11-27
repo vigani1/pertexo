@@ -7,7 +7,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { useRequestAccountEmailChange } from '../../data/account-security/account-security.mutations';
 import { newEmailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { AccountCommandFailure, AccountSection } from './section';
+import { AccountCommandFailure } from './section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /** Change email: confirmed at the old address, then verified at the new. */
@@ -37,7 +38,8 @@ export function AccountEmailSection({
   }
 
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="Change email"
       description="We confirm it at your current address, then at the new one. Finishing signs you out everywhere."
     >
@@ -87,6 +89,6 @@ export function AccountEmailSection({
           Change email
         </ProgressButton>
       </form>
-    </AccountSection>
+    </SettingRow>
   );
 }

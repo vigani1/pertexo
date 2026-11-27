@@ -81,12 +81,6 @@ export const manualDefinition = {
   ports: { inputs: [], outputs: ['out'] },
 };
 
-export const FOLDED_WORKFLOW_ACTIONS = new Set([
-  'Export…',
-  'Input cases',
-  'Duplicate…',
-]);
-
 export type Graph = Readonly<{
   callable?: WorkflowGraphContract['callable'];
   notes?: readonly WorkflowNote[] | undefined;

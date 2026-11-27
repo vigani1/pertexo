@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
 } from '../../support/fixtures/editor-actions';
 import {
@@ -51,7 +52,9 @@ it('shows every safe draft-validation refusal and keeps the local step available
   );
   await renderLoadedApp(editorPath);
   await findCanvas();
-  await userEvent.setup().click(addStepButton(/Set fields/u));
+  const event = userEvent.setup();
+  await openStepList(event);
+  await event.click(addStepButton(/Set fields/u));
   expect(
     await screen.findByText(
       'Choose a valid field value. Workspace variable RATE does not exist.',

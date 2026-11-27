@@ -4,7 +4,7 @@ import type {
   AccessibleWorkspace,
   WorkflowErrorSettings,
 } from '@pertexo/contracts';
-import { SettingSentence } from '@/components/patterns/settings/sentence';
+import { SettingDetails } from '@/components/patterns/settings/details';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import {
@@ -37,7 +37,6 @@ type Scope = Readonly<{
 type ErrorWorkflowEditorProps = Readonly<{
   scope: Scope;
   settings: WorkflowErrorSettings;
-  onSaved: () => void;
 }>;
 function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
   const model = useErrorWorkflowForm(props);
@@ -120,11 +119,7 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
     </form>
   );
 }
-function useErrorWorkflowForm({
-  scope,
-  settings,
-  onSaved,
-}: ErrorWorkflowEditorProps) {
+function useErrorWorkflowForm({ scope, settings }: ErrorWorkflowEditorProps) {
   const [draft, setDraft] = useState<
     Readonly<{
       target: string | null;
@@ -167,7 +162,6 @@ function useErrorWorkflowForm({
   const saved = () => {
     setDraft(undefined);
     notifications.success({ title: 'Error workflow saved' });
-    onSaved();
   };
   async function submit() {
     if (
@@ -192,7 +186,6 @@ function useErrorWorkflowForm({
   } as const;
 }
 export function ErrorWorkflowSection(scope: Scope) {
-  const [editing, setEditing] = useState(false);
   const canRead = scope.workspace.capabilities.includes('workflow:read');
   const query = useQuery({
     ...errorWorkflowQuery(
@@ -218,7 +211,7 @@ export function ErrorWorkflowSection(scope: Scope) {
           failure={settingsReadFailure}
         >
           {(settings) => (
-            <SettingSentence
+            <SettingDetails
               summary={
                 <>
                   {settings.targetWorkflowId === null ? (
@@ -240,18 +233,10 @@ export function ErrorWorkflowSection(scope: Scope) {
                     : ' Changing it takes edit access to both workflows.'}
                 </>
               }
-              editing={editing}
-              onEditingChange={setEditing}
               {...(editable
                 ? {
                     editor: (
-                      <ErrorWorkflowEditor
-                        scope={scope}
-                        settings={settings}
-                        onSaved={() => {
-                          setEditing(false);
-                        }}
-                      />
+                      <ErrorWorkflowEditor scope={scope} settings={settings} />
                     ),
                   }
                 : {})}

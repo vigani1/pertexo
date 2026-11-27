@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
   findPaused,
   openRunLens,
@@ -85,6 +86,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
     const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
     currentUser = otherUser;
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     expect(await findPaused()).toBeVisible();
@@ -113,6 +115,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
     const app = await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     const nodes = () => screen.getAllByTestId(/^rf__node-/u).length;
     const before = nodes();
@@ -164,6 +167,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
     const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     await waitFor(() => {

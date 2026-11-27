@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { GovernanceScope } from '../data/audit.api';
 import { governanceQueryOptions } from '../data/audit.queries';
@@ -22,7 +22,8 @@ export function GovernanceSettings({
     <QueryView query={settings} resource="Governance settings">
       {(snapshot) => (
         <>
-          <SettingsSection
+          <SettingRow
+            layout="section"
             title="Publishing approval"
             description={`Require another ${ANY_ADMINISTRATOR} to review each saved draft before it becomes live.`}
           >
@@ -31,8 +32,9 @@ export function GovernanceSettings({
               snapshot={snapshot}
               editable={editable}
             />
-          </SettingsSection>
-          <SettingsSection
+          </SettingRow>
+          <SettingRow
+            layout="section"
             title="Audit retention"
             description={`${sentenceStart(whoCan('governance:manage'))} can keep events for ${AUDIT_RETENTION_RANGE}. Run data retention is separate.`}
           >
@@ -41,7 +43,7 @@ export function GovernanceSettings({
               snapshot={snapshot}
               editable={editable}
             />
-          </SettingsSection>
+          </SettingRow>
         </>
       )}
     </QueryView>

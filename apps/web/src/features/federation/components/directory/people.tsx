@@ -6,7 +6,7 @@ import type {
   FederationSettings,
   DirectoryAdoptionQuery,
 } from '@pertexo/contracts';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { SearchInput } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,8 @@ export function DirectoryPeople({
   );
   const rows = people.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Directory people"
       description="People remain pending until they complete verified organization SSO. Inactive and deleted records prevent JIT from restoring managed access. Existing manual memberships are adopted only after an explicit review."
     >
@@ -180,6 +181,6 @@ export function DirectoryPeople({
           }}
         />
       )}
-    </SettingsSection>
+    </SettingRow>
   );
 }

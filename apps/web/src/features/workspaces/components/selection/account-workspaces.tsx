@@ -2,7 +2,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonRows } from '@/components/patterns/states/loading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -27,7 +27,8 @@ export function AccountWorkspacesSection({
 }>) {
   const query = useQuery(accessibleWorkspacesQueryOptions(apiClient, userId));
   return (
-    <SettingsSection
+    <SettingRow
+      layout="section"
       title="Your workspaces"
       description="Where you’re a member, and your role in each. Roles are set by each workspace’s admins."
     >
@@ -86,6 +87,6 @@ export function AccountWorkspacesSection({
           </ul>
         )}
       </QueryView>
-    </SettingsSection>
+    </SettingRow>
   );
 }

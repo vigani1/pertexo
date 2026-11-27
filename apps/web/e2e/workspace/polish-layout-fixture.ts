@@ -7,7 +7,11 @@ import {
 } from '../workflow-editor/support';
 import { settings as federation } from '../../test/features/federation/fixtures';
 import { fixtureUsageTrends } from '../../test/support/fixtures/usage-trends';
-import { fixtureRun, fixtureStatistics } from '../../test/support/fixtures/run';
+import {
+  fixtureRun,
+  fixtureStatistics,
+  minutesAgo,
+} from '../../test/support/fixtures/run';
 import { deferred } from '../../test/support/fixtures/workflow-editor';
 import { expect, type Page } from '../support/fixtures';
 
@@ -33,10 +37,19 @@ const quotas = {
   tableCount: 0,
   storedBytes: 0,
 };
-export async function installPolishRoutes(page: Page) {
+export async function installPolishRoutes(
+  page: Page,
+  options: Readonly<{
+    draft?: ReturnType<typeof remoteDraft>;
+    definitions?: readonly unknown[];
+  }> = {},
+) {
   await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
   await page.route('**/presence/*', (route) => route.fulfill({ status: 204 }));
-  await installEditorRoutes(page, remoteDraft(), {
+  await installEditorRoutes(page, options.draft ?? remoteDraft(), {
+    ...(options.definitions === undefined
+      ? {}
+      : { definitions: options.definitions }),
     accessibleWorkspace: {
       ...workspace,
       role: 'owner',
@@ -184,10 +197,7 @@ export async function installPolishRoutes(page: Page) {
   );
 }
 
-export async function captureInboxArrival(
-  page: Page,
-  shot: (name: string) => Promise<void>,
-) {
+export async function showInboxArrival(page: Page) {
   const change = deferred<undefined>();
   let revision = '1';
   await page.route('**/v1/workspaces/*/notifications/summary', (route) =>
@@ -205,8 +215,8 @@ export async function captureInboxArrival(
             kind: 'failed',
             failureDays: [],
             occurrenceCount: 2,
-            firstOccurredAt: '2026-09-15T09:00:00.000000Z',
-            latestOccurredAt: '2026-09-15T09:30:00.000000Z',
+            firstOccurredAt: minutesAgo(2).replace(/Z$/, '000Z'),
+            latestOccurredAt: minutesAgo(0).replace(/Z$/, '000Z'),
             latestRunId: runId,
             latestFailedStep: null,
             revision,
@@ -233,6 +243,15 @@ export async function captureInboxArrival(
   change.resolve(undefined);
   const notice = page.getByRole('dialog', { name: 'Nightly import' });
   await expect(notice).toBeVisible();
+  await expect(notice).toHaveCSS('opacity', '1');
+  return notice;
+}
+
+export async function captureInboxArrival(
+  page: Page,
+  shot: (name: string) => Promise<void>,
+) {
+  const notice = await showInboxArrival(page);
   await shot('inbox-arrival');
   await notice.hover();
   await expect(

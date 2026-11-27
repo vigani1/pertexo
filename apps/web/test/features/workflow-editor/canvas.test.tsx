@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   findCanvas,
   pressSave,
 } from '../../support/fixtures/editor-actions';
@@ -223,6 +224,7 @@ describe('workflow editor add-step lens', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     const lens = within(
       screen.getByRole('complementary', { name: 'Add a step' }),
     );

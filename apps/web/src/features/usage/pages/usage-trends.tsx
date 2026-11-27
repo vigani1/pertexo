@@ -10,7 +10,7 @@ import type {
   UsageTrendPeriod,
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatDurationMs, formatDateTime } from '@/lib/format/time';
@@ -97,7 +97,8 @@ export function UsageTrendsPage({
           </UsageSnapshot>
           {data === undefined ? null : (
             <>
-              <SettingsSection
+              <SettingRow
+                layout="section"
                 title="Elapsed duration"
                 description="Completed runs with a start time. Includes waits; excludes the queue before starting."
               >
@@ -120,8 +121,9 @@ export function UsageTrendsPage({
                   {data.elapsed.measuredRuns.toLocaleString(FORMAT_LOCALE)}{' '}
                   completed runs.
                 </p>
-              </SettingsSection>
-              <SettingsSection
+              </SettingRow>
+              <SettingRow
+                layout="section"
                 title="Most runs"
                 description={`The ${String(USAGE_TREND_RANKED_WORKFLOWS)} busiest workflows in this period.`}
               >
@@ -131,8 +133,9 @@ export function UsageTrendsPage({
                   workspaceId={workspace.id}
                   canOpen={workspace.capabilities.includes('workflow:read')}
                 />
-              </SettingsSection>
-              <SettingsSection
+              </SettingRow>
+              <SettingRow
+                layout="section"
                 title="Most failures"
                 description="Failed, timed-out and unknown-outcome runs."
               >
@@ -142,7 +145,7 @@ export function UsageTrendsPage({
                   workspaceId={workspace.id}
                   canOpen={workspace.capabilities.includes('workflow:read')}
                 />
-              </SettingsSection>
+              </SettingRow>
             </>
           )}
         </>

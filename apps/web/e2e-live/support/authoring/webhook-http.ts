@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../../e2e/workflow-editor/actions';
 import { expect, type Page } from '@playwright/test';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { readEditorDraft } from './single-step';
@@ -12,6 +13,7 @@ export async function authorWebhookHttpGraph(
   const webhookId = await add(/Webhook/u, 'Signed input');
   async function add(kind: RegExp, label: string) {
     const before = (await readDraft(page, workflowPath)).graph.nodes;
+    await openStepPalette(page);
     await page
       .getByRole('complementary', { name: 'Add a step' })
       .getByRole('button', { name: kind })

@@ -1,3 +1,4 @@
+import { openStepPalette } from '../../e2e/workflow-editor/actions';
 import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import './coordination/events.case';
 import { createHmac, randomUUID } from 'node:crypto';
@@ -21,6 +22,7 @@ import {
 
 async function add(page: Page, path: string, kind: RegExp, label: string) {
   const before = (await readEditorDraft(page, path)).graph.nodes;
+  await openStepPalette(page);
   await page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name: kind })

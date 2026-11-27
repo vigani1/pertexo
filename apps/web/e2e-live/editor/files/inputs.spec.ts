@@ -1,3 +1,7 @@
+import {
+  openStepPalette,
+  openWorkflowMenu,
+} from '../../../e2e/workflow-editor/actions';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
@@ -23,6 +27,7 @@ async function add(
   label: string,
 ) {
   const before = (await readEditorDraft(page, workflowPath)).graph.nodes;
+  await openStepPalette(page);
   await page
     .getByRole('complementary', { name: 'Add a step' })
     .getByRole('button', { name: kind })
@@ -109,7 +114,9 @@ async function map({
     });
 }
 async function beginRun(page: Page) {
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
   await page
     .getByRole('menuitem', { name: 'Run with input…', exact: true })
     .click();
@@ -245,7 +252,8 @@ for (const manual of [false, true])
         });
       // The finalized descriptor is one independent history edit.
       await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: 'Undo', exact: true }).click();
+      await openWorkflowMenu(page);
+      await page.getByRole('menuitem', { name: 'Undo' }).click();
       await expect
         .poll(
           async () =>
@@ -254,7 +262,8 @@ for (const manual of [false, true])
             )?.inputMappings.body,
         )
         .toBeUndefined();
-      await page.getByRole('button', { name: 'Redo', exact: true }).click();
+      await openWorkflowMenu(page);
+      await page.getByRole('menuitem', { name: 'Redo' }).click();
       await expect
         .poll(
           async () =>

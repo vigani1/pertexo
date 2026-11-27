@@ -1,3 +1,4 @@
+import { openWorkflowMenu } from '../actions';
 import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
@@ -81,7 +82,8 @@ for (const width of [375, 1280])
       dialog.getByRole('link', { name: 'Variables', exact: true }),
     ).toHaveAttribute('href', `/w/${workspaceId}/settings/variables`);
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: /2 issues/u }).click();
+    await openWorkflowMenu(page);
+    await page.getByRole('menuitem', { name: /2 issues/u }).click();
     const issues = page.getByRole('region', { name: '2 issues', exact: true });
     await expect(issues.getByText(messages[1], { exact: true })).toBeVisible();
     await expect(

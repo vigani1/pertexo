@@ -70,7 +70,6 @@ for (const width of [1280, 375])
       name: 'Error workflow',
       exact: true,
     });
-    await section.getByRole('button', { name: 'Change' }).click();
     const picker = section.getByRole('combobox', {
       name: 'When this workflow fails, run …',
     });

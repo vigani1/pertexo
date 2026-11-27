@@ -1,5 +1,5 @@
 import type { ApiTokenMetadata } from '@pertexo/contracts';
-import { KeyRoundIcon } from 'lucide-react';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/class-names';
 import { SCOPE_COPY, TOKEN_STATUS } from '../model/token-copy';
 
 /**
- * Every token as a card: a key in its status ring, what it may do as chips,
+ * Each token shows its status, scopes,
  * and its lifetime as a thread from created to expiry with today marked, so
  * one about to run out stands out before a script breaks.
  */
@@ -21,46 +21,27 @@ export function TokenList({
 }>) {
   const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   return (
-    <ul aria-label="Your API tokens" className="grid gap-3">
+    <SettingsGroup title="Your API tokens">
       {tokens.map((token) => {
         const effectiveStatus =
           token.status === 'active' && nowMs >= Date.parse(token.expiresAt)
             ? 'expired'
             : token.status;
         const status = TOKEN_STATUS[effectiveStatus];
-        const live = effectiveStatus === 'active';
         return (
-          <li
+          <SettingRow
             key={token.id}
-            className={cn(
-              'flex min-w-0 flex-col gap-4 rounded-xl border border-surface-ink/7 bg-select p-5',
-              !live && 'opacity-80',
-            )}
-          >
-            <div className="flex min-w-0 items-start gap-3">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'grid size-9 shrink-0 place-items-center rounded-full border',
-                  live
-                    ? 'border-action/50 bg-action/8 text-accent-foreground'
-                    : 'border-border text-subtle-foreground',
-                )}
-              >
-                <KeyRoundIcon className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="min-w-0 font-semibold break-words">
-                  {token.name}
-                </h3>
-                <StatusMark tone={status.tone}>{status.label}</StatusMark>
-              </div>
-              {token.status === 'revoked' || onRevoke === undefined ? null : (
+            title={token.name}
+            description={
+              <StatusMark tone={status.tone}>{status.label}</StatusMark>
+            }
+            action={
+              token.status === 'revoked' ||
+              onRevoke === undefined ? undefined : (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 hover:text-destructive"
                   aria-label={`Revoke ${token.name}`}
                   onClick={() => {
                     onRevoke(token);
@@ -68,8 +49,9 @@ export function TokenList({
                 >
                   Revoke
                 </Button>
-              )}
-            </div>
+              )
+            }
+          >
             <ul
               aria-label={`What ${token.name} may do`}
               className="flex flex-wrap gap-1.5"
@@ -91,10 +73,10 @@ export function TokenList({
                 replacement with your current access.
               </p>
             )}
-          </li>
+          </SettingRow>
         );
       })}
-    </ul>
+    </SettingsGroup>
   );
 }
 

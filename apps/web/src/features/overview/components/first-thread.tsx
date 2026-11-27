@@ -4,6 +4,7 @@ import { ArrowRightIcon, PlayIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
+import { Disclosure } from '@/components/ui/disclosure';
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { GuideLink } from '@/components/patterns/guidance/guide-link';
 import { HELP_LINKS } from '@/lib/help/guides';
@@ -111,28 +112,18 @@ export function FirstThread({
   workspaceId,
   firstRun,
   compact = false,
+  folded = false,
 }: Readonly<{
   steps: readonly FirstThreadStep[];
   workspaceId: string;
   firstRun?: FirstRunOffer | undefined;
   /** After the first run: the remaining tasks, below what's running. */
   compact?: boolean;
+  folded?: boolean;
 }>) {
   const done = steps.filter((step) => step.done).length;
-  return (
-    <section aria-labelledby="first-thread-title" className="min-w-0">
-      <RuleHeading
-        id="first-thread-title"
-        count={`${String(done)} of ${String(steps.length)}`}
-      >
-        Getting started
-      </RuleHeading>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {String(done)} of {String(steps.length)} done.
-        {compact
-          ? ' The rest are here whenever you want them.'
-          : ' Once something runs, this page shows every run as it happens.'}
-      </p>
+  const contents = (
+    <>
       <GuideLink href={HELP_LINKS.firstWorkflow} className="mt-2">
         Read the first-workflow guide
       </GuideLink>
@@ -177,6 +168,42 @@ export function FirstThread({
           </li>
         ))}
       </ol>
+    </>
+  );
+  return (
+    <section aria-labelledby="first-thread-title" className="min-w-0">
+      {folded ? (
+        <Disclosure
+          lazy
+          summary={
+            <>
+              <span id="first-thread-title">Getting started</span>
+              <span className="text-muted-foreground">
+                {done} of {steps.length} done · Continue
+              </span>
+            </>
+          }
+          appearance={{ tone: 'strong' }}
+        >
+          {contents}
+        </Disclosure>
+      ) : (
+        <>
+          <RuleHeading
+            id="first-thread-title"
+            count={`${String(done)} of ${String(steps.length)}`}
+          >
+            Getting started
+          </RuleHeading>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {done} of {steps.length} done.
+            {compact
+              ? null
+              : ' Once something runs, this page shows every run as it happens.'}
+          </p>
+          {contents}
+        </>
+      )}
     </section>
   );
 }

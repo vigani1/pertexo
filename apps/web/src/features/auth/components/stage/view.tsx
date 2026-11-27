@@ -19,7 +19,7 @@ type StageLayout = 'docked' | 'centered';
 // the lens near the Core instead of a screen's width away.
 const CORE_SLOT: Record<StageLayout, string> = {
   docked:
-    'min-[900px]:absolute min-[900px]:top-[40%] min-[900px]:left-[34%] min-[900px]:mx-0 min-[900px]:size-[min(66vmin,calc(120dvh-27rem),calc(132vw-57.5rem))] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2',
+    'min-[900px]:absolute min-[900px]:top-[40%] min-[900px]:left-[34%] min-[900px]:mx-0 min-[900px]:size-[min(26rem,calc(110dvh-26rem),calc(132vw-57.5rem))] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2',
   centered: 'min-[900px]:mt-[max(3rem,calc(28dvh-7rem))] min-[900px]:size-52',
 };
 
@@ -37,11 +37,11 @@ const FACTS = [
     text: 'Runs pick up where they stopped after crashes and deploys',
   },
   {
-    tone: 'live',
+    tone: 'success',
     text: 'Every publish is an immutable version you can go back to',
   },
   {
-    tone: 'waiting',
+    tone: 'success',
     text: `Waits of up to ${formatTimeSpan(WAIT_MAXIMUM_SECONDS)}, and retries that don’t repeat side effects`,
   },
 ] as const;
@@ -59,19 +59,10 @@ function ProductFacts() {
         Workflows that <span className="text-action">finish</span> what they
         start.
       </p>
-      <ul className="mt-5 grid gap-2.5 rounded-lg bg-background p-3 font-mono text-label leading-snug text-muted-foreground">
+      <ul className="mt-5 grid gap-2.5 font-mono text-label leading-snug text-muted-foreground">
         {FACTS.map((fact) => (
           <li key={fact.text} className="flex items-start gap-2.5 text-pretty">
-            <StatusMark
-              display="mark"
-              tone={fact.tone}
-              className={cn(
-                'mt-px',
-                fact.tone === 'success' && 'text-success',
-                fact.tone === 'live' && 'text-action',
-                fact.tone === 'waiting' && 'text-secondary',
-              )}
-            />
+            <StatusMark display="mark" tone={fact.tone} className="mt-px" />
             {fact.text}
           </li>
         ))}

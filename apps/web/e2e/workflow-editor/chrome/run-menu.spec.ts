@@ -61,7 +61,10 @@ for (const activation of ['pointer', 'keyboard'] as const) {
       await expect(dialog).toBeVisible();
       const closingDialog = await dialog.elementHandle();
       await dialog.getByRole('button', { name: 'Close input cases' }).click();
-      const run = page.getByRole('button', { name: 'Run', exact: true });
+      const run = page.getByRole('button', {
+        name: 'Test and run actions',
+        exact: true,
+      });
       if (activation === 'pointer') await run.click();
       else await run.press('Enter');
       const item = page.getByRole('menuitem', {

@@ -13,7 +13,8 @@ import { useUnlinkAccountMethod } from '../../data/account-security/account-secu
 import { ProviderMark } from '../social/provider-button';
 import { isSocialProvider, providerName } from '../../model/social-provider';
 import { accountCommandFailure } from '../../model/account/failure';
-import { AccountSection, FreshSignInLink } from './section';
+import { FreshSignInLink } from './section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LinkProviderDialog } from './link-provider-dialog';
 
 type Method = AccountSecurityResponse['methods'][number];
@@ -73,7 +74,8 @@ export function AccountMethodsSection({
   }
 
   return (
-    <AccountSection
+    <SettingRow
+      layout="section"
       title="Sign-in methods"
       description="Every way you can sign in to Pertexo."
       action={
@@ -162,7 +164,7 @@ export function AccountMethodsSection({
           errorAction={<FreshSignInLink error={unlink.error} />}
         />
       </ConfirmDialog>
-    </AccountSection>
+    </SettingRow>
   );
 }
 

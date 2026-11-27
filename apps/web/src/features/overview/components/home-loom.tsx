@@ -65,10 +65,12 @@ export function HomeLoom({
   apiClient,
   userId,
   workspaceId,
+  currentRunning,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
+  currentRunning?: number | undefined;
 }>) {
   const [windowKey, setWindowKey] = useState<LoomWindow>('1h');
   const selected = windows[windowKey];
@@ -143,6 +145,8 @@ export function HomeLoom({
           windowLabel={selected.phrase}
           workspaceId={workspaceId}
           laneTotals={laneTotals}
+          currentRunning={currentRunning}
+          converge={windowKey === '1h'}
         />
         {caption === undefined ? null : (
           <p className="text-xs text-subtle-foreground">{caption}</p>

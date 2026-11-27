@@ -22,6 +22,7 @@ import {
   databasePollingGuidance,
   pollingGuidance,
 } from '@/lib/polling-guidance';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import {
@@ -111,6 +112,9 @@ function CatalogSetupTab({
     schemaPropertyCount(definition.configSchema) === 0;
   return (
     <FieldGroup className="gap-4">
+      {agent && slots.length > 0 ? (
+        <RuleHeading appearance="compact">Model</RuleHeading>
+      ) : null}
       {slots.map((requirement) => (
         <ConnectionSlot
           key={requirement}

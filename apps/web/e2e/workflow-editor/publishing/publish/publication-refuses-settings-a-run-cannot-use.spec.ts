@@ -50,7 +50,7 @@ test('a publish refused for settings a run cannot use says why, publishes nothin
     },
   );
   await page.goto(editorUrl);
-  await addStep(page, /Set fields/u).click();
+  await (await addStep(page, /Set fields/u)).click();
   await expect.poll(() => remote.revision).toBe(2);
   const savedGraph = structuredClone(remote.graph);
 

@@ -1,12 +1,9 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { PlusIcon } from 'lucide-react';
-import {
-  PageHeader,
-  PageHeaderMeta,
-  PageHeaderTitle,
-} from '@/components/patterns/page-header';
+import { Button } from '@/components/ui/button';
+import { Row, RowList } from '@/components/patterns/lists/row';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { WorkspaceCard } from './workspace-card';
-import { formatCount } from '@/lib/format/count';
 
 /** Every workspace you belong to, then a tile to start another. */
 export function WorkspaceGrid({
@@ -20,43 +17,52 @@ export function WorkspaceGrid({
   onSelect: (workspace: AccessibleWorkspace) => void;
   onCreate: () => void;
 }>) {
-  const count = workspaces.length;
   return (
-    <section aria-labelledby="workspaces-title" className="flex flex-col gap-8">
-      <PageHeader>
-        <div>
-          <PageHeaderTitle id="workspaces-title">Workspaces</PageHeaderTitle>
-          <PageHeaderMeta>
-            <span>{formatCount(count, 'workspace')}</span>
-          </PageHeaderMeta>
-        </div>
-      </PageHeader>
-      <ul
-        aria-label="Your workspaces"
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {workspaces.map((workspace) => (
-          <li key={workspace.id} className="min-w-0">
+    <div className="flex min-w-0 flex-col gap-7">
+      <header className="flex flex-col gap-3">
+        <h1 className="font-display text-4xl leading-tight sm:text-hero">
+          Pick up the thread.
+        </h1>
+        <p className="text-muted-foreground">Choose a workspace to continue.</p>
+      </header>
+      <section aria-labelledby="workspaces-title">
+        <RuleHeading id="workspaces-title" count={workspaces.length}>
+          Workspaces
+        </RuleHeading>
+        <RowList aria-label="Your workspaces" className="mt-2">
+          {workspaces.map((workspace) => (
             <WorkspaceCard
+              key={workspace.id}
               workspace={workspace}
               lastOpened={workspace.id === lastOpenedId}
               onSelect={onSelect}
             />
-          </li>
-        ))}
-        <li className="min-w-0">
-          <button
-            type="button"
-            onClick={onCreate}
-            className="flex h-full min-h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-strong p-5 text-sm font-semibold text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-foreground focus-ring motion-reduce:transition-none"
-          >
-            <span className="grid size-10 place-items-center rounded-full border border-primary/30 bg-primary/8 text-accent-foreground">
+          ))}
+          <Row className="grid-cols-[auto_minmax(0,1fr)] gap-x-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <span className="grid size-10 place-items-center rounded-lg border border-border text-muted-foreground">
               <PlusIcon aria-hidden="true" className="size-4" />
             </span>
-            New workspace
-          </button>
-        </li>
-      </ul>
-    </section>
+            <div className="min-w-0">
+              <p className="font-semibold">Create a workspace</p>
+              <p className="text-meta text-muted-foreground">
+                Keep your team’s workflows, connections and runs together.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCreate}
+              className="col-start-2 justify-self-start sm:col-start-auto"
+            >
+              New workspace
+            </Button>
+          </Row>
+        </RowList>
+      </section>
+      <p className="text-meta text-muted-foreground">
+        Joining a team? Open the invite link from your email.
+      </p>
+    </div>
   );
 }

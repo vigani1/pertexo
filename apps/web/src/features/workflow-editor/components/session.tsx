@@ -120,6 +120,7 @@ export function WorkflowEditorSession({
           bottomLens={(chrome) =>
             paused ? null : (
               <IssuesLens
+                onReturnFocus={() => chrome.overflowRef.current?.focus()}
                 workspaceId={workspace.id}
                 open={chrome.issuesOpen}
                 state={issues}

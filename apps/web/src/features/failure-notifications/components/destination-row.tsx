@@ -7,7 +7,7 @@ import type {
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { ProviderTile } from '@/features/connections/connections-views.public';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { formatRelativeTime } from '@/lib/format/time';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import type { ChannelNames } from '../model/channel-names';
@@ -40,50 +40,48 @@ export function DestinationRow({
     members,
   );
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 border-t border-border py-3.5 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
-      <ProviderTile
-        provider={
-          destination.kind === 'system_mail' ? 'email' : destination.kind
-        }
-      />
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{label}</p>
-        <p className="truncate text-xs text-muted-foreground">
+    <SettingRow
+      title={label}
+      description={
+        <>
           {destination.kind === 'slack' ? 'Slack channel' : 'Email'} · updated{' '}
           {formatRelativeTime(destination.updatedAt)}
-        </p>
-        {connectionProblem === undefined ? null : (
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-warning">
-            <StatusMark display="mark" tone="attention" />
-            {connectionProblem}
-          </p>
-        )}
-        {channelNote === undefined ? null : (
-          <p className="mt-1 text-xs text-muted-foreground">{channelNote}</p>
-        )}
-      </div>
-      <DestinationStatusSwitch
-        scope={scope}
-        destinationId={destination.id}
-        label={label}
-        status={destination.status}
-        disabled={!canManage}
-      />
-      {canManage ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="col-start-3 justify-self-end sm:col-start-auto"
-          aria-label={`Edit ${label}`}
-          onClick={() => {
-            onEdit(destination.id);
-          }}
-        >
-          <PencilIcon data-icon="inline-start" aria-hidden="true" />
-          Edit
-        </Button>
-      ) : null}
+          {connectionProblem === undefined ? null : (
+            <span className="mt-1 flex items-center gap-1.5 text-warning">
+              <StatusMark display="mark" tone="attention" />
+              {connectionProblem}
+            </span>
+          )}
+          {channelNote === undefined ? null : (
+            <span className="mt-1 block">{channelNote}</span>
+          )}
+        </>
+      }
+      action={
+        <>
+          {canManage ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Edit ${label}`}
+              onClick={() => {
+                onEdit(destination.id);
+              }}
+            >
+              <PencilIcon aria-hidden="true" />
+            </Button>
+          ) : null}
+          <DestinationStatusSwitch
+            scope={scope}
+            destinationId={destination.id}
+            label={label}
+            status={destination.status}
+            disabled={!canManage}
+          />
+        </>
+      }
+    >
       {canManage && destination.kind !== 'system_mail' ? (
         <DestinationTest
           key={`${destination.id}:${String(destination.currentVersion)}`}
@@ -93,6 +91,6 @@ export function DestinationRow({
           disabled={connectionProblem !== undefined}
         />
       ) : null}
-    </li>
+    </SettingRow>
   );
 }

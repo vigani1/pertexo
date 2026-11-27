@@ -5,6 +5,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  openStepList,
   choose,
   findCanvas,
   pressSave,
@@ -50,6 +51,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
     expect(
       screen.getByRole('heading', { name: 'No triggers are enabled here' }),
     ).toBeVisible();
+    await openStepList(event);
     expect(
       within(screen.getByRole('list', { name: 'Available steps' })).getByRole(
         'button',
@@ -215,6 +217,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     await waitFor(() => {
@@ -241,6 +244,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
     await findCanvas();
 
     connected = false;
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     expect(await screen.findByText(/^Save unconfirmed/u)).toBeVisible();
@@ -277,6 +281,7 @@ describe('workflow editor guards and conflicts', { timeout: 30_000 }, () => {
     const app = await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     await event.click(screen.getByRole('link', { name: 'Back to workflows' }));
     expect(
@@ -349,6 +354,7 @@ describe('workflow editor guards and conflicts', { timeout: 30_000 }, () => {
     await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
+    await openStepList(event);
     await event.click(addStepButton(/Set fields/u));
     pressSave();
     const bar = await screen.findByRole('region', { name: 'Draft conflict' });
