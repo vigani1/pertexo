@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import {
   StepExecutionHistory,
-  PhoneFailureNotice,
+  FailedStepNotice,
 } from '@/features/workflow-runs/components/run-detail/execution-history';
 import type { RunTimelineRow } from '@/features/workflow-runs/model/timeline/runs';
 import { renderInRouter } from '../../../support/render-in-router';
@@ -65,10 +65,10 @@ it.each(['execution.file_input', 'execution.attempt_invalid'])(
 );
 
 it.each(['failed', 'timed_out'] as const)(
-  'shows the safe step explanation in the phone notice for a %s run',
+  'says why the step failed, with its code, for a %s run',
   async (status) => {
     renderInRouter(
-      <PhoneFailureNotice
+      <FailedStepNotice
         run={{ status }}
         workspace={workspace}
         rows={[
@@ -89,8 +89,12 @@ it.each(['failed', 'timed_out'] as const)(
         ]}
       />,
     );
+    const why = await screen.findByRole('region', {
+      name: 'Why Send request failed',
+    });
     expect(
-      await screen.findByText('Add the required Authorization header.'),
+      within(why).getByText('Add the required Authorization header.'),
     ).toBeVisible();
+    expect(within(why).getByText('execution.attempt_invalid')).toBeVisible();
   },
 );
