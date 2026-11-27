@@ -161,11 +161,17 @@ describe('authentication and workspace entry', () => {
       ),
     );
     await renderLoadedApp('/workspaces');
-    const entry = await screen.findByRole('button', {
-      name: /Control Operations/u,
-    });
-    expect(entry).toBeDisabled();
-    expect(entry).toHaveTextContent('Being deleted');
+    const workspaces = within(
+      await screen.findByRole('list', { name: 'Your workspaces' }),
+    );
+    expect(workspaces.getByText(deniedWorkspace.name)).toBeVisible();
+    expect(workspaces.getByText('Being deleted')).toBeVisible();
+    expect(
+      workspaces.queryByRole('button', { name: /Control Operations|Restore/u }),
+    ).not.toBeInTheDocument();
+    expect(
+      workspaces.queryByRole('link', { name: /Control Operations|Restore/u }),
+    ).not.toBeInTheDocument();
   });
   it('opens the mobile More sheet and returns focus after Escape', async () => {
     mockServer.use(...authenticatedHandlers());

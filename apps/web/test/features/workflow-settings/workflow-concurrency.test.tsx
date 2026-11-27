@@ -46,7 +46,7 @@ describe('workflow concurrency settings', () => {
       );
       await renderLoadedApp(path);
       const event = userEvent.setup();
-      await event.type(await limitField(event), '1');
+      await event.type(await limitField(), '1');
       await event.click(
         screen.getByRole('button', { name: 'Save concurrency limit' }),
       );
@@ -71,7 +71,7 @@ describe('workflow concurrency settings', () => {
       );
       await renderLoadedApp(path);
       const event = userEvent.setup();
-      await event.type(await limitField(event), value);
+      await event.type(await limitField(), value);
       await event.click(
         screen.getByRole('button', { name: 'Save concurrency limit' }),
       );
@@ -146,7 +146,7 @@ describe('workflow concurrency settings', () => {
     );
     await renderLoadedApp(path);
     const event = userEvent.setup();
-    await event.type(await limitField(event), '1');
+    await event.type(await limitField(), '1');
     await event.click(
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
@@ -193,7 +193,7 @@ describe('workflow concurrency settings', () => {
     await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', { name: 'Runs at once' });
-    const input = await limitField(event);
+    const input = await limitField();
     await event.type(input, '1');
     await event.click(
       within(section).getByRole('button', { name: 'Save concurrency limit' }),
@@ -201,7 +201,7 @@ describe('workflow concurrency settings', () => {
     await within(section).findByText(
       sentence('Up to 1 run at once. Extra events wait their turn.'),
     );
-    await event.clear(await limitField(event));
+    await event.clear(await limitField());
     await event.click(
       within(section).getByRole('button', { name: 'Save concurrency limit' }),
     );

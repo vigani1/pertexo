@@ -16,12 +16,7 @@ import { renderLoadedApp } from '../../support/render-app';
 
 import { installQueries, workflowApi } from './fixtures';
 
-import {
-  openEditorFor,
-  path,
-  paused,
-  sentence,
-} from './workflow-auto-pause/fixture';
+import { path, paused, sentence } from './workflow-auto-pause/fixture';
 
 describe('workflow automatic pause controls', () => {
   it('keeps edited values and uses the reviewed current revision after a refused change', async () => {
@@ -58,7 +53,6 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
-    await openEditorFor(event, 'Pause after failures in a row');
     const input = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
@@ -121,7 +115,6 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
-    await openEditorFor(event, 'Pause after failures in a row');
     await event.type(
       await within(section).findByRole('textbox', {
         name: 'Pause after failures in a row',
@@ -210,7 +203,6 @@ describe('workflow automatic pause controls', () => {
       name: 'Automatic pause',
     });
     expect(within(section).queryByText(/enforcement/u)).toBeNull();
-    await openEditorFor(event, 'Auto-pause for this workflow');
     await event.click(
       await within(section).findByRole('switch', {
         name: 'Auto-pause for this workflow',
@@ -301,7 +293,6 @@ describe('workflow automatic pause controls', () => {
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
     });
-    await openEditorFor(event, 'Pause after failures in a row');
     const threshold = await within(section).findByRole('textbox', {
       name: 'Pause after failures in a row',
     });
