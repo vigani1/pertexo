@@ -40,7 +40,6 @@ import {
   shellCatchAllRoute,
   teamRoute,
   workflowsRoute,
-  workspaceAccountRoute,
   workspaceScopeRoute,
   workspaceShellRoute,
 } from '../workspace/routes';
@@ -48,6 +47,7 @@ import { homeRoute } from '../workspace/home/route';
 import {
   alertsRoute,
   settingsHubRoute,
+  workspaceAccountRoute,
   apiTokensRoute,
   workspaceVariablesRoute,
   auditRoute,
@@ -100,11 +100,11 @@ export const routeTree = rootRoute.addChildren([
         federationSettingsRoute,
         notificationPreferencesRoute,
         apiTokensRoute,
+        workspaceAccountRoute,
       ]),
       publicationReviewRoute,
       dataTablesRoute,
       dataTableDetailRoute,
-      workspaceAccountRoute,
       shellCatchAllRoute,
     ]),
     workflowHubRoute.addChildren([

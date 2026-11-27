@@ -24,6 +24,7 @@ const moreLinkClass =
   'flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground [&_svg]:size-4';
 
 type WorkspaceShellProps = Readonly<{
+  layout?: 'page' | 'workflow' | undefined;
   /** Runs running right now; undefined when the role can't read runs. */
   liveRunCount: number | undefined;
   /** Unread inbox notices; undefined when the role has no inbox. */
@@ -51,6 +52,7 @@ type WorkspaceShellProps = Readonly<{
  * page. It stays mounted while people move between pages.
  */
 export function WorkspaceShell({
+  layout = 'page',
   liveRunCount,
   unreadNoticeCount,
   inboxRefs,
@@ -65,12 +67,7 @@ export function WorkspaceShell({
   const { logoutPending, onLogout } = session;
 
   return (
-    <div className="relative min-h-svh bg-background">
-      <div className="ambient ambient-still fixed" aria-hidden="true" />
-      <div
-        className="warp pointer-events-none fixed inset-0"
-        aria-hidden="true"
-      />
+    <div className="relative min-h-svh">
       <WorkspaceSpine
         workspace={workspace}
         liveRunCount={liveRunCount}
@@ -86,35 +83,43 @@ export function WorkspaceShell({
           />
         }
       />
-      <div className="relative md:pl-21">
-        {/* The breadcrumb, banners and page share one column, so on a wide
+      <div className="relative min-w-0 md:pl-21">
+        {layout === 'page' ? (
+          <>
+            {/* The breadcrumb, banners and page share one column, so on a wide
             screen the breadcrumb lines up with the title under it. */}
-        <header className="mx-auto flex w-full max-w-368 items-center gap-2 px-4 pt-4 sm:px-6 md:px-8 md:pt-5">
-          <ShellBreadcrumb
-            root={
-              <WorkspaceSwitcher
-                workspace={workspace}
-                workspaces={workspaces}
+            <header className="mx-auto flex w-full max-w-368 items-center gap-2 px-4 pt-4 sm:px-6 md:px-8 md:pt-5">
+              <ShellBreadcrumb
+                root={
+                  <WorkspaceSwitcher
+                    workspace={workspace}
+                    workspaces={workspaces}
+                  />
+                }
+                crumbs={crumbs}
               />
-            }
-            crumbs={crumbs}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Search"
-            className="md:hidden"
-            onClick={onOpenSearch}
-          >
-            <SearchIcon aria-hidden="true" />
-          </Button>
-        </header>
-        <div className="mx-auto mt-3 w-full max-w-368 px-4 empty:hidden sm:px-6 md:px-8">
-          <WorkspaceBanners workspace={workspace} />
-        </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Search"
+                className="md:hidden"
+                onClick={onOpenSearch}
+              >
+                <SearchIcon aria-hidden="true" />
+              </Button>
+            </header>
+            <div className="mx-auto mt-3 w-full max-w-368 px-4 empty:hidden sm:px-6 md:px-8">
+              <WorkspaceBanners workspace={workspace} />
+            </div>
+          </>
+        ) : null}
         <main
           id="main"
-          className="mx-auto w-full max-w-368 min-w-0 px-4 pt-6 pb-32 sm:px-6 md:px-8 md:pb-16"
+          className={
+            layout === 'workflow'
+              ? 'min-w-0 pb-20 md:pb-0'
+              : 'mx-auto w-full max-w-368 min-w-0 px-4 pt-6 pb-32 sm:px-6 md:px-8 md:pb-16'
+          }
         >
           {children}
         </main>

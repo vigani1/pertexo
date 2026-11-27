@@ -127,9 +127,9 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
     'Customer onboarding and account provisioning across regional operations';
   await installEditorRoutes(page, remote, { workflowName: longWorkflowName });
   await page.goto(editorUrl);
-  await expect(page.getByRole('navigation', { name: 'Workspace' })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole('navigation', { name: 'Workspace' }),
+  ).toBeVisible();
   await page.getByTestId('rf__node-node-a').click();
 
   for (const width of [390, 720, 1024, 1280, 1440, 1920]) {
@@ -148,7 +148,19 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       barHeight: barBox?.height,
     });
     const canvasBox = await canvas.boundingBox();
-    expect(canvasBox?.width).toBeGreaterThan(width - 30);
+    const workspaceNav = page.getByRole('navigation', { name: 'Workspace' });
+    const navBox = await workspaceNav.boundingBox();
+    expect(navBox).not.toBeNull();
+    expect(canvasBox?.width).toBeGreaterThan(width - (width >= 768 ? 100 : 30));
+    if (width >= 768) {
+      expect(canvasBox?.x).toBeGreaterThanOrEqual(
+        (navBox?.x ?? 0) + (navBox?.width ?? 0),
+      );
+    } else {
+      expect(
+        (canvasBox?.y ?? 0) + (canvasBox?.height ?? 0),
+      ).toBeLessThanOrEqual(navBox?.y ?? 0);
+    }
     const stepPanel = page.getByRole('complementary', { name: 'Step panel' });
     if (width < 1024) {
       await expect(panels).toBeVisible();
@@ -253,7 +265,19 @@ test('gives a read-only actor the canvas and a read-only step panel', async ({
     const canvasBox = await page
       .getByRole('region', { name: 'Workflow canvas' })
       .boundingBox();
-    expect(canvasBox?.width).toBeGreaterThan(width - 30);
+    const workspaceNav = page.getByRole('navigation', { name: 'Workspace' });
+    const navBox = await workspaceNav.boundingBox();
+    expect(navBox).not.toBeNull();
+    expect(canvasBox?.width).toBeGreaterThan(width - (width >= 768 ? 100 : 30));
+    if (width >= 768) {
+      expect(canvasBox?.x).toBeGreaterThanOrEqual(
+        (navBox?.x ?? 0) + (navBox?.width ?? 0),
+      );
+    } else {
+      expect(
+        (canvasBox?.y ?? 0) + (canvasBox?.height ?? 0),
+      ).toBeLessThanOrEqual(navBox?.y ?? 0);
+    }
     await expect(page.locator('.react-flow__node')).toHaveCount(1);
   }
   await page.getByTestId('rf__node-node-a').click();

@@ -24,7 +24,7 @@ const AWAY_WHILE_TYPING =
   'transition-[visibility] delay-300 typing:invisible typing:delay-0 typing:duration-0';
 
 const barLinkClass =
-  "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-caption text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
+  "flex h-13 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md text-micro font-medium text-subtle-foreground outline-none aria-[current=page]:text-glint data-[active=true]:text-glint focus-ring [&_svg:not([class*='size-'])]:size-5";
 
 /** Bottom navigation for phones: Home, Workflows, Runs, Inbox and More. */
 type WorkspaceMobileBarProps = Readonly<{
@@ -59,7 +59,7 @@ export function WorkspaceMobileBar(props: WorkspaceMobileBarProps) {
       <div
         aria-hidden="true"
         className={cn(
-          'pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-background via-background/85 to-transparent md:hidden',
+          'pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-linear-to-t from-ground-deep via-ground-deep/85 to-transparent md:hidden',
           AWAY_WHILE_TYPING,
         )}
       />
@@ -154,7 +154,7 @@ export function WorkspaceMobileBar(props: WorkspaceMobileBarProps) {
                   to={destination.to}
                   params={{ workspaceId: workspace.id }}
                   activeOptions={{ exact: destination.exact ?? false }}
-                  className="flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-surface-ink/5 hover:text-foreground aria-[current=page]:text-accent-foreground [&_svg]:size-4"
+                  className="flex items-center gap-3 rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-select hover:text-foreground aria-[current=page]:text-glint [&_svg]:size-4"
                 >
                   {destination.icon}
                   {destination.label}
@@ -206,15 +206,22 @@ function useMobileDestinations({
   const unread = unreadNoticeCount ?? 0;
   // Pages that live under More light More, so a page always shows where it is.
   const matchRoute = useMatchRoute();
-  const moreActive = secondary.some((destination) =>
+  const moreActive =
+    secondary.some((destination) =>
+      Boolean(
+        matchRoute({
+          to: destination.to,
+          params: { workspaceId: workspace.id },
+          fuzzy: true,
+        }),
+      ),
+    ) ||
     Boolean(
       matchRoute({
-        to: destination.to,
+        to: '/w/$workspaceId/account',
         params: { workspaceId: workspace.id },
-        fuzzy: true,
       }),
-    ),
-  );
+    );
 
   return {
     workspace,
