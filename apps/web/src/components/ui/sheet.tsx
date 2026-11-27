@@ -106,7 +106,7 @@ export function SheetTitle({
     <SheetPrimitive.Title
       data-slot="sheet-title"
       className={cn(
-        'font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]',
+        'font-display text-xl leading-tight wrap-anywhere [--display-optical-size:24] [--display-width:84%]',
         className,
       )}
       {...props}
@@ -121,7 +121,10 @@ export function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn('text-muted-foreground', className)}
+      className={cn(
+        'mt-1 text-sm leading-relaxed wrap-anywhere text-muted-foreground',
+        className,
+      )}
       {...props}
     />
   );
