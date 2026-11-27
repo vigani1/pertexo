@@ -32,9 +32,22 @@ describe('Weft visual primitives', () => {
     );
   });
 
-  it('names a mark when its status is displayed elsewhere', () => {
-    render(<StatusMark display="mark" tone="off" />);
-    expect(screen.getByRole('img', { name: 'Off' })).toBeVisible();
+  it('keeps a mark beside its own words silent', () => {
+    const { container } = render(
+      <p>
+        <StatusMark display="mark" tone="failure" />
+        Missing handler
+      </p>,
+    );
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(container.querySelector('p')).toHaveTextContent(
+      /^Missing handler$/u,
+    );
+  });
+
+  it('names a mark that stands alone with the caller label', () => {
+    render(<StatusMark display="mark" tone="off" label="Paused" />);
+    expect(screen.getByRole('img', { name: 'Paused' })).toBeVisible();
   });
 
   it('holds an invalid control without changing it', async () => {

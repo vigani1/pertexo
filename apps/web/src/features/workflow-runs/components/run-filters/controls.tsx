@@ -85,7 +85,6 @@ export function RunFilters({
                 {item.value === null ? null : (
                   <StatusMark
                     display="mark"
-                    aria-hidden="true"
                     tone={describeRunStatus({ status: item.value }).tone}
                   />
                 )}

@@ -123,11 +123,7 @@ export function InboxArrivalCard({
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-2 text-meta text-muted-foreground">
-                <StatusMark
-                  display="mark"
-                  tone={view.tone}
-                  aria-hidden="true"
-                />
+                <StatusMark display="mark" tone={view.tone} />
                 {view.kicker}
                 {view.thread === undefined ? null : (
                   <>
