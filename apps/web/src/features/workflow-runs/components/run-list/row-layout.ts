@@ -6,37 +6,34 @@ type RowLayout = Readonly<{
   trigger: string;
   started: string;
   took: string;
-  bar: string;
   id: string;
   menu: string;
 }>;
 
 /**
  * Where each fact sits from `md` up. A tablet gets the table without the
- * trigger and thread bar; from `lg` every column shows. The workspace log
+ * trigger; from `lg` every column shows. The workspace log
  * names the workflow and shows when each run started; inside a workflow the
  * start time is the name.
  */
 export const RUN_ROW_LAYOUT: Readonly<Record<RunListVariant, RowLayout>> = {
   workspace: {
     // A 768 px tablet with the rail leaves about 34rem for six columns.
-    grid: 'md:grid-cols-[7.5rem_minmax(6rem,1fr)_5rem_4.5rem_6rem_2rem] lg:grid-cols-[9.25rem_minmax(8rem,1fr)_6.5rem_6.5rem_5.5rem_minmax(4rem,7rem)_6.5rem_2rem]',
+    grid: 'md:grid-cols-[7.5rem_minmax(6rem,1fr)_5rem_4.5rem_6rem_2rem] lg:grid-cols-[9.25rem_minmax(8rem,1fr)_6.5rem_6.5rem_5.5rem_6.5rem_2rem]',
     link: 'md:col-start-2',
     trigger: 'max-lg:md:hidden lg:col-start-3',
     started: 'md:col-start-3 lg:col-start-4',
     took: 'md:col-start-4 lg:col-start-5',
-    bar: 'max-lg:md:hidden lg:col-start-6',
-    id: 'md:col-start-5 lg:col-start-7',
-    menu: 'md:col-start-6 lg:col-start-8',
+    id: 'md:col-start-5 lg:col-start-6',
+    menu: 'md:col-start-6 lg:col-start-7',
   },
   workflow: {
-    grid: 'md:grid-cols-[7.5rem_minmax(6rem,1fr)_4.5rem_6rem_2rem] lg:grid-cols-[9.25rem_8rem_6.5rem_5.5rem_minmax(4rem,1fr)_6.5rem_2rem]',
+    grid: 'md:grid-cols-[7.5rem_minmax(6rem,1fr)_4.5rem_6rem_2rem] lg:grid-cols-[9.25rem_8rem_6.5rem_5.5rem_6.5rem_2rem]',
     link: 'md:col-start-2',
     trigger: 'max-lg:md:hidden lg:col-start-3',
     started: '',
     took: 'md:col-start-3 lg:col-start-4',
-    bar: 'max-lg:md:hidden lg:col-start-5',
-    id: 'md:col-start-4 lg:col-start-6',
-    menu: 'md:col-start-5 lg:col-start-7',
+    id: 'md:col-start-4 lg:col-start-5',
+    menu: 'md:col-start-5 lg:col-start-6',
   },
 };

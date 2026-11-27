@@ -126,6 +126,38 @@ describe('workspace runs', () => {
       expect(router.state.location.search).toEqual({});
     });
   });
+  it('jumps to one of the last seven days with one click and lets go with another', async () => {
+    const requests: URLSearchParams[] = [];
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      ...historyReads(requests),
+    );
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/runs`);
+    const event = userEvent.setup();
+    const strip = await screen.findByRole(
+      'group',
+      { name: 'Jump to a day' },
+      coldStart,
+    );
+    const days = within(strip).getAllByRole('button');
+    expect(days).toHaveLength(7);
+    const today = within(strip).getByRole('button', { name: /^Today, / });
+    await event.click(today);
+    const now = new Date();
+    const localFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      .toISOString()
+      .replace('.000Z', '.000000Z');
+    await waitFor(() => {
+      expect(latest(requests).get('createdAtFrom')).toBe(localFrom);
+    });
+    expect(today).toHaveAttribute('aria-pressed', 'true');
+    await event.click(today);
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
+    expect(today).toHaveAttribute('aria-pressed', 'false');
+  });
   it('picks a workflow from the typeahead and narrows by trigger locally', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(

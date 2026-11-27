@@ -57,23 +57,6 @@ export function runDurationMs(
   return Math.max(0, end - start);
 }
 
-/**
- * A log-scaled share (0–1) of the longest visible duration, so a 2 s run
- * and a 20 min run are both readable in the same list.
- */
-export function threadBarScale(
-  durations: readonly (number | undefined)[],
-): (durationMs: number | undefined) => number {
-  let longest = 0;
-  for (const duration of durations)
-    if (duration !== undefined && duration > longest) longest = duration;
-  const ceiling = Math.log1p(Math.max(longest, 1_000));
-  return (durationMs) =>
-    durationMs === undefined
-      ? 0
-      : Math.min(1, Math.max(0.04, Math.log1p(durationMs) / ceiling));
-}
-
 /** `7f3a…0c21`: enough to tell runs apart and to search for. */
 export function shortRunId(id: string): string {
   return `${id.slice(0, 4)}…${id.slice(-4)}`;
