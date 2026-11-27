@@ -78,6 +78,7 @@ describe('the last run under the steps', () => {
       approve: { kind: 'not-taken' },
       receipt: {
         kind: 'failed',
+        status: 'failed',
         code: 'provider.unavailable',
         tries: '3 tries',
       },
@@ -126,5 +127,25 @@ describe('the last run under the steps', () => {
       status: 'succeeded',
       detail: '0.4s',
     });
+  });
+});
+
+it('retains the timed-out step status alongside its error and tries', () => {
+  const overlay = lastRunOverlay(
+    graph,
+    run('20000000-0000-4000-8000-000000000004', 'failed'),
+    [
+      nodeRun('receipt', 'timed_out', {
+        currentAttemptNumber: 2,
+        safeErrorCode: 'provider.timeout',
+      }),
+    ],
+    true,
+  );
+  expect(overlay.results.get('receipt')).toEqual({
+    kind: 'failed',
+    status: 'timed_out',
+    code: 'provider.timeout',
+    tries: '2 tries',
   });
 });

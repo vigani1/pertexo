@@ -15,7 +15,12 @@ type NodeRun = WorkflowNodeRunSummary;
  */
 export type StepRunResult =
   | Readonly<{ kind: 'ran'; status: NodeRun['status']; detail: string | null }>
-  | Readonly<{ kind: 'failed'; code: string | null; tries: string | null }>
+  | Readonly<{
+      kind: 'failed';
+      status: Extract<NodeRun['status'], 'failed' | 'timed_out'>;
+      code: string | null;
+      tries: string | null;
+    }>
   | Readonly<{ kind: 'not-taken' }>;
 
 /** The last run as the canvas draws it: a result per step and live links. */
@@ -77,7 +82,12 @@ function stepResult(nodeRun: NodeRun): StepRunResult {
       ? formatCount(nodeRun.currentAttemptNumber, 'try', 'tries')
       : null;
   if (nodeRun.status === 'failed' || nodeRun.status === 'timed_out')
-    return { kind: 'failed', code: nodeRun.safeErrorCode ?? null, tries };
+    return {
+      kind: 'failed',
+      status: nodeRun.status,
+      code: nodeRun.safeErrorCode ?? null,
+      tries,
+    };
   const took =
     nodeRun.startedAt === null || nodeRun.completedAt === null
       ? null

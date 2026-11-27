@@ -30,6 +30,8 @@ export function useAssistantPanel({
   const outcome: string | undefined = (proposal.data ?? destination)?.kind;
 
   function checkAssistant() {
+    if (stale && asked !== undefined)
+      setRequest((current) => (current.trim() === '' ? asked : current));
     proposal.reset();
     apply.reset();
     setAsked(undefined);

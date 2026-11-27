@@ -14,7 +14,7 @@ export const buttonVariants = cva(
         outline:
           'border-border bg-select text-foreground hover:bg-select-raised aria-expanded:bg-select-raised',
         ghost:
-          'text-muted-foreground hover:bg-select-raised hover:text-foreground aria-expanded:bg-select-raised aria-expanded:text-foreground',
+          'text-muted-foreground hover:bg-select-raised hover:text-foreground aria-expanded:bg-select-raised aria-expanded:text-foreground aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground',
         destructive:
           'bg-fail-soft text-destructive hover:bg-fail-soft hover:underline [--focus-ring-color:var(--destructive)]',
         chip: 'h-auto min-h-6.5 max-w-full gap-1.5 border-border bg-select-raised px-2 text-meta whitespace-normal text-foreground hover:bg-select-strong',

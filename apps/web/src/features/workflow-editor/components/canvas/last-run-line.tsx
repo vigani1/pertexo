@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Link } from '@tanstack/react-router';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeRunStatus } from '@/features/workflow-runs/public';
@@ -36,17 +38,19 @@ export function LastRunLine({
       <Link
         to="/w/$workspaceId/runs/$runId"
         params={{ workspaceId: scope.workspace.id, runId: run.id }}
-        className="text-glint hover:underline focus-ring rounded-xs"
+        className={buttonVariants({ variant: 'link', size: 'sm' })}
       >
         Open run
       </Link>
-      <button
+      <Button
         type="button"
-        className="rounded-xs hover:text-foreground focus-ring max-sm:hidden"
+        variant="link"
+        size="sm"
+        className="max-sm:hidden"
         onClick={onToggle}
       >
         {shown ? 'Hide results' : 'Show results'}
-      </button>
+      </Button>
     </p>
   );
 }

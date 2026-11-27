@@ -31,8 +31,7 @@ export type EditorChrome = Readonly<{
   issuesOpen: boolean;
   onIssuesOpenChange: (open: boolean) => void;
   onFix: (target: WorkflowValidationTarget) => void;
-  proposalOpen: boolean;
-  onProposalOpenChange: (open: boolean) => void;
+  openProposal: () => void;
 }>;
 
 /**

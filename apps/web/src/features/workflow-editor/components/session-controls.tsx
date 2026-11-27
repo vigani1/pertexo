@@ -56,9 +56,6 @@ export function SessionCommandBar({
   } = publication;
   const moreRef = useRef<HTMLButtonElement>(null);
   const canPropose = !paused && editing.canUpdate;
-  function openAssistant() {
-    chrome.onProposalOpenChange(true);
-  }
 
   return (
     <>
@@ -68,7 +65,7 @@ export function SessionCommandBar({
         secondaryMenuItems={
           <>
             {canPropose ? (
-              <DropdownMenuItem onClick={openAssistant}>
+              <DropdownMenuItem onClick={chrome.openProposal}>
                 Ask the assistant
               </DropdownMenuItem>
             ) : null}
@@ -92,8 +89,7 @@ export function SessionCommandBar({
                   variant="outline"
                   size="sm"
                   className="hidden sm:inline-flex"
-                  aria-expanded={chrome.proposalOpen}
-                  onClick={openAssistant}
+                  onClick={chrome.openProposal}
                 >
                   Ask the assistant
                 </Button>

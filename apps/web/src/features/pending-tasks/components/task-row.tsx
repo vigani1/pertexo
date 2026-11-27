@@ -33,14 +33,14 @@ export function TaskRow({
   nowMs,
   selected,
   inDetail,
-  filters,
+  search,
 }: Readonly<{
   scope: TaskScope;
   task: PendingTaskSummary;
   nowMs: number;
   selected: boolean;
   inDetail: boolean;
-  filters: Pick<PendingTaskListQuery, 'kind' | 'view' | 'status'>;
+  search: Pick<PendingTaskListQuery, 'kind' | 'view' | 'status'> | undefined;
 }>) {
   const timedOut = timedOutAfter(task) !== undefined;
   // A request that moved its run on along Timed out reads amber, not failed.
@@ -71,7 +71,7 @@ export function TaskRow({
           <Link
             to="/w/$workspaceId/requests/$taskId"
             params={{ workspaceId: task.workspaceId, taskId: task.id }}
-            search={filters}
+            search={search}
             aria-current={selected ? 'page' : undefined}
             className={cn(
               "min-w-0 break-words outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60",
@@ -107,6 +107,7 @@ export function TaskRow({
             task={task}
             yours={yours}
             blocked={blocked}
+            search={search}
           />
         )}
         <time
@@ -128,11 +129,13 @@ function TaskAction({
   task,
   yours,
   blocked,
+  search,
 }: Readonly<{
   scope: TaskScope;
   task: PendingTaskSummary;
   yours: boolean;
   blocked: string | undefined;
+  search: Pick<PendingTaskListQuery, 'kind' | 'view' | 'status'> | undefined;
 }>) {
   if (!yours) {
     if (blocked === undefined) return null;
@@ -146,6 +149,7 @@ function TaskAction({
     <Link
       to="/w/$workspaceId/requests/$taskId"
       params={{ workspaceId: task.workspaceId, taskId: task.id }}
+      search={search}
       className={buttonVariants({ size: 'sm' })}
     >
       Respond

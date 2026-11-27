@@ -195,7 +195,7 @@ export function WorkflowHubBar({
               buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
               // A phone keeps its row for the name and save state; Comments
               // waits in ⋯ there.
-              'aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground max-sm:hidden',
+              'max-sm:hidden',
             )}
           >
             <MessageSquareIcon aria-hidden="true" />

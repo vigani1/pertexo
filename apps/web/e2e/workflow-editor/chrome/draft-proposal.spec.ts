@@ -210,6 +210,31 @@ test('shows field changes within the width of a phone', async ({
   }
 });
 
+test('focuses the assistant request when it opens from the phone menu', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remoteDraft(initial));
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/proposal`,
+    (route) => route.fulfill({ json: assistantDestination }),
+  );
+  await page.goto(editorUrl);
+  await page.getByRole('button', { name: 'More workflow actions' }).click();
+  await page.getByRole('menuitem', { name: 'Ask the assistant' }).click();
+  await expect(page.getByLabel('What should the workflow do?')).toBeFocused();
+});
+
+const assistantDestination = {
+  kind: 'ready',
+  connectionName: 'Test model',
+  host: 'model.example.test',
+  model: 'test',
+  confirmation: 'confirmed',
+};
+
 async function requestProposal(
   page: Page,
   result: DraftProposalResult,
@@ -220,15 +245,7 @@ async function requestProposal(
     (route) =>
       route.fulfill({
         json:
-          route.request().method() === 'GET'
-            ? {
-                kind: 'ready',
-                connectionName: 'Test model',
-                host: 'model.example.test',
-                model: 'test',
-                confirmation: 'confirmed',
-              }
-            : result,
+          route.request().method() === 'GET' ? assistantDestination : result,
       }),
   );
   await page.goto(editorUrl);

@@ -23,6 +23,14 @@ export function timedOutAfter(task: TaskWindow): string | undefined {
     (Date.parse(task.expiresAt) - Date.parse(task.createdAt)) / 1000;
   return `Timed out after ${formatTimeSpan(seconds)}`;
 }
+/** Waiting requests with the closest deadline come first. */
+export function bySoonestDeadline(
+  left: Pick<PendingTaskSummary, 'expiresAt'>,
+  right: Pick<PendingTaskSummary, 'expiresAt'>,
+): number {
+  return left.expiresAt.localeCompare(right.expiresAt);
+}
+
 export function parseTaskSearch(
   value: Record<string, unknown>,
   defaultKind: 'all' | 'approval' = 'all',

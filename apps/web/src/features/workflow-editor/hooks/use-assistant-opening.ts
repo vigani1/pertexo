@@ -16,14 +16,16 @@ export function useAssistantOpening({
   canvasRef: RefObject<HTMLDivElement | null>;
 }>) {
   const [open, setOpen] = useState(false);
-  const onOpenChange = (next: boolean) => {
-    if (next) onOpen();
-    setOpen(next);
-  };
+
   return {
     open,
     /** What the command bar needs to open the panel. */
-    chrome: { proposalOpen: open, onProposalOpenChange: onOpenChange },
+    chrome: {
+      openProposal: () => {
+        onOpen();
+        setOpen(true);
+      },
+    },
     close: () => {
       setOpen(false);
       const trigger = document.querySelector<HTMLElement>(

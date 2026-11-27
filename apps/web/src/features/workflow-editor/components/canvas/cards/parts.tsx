@@ -68,15 +68,17 @@ function StepRunWords({
   result,
 }: Readonly<{ result: NonNullable<WorkflowFlowNode['data']['lastRun']> }>) {
   if (result.kind === 'not-taken') return <>not taken in the last run</>;
+  const look = describeNodeStatus(result.status);
   if (result.kind === 'failed')
     return (
       <>
-        <StatusMark tone="failure" display="mark" label="Failed" />
-        <span className="text-destructive">{result.code ?? 'failed'}</span>
+        <StatusMark tone={look.tone}>{look.label}</StatusMark>
+        {result.code === null ? null : (
+          <span className="text-destructive">{result.code}</span>
+        )}
         {result.tries === null ? null : <span>· {result.tries}</span>}
       </>
     );
-  const look = describeNodeStatus(result.status);
   return (
     <>
       <StatusMark tone={look.tone} display="mark" label={look.label} />
