@@ -188,7 +188,7 @@ export async function captureInboxArrival(
   page: Page,
   shot: (name: string) => Promise<void>,
 ) {
-  const change = deferred<void>();
+  const change = deferred<undefined>();
   let revision = '1';
   await page.route('**/v1/workspaces/*/notifications/summary', (route) =>
     route.fulfill({ json: { unreadCount: Number(revision), revision } }),
@@ -230,7 +230,7 @@ export async function captureInboxArrival(
     page.getByRole('link', { name: 'Inbox, 1 unread' }),
   ).toBeVisible();
   revision = '2';
-  change.resolve();
+  change.resolve(undefined);
   const notice = page.getByRole('dialog', { name: 'Nightly import' });
   await expect(notice).toBeVisible();
   await shot('inbox-arrival');
