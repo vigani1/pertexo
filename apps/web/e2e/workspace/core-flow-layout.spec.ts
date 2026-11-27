@@ -7,6 +7,7 @@ import {
 } from '../workflow-editor/support';
 import { mockIdentity } from './auth/fixture';
 import { installAssistantProposal } from './core-flow-assistant-fixture';
+import { triageGraph } from './core-flow-invoice-graph';
 import {
   approvalId,
   failedRunId,
@@ -136,3 +137,23 @@ for (const colorScheme of ['dark', 'light'] as const)
     ).toBeVisible();
     await shot(page, 'build-assistant', `1440x900-${colorScheme}`);
   });
+
+test('the canvas lays AI steps and their categories in lanes', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await mockIdentity(page, { authenticated: false });
+  await installCoreFlowRoutes(page, { graph: triageGraph() });
+  await page.route('**/v1/workspaces/*/runs?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await addCsrfCookie(context);
+  await page.goto(editorUrl);
+  await page.getByRole('button', { name: 'Tidy lanes' }).click();
+  await expect(
+    page.getByText('Sort the ticket · bug', { exact: true }),
+  ).toBeVisible();
+  await shot(page, 'build-ai-steps', '1440x900-dark');
+});
