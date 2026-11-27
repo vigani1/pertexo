@@ -9,7 +9,7 @@ import {
 } from './run-search';
 
 /** The Runs strip covers this many days, today last. */
-export const RECENT_RUN_DAYS = 7;
+const RECENT_RUN_DAYS = 7;
 
 /** The last seven local days, oldest first, for the Runs day strip. */
 export function recentRunDays(nowMs: number): readonly RecentDay[] {
