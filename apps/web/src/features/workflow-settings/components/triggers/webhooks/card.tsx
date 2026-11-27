@@ -18,6 +18,7 @@ import {
   type WebhookCommand,
 } from '../../../data/mutations/use-trigger-commands';
 import { WebhookGuide } from './guide';
+import { TriggerRow } from '../trigger-row';
 
 /** One webhook trigger: its health, its endpoint and the commands for it. */
 type WebhookCardProps = Readonly<{
@@ -51,141 +52,165 @@ export function WebhookCard({
   const state = describeTriggerState(trigger);
   const repair = describeTriggerRepair(trigger);
   return (
-    <article
-      aria-label={`Webhook: ${stepName}`}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card/50 p-4 sm:p-5"
-    >
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <StepTile step={describeStep('core.webhook')} size="lg" />
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold">{stepName}</h3>
-            <p className="text-xs text-muted-foreground">
-              {trigger.endpointReady
-                ? 'Endpoint ready. Senders call its address.'
-                : 'No endpoint yet. Create one to get an address and a signing secret.'}
+    <TriggerRow
+      label={`Webhook: ${stepName}`}
+      icon={<StepTile step={describeStep('core.webhook')} />}
+      name={stepName}
+      kind={`Webhook · ${authenticationLabel(trigger.authentication)}`}
+      extra={
+        <>
+          {trigger.endpointReady ? null : (
+            <p className="text-meta text-subtle-foreground">
+              No endpoint yet. Create one to get an address and a signing
+              secret.
             </p>
-          </div>
-        </div>
-        <StatusMark tone={state.tone}>{state.label}</StatusMark>
-      </header>
-      {repair === undefined ? null : <Notice tone="warning">{repair}</Notice>}
-      {/* Checking only means something once there's an endpoint. */}
-      {trigger.reconciledAt === null || !trigger.endpointReady ? null : (
-        <p className="font-mono text-caption text-subtle-foreground">
-          Last checked{' '}
-          <time
-            dateTime={trigger.reconciledAt}
-            title={formatDateTime(trigger.reconciledAt)}
-          >
-            {formatRelativeTime(trigger.reconciledAt)}
-          </time>
-        </p>
-      )}
-      {unresolved === undefined ? null : (
-        <Notice
-          role="alert"
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              size="sm"
-              disabled={pendingCommand !== undefined}
-              onClick={onRetryUnresolved}
-            >
-              {`Retry ${WEBHOOK_ACTIONS[unresolved.command]}`}
-            </Button>
-          }
-        >
-          We couldn’t confirm whether {WEBHOOK_ACTIONS[unresolved.command]} went
-          through. Retry that first — it’s safe and won’t repeat the change.
-        </Notice>
-      )}
-      <p className="text-sm text-muted-foreground">
-        Authentication: {authenticationLabel(trigger.authentication)}
-      </p>
-      {editable ? (
-        <div className="flex flex-wrap gap-2">
-          {trigger.endpointReady ? (
-            <>
-              <ProgressButton
-                type="button"
-                variant="outline"
-                size="sm"
-                pendingLabel="Rotating…"
-                icon={
-                  <RefreshCwIcon aria-hidden="true" data-icon="inline-start" />
-                }
-                pending={pendingCommand === 'rotate-endpoint'}
-                disabled={blocked}
-                onClick={() => {
-                  onCommand('rotate-endpoint');
-                }}
-              >
-                Rotate URL
-              </ProgressButton>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={blocked}
-                onClick={() => {
-                  onCommand('authentication');
-                }}
-              >
-                Authentication…
-              </Button>
-              {trigger.authentication.mode === 'secret_url' ? null : (
-                <ProgressButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  pendingLabel="Rotating…"
-                  icon={
-                    <KeyRoundIcon aria-hidden="true" data-icon="inline-start" />
-                  }
-                  pending={pendingCommand === 'rotate-secret'}
-                  disabled={blocked}
-                  onClick={() => {
-                    onCommand('rotate-secret');
-                  }}
-                >
-                  Rotate secret
-                </ProgressButton>
-              )}
-            </>
-          ) : (
-            <ProgressButton
-              type="button"
-              variant="outline"
-              size="sm"
-              pendingLabel="Creating…"
-              pending={pendingCommand === 'provision'}
-              disabled={blocked}
-              onClick={() => {
-                onCommand('provision');
-              }}
-            >
-              Create endpoint
-            </ProgressButton>
           )}
-        </div>
-      ) : null}
-      {failure === undefined ? null : (
-        <Notice role="alert" tone="destructive">
-          {failure}
-        </Notice>
+          {repair === undefined ? null : (
+            <Notice tone="warning" className="mt-2">
+              {repair}
+            </Notice>
+          )}
+        </>
+      }
+      state={
+        <>
+          <StatusMark tone={state.tone}>{state.label}</StatusMark>
+          {/* Checking only means something once there's an endpoint. */}
+          {trigger.reconciledAt === null || !trigger.endpointReady ? null : (
+            <span className="text-meta text-subtle-foreground">
+              Checked{' '}
+              <time
+                dateTime={trigger.reconciledAt}
+                title={formatDateTime(trigger.reconciledAt)}
+              >
+                {formatRelativeTime(trigger.reconciledAt)}
+              </time>
+            </span>
+          )}
+        </>
+      }
+      details={
+        <>
+          {unresolved === undefined ? null : (
+            <Notice
+              role="alert"
+              tone="warning"
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pendingCommand !== undefined}
+                  onClick={onRetryUnresolved}
+                >
+                  {`Retry ${WEBHOOK_ACTIONS[unresolved.command]}`}
+                </Button>
+              }
+            >
+              We couldn’t confirm whether {WEBHOOK_ACTIONS[unresolved.command]}{' '}
+              went through. Retry that first — it’s safe and won’t repeat the
+              change.
+            </Notice>
+          )}
+          {editable ? (
+            <WebhookActions
+              trigger={trigger}
+              blocked={blocked}
+              pendingCommand={pendingCommand}
+              onCommand={onCommand}
+            />
+          ) : null}
+          {failure === undefined ? null : (
+            <Notice role="alert" tone="destructive">
+              {failure}
+            </Notice>
+          )}
+          {deliveries}
+          <WebhookGuide authentication={trigger.authentication} />
+        </>
+      }
+    />
+  );
+}
+
+function WebhookActions({
+  trigger,
+  blocked,
+  pendingCommand,
+  onCommand,
+}: Readonly<{
+  trigger: WebhookTriggerHealthResponse;
+  blocked: boolean;
+  pendingCommand: WebhookCommand | undefined;
+  onCommand: (command: WebhookCommand) => void;
+}>) {
+  if (!trigger.endpointReady)
+    return (
+      <ProgressButton
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-fit"
+        pendingLabel="Creating…"
+        pending={pendingCommand === 'provision'}
+        disabled={blocked}
+        onClick={() => {
+          onCommand('provision');
+        }}
+      >
+        Create endpoint
+      </ProgressButton>
+    );
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ProgressButton
+        type="button"
+        variant="outline"
+        size="sm"
+        pendingLabel="Rotating…"
+        icon={<RefreshCwIcon aria-hidden="true" data-icon="inline-start" />}
+        pending={pendingCommand === 'rotate-endpoint'}
+        disabled={blocked}
+        onClick={() => {
+          onCommand('rotate-endpoint');
+        }}
+      >
+        Rotate URL
+      </ProgressButton>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={blocked}
+        onClick={() => {
+          onCommand('authentication');
+        }}
+      >
+        Authentication…
+      </Button>
+      {trigger.authentication.mode === 'secret_url' ? null : (
+        <ProgressButton
+          type="button"
+          variant="outline"
+          size="sm"
+          pendingLabel="Rotating…"
+          icon={<KeyRoundIcon aria-hidden="true" data-icon="inline-start" />}
+          pending={pendingCommand === 'rotate-secret'}
+          disabled={blocked}
+          onClick={() => {
+            onCommand('rotate-secret');
+          }}
+        >
+          Rotate secret
+        </ProgressButton>
       )}
-      {deliveries}
-      <WebhookGuide authentication={trigger.authentication} />
-    </article>
+    </div>
   );
 }
 
 function authenticationLabel(
   authentication: WebhookTriggerHealthResponse['authentication'],
 ): string {
-  if (authentication.mode === 'signed') return 'Signed';
-  if (authentication.mode === 'secret_url') return 'Secret URL';
-  return `Header secret (${authentication.headerName})`;
+  if (authentication.mode === 'signed') return 'signed requests';
+  if (authentication.mode === 'secret_url') return 'secret address';
+  return `header secret (${authentication.headerName})`;
 }

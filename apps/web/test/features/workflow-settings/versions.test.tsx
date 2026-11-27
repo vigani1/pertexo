@@ -127,25 +127,28 @@ describe('workflow versions tab', () => {
     );
     await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
-    const thread = await screen.findByRole('list', {
-      name: 'Published versions',
-    });
-    const [newest, oldest] = within(thread).getAllByRole('listitem');
+    const list = await screen.findByRole('navigation', { name: 'Versions' });
+    const [newest, oldest] = within(list).getAllByRole('button');
     expect(newest).toHaveTextContent('v2');
-    expect(newest).toHaveTextContent('Live');
-    expect(newest).toHaveTextContent('2 steps');
+    expect(newest).toHaveTextContent('live');
+    expect(newest).toHaveTextContent('Ada Lovelace');
     expect(oldest).toHaveTextContent('v1');
-    expect(oldest).not.toHaveTextContent('Live');
+    expect(oldest).not.toHaveTextContent('live');
+    const detail = screen.getByRole('article', { name: 'v2' });
+    expect(detail).toHaveTextContent('Live');
+    expect(detail).toHaveTextContent('by Ada Lovelace');
+    expect(detail).toHaveTextContent('2 steps');
+    expect(
+      within(detail).getByRole('heading', { name: 'What changed from v1' }),
+    ).toBeVisible();
 
-    await event.click(
-      within(thread).getByRole('button', { name: 'Preview v2' }),
-    );
+    await event.click(within(detail).getByRole('button', { name: 'Preview' }));
     const preview = await screen.findByRole('dialog', { name: 'v2' });
     // Listed once among the steps and once as added since v1.
     expect(within(preview).getAllByText('Call API')).toHaveLength(2);
-    expect(within(preview).getByText('Added')).toBeVisible();
-    expect(within(preview).queryByText('Changed')).not.toBeInTheDocument();
-    expect(within(preview).getByText('Removed')).toBeVisible();
+    expect(within(preview).getByText('added')).toBeVisible();
+    expect(within(preview).queryByText('changed')).not.toBeInTheDocument();
+    expect(within(preview).getByText('removed')).toBeVisible();
     expect(within(preview).getByText('Tidy fields')).toBeVisible();
     // A step named after its type says the type once.
     expect(within(preview).getByText('Trigger')).toBeVisible();
@@ -186,8 +189,9 @@ describe('workflow versions tab', () => {
     );
     await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
+    await event.click(await screen.findByRole('button', { name: /^v3/u }));
     await event.click(
-      await screen.findByRole('button', { name: 'Compare versions' }),
+      screen.getByRole('button', { name: 'Compare with live' }),
     );
     const sheet = await screen.findByRole('dialog', {
       name: 'Compare versions',
@@ -197,20 +201,20 @@ describe('workflow versions tab', () => {
     }).parentElement;
     if (changes === null) throw new Error('Expected the change summary');
     expect(within(changes).getByText('Tell the team')).toBeVisible();
-    expect(within(changes).getByText('Changed')).toBeVisible();
+    expect(within(changes).getByText('changed')).toBeVisible();
     expect(within(changes).getByText('Call API')).toBeVisible();
     // A changed step says what changed about it.
-    expect(within(changes).getByText('· setup')).toBeVisible();
-    expect(within(changes).queryByText('Removed')).not.toBeInTheDocument();
+    expect(within(changes).getByText('setup')).toBeVisible();
+    expect(within(changes).queryByText('removed')).not.toBeInTheDocument();
 
     await event.click(within(sheet).getByRole('combobox', { name: 'From' }));
     await event.click(await screen.findByRole('option', { name: /^v1 ·/u }));
     const wider = await within(sheet).findByRole('heading', {
       name: 'Changes from v1 to v3',
     });
-    expect(wider.parentElement).toHaveTextContent('Removed');
+    expect(wider.parentElement).toHaveTextContent('removed');
     expect(wider.parentElement).toHaveTextContent('Tidy fields');
-    expect(wider.parentElement).not.toHaveTextContent('Changed');
+    expect(wider.parentElement).not.toHaveTextContent('changed');
 
     await event.click(within(sheet).getByRole('combobox', { name: 'To' }));
     await event.click(await screen.findByRole('option', { name: /^v1 ·/u }));
@@ -390,7 +394,7 @@ describe('workflow versions tab', () => {
     installQueries([]);
     await renderLoadedApp(versionsPath);
     expect(
-      await screen.findByRole('button', { name: 'Preview v1' }),
+      await screen.findByRole('button', { name: 'Preview' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Restore to draft' }),

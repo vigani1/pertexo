@@ -140,7 +140,7 @@ describe('workflow concurrency settings', () => {
   it('allows reading policy and history without rendering editing controls', async () => {
     installQueries([]);
     await renderLoadedApp(path);
-    const section = await screen.findByRole('region', { name: 'Concurrency' });
+    const section = await screen.findByRole('region', { name: 'Runs at once' });
     await within(section).findByText(
       sentence('No limit of its own. The workspace runs up to 10 at once.'),
     );

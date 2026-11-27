@@ -24,6 +24,11 @@ import { formatDate } from '@/lib/format/time';
 import { stepCountLabel } from '../../model/versions/steps';
 import { VersionDiffSummary } from './diff-summary';
 
+type VersionPair = Readonly<{
+  from: WorkflowVersionResponse;
+  to: WorkflowVersionResponse;
+}>;
+
 function versionLabel(version: WorkflowVersionResponse): string {
   return `v${String(version.versionNumber)} · ${formatDate(version.publishedAt)}`;
 }
@@ -82,10 +87,14 @@ function VersionPicker({
  */
 function VersionComparison({
   versions,
-}: Readonly<{ versions: readonly WorkflowVersionResponse[] }>) {
+  pair,
+}: Readonly<{
+  versions: readonly WorkflowVersionResponse[];
+  pair: VersionPair | undefined;
+}>) {
   const newest = versions[0];
-  const [from, setFrom] = useState(versions[1] ?? newest);
-  const [to, setTo] = useState(newest);
+  const [from, setFrom] = useState(pair?.from ?? versions[1] ?? newest);
+  const [to, setTo] = useState(pair?.to ?? newest);
   if (from === undefined || to === undefined) return null;
   return (
     <>
@@ -124,11 +133,14 @@ function VersionComparison({
 export function VersionCompareSheet({
   open,
   versions,
+  pair,
   onClose,
 }: Readonly<{
   open: boolean;
   /** Newest first. */
   versions: readonly WorkflowVersionResponse[];
+  /** The two versions to start from; else the previous one and the newest. */
+  pair?: VersionPair;
   onClose: () => void;
 }>) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -151,7 +163,7 @@ export function VersionCompareSheet({
           </SheetDescription>
         </SheetHeader>
         <SheetBody className="flex flex-col gap-6">
-          {open ? <VersionComparison versions={versions} /> : null}
+          {open ? <VersionComparison versions={versions} pair={pair} /> : null}
         </SheetBody>
         <SheetFooter>
           <SheetClose

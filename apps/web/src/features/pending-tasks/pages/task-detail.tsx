@@ -32,7 +32,7 @@ import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
   taskId,
-  backSearch = { view: 'mine', status: 'pending' },
+  backSearch,
 }: Readonly<{
   scope: TaskScope;
   taskId: string;
@@ -48,17 +48,19 @@ export function TaskDetailPage({
       {({ task }) => {
         return (
           <article className="flex max-w-3xl min-w-0 flex-col gap-6">
-            <div className="min-[900px]:hidden">
-              <Link
-                to="/w/$workspaceId/requests"
-                search={backSearch}
-                params={{ workspaceId: scope.workspaceId }}
-                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-              >
-                <ArrowLeftIcon aria-hidden="true" />
-                Back to requests
-              </Link>
-            </div>
+            {backSearch === undefined ? null : (
+              <div className="min-[900px]:hidden">
+                <Link
+                  to="/w/$workspaceId/requests"
+                  search={backSearch}
+                  params={{ workspaceId: scope.workspaceId }}
+                  className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+                >
+                  <ArrowLeftIcon aria-hidden="true" />
+                  Back to requests
+                </Link>
+              </div>
+            )}
             <PageHeader>
               <div className="flex min-w-0 flex-col gap-2">
                 <p className="text-sm text-muted-foreground">

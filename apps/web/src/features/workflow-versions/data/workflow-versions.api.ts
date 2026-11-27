@@ -4,13 +4,13 @@ import {
   workflowVersionRestoreResponseSchema,
   workflowVersionsResponseSchema,
   workflowVersionResponseSchema,
-  type WorkflowVersionsResponse,
 } from '@pertexo/contracts';
 import {
   decodeWorkflowDraftSnapshot,
   type WorkflowDraftSnapshot,
 } from '@/features/workflow-drafts/public';
 import type { ApiClient } from '@/lib/api/client';
+import type { z } from 'zod';
 import { collectPages } from '@/lib/api/pagination';
 
 const reviewedVersionsSchema = workflowVersionsResponseSchema.extend({
@@ -20,8 +20,28 @@ const reviewedVersionsSchema = workflowVersionsResponseSchema.extend({
     .max(100),
 });
 
+// The version history also names who published each version.
+const historySchema = workflowVersionsResponseSchema.extend({
+  items: workflowVersionResponseSchema
+    .required({ graphDigest: true, publishedBy: true })
+    .array()
+    .max(100),
+});
+
+type WorkflowVersionHistory = z.infer<typeof historySchema>;
+
 function versionsPath(workspaceId: string, workflowId: string) {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/versions` as const;
+}
+
+function versionsQuery(
+  include: string,
+  input: Readonly<{ after?: string; versionId?: string }>,
+) {
+  const query = new URLSearchParams({ limit: '25', include });
+  if (input.after !== undefined) query.set('after', input.after);
+  if (input.versionId !== undefined) query.set('versionId', input.versionId);
+  return query.toString();
 }
 
 export function getWorkflowVersionsPage(
@@ -34,11 +54,8 @@ export function getWorkflowVersionsPage(
     signal?: AbortSignal;
   }> = {},
 ) {
-  const query = new URLSearchParams({ limit: '25', include: 'graphDigest' });
-  if (input.after !== undefined) query.set('after', input.after);
-  if (input.versionId !== undefined) query.set('versionId', input.versionId);
   return apiClient.request({
-    path: `${versionsPath(workspaceId, workflowId)}?${query.toString()}`,
+    path: `${versionsPath(workspaceId, workflowId)}?${versionsQuery('graphDigest', input)}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
@@ -47,27 +64,35 @@ export function getWorkflowVersionsPage(
   });
 }
 
-function readVersionPage(
+function readHistoryPage(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
   signal: AbortSignal | undefined,
 ) {
   return (after: string | undefined) =>
-    getWorkflowVersionsPage(apiClient, workspaceId, workflowId, {
-      ...(after === undefined ? {} : { after }),
+    apiClient.request({
+      path: `${versionsPath(workspaceId, workflowId)}?${versionsQuery(
+        'graphDigest,publishedBy',
+        after === undefined ? {} : { after },
+      )}`,
       ...(signal === undefined ? {} : { signal }),
+      response: {
+        kind: 'json',
+        decode: (value) => historySchema.parse(value),
+      },
     });
 }
 
+/** Every published version, with who published each one. */
 export async function getAllWorkflowVersions(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
   signal?: AbortSignal,
-): Promise<WorkflowVersionsResponse> {
+): Promise<WorkflowVersionHistory> {
   const items = await collectPages(
-    readVersionPage(apiClient, workspaceId, workflowId, signal),
+    readHistoryPage(apiClient, workspaceId, workflowId, signal),
     {
       read: 'Workflow version discovery',
       signal,

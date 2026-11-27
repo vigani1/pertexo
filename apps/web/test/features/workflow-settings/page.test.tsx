@@ -65,7 +65,7 @@ describe('workflow settings tab', () => {
     });
 
     await event.click(
-      within(region('Lifecycle')).getByRole('button', {
+      within(region('Danger zone')).getByRole('button', {
         name: 'Archive workflow',
       }),
     );
@@ -184,7 +184,7 @@ describe('workflow settings tab', () => {
       screen.queryByRole('region', { name: 'Identity' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('region', { name: 'Lifecycle' }),
+      screen.queryByRole('region', { name: 'Danger zone' }),
     ).not.toBeInTheDocument();
     expect(
       await screen.findByRole('link', { name: 'Back to workflows' }),

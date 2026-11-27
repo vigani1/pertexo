@@ -1,25 +1,47 @@
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import {
+  Outlet,
+  useMatch,
+  useNavigate,
+  useSearch,
+} from '@tanstack/react-router';
+import { ListDetail } from '@/components/patterns/lists/list-detail';
 import { InboxViews } from '@/features/inbox/inbox-views.public';
 import { TasksPage } from '@/features/pending-tasks/pages/task-list';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
+
 export function RequestsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
-  const search = useSearch({ from: '/w/$workspaceId/shell/requests' });
+  const filters = useSearch({ from: '/w/$workspaceId/shell/requests' });
+  const selectedTaskId = useMatch({
+    from: '/w/$workspaceId/shell/requests/$taskId',
+    shouldThrow: false,
+    select: (match) => match.params.taskId,
+  });
   const navigate = useNavigate({ from: '/w/$workspaceId/requests' });
   return (
-    <TasksPage
+    <ListDetail
       key={`${user.id}:${workspace.id}`}
-      scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
-      views={
-        <InboxViews
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          current="requests"
+      showing={selectedTaskId === undefined ? 'list' : 'detail'}
+      backLabel="Back to requests"
+      onBack={() => void navigate({ to: '.', search: filters })}
+      className="min-[56.25rem]:grid-cols-[minmax(16rem,1fr)_minmax(0,1.65fr)] min-[56.25rem]:gap-8 xl:gap-12"
+      list={
+        <TasksPage
+          scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+          views={
+            <InboxViews
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+              current="requests"
+            />
+          }
+          filters={filters}
+          {...(selectedTaskId === undefined ? {} : { selectedTaskId })}
+          onFilters={(search) => void navigate({ to: '.', search })}
         />
       }
-      filters={search}
-      onFilters={(filters) => void navigate({ search: filters })}
+      detail={selectedTaskId === undefined ? undefined : <Outlet />}
     />
   );
 }

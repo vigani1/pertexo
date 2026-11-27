@@ -3,7 +3,7 @@ import type userEvent from '@testing-library/user-event';
 import { HttpResponse } from 'msw';
 import { workflowApi, workflowId, workspaceId } from '../fixtures';
 export async function limitField(event: ReturnType<typeof userEvent.setup>) {
-  const section = await screen.findByRole('region', { name: 'Concurrency' });
+  const section = await screen.findByRole('region', { name: 'Runs at once' });
   const toggle = await within(section).findByRole('button', {
     name: /^(Change|Close)$/u,
   });

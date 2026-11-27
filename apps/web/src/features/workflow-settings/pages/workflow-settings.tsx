@@ -1,7 +1,7 @@
 import { isAdministrativeRole } from '@pertexo/policy';
 import { McpExposureSection } from '../components/settings/mcp-exposure-section';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow, SettingsGroup } from '@/components/patterns/settings/row';
 import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
 import type {
   AccessibleWorkspace,
@@ -48,7 +48,10 @@ function SettingsSession({
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
   return (
-    <div className="flex flex-col">
+    <div className="flex max-w-190 flex-col gap-10">
+      <h1 className="font-heading text-section font-semibold">
+        Workflow settings
+      </h1>
       <IdentitySection
         apiClient={apiClient}
         userId={user.id}
@@ -56,56 +59,69 @@ function SettingsSession({
         query={summary}
       />
       {workspace.status === 'active' ? (
-        <SettingsSection
-          title="Personal notifications"
-          description="Follow or mute this workflow for your Inbox and email."
-        >
-          <NoticeSubjectActions
-            scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
-            subject={{ subjectKind: 'workflow', subjectId: workflowId }}
-            name={shownData(summary)?.name ?? 'this workflow'}
+        <SettingsGroup title="Your notifications">
+          <SettingRow
+            title="This workflow in your Inbox"
+            description="Follow or mute it for your Inbox and email. Only you are affected."
+            action={
+              <NoticeSubjectActions
+                scope={{
+                  apiClient,
+                  userId: user.id,
+                  workspaceId: workspace.id,
+                }}
+                subject={{ subjectKind: 'workflow', subjectId: workflowId }}
+                name={shownData(summary)?.name ?? 'this workflow'}
+              />
+            }
           />
-        </SettingsSection>
+        </SettingsGroup>
       ) : null}
-      <FailureAlertsSection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflowId={workflowId}
-      />
-      <ErrorWorkflowSection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflowId={workflowId}
-      />
-      <AutoPauseSection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflowId={workflowId}
-      />
-      <RunDurationSection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflow={shownData(summary)}
-      />
-      <ConcurrencySection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflowId={workflowId}
-      />
-      {workspace.status === 'active' && isAdministrativeRole(workspace.role) ? (
-        <McpExposureSection
-          scope={{
-            apiClient,
-            userId: user.id,
-            workspaceId: workspace.id,
-            workflowId,
-          }}
+      <SettingsGroup title="When it fails">
+        <FailureAlertsSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
         />
+        <ErrorWorkflowSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+        />
+        <AutoPauseSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+        />
+      </SettingsGroup>
+      <SettingsGroup title="How it runs">
+        <RunDurationSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={shownData(summary)}
+        />
+        <ConcurrencySection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+        />
+      </SettingsGroup>
+      {workspace.status === 'active' && isAdministrativeRole(workspace.role) ? (
+        <SettingsGroup title="MCP exposure">
+          <McpExposureSection
+            scope={{
+              apiClient,
+              userId: user.id,
+              workspaceId: workspace.id,
+              workflowId,
+            }}
+          />
+        </SettingsGroup>
       ) : null}
       <LifecycleSection
         apiClient={apiClient}

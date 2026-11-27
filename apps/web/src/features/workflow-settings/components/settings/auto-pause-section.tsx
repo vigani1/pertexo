@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { SettingSentence } from '@/components/patterns/settings/sentence';
-import { SettingsSection } from '@/components/patterns/settings/section';
+import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -174,7 +174,7 @@ export function AutoPauseSection(scope: Scope) {
     scope.workspace.capabilities.includes('workspace:manage');
   const canUpdate = scope.workspace.capabilities.includes('workflow:update');
   return (
-    <SettingsSection
+    <SettingRow
       title="Automatic pause"
       description="When repeated failures should pause workflow triggers."
     >
@@ -248,6 +248,6 @@ export function AutoPauseSection(scope: Scope) {
         )}
       </QueryView>
       {canManageWorkspace ? <WorkspaceDefault scope={scope} /> : null}
-    </SettingsSection>
+    </SettingRow>
   );
 }

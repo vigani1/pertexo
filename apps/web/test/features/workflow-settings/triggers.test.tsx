@@ -15,7 +15,11 @@ import {
   webhookId,
   workflowApi,
 } from './fixtures';
-import { acknowledgeCredentials, triggersPath } from './triggers/fixture';
+import {
+  acknowledgeCredentials,
+  openTrigger,
+  triggersPath,
+} from './triggers/fixture';
 
 const fullAddress = `http://localhost:3000/hooks/${'e'.repeat(43)}`;
 
@@ -116,9 +120,7 @@ describe('workflow triggers tab', () => {
   it('names triggers by their step and describes schedules in words', async () => {
     installQueries();
     await renderLoadedApp(triggersPath);
-    const hook = await screen.findByRole('article', {
-      name: 'Webhook: Receive order',
-    });
+    const hook = await openTrigger('Webhook: Receive order');
     expect(within(hook).getByText('Needs setup')).toBeVisible();
     expect(within(hook).getByText(/No endpoint yet/u)).toBeVisible();
     expect(
@@ -127,17 +129,15 @@ describe('workflow triggers tab', () => {
     expect(
       await within(hook).findByText(/Create an endpoint, and each request/u),
     ).toBeVisible();
-    const timer = screen.getByRole('article', {
-      name: 'Schedule: Nightly check',
-    });
-    expect(within(timer).getByText('Every 15 minutes')).toBeVisible();
+    const timer = await openTrigger('Schedule: Nightly check');
+    expect(within(timer).getByText(/Every 15 minutes/u)).toBeVisible();
     expect(within(timer).getByText('Healthy')).toBeVisible();
     expect(
       within(timer).getByText(/it’s skipped and the next one runs on time/u),
     ).toBeVisible();
-    expect(within(timer).getByText('Not yet')).toBeVisible();
+    expect(within(timer).getByText('Not run yet')).toBeVisible();
     expect(
-      within(timer).getByRole('switch', { name: 'Schedule on' }),
+      within(timer).getByRole('switch', { name: 'Nightly check schedule on' }),
     ).toBeChecked();
     expect(screen.queryByText(/webhook-node/u)).not.toBeInTheDocument();
   });

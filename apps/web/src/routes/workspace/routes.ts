@@ -331,18 +331,15 @@ export const requestsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'requests',
   ...workspacePage('Requests'),
-  validateSearch: (search) => parseTaskSearch(search),
-
+  // Keep the filters with the list when a request is open.
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) =>
+    parseTaskSearch(search),
   component: lazyRoute(() => import('./requests/list'), 'RequestsRoute'),
 });
 
 export const requestDetailRoute = createRoute({
-  getParentRoute: () => workspaceShellRoute,
-  path: 'requests/$taskId',
-  // The list's filters ride along so the list beside the request keeps them;
-  // a link from elsewhere opens it with the default list.
-  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) =>
-    parseTaskSearch(search),
+  getParentRoute: () => requestsRoute,
+  path: '$taskId',
   staticData: { crumb: 'Request' },
   component: lazyRoute(() => import('./requests/detail'), 'RequestDetailRoute'),
 });

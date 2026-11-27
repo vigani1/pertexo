@@ -24,3 +24,15 @@ export async function acknowledgeCredentials(event: UserEvent) {
   );
   await event.click(done);
 }
+
+/** A trigger row with its folded details opened, as someone would open them. */
+export async function openTrigger(name: string): Promise<HTMLElement> {
+  const row = await screen.findByRole('article', { name });
+  const details = row.querySelector('details');
+  if (details !== null && !details.open) {
+    const summary = details.querySelector('summary');
+    if (summary === null) throw new Error(`${name} has no details to open`);
+    summary.click();
+  }
+  return row;
+}
