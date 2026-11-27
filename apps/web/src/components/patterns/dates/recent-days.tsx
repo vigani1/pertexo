@@ -7,7 +7,7 @@ export type RecentDay = Readonly<{
   label: string;
   /** The date alone, where a phone has no room for the weekday. */
   shortLabel: string;
-  /** The full date for assistive technology: "Tuesday 24 November". */
+  /** The full date for assistive technology, after the button's own words: "Tue 24, Tuesday 24 November". */
   name: string;
 }>;
 

@@ -21,9 +21,8 @@ export function recentRunDays(nowMs: number): readonly RecentDay[] {
       value: localDateValue(date.getTime()),
       label: today ? 'Today' : formatWeekdayDate(date),
       shortLabel: today ? 'Today' : String(date.getDate()),
-      name: today
-        ? `Today, ${formatCalendarDay(date)}`
-        : formatCalendarDay(date),
+      // Starts with the words on the button, so voice control finds it.
+      name: `${today ? 'Today' : formatWeekdayDate(date)}, ${formatCalendarDay(date)}`,
     };
   });
 }
