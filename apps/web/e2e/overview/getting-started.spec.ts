@@ -234,8 +234,14 @@ for (const width of [375, 1280] as const)
     await page.goto(`/w/${workspaceId}`);
     const section = page.getByRole('region', { name: 'Getting started' });
     await expect(section).toBeVisible();
-    await expect(section).toContainText('3 of 4 done.');
+    const summary = section.getByText('3 of 4 done · Continue', {
+      exact: true,
+    });
+    await expect(summary).toBeVisible();
     const connection = section.getByRole('link', { name: 'Add a connection' });
+    await expect(connection).toHaveCount(0);
+    await summary.click();
+    await expect(connection).toBeVisible();
     await expect(connection).toHaveAttribute(
       'href',
       `/w/${workspaceId}/connections?add=any`,

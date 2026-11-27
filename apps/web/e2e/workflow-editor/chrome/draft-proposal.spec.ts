@@ -147,43 +147,39 @@ test('shows field changes within the width of a phone', async ({
     compatibility,
     updatedAt: '2026-09-14T10:00:00.000Z',
   };
-  await requestProposal(
-    page,
-    {
-      kind: 'inspected',
-      base,
-      draft: {
-        ...base,
-        graph: {
-          ...base.graph,
-          nodes: base.graph.nodes.map((node) =>
-            node.id === 'manual'
-              ? { ...node, config: { ...node.config, intervalMinutes: 60 } }
-              : {
-                  ...node,
-                  inputMappings: {
-                    status: { kind: 'literal', value: 'ready' },
-                  },
+  await requestProposal(page, {
+    kind: 'inspected',
+    base,
+    draft: {
+      ...base,
+      graph: {
+        ...base.graph,
+        nodes: base.graph.nodes.map((node) =>
+          node.id === 'manual'
+            ? { ...node, config: { ...node.config, intervalMinutes: 60 } }
+            : {
+                ...node,
+                inputMappings: {
+                  status: { kind: 'literal', value: 'ready' },
                 },
-          ),
-        },
-      },
-      representationTag: currentEtag(remote),
-      usage: {
-        kind: 'complete',
-        model: 'test',
-        inputTokens: 1,
-        outputTokens: 1,
-      },
-      validation: {
-        valid: true,
-        issues: [],
-        compatibility,
-        currentPublication: null,
+              },
+        ),
       },
     },
-    'menu',
-  );
+    representationTag: currentEtag(remote),
+    usage: {
+      kind: 'complete',
+      model: 'test',
+      inputTokens: 1,
+      outputTokens: 1,
+    },
+    validation: {
+      valid: true,
+      issues: [],
+      compatibility,
+      currentPublication: null,
+    },
+  });
   const review = page.getByRole('complementary', { name: 'Assistant' });
   for (const text of [
     'intervalMinutes',
@@ -210,7 +206,7 @@ test('shows field changes within the width of a phone', async ({
   }
 });
 
-test('focuses the assistant request when it opens from the phone menu', async ({
+test('focuses the assistant request when it opens from the phone toolbar', async ({
   page,
   context,
 }) => {
@@ -222,8 +218,9 @@ test('focuses the assistant request when it opens from the phone menu', async ({
     (route) => route.fulfill({ json: assistantDestination }),
   );
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: 'More workflow actions' }).click();
-  await page.getByRole('menuitem', { name: 'Ask the assistant' }).click();
+  await page
+    .getByRole('button', { name: 'Ask the assistant', exact: true })
+    .click();
   await expect(page.getByLabel('What should the workflow do?')).toBeFocused();
 });
 
@@ -235,11 +232,7 @@ const assistantDestination = {
   confirmation: 'confirmed',
 };
 
-async function requestProposal(
-  page: Page,
-  result: DraftProposalResult,
-  from: 'toolbar' | 'menu' = 'toolbar',
-) {
+async function requestProposal(page: Page, result: DraftProposalResult) {
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft/proposal`,
     (route) =>
@@ -249,10 +242,8 @@ async function requestProposal(
       }),
   );
   await page.goto(editorUrl);
-  if (from === 'menu')
-    await page.getByRole('button', { name: 'More workflow actions' }).click();
   await page
-    .getByRole(from === 'menu' ? 'menuitem' : 'button', {
+    .getByRole('button', {
       name: 'Ask the assistant',
       exact: true,
     })
