@@ -4,7 +4,7 @@ import {
   WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX,
   type WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime } from '@/lib/format/time';
 const labels = {
   webhook: 'Webhook',
@@ -33,9 +33,9 @@ export function SkipHistory({
               className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
             >
               <span>
-                <Status tone="skipped">
+                <StatusMark tone="skipped">
                   {labels[item.triggerType]} skipped
-                </Status>
+                </StatusMark>
                 <span className="mt-1 block text-muted-foreground">
                   Concurrency limit reached. No run started.
                 </span>

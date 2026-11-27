@@ -9,7 +9,7 @@ import { ArtifactDownload } from '@/features/artifacts/artifacts-views.public';
 import type { WorkflowRunData } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Disclosure } from '@/components/ui/disclosure';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowTestStepLabels } from '../../model/workflow-test';
@@ -69,7 +69,7 @@ export function WorkflowTestResults({
               <span className="min-w-0 break-all text-sm">
                 {labels.get(step.nodeId) ?? step.nodeId}
               </span>
-              <Status tone={state.tone}>{state.label}</Status>
+              <StatusMark tone={state.tone}>{state.label}</StatusMark>
               <DispositionLabel disposition={disposition} />
               {step.status === 'succeeded' && tests.activeId !== undefined ? (
                 <>

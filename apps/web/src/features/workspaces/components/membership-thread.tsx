@@ -1,4 +1,4 @@
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 
 export function MembershipThread({
   state,
@@ -27,7 +27,8 @@ export function MembershipThread({
       {state === 'pending' ? (
         <span className="size-1 rounded-full bg-muted-foreground/40" />
       ) : (
-        <StatusGlyph
+        <StatusMark
+          display="mark"
           tone={state === 'accepted' ? 'success' : 'failure'}
           className={state === 'accepted' ? 'text-success' : 'text-destructive'}
         />

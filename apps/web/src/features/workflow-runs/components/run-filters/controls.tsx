@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { runFilterChips } from '../../model/list/run-filter-labels';
 import {
   clearedRunSearch,
@@ -79,7 +79,8 @@ export function RunFilters({
             {statusItems.map((item) => (
               <SelectItem key={item.value ?? 'any'} value={item.value}>
                 {item.value === null ? null : (
-                  <StatusGlyph
+                  <StatusMark
+                    display="mark"
                     tone={describeRunStatus({ status: item.value }).tone}
                   />
                 )}

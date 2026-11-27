@@ -6,7 +6,7 @@ import { describeStep } from '@/features/catalog/public';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import {
   describeTriggerRepair,
@@ -67,7 +67,7 @@ export function WebhookCard({
             </p>
           </div>
         </div>
-        <Status tone={state.tone}>{state.label}</Status>
+        <StatusMark tone={state.tone}>{state.label}</StatusMark>
       </header>
       {repair === undefined ? null : <Notice tone="warning">{repair}</Notice>}
       {/* Checking only means something once there's an endpoint. */}

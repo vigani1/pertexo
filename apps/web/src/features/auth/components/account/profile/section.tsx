@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { PencilIcon } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatInitials } from '@/lib/format/initials';
@@ -90,8 +90,8 @@ function EmailVerification({
 }: Readonly<{ security: AccountSecurityResponse | undefined }>) {
   if (security === undefined) return null;
   return security.emailVerified ? (
-    <Badge variant="success">Verified</Badge>
+    <StatusMark tone="success">Verified</StatusMark>
   ) : (
-    <Badge variant="warning">Not verified</Badge>
+    <StatusMark tone="attention">Not verified</StatusMark>
   );
 }

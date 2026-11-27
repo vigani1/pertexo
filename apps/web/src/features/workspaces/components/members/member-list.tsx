@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDate } from '@/lib/format/time';
 import type { ManagedRole, WorkspaceRole } from '../../model/workspace-roles';
 import { ROLE_NAMES } from '../../model/role-words';
@@ -179,9 +179,9 @@ function MemberRow({
       </div>
       <span className="max-sm:hidden">
         {member.membershipStatus === 'active' ? (
-          <Status tone="success">Active</Status>
+          <StatusMark tone="success">Active</StatusMark>
         ) : (
-          <Status tone="attention">Suspended</Status>
+          <StatusMark tone="attention">Suspended</StatusMark>
         )}
       </span>
       <span className="font-mono text-caption text-subtle-foreground max-sm:hidden">
@@ -193,7 +193,11 @@ function MemberRow({
           role="alert"
           className="col-span-full flex items-start gap-2 pl-11.5 text-xs text-foreground"
         >
-          <StatusGlyph tone="attention" className="text-warning" />
+          <StatusMark
+            display="mark"
+            tone="attention"
+            className="text-warning"
+          />
           {feedback}
         </p>
       )}

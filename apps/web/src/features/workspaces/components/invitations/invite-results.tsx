@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 
@@ -58,9 +58,9 @@ export function InviteResults({
                 Sending
               </span>
             ) : (
-              <Status tone={WORDS[row.delivery].tone}>
+              <StatusMark tone={WORDS[row.delivery].tone}>
                 {WORDS[row.delivery].label}
-              </Status>
+              </StatusMark>
             )}
           </div>
           {row.message === undefined ? null : (

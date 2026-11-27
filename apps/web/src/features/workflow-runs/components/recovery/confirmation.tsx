@@ -7,7 +7,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeadlineField } from '@/components/ui/deadline-field';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { formatDateTime } from '@/lib/format/time';
 import { runDeadlineProblem } from '../../model/commands/run-intent';
@@ -113,10 +113,10 @@ export function RecoveryConfirmation({
           />
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Status tone="success">
+          <StatusMark tone="success">
             {String(preview.reusedCount)} earlier{' '}
             {pluralWord(preview.reusedCount, 'step')} reused
-          </Status>
+          </StatusMark>
           <span className="text-muted-foreground">
             Saved {formatDateTime(preview.sourceCompletedAt)}
           </span>

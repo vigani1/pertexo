@@ -1,5 +1,5 @@
 import { EllipsisIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,7 +79,7 @@ function VariableSummary({
         </span>
       </p>
       <div className="col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3">
-        {unsaved ? <Badge variant="warning">Unsaved</Badge> : null}
+        {unsaved ? <StatusMark tone="attention">Unsaved</StatusMark> : null}
         <Button
           type="button"
           size="sm"

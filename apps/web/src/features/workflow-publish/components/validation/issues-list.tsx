@@ -4,7 +4,7 @@ import { fieldLabel } from '@/lib/schema-fields/units';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { WrenchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { useStepDescriptions } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import type {
@@ -61,7 +61,8 @@ export function IssuesList({
                     key={issue.id}
                     className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-2 text-label leading-snug"
                   >
-                    <StatusGlyph
+                    <StatusMark
+                      display="mark"
                       tone="failure"
                       className="mt-px text-destructive"
                     />

@@ -1,7 +1,7 @@
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { describeWorkflowState } from '@/features/workflows/public';
 import { recentWorkflowsQueryOptions } from '@/features/workflows/workflows-queries.public';
@@ -42,9 +42,9 @@ function VersionLine({
   const live = version.data;
   return (
     <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
-      <Status tone={state.tone} className="shrink-0 text-label font-medium">
+      <StatusMark tone={state.tone} className="shrink-0 text-label font-medium">
         {state.label}
-      </Status>
+      </StatusMark>
       <span className="min-w-0 truncate font-mono text-caption leading-none text-subtle-foreground">
         {publicationLabel(published, live)}
       </span>

@@ -1,4 +1,4 @@
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { Handle, Position } from '@xyflow/react';
 import {
@@ -76,9 +76,9 @@ export function NodeMarks({
   if (data.testStatus !== undefined) {
     const look = describeNodeStatus(data.testStatus);
     facts.push(
-      <Status key="workflow-test" tone={look.tone}>
+      <StatusMark key="workflow-test" tone={look.tone}>
         Test · {look.label}
-      </Status>,
+      </StatusMark>,
     );
   }
   if (data.testOutputBytes !== undefined)

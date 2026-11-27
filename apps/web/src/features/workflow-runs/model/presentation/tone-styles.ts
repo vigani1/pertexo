@@ -11,6 +11,7 @@ export const toneBorderClass: Readonly<Record<StatusTone, string>> = {
   timeout: 'border-destructive/45',
   attention: 'border-warning/50',
   canceled: 'border-surface-ink/10',
+  off: 'border-surface-ink/10',
   skipped: 'border-surface-ink/8',
   neutral: 'border-surface-ink/10',
 };

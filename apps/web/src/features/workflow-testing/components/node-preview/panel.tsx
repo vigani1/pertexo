@@ -11,7 +11,7 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   ArtifactDownload,
   FilePages,
@@ -268,23 +268,27 @@ function SetupCheck({
 }: Readonly<{ check: ReturnType<typeof useNodeTest>['check'] }>) {
   if (check === undefined) return null;
   if (check.valid && check.issues.length === 0)
-    return <Status tone="success">Setup looks right</Status>;
+    return <StatusMark tone="success">Setup looks right</StatusMark>;
   return (
     <section aria-label="Setup issues" className="flex flex-col gap-1.5">
-      <Status tone="failure">
+      <StatusMark tone="failure">
         {pluralWord(
           check.issues.length,
           '1 thing to fix',
           `${String(check.issues.length)} things to fix`,
         )}
-      </Status>
+      </StatusMark>
       <ul className="flex flex-col gap-1">
         {check.issues.map((issue) => (
           <li
             key={`${issue.path}\u0000${issue.code}`}
             className="flex items-start gap-2 text-label text-muted-foreground"
           >
-            <StatusGlyph tone="failure" className="mt-px text-destructive" />
+            <StatusMark
+              display="mark"
+              tone="failure"
+              className="mt-px text-destructive"
+            />
             {describeValidationIssue(issue)}
           </li>
         ))}
@@ -313,7 +317,7 @@ function TestResult({
       className="flex scroll-mt-4 flex-col gap-2 outline-none"
     >
       <p role="status">
-        <Status tone={status.tone}>{status.label}</Status>
+        <StatusMark tone={status.tone}>{status.label}</StatusMark>
       </p>
       {preview.errorSummary === undefined ? null : (
         <p className="text-label leading-relaxed text-foreground">

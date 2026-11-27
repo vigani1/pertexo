@@ -1,4 +1,4 @@
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { stepTag } from '../../../model/step-inspection/copy';
 import type { RunTimelineModel } from '../../../model/timeline/runs';
@@ -101,7 +101,11 @@ export function RunTimeline({
                       toneBorderClass[row.tone],
                     )}
                   >
-                    <StatusGlyph tone={row.tone} className="size-3.5" />
+                    <StatusMark
+                      display="mark"
+                      tone={row.tone}
+                      className="size-3.5"
+                    />
                   </span>
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-label font-semibold">

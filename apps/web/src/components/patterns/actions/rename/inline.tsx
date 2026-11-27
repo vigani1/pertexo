@@ -1,7 +1,7 @@
 import { PencilIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { RenameFormProps } from './inline-rename.types';
 import { RenameInPlace } from './in-place';
 
@@ -59,7 +59,11 @@ export function InlineRename({
       {knotted ? (
         // The new name is tied off with a knot for a moment.
         <span className="grid size-5 place-items-center text-success">
-          <StatusGlyph tone="success" className="motion-safe:animate-knot" />
+          <StatusMark
+            display="mark"
+            tone="success"
+            className="motion-safe:animate-knot"
+          />
         </span>
       ) : null}
       <Button

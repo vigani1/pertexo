@@ -2,7 +2,7 @@ import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 
 import {
   inputMappingKeyControlId,
@@ -78,7 +78,11 @@ export function MappingRow({
           id={problemId}
           className="mt-2 flex items-start gap-1.5 text-xs text-destructive"
         >
-          <StatusGlyph tone="failure" className="mt-px shrink-0" />
+          <StatusMark
+            display="mark"
+            tone="failure"
+            className="mt-px shrink-0"
+          />
           {problem}
         </p>
       ) : null}

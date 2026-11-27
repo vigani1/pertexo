@@ -4,7 +4,7 @@ import type {
   WorkflowRunListItem,
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -106,9 +106,9 @@ export function RunRow({
         )}
       </Link>
       <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-label md:contents">
-        <Status tone={look.tone} className="md:col-start-1 md:row-start-1">
+        <StatusMark tone={look.tone} className="md:col-start-1 md:row-start-1">
           {look.label}
-        </Status>
+        </StatusMark>
         <TriggerLabel
           type={run.triggerType}
           className={cn('md:row-start-1', layout.trigger)}

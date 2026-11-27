@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import {
   failureLink,
@@ -68,7 +68,7 @@ export function FailureSetup({
         </Button>
       ) : (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <StatusGlyph tone="failure" />
+          <StatusMark display="mark" tone="failure" />
           <span>
             {target === undefined ? 'Missing handler' : stepTitle(target)}
           </span>

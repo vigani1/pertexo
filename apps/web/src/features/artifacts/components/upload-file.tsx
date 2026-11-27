@@ -14,7 +14,7 @@ import { LabelledField } from '@/components/ui/field';
 import { FileDrop } from '@/components/ui/file-drop';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
@@ -142,7 +142,7 @@ function UploadSession({
         aria-live="polite"
         aria-atomic="true"
       >
-        <Status tone={phase.tone}>{phase.label}</Status>
+        <StatusMark tone={phase.tone}>{phase.label}</StatusMark>
       </div>
       {upload.state.error === undefined ? null : (
         <Notice tone="warning">{upload.state.error}</Notice>

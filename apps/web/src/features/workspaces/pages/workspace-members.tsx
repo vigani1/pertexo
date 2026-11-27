@@ -14,7 +14,7 @@ import {
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';
@@ -107,10 +107,10 @@ function TeamHeader({
             waiting on someone. */}
           {pendingInvitations > 0 ? (
             <PageHeaderMeta>
-              <Status tone="queued">
+              <StatusMark tone="queued">
                 {pendingInvitations}{' '}
                 {pluralWord(pendingInvitations, 'invitation')} pending
-              </Status>
+              </StatusMark>
             </PageHeaderMeta>
           ) : null}
         </div>

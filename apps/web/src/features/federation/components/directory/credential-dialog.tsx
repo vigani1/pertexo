@@ -17,7 +17,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { useDirectoryCredentialIssue } from '../../data/directory.mutations';
@@ -176,7 +176,7 @@ function DirectoryCredentialReceipt({
   const [saved, setSaved] = useState(false);
   return (
     <div className="mt-5 space-y-5">
-      <Status tone="success">Provisioning credential created</Status>
+      <StatusMark tone="success">Provisioning credential created</StatusMark>
       <div className="flex items-center justify-between gap-3">
         <label htmlFor={`${id}-secret`} className="text-sm font-medium">
           Provisioning bearer credential

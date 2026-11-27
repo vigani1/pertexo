@@ -7,7 +7,7 @@ import {
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentThread } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
@@ -143,9 +143,9 @@ function DiscussionHeader({
             ? 'Workflow discussion'
             : (step?.label ?? thread.stepLabel ?? 'Removed step')}
         </h2>
-        <Status tone={thread.status === 'open' ? 'live' : 'success'}>
+        <StatusMark tone={thread.status === 'open' ? 'live' : 'success'}>
           {thread.status === 'open' ? 'Open' : 'Resolved'}
-        </Status>
+        </StatusMark>
       </div>
       {thread.stepId !== null && step === undefined ? (
         <Notice tone="info">

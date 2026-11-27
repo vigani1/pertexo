@@ -7,7 +7,7 @@ import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeRunStatus, shortRunId } from '@/features/workflow-runs/public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
@@ -100,7 +100,7 @@ export function RetainedActivity({
                   'focus-ring inline-flex items-center gap-2 rounded-md border border-surface-ink/7 bg-surface-ink/[0.025] px-2.5 py-1.5 text-sm transition-colors hover:border-surface-ink/15 hover:bg-surface-ink/[0.05] motion-reduce:transition-none',
                 )}
               >
-                <Status tone={look.tone}>{look.label}</Status>{' '}
+                <StatusMark tone={look.tone}>{look.label}</StatusMark>{' '}
                 <span className="font-mono text-foreground/90">
                   {count.toLocaleString(FORMAT_LOCALE)}
                 </span>

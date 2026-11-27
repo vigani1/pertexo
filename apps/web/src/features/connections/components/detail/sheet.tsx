@@ -18,7 +18,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { isReadAccessLost } from '@/lib/api/read-denial';
@@ -69,7 +69,7 @@ function ConnectionState({
   );
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <Status tone={status.tone}>{status.label}</Status>
+      <StatusMark tone={status.tone}>{status.label}</StatusMark>
       <span
         className={cn(
           'font-mono text-xs',

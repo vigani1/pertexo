@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { useNoticeUnsubscribe } from '../data/notice-unsubscribe.mutations';
 /** No query key or automatic request contains the fragment capability. */
 export function NoticeUnsubscribePage({
@@ -29,7 +29,9 @@ export function NoticeUnsubscribePage({
           </Notice>
         ) : null}
         {command.isSuccess ? (
-          <Status tone="success">Personal notification email is off</Status>
+          <StatusMark tone="success">
+            Personal notification email is off
+          </StatusMark>
         ) : (
           <Button
             disabled={token === null || command.isPending}

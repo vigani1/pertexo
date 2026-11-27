@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   Tooltip,
   TooltipContent,
@@ -126,7 +126,7 @@ function LoomRunPreview({
     <div className="flex w-56 flex-col gap-1">
       <p className="truncate font-semibold">{run.workflowName}</p>
       <div className="flex items-center justify-between gap-3">
-        <Status tone={look.tone}>{look.label}</Status>
+        <StatusMark tone={look.tone}>{look.label}</StatusMark>
         <span className="font-mono">{formatDurationMs(durationMs)}</span>
       </div>
       <p className="font-mono">{formatDateTime(run.createdAt)}</p>

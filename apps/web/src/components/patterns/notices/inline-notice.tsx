@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 import {
-  StatusGlyph,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
@@ -62,7 +62,8 @@ export function Notice({
       className={cn(noticeVariants({ tone }), className)}
       {...props}
     >
-      <StatusGlyph
+      <StatusMark
+        display="mark"
         tone={thread}
         className={cn('mt-px', statusToneText[thread])}
       />

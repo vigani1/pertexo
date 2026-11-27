@@ -15,6 +15,7 @@ const TICK_CLASS: Readonly<Record<StatusTone, string>> = {
   timeout: 'bg-destructive',
   attention: 'bg-warning',
   canceled: 'bg-subtle-foreground/60',
+  off: 'bg-subtle-foreground/60',
   skipped: 'bg-subtle-foreground/40',
   neutral: 'bg-muted-foreground/50',
 };

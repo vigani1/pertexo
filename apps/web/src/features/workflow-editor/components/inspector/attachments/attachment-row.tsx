@@ -3,7 +3,7 @@ import { PencilIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { FileChip } from '@/features/artifacts/artifacts-views.public';
 import { cn } from '@/lib/class-names';
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
@@ -102,7 +102,11 @@ export function AttachmentRow({
           id={errorId}
           className="flex items-start gap-1.5 text-xs text-destructive"
         >
-          <StatusGlyph tone="failure" className="mt-px shrink-0" />
+          <StatusMark
+            display="mark"
+            tone="failure"
+            className="mt-px shrink-0"
+          />
           {error}
         </p>
       )}

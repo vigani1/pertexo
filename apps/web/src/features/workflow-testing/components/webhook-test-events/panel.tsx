@@ -5,7 +5,7 @@ import {
 } from '../../model/webhook-listener';
 import { useEffect, useRef } from 'react';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useListenerClock } from './use-clock';
 import type { SampleScope } from '../../data/samples/step-samples.api';
@@ -86,9 +86,9 @@ export function WebhookTestEventPanel({
       </div>
       {listener === undefined ? null : (
         <>
-          <Status role="status" tone={status.tone}>
+          <StatusMark role="status" tone={status.tone}>
             {status.label}
-          </Status>
+          </StatusMark>
           {state === 'waiting' ? (
             <ListenerCredentials
               listener={listener}

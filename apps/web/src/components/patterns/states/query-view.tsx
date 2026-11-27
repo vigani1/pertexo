@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/empty';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { readFailureReason, shownData } from '@/lib/api/error-copy';
 
 /** What a feature's own failure explanation needs to keep Retry working. */
@@ -154,7 +154,7 @@ export function FailedReadState({
   return (
     <Empty>
       <EmptyMedia>
-        <StatusGlyph tone="failure" className="size-6" />
+        <StatusMark display="mark" tone="failure" className="size-6" />
       </EmptyMedia>
       <EmptyTitle>{title}</EmptyTitle>
       <EmptyActions>

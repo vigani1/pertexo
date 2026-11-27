@@ -1207,3 +1207,141 @@
     transform: none;
   }
 }
+
+/* A fixed 20px thread with a terminal for each state. Only Running moves. */
+@utility status-terminal {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 12px;
+
+  &::before,
+  &::after {
+    position: absolute;
+    content: '';
+  }
+
+  &::before {
+    top: 5.5px;
+    left: 0;
+    width: 12px;
+    height: 1px;
+    background: var(--subtle-foreground);
+    opacity: 0.7;
+  }
+
+  &::after {
+    top: 2px;
+    left: 12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  &[data-state='succeeded']::after {
+    background: var(--muted-foreground);
+  }
+
+  &[data-state='failed']::after {
+    border-radius: 0;
+    background:
+      linear-gradient(
+        45deg,
+        transparent 42%,
+        var(--destructive) 42% 58%,
+        transparent 58%
+      ),
+      linear-gradient(
+        -45deg,
+        transparent 42%,
+        var(--destructive) 42% 58%,
+        transparent 58%
+      );
+  }
+
+  &[data-state='waiting']::after {
+    box-shadow: inset 0 0 0 1.5px var(--waiting);
+  }
+
+  &[data-state='attention']::after {
+    top: 2.5px;
+    left: 12.5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    transform: rotate(45deg);
+    box-shadow: inset 0 0 0 1.5px var(--warn);
+  }
+
+  &[data-state='running']::before {
+    width: 13px;
+    background: linear-gradient(
+      90deg,
+      var(--live-faint) 25%,
+      var(--live) 50%,
+      var(--live-faint) 75%
+    );
+    background-size: 300% 100%;
+    opacity: 1;
+  }
+
+  &[data-state='running']:not([data-still])::before {
+    @variant motion-loop {
+      animation: status-run 1.6s linear infinite;
+    }
+  }
+
+  &[data-state='running']::after {
+    top: 3px;
+    left: 13px;
+    width: 6px;
+    height: 6px;
+    background: var(--live);
+    box-shadow: var(--live-glow);
+  }
+
+  &[data-state='queued']::after {
+    top: 5px;
+    height: 2px;
+    border-radius: 0;
+    background: radial-gradient(
+        circle,
+        var(--subtle-foreground) 0 1px,
+        transparent 1.2px
+      )
+      0 0 / 3px 2px repeat-x;
+  }
+
+  &[data-state='draft']::after {
+    box-shadow: inset 0 0 0 1.5px var(--subtle-foreground);
+  }
+
+  &[data-state='skipped']::after {
+    left: 13px;
+    width: 1.5px;
+    border-radius: 0;
+    background: var(--subtle-foreground);
+  }
+
+  &[data-state='off']::before,
+  &[data-state='off']::after {
+    opacity: 0.35;
+  }
+
+  &[data-state='off']::after {
+    top: 5.5px;
+    height: 1px;
+    border-radius: 0;
+    background: var(--subtle-foreground);
+  }
+}
+
+@keyframes status-run {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}

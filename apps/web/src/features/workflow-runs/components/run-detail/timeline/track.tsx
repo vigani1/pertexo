@@ -1,5 +1,5 @@
 import type { StatusTone } from '@/components/patterns/status/status-mark';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { segmentPlacement } from '../../../model/timeline/geometry';
 import type {
@@ -154,7 +154,8 @@ export function RunTimelineTrack({
             <span className={cn('block w-full', segmentClass(segment))} />
             {/* While it waits, the coil sits at its live end: now. */}
             {segment.kind === 'wait' && segment.endMs === null ? (
-              <StatusGlyph
+              <StatusMark
+                display="mark"
                 tone="waiting"
                 className="absolute top-1/2 right-0 size-3.5 translate-x-1/2 -translate-y-1/2 bg-background"
               />

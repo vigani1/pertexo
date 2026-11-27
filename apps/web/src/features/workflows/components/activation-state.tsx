@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeWorkflowState } from '../model/workflow-state';
 
 /** An endpoint needs a builder's action; it is not background activation. */
@@ -22,9 +22,9 @@ export function WorkflowActivationState({
   const needsSetup = activating && workflow.webhookSetupRequired;
   const state = describeWorkflowState(workflow);
   const word = (
-    <Status tone={state.tone} className="font-sans text-label">
+    <StatusMark tone={state.tone} className="font-sans text-label">
       {state.label}
-    </Status>
+    </StatusMark>
   );
   return activating && activeTab !== 'triggers' ? (
     <Link

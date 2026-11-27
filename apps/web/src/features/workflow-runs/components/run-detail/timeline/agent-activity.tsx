@@ -2,7 +2,7 @@ import type { WorkflowCallSummary } from '@pertexo/contracts';
 import { ChildHistory } from './child-history';
 import type { RunDataScope } from '../data/value';
 import { StepModelUsage } from '../run-diagnostics';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatDurationMs } from '@/lib/format/time';
 import { AGENT_SEND_SLACK_MESSAGE } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
@@ -86,7 +86,7 @@ export function AgentActivity({
               >
                 {row.label}
               </button>
-              <Status tone={row.tone}>{row.statusLabel}</Status>
+              <StatusMark tone={row.tone}>{row.statusLabel}</StatusMark>
               <ToolApproval
                 allowed={tool && writeAllowed}
                 approval={approvals.get(turn)}
@@ -147,9 +147,9 @@ function ToolApproval({
   if (!show) return null;
   if (approval !== undefined)
     return (
-      <Status tone={approval === 'approved' ? 'success' : 'attention'}>
+      <StatusMark tone={approval === 'approved' ? 'success' : 'attention'}>
         {approvalLabels[approval]}
-      </Status>
+      </StatusMark>
     );
   if (allowed)
     return (

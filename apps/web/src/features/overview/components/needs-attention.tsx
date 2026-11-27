@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { AttentionAction, AttentionItem } from '../model/needs-attention';
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';
@@ -99,7 +99,10 @@ export function NeedsAttention({
     >
       {shown.length === 0 ? (
         <div className="flex items-center gap-3 border-t border-surface-ink/6 py-3.5">
-          <StatusGlyph tone={moreWorkflows ? 'attention' : 'success'} />
+          <StatusMark
+            display="mark"
+            tone={moreWorkflows ? 'attention' : 'success'}
+          />
           <p className="text-sm">
             <span className="font-semibold">
               {moreWorkflows ? 'No issues in loaded workflows.' : 'All clear.'}
@@ -118,7 +121,7 @@ export function NeedsAttention({
               key={item.key}
               className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-surface-ink/6 py-3"
             >
-              <StatusGlyph tone={item.tone} />
+              <StatusMark display="mark" tone={item.tone} />
               <div className="min-w-0">
                 <p className="line-clamp-2 text-sm font-semibold">
                   {item.title}

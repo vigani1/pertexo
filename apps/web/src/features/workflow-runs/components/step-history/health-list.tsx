@@ -6,7 +6,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
@@ -141,7 +141,7 @@ function StepHealthTable({
                   </td>
                   <td className="py-2 pl-3">
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                      <StatusGlyph tone={look.tone} />
+                      <StatusMark display="mark" tone={look.tone} />
                       <span className="sr-only">{look.label}</span>
                       <span className="font-mono text-xs text-subtle-foreground">
                         {formatRelativeTime(item.lastRanAt)}

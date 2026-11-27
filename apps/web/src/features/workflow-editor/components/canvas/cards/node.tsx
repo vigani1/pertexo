@@ -1,5 +1,5 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   Handle,
   Position,
@@ -97,7 +97,7 @@ export function WorkflowNodeCard({
             className="!size-2.5 !border-destructive !bg-background !border-dashed"
           />
           <span className="pointer-events-none absolute bottom-1 right-3 flex items-center gap-1 rounded bg-card px-1 text-micro text-destructive">
-            <StatusGlyph tone="failure" className="size-2.5" />
+            <StatusMark display="mark" tone="failure" className="size-2.5" />
             Failure
           </span>
         </>

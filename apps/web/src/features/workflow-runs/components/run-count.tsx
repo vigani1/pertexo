@@ -1,6 +1,6 @@
 import { cn } from '@/lib/class-names';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import type { RunStatistics } from '../data/statistics.queries';
@@ -14,7 +14,7 @@ export function RunCount({
 }: Readonly<{ tone: StatusTone; count: number; label: string }>) {
   // A zero is worth knowing but not worth looking at: it steps back.
   return (
-    <Status
+    <StatusMark
       tone={tone}
       still={count === 0}
       className={cn(
@@ -33,7 +33,7 @@ export function RunCount({
         </b>{' '}
         {label}
       </span>
-    </Status>
+    </StatusMark>
   );
 }
 

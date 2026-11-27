@@ -19,9 +19,8 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { cn } from '@/lib/class-names';
 import { stepCountLabel } from '../../model/versions/steps';
 
 /**
@@ -44,34 +43,20 @@ export function VersionTimeline({
       // Narrow enough that each row's actions sit beside its version.
       className="relative flex max-w-3xl flex-col"
     >
-      <span
-        aria-hidden="true"
-        className="absolute top-4 bottom-4 left-[0.4375rem] w-px bg-linear-to-b from-accent-foreground/45 via-border-strong to-transparent"
-      />
       {versions.map((version) => {
         const live = version.id === liveVersionId;
         const label = `v${String(version.versionNumber)}`;
         return (
-          <li
-            key={version.id}
-            className="relative grid grid-cols-[0.9rem_minmax(0,1fr)] gap-x-4"
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                'relative z-10 mt-4 size-3.5 rounded-full border-2 bg-background',
-                live
-                  ? 'border-success bg-success shadow-[0_0_10px_var(--success)]'
-                  : 'border-accent-foreground/50',
-              )}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-surface-ink/[0.03] motion-reduce:transition-none">
+          <li key={version.id} className="row-divider">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-select motion-reduce:transition-none">
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h3 className="text-lg leading-none font-semibold">
                     {label}
                   </h3>
-                  {live ? <Status tone="success">{liveLabel}</Status> : null}
+                  {live ? (
+                    <StatusMark tone="success">{liveLabel}</StatusMark>
+                  ) : null}
                 </div>
                 <p className="mt-1.5 text-sm text-muted-foreground">
                   Published{' '}

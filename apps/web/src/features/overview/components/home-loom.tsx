@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
-  StatusGlyph,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
@@ -106,7 +106,12 @@ export function HomeLoom({
             <li key={tone} className="inline-flex items-center gap-1.5">
               {/* Each glyph in its status colour, as the Loom draws it; a key
                   names a status, so it doesn't play one. */}
-              <StatusGlyph tone={tone} still className={statusToneText[tone]} />
+              <StatusMark
+                display="mark"
+                tone={tone}
+                still
+                className={statusToneText[tone]}
+              />
               {label}
             </li>
           ))}

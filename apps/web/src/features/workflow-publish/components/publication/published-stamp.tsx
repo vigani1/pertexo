@@ -3,7 +3,7 @@ import { PlayIcon, XIcon, ZapIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import { cn } from '@/lib/class-names';
 
@@ -67,13 +67,13 @@ export function PublishedStamp({
           )}
         >
           <div className="flex items-center justify-between gap-2">
-            <Status tone="success">
+            <StatusMark tone="success">
               <span className="font-heading text-lead font-semibold text-foreground">
                 {needsTriggerSetup
                   ? `v${String(versionNumber)} is published`
                   : `v${String(versionNumber)} is ${publicationStateLabel({ reused, liveAgain })}`}
               </span>
-            </Status>
+            </StatusMark>
             <Button
               type="button"
               size="icon-xs"

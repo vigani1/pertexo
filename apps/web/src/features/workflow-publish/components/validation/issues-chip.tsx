@@ -2,7 +2,7 @@ import { CheckIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import type { IssuesState } from '../../model/validation/issues-state';
 import type { EmptyDraftHint } from '../../model/publication/readiness';
@@ -63,7 +63,7 @@ export function IssuesChip({
         <ChipLabel state={state} count={count} />
       ) : (
         <>
-          <StatusGlyph tone="neutral" />
+          <StatusMark display="mark" tone="neutral" />
           <Words>
             {hint.label === 'Add a trigger to start'
               ? 'Add trigger'
@@ -106,12 +106,12 @@ function ChipLabel({
   if (count === undefined)
     return state.error === undefined ? (
       <>
-        <StatusGlyph tone="neutral" className="sm:hidden" />
+        <StatusMark display="mark" tone="neutral" className="sm:hidden" />
         <Words>{describeChip(state, count)}</Words>
       </>
     ) : (
       <>
-        <StatusGlyph tone="attention" className="text-warning" />
+        <StatusMark display="mark" tone="attention" className="text-warning" />
         <Words>{describeChip(state, count)}</Words>
       </>
     );
@@ -124,7 +124,7 @@ function ChipLabel({
     );
   return (
     <>
-      <StatusGlyph tone="failure" />
+      <StatusMark display="mark" tone="failure" />
       {count} <Words>{pluralWord(count, 'issue')}</Words>
     </>
   );

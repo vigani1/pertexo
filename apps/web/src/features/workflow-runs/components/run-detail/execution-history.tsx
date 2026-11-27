@@ -4,7 +4,7 @@ import { shortRunId } from '../../model/list/runs';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeStepError } from '../../model/step-inspection/error-copy';
 import {
   storyEntryMeta,
@@ -69,7 +69,7 @@ function StoryEntry({
   const reason = storyEntryReason(entry);
   return (
     <li className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5 border-t border-surface-ink/6 py-2.5 text-label">
-      <StatusGlyph tone={entry.tone} className="mt-0.5" />
+      <StatusMark display="mark" tone={entry.tone} className="mt-0.5" />
       <div className="min-w-0">
         <p className="font-semibold">{storyEntryTitle(entry)}</p>
         <p className="mt-0.5 font-mono text-caption text-subtle-foreground">

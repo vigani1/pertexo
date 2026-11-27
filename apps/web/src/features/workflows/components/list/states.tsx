@@ -7,7 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { readFailureReason } from '@/lib/api/error-copy';
 
 export function WorkflowListError({
@@ -18,7 +18,11 @@ export function WorkflowListError({
   return (
     <Empty>
       <EmptyMedia>
-        <StatusGlyph tone="failure" className="text-destructive" />
+        <StatusMark
+          display="mark"
+          tone="failure"
+          className="text-destructive"
+        />
       </EmptyMedia>
       <EmptyTitle>Workflows didn’t load</EmptyTitle>
       <EmptyDescription>{readFailureReason(error)}</EmptyDescription>

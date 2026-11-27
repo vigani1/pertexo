@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { PlusIcon, RepeatIcon } from 'lucide-react';
 import { use } from 'react';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { LOOP_FRAME } from '../../../model/graph/for-each-body-layout';
 import type { BodyIssue } from '../../../model/graph/for-each-body-rules';
 import { CanvasActionsContext } from '../../../model/canvas/actions-context';
@@ -152,7 +152,11 @@ export function ForEachNodeCard({
                 key={issue.code}
                 className="flex items-start gap-1.5 text-caption leading-snug text-warning"
               >
-                <StatusGlyph tone="attention" className="mt-px shrink-0" />
+                <StatusMark
+                  display="mark"
+                  tone="attention"
+                  className="mt-px shrink-0"
+                />
                 {issue.message}
               </li>
             ))}

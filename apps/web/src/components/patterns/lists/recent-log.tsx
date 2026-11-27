@@ -3,7 +3,7 @@ import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import {
-  StatusGlyph,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
@@ -172,7 +172,11 @@ export function RecentLogEntry({
 }>) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
-      <StatusGlyph tone={tone} className={cn('mt-0.5', statusToneText[tone])} />
+      <StatusMark
+        display="mark"
+        tone={tone}
+        className={cn('mt-0.5', statusToneText[tone])}
+      />
       <div className="min-w-0">
         <p className="text-sm font-medium">{label}</p>
         {detail === undefined ? null : (

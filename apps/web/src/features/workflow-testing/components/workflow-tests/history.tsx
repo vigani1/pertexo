@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { formatDate, formatClock } from '@/lib/format/time';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   describeRunStatus,
@@ -166,7 +166,7 @@ function WorkflowTestRunControls({
         {look === undefined ? (
           <span className="text-sm font-medium">Workflow tests</span>
         ) : (
-          <Status tone={look.tone}>Test · {look.label}</Status>
+          <StatusMark tone={look.tone}>Test · {look.label}</StatusMark>
         )}
         {snapshot === undefined ? null : (
           <span className="text-xs text-muted-foreground">

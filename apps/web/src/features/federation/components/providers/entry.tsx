@@ -1,6 +1,6 @@
 import type { FederationSettings } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { TestProvider } from './test';
 import { pluralWord } from '@/lib/format/count';
@@ -35,9 +35,9 @@ export function ProviderEntry({
     <li className="space-y-4 py-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{provider.name}</h3>
-        <Status tone={provider.enabled ? 'success' : 'neutral'}>
+        <StatusMark tone={provider.enabled ? 'success' : 'off'}>
           {provider.enabled ? 'Enabled' : 'Off'}
-        </Status>
+        </StatusMark>
       </div>
       <p className="break-all text-sm text-muted-foreground">
         {provider.issuer}

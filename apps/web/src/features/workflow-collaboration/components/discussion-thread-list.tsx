@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentListQuery } from '@pertexo/contracts';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { threadsQuery } from '../data/collaboration.queries';
 export function DiscussionThreads({
@@ -43,7 +43,8 @@ export function DiscussionThreads({
                       onOpen(thread.id);
                     }}
                   >
-                    <StatusGlyph
+                    <StatusMark
+                      display="mark"
                       tone={thread.status === 'resolved' ? 'success' : 'live'}
                     />
                     <span className="min-w-0">

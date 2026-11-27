@@ -3,7 +3,7 @@ import {
   workflowRunStatusSchema,
   type UsageTrendsResponse,
 } from '@pertexo/contracts';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { describeRunStatus } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
@@ -99,9 +99,9 @@ export function DailyChart({
         {workflowRunStatusSchema.options
           .filter((status) => snapshot.byStatus[status] > 0)
           .map((status) => (
-            <Status key={status} tone={describeRunStatus({ status }).tone}>
+            <StatusMark key={status} tone={describeRunStatus({ status }).tone}>
               {describeRunStatus({ status }).label}
-            </Status>
+            </StatusMark>
           ))}
       </figcaption>
       <Disclosure summary="Daily data">

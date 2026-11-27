@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CopyButton } from '@/components/ui/copy-button';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Textarea } from '@/components/ui/textarea';
 
 export function TokenSecretReceipt({
@@ -24,9 +24,9 @@ export function TokenSecretReceipt({
         Pertexo shows the secret once. Save it in your secrets manager before
         closing. It cannot be retrieved later.
       </DialogDescription>
-      <Status tone="success" className="mt-4">
+      <StatusMark tone="success" className="mt-4">
         Token created
-      </Status>
+      </StatusMark>
       <p className="mt-2 break-words text-sm">{name}</p>
       <div className="mt-5 flex flex-col gap-2">
         <div className="flex items-center justify-between">

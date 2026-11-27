@@ -1,7 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   AuthLensDescription,
   AuthLensTitle,
@@ -182,7 +182,8 @@ export function DeadEndJourney({
   const copy = DEAD_END_COPY[state];
   return (
     <>
-      <StatusGlyph
+      <StatusMark
+        display="mark"
         tone={state === 'expired' ? 'timeout' : 'canceled'}
         className="mb-4 size-6 text-subtle-foreground [&_svg]:size-6"
       />
