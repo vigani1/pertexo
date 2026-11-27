@@ -5,7 +5,7 @@ import {
   savedHttpNode,
 } from '../workflow-editor/inspector/http-setup/fixture';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { test, expect, type Page } from '../support/fixtures';
+import { test, expect } from '../support/fixtures';
 import {
   workspaceId,
   addCsrfCookie,

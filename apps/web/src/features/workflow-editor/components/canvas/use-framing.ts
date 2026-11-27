@@ -49,22 +49,8 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     useRef<Readonly<{ id: string; x: number; y: number }>>(undefined);
 
   const visibleArea = useCallback(
-    (reserveInspector = false): Box | undefined => {
-      const container = containerRef.current;
-      if (container === null) return undefined;
-      const canvas = container.getBoundingClientRect();
-      if (canvas.width === 0 || canvas.height === 0) return undefined;
-      const covers = [
-        ...document.querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`),
-      ]
-        .filter(
-          (element) =>
-            reserveInspector ||
-            getComputedStyle(element).visibility === 'visible',
-        )
-        .map((element) => element.getBoundingClientRect());
-      return uncoveredArea(canvas, covers);
-    },
+    (reserveInspector = false) =>
+      readCanvasArea(containerRef.current, reserveInspector),
     [containerRef],
   );
 
@@ -192,6 +178,22 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   );
 
   return fit;
+}
+
+function readCanvasArea(
+  container: HTMLElement | null,
+  reserveInspector: boolean,
+): Box | undefined {
+  if (container === null) return undefined;
+  const canvas = container.getBoundingClientRect();
+  if (canvas.width === 0 || canvas.height === 0) return undefined;
+  const covers = [...document.querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`)]
+    .filter(
+      (element) =>
+        reserveInspector || getComputedStyle(element).visibility === 'visible',
+    )
+    .map((element) => element.getBoundingClientRect());
+  return uncoveredArea(canvas, covers);
 }
 
 function useRevealOnResize(
