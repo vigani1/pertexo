@@ -1,9 +1,6 @@
 import { UnavailableDataTable } from './unavailable';
 import { Link } from '@tanstack/react-router';
-import type {
-  DataTablesResponse,
-  DataTableDefinition,
-} from '@pertexo/contracts';
+import type { DataTablesResponse } from '@pertexo/contracts';
 import { EllipsisIcon } from 'lucide-react';
 import {
   Empty,

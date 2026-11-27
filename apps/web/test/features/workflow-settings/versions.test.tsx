@@ -129,15 +129,10 @@ describe('workflow versions tab', () => {
     const event = userEvent.setup();
     const list = await screen.findByRole('navigation', { name: 'Versions' });
     const [newest, oldest] = within(list).getAllByRole('button');
-    expect(newest).toHaveTextContent('v2');
-    expect(newest).toHaveTextContent('live');
-    expect(newest).toHaveTextContent('Ada Lovelace');
-    expect(oldest).toHaveTextContent('v1');
-    expect(oldest).not.toHaveTextContent('live');
+    expect(newest).toHaveTextContent(/^v2 live.*Ada Lovelace$/u);
+    expect(oldest).toHaveTextContent(/^v1(?! live).*Ada Lovelace$/u);
     const detail = screen.getByRole('article', { name: 'v2' });
-    expect(detail).toHaveTextContent('Live');
-    expect(detail).toHaveTextContent('by Ada Lovelace');
-    expect(detail).toHaveTextContent('2 steps');
+    expect(detail).toHaveTextContent(/Live.*by Ada Lovelace · 2 steps/u);
     expect(
       within(detail).getByRole('heading', { name: 'What changed from v1' }),
     ).toBeVisible();

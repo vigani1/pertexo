@@ -211,13 +211,11 @@ describe('connections page', () => {
     ).toBeVisible();
 
     response = 'ok';
-    await userEvent
-      .setup()
-      .click(
-        within(screen.getByRole('alert')).getByRole('button', {
-          name: 'Retry',
-        }),
-      );
+    await userEvent.setup().click(
+      within(screen.getByRole('alert')).getByRole('button', {
+        name: 'Retry',
+      }),
+    );
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });

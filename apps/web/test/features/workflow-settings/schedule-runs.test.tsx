@@ -1,6 +1,6 @@
 import { openTrigger } from './triggers/fixture';
 import { HttpResponse, http } from 'msw';
-import { screen, within } from '@testing-library/react';
+import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { localTimeZone } from '@/lib/format/time';
