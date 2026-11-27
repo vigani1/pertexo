@@ -58,7 +58,7 @@ export async function reviewAndApply(page: Page, options: EvaluationRequest) {
     validation: { valid: true },
   });
   expect(await readEditorDraft(page, options.path)).toEqual(before);
-  const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+  const review = page.getByRole('complementary', { name: 'Assistant' });
   await review.getByRole('button', { name: 'Apply to draft' }).click();
   await expect(review).toBeHidden();
   if (result.kind !== 'inspected')
@@ -159,11 +159,9 @@ export async function connectAssistant(
 
 export async function openProposal(page: Page, description: string) {
   await page
-    .getByRole('button', { name: 'Ask assistant', exact: true })
+    .getByRole('button', { name: 'Ask the assistant', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'Describe your workflow change',
-  });
+  const dialog = page.getByRole('complementary', { name: 'Assistant' });
   await expect(dialog).toContainText('model.provider.test');
   await expect(dialog).toContainText('step settings and input mappings');
   await dialog.getByLabel('What should the workflow do?').fill(description);

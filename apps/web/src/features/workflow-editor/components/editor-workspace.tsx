@@ -2,7 +2,8 @@ import {
   WorkflowTestHistory,
   type NodeTestHandle,
 } from '@/features/workflow-testing/workflow-testing-views.public';
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode, type RefObject } from 'react';
+import { DraftProposal } from './draft-proposal';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
@@ -32,6 +33,8 @@ export type EditorChrome = Readonly<{
   onFix: (target: WorkflowValidationTarget) => void;
   proposalOpen: boolean;
   onProposalOpenChange: (open: boolean) => void;
+  /** The bar's assistant button, where focus returns when the panel closes. */
+  assistantTrigger: RefObject<HTMLButtonElement | null>;
 }>;
 
 /**
@@ -71,6 +74,7 @@ export function EditorWorkspace({
   const lastTest = useLastTest();
   const lastRun = useLastRun({ apiClient, userId, workspace, workflowId });
   const [proposalOpen, setProposalOpen] = useState(false);
+  const assistantTrigger = useRef<HTMLButtonElement>(null);
   const { chrome: workspaceChrome, setFeedbackTarget } = useWorkspaceChrome({
     tests,
     onFix: navigation.fix,
@@ -97,7 +101,16 @@ export function EditorWorkspace({
       if (open) adding.quickAdd.close();
       setProposalOpen(open);
     },
+    assistantTrigger,
   };
+  function closeAssistant() {
+    setProposalOpen(false);
+    // The bar's button is folded into ⋯ on a phone; the canvas takes focus.
+    const trigger = assistantTrigger.current;
+    if (trigger !== null && trigger.getClientRects().length > 0)
+      trigger.focus();
+    else canvasRef.current?.focus();
+  }
   const overlays = useCanvasOverlays(
     editing.issues,
     effects,
@@ -172,6 +185,16 @@ export function EditorWorkspace({
           }}
           canvas={{ adding, selection }}
         />
+      }
+      assistant={
+        editing.canUpdate && !paused ? (
+          <DraftProposal
+            open={proposalOpen}
+            onClose={closeAssistant}
+            graph={graph}
+            onFix={chrome.onFix}
+          />
+        ) : null
       }
       overlay={
         <WorkspaceOverlay

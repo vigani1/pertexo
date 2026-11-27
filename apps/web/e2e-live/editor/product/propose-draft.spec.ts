@@ -70,13 +70,14 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
       'Start a manual workflow and prepare the order.',
     );
     await expect(startPicker).toHaveCount(0);
-    const backdrop = page.locator('[data-open].scrim');
-    await expect(backdrop).toBeVisible();
-    await expect(backdrop).toHaveCSS('background-color', /rgba\(/u);
+    // A side panel, not a dialog: no scrim, and the canvas stays in view.
+    await expect(page.locator('[data-open].scrim')).toHaveCount(0);
+    const canvas = page.getByRole('region', { name: 'Workflow canvas' });
+    await expect(canvas).toBeVisible();
     expect(inference.calls).toHaveLength(0);
     await modelScreenshots(page, info, 'draft-proposal-request');
     await request.getByRole('button', { name: 'Send to model' }).click();
-    const review = page.getByRole('dialog', { name: 'Review proposed draft' });
+    const review = page.getByRole('complementary', { name: 'Assistant' });
     await expect(review).toContainText('Prepare order');
     await expect(review).toContainText(
       'Start order intake (out) → Prepare order (in)',
@@ -84,7 +85,7 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
     expect(inference.calls).toHaveLength(1);
     expect(JSON.stringify(inference.calls)).not.toContain(key);
     expect(await readEditorDraft(page, path)).toEqual(draft);
-    await expect(backdrop).toBeVisible();
+    await expect(canvas).toBeVisible();
     await modelScreenshots(page, info, 'draft-proposal-diff');
     await review.getByRole('button', { name: 'Apply to draft' }).click();
     await expect(review).toBeHidden();
@@ -113,12 +114,12 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
     await expect(issues).toContainText('Send order');
     await expect(issues).toContainText('URL needs a value.');
     await expect(issues).not.toContainText('timeoutMillis');
-    await expect(backdrop).toBeVisible();
+    await expect(canvas).toBeVisible();
     await modelScreenshots(page, info, 'draft-proposal-issues');
     await page.keyboard.press('Escape');
     await expect(review).toBeHidden();
     await expect(
-      page.getByRole('button', { name: 'Ask assistant' }),
+      page.getByRole('button', { name: 'Ask the assistant' }),
     ).toBeFocused();
     expect((await readEditorDraft(page, path)).graph).toEqual(edited);
   } finally {

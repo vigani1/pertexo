@@ -21,6 +21,7 @@ export function EditorLayout({
   canvas,
   addStep,
   inspector,
+  assistant,
   overlay,
   bottomLens,
   history,
@@ -34,6 +35,8 @@ export function EditorLayout({
   canvas: ReactNode;
   addStep: ReactNode;
   inspector: ReactNode;
+  /** The assistant's panel, over the inspector's place on the right. */
+  assistant: ReactNode;
   overlay: ReactNode;
   bottomLens: ReactNode;
   history: ReactNode;
@@ -118,6 +121,7 @@ export function EditorLayout({
             >
               {inspector}
             </aside>
+            {assistant}
             {overlay}
             {bottomLens === null ? null : (
               // Clear of the zoom lens in the bottom-left corner at every size,
