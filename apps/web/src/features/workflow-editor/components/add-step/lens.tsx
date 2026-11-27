@@ -13,17 +13,19 @@ import { StepChoiceList, StepSearch } from './picker';
  */
 export function AddStepLens({
   definitions,
-  collapsed,
-  searchRef,
-  onToggleCollapsed,
+  fold,
   onAdd,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
-  collapsed: boolean;
-  searchRef: Ref<HTMLInputElement>;
-  onToggleCollapsed: () => void;
+  /** Whether the lens is folded to a strip, its search field and the fold. */
+  fold: Readonly<{
+    collapsed: boolean;
+    searchRef: Ref<HTMLInputElement>;
+    toggle: () => void;
+  }>;
   onAdd: (choice: StepChoice) => void;
 }>) {
+  const { collapsed, searchRef, toggle: onToggleCollapsed } = fold;
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   if (collapsed)
