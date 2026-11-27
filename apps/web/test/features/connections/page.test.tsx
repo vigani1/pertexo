@@ -271,7 +271,11 @@ describe('connections page', () => {
     expect(
       await screen.findByRole('button', { name: /^Primary Slack,/u }),
     ).toBeVisible();
-    expect(screen.getByText('last test failed · invalid token')).toBeVisible();
+    expect(
+      within(screen.getByRole('list', { name: 'Connections' })).getByText(
+        'last test failed · invalid token',
+      ),
+    ).toBeVisible();
     expect(screen.getByText('1 needs reconnecting')).toBeVisible();
     await userEvent
       .setup()
