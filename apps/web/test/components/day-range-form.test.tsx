@@ -24,7 +24,6 @@ describe('DayRangeForm', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: day(16) }));
-    await userEvent.click(screen.getByRole('button', { name: 'Apply range' }));
     expect(onApply).toHaveBeenCalledWith('2026-09-14', '2026-09-16');
   });
 
@@ -37,7 +36,16 @@ describe('DayRangeForm', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: day(17) }));
-    await userEvent.click(screen.getByRole('button', { name: 'Apply range' }));
     expect(onApply).toHaveBeenCalledWith('2026-09-17', '2026-09-17');
+  });
+
+  it('applies one tapped day at once, then extends it with a second tap', async () => {
+    const onApply = vi.fn<(from: string, to: string) => undefined>();
+    render(<DayRangeForm onApply={onApply} />);
+    await userEvent.click(screen.getByRole('button', { name: day(18) }));
+    expect(onApply).toHaveBeenLastCalledWith('2026-09-18', '2026-09-18');
+    await userEvent.click(screen.getByRole('button', { name: day(12) }));
+    expect(onApply).toHaveBeenLastCalledWith('2026-09-12', '2026-09-18');
+    expect(onApply).toHaveBeenCalledTimes(2);
   });
 });

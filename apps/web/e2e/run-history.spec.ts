@@ -55,7 +55,6 @@ test('filters and paginates workspace history, then opens the exact run', async 
   const today = page.locator('button[aria-current="date"]');
   await today.click();
   await expect(today).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Apply range' }).click();
   await expect(page).toHaveURL(/createdAtFrom=/u);
   await expect(page).toHaveURL(/range=custom/u);
   await expect(
