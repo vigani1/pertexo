@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
+import { useId, type ReactNode } from 'react';
 import { formatDateTime } from '@/lib/format/time';
 import { shortRunId } from '../../model/list/runs';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -30,7 +31,7 @@ export function StepError({
   const copy = describeStepError(code, definitionKey);
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
-    <div className="mt-2 rounded-md border border-destructive/20 bg-fail-soft p-3 text-label leading-relaxed">
+    <div className="mt-2 rounded-md bg-fail-soft p-3 text-label leading-relaxed">
       <p className="break-words whitespace-pre-wrap text-foreground">
         {summary ?? copy.sentence}
       </p>
@@ -185,7 +186,7 @@ export function StepExecutionHistory({
   );
 }
 
-/** The step whose error explains a failed run, for the phone's notice. */
+/** The step whose error explains a failed run, for the run story. */
 function failureRow(
   status: string,
   rows: readonly RunTimelineRow[],
@@ -202,10 +203,10 @@ function failureRow(
 }
 
 /**
- * Phones: why a failed run failed, right under the header, since the step
- * lens only opens on tap there.
+ * Why a failed run failed, on every screen, right under its story: the step,
+ * what went wrong in words, and its error code in mono.
  */
-export function PhoneFailureNotice({
+export function FailedStepNotice({
   run,
   rows,
   workspace,
@@ -214,10 +215,19 @@ export function PhoneFailureNotice({
   rows: readonly RunTimelineRow[];
   workspace: AccessibleWorkspace;
 }>) {
+  const headingId = useId();
   const row = failureRow(run.status, rows);
   if (row === undefined) return null;
   return (
-    <section aria-label={`Why ${row.label} failed`} className="-mt-3">
+    <section aria-labelledby={headingId} className="flex flex-col gap-1">
+      <RuleHeading
+        id={headingId}
+        count={
+          row.attempts > 1 ? `${String(row.attempts)} attempts` : undefined
+        }
+      >
+        Why {row.label} failed
+      </RuleHeading>
       <StepError
         code={row.safeErrorCode}
         summary={row.errorSummary}

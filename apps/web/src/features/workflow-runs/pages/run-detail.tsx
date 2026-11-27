@@ -1,6 +1,6 @@
 import { useRunDetail } from '../hooks/use-run-detail';
 import { RunFailureNotice } from '../components/run-detail/failure-notice';
-import { PhoneFailureNotice } from '../components/run-detail/execution-history';
+import { FailedStepNotice } from '../components/run-detail/execution-history';
 import { RunBusinessValues } from '../components/run-detail/business-values';
 import { RunVariables } from '../components/run-detail/variables';
 import { PendingTasks } from '@/features/pending-tasks/pending-tasks-views.public';
@@ -117,8 +117,8 @@ export function RunDetailPage(props: RunDetailPageProps) {
             labels={rowLabels}
             workspace={workspace}
           />
-          {compact ? (
-            <PhoneFailureNotice
+          {run.failureReasonCode == null ? (
+            <FailedStepNotice
               run={run}
               rows={view.rows}
               workspace={workspace}
