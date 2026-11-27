@@ -32,7 +32,10 @@ export function DayRangeForm({
 }>) {
   const [from, setFrom] = useState(initial?.from ?? '');
   const [to, setTo] = useState(initial?.to ?? '');
-  const [extending, setExtending] = useState(false);
+  // A range reopened with only its start set waits for its last day.
+  const [extending, setExtending] = useState(
+    initial !== undefined && initial.from !== '' && initial.to === '',
+  );
   const [error, setError] = useState<string>();
   const today = localDateOf(new Date());
 
