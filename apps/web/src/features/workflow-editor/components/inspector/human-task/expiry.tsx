@@ -6,7 +6,7 @@ import {
 } from '@pertexo/workflow-model';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
+import { TimedOutGlyph } from '@/components/patterns/dates/timed-out-glyph';
 import { formatTimeSpan } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
