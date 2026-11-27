@@ -80,7 +80,6 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -88,7 +87,6 @@
   --color-action-hover: var(--action-hover);
   --color-action-foreground: var(--action-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-subtle-foreground: var(--subtle-foreground);
@@ -103,10 +101,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --shadow-glow-primary: 0 0 12px
-    color-mix(in srgb, var(--primary) 10%, transparent);
-  --shadow-glow-primary-strong: 0 0 20px
-    color-mix(in srgb, var(--primary) 20%, transparent);
   --shadow-node: var(--node-shadow);
   --shadow-lens: var(--lens-shadow);
 
@@ -121,8 +115,6 @@
   --ease-unspool: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --animate-thread-flow: thread-flow 1.15s linear infinite;
-  --animate-coil: coil-turn 5s linear infinite;
-  --animate-bead: bead 1.8s ease-in-out infinite;
   --animate-blink: blink 2.4s ease-in-out infinite;
   --animate-spool: spool 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   --animate-tip: tip-pulse 1.2s ease-in-out infinite;
@@ -137,7 +129,6 @@
   --background: #111316;
   --foreground: #e2e2e6;
   --card: #191b1e;
-  --popover: #191b1e;
   --action: #7fd3e3;
   --action-foreground: #00262c;
   --muted: #0d0f11;
@@ -188,7 +179,6 @@
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
   --primary-foreground: var(--action-foreground);
-  --secondary-foreground: var(--background);
   --success: var(--foreground);
   --warning: var(--warn);
   --secondary: var(--waiting);
@@ -231,7 +221,6 @@
   --background: #eef2f3;
   --foreground: #12355b;
   --card: #f8fafb;
-  --popover: #f8fafb;
   --action: #12355b;
   --action-foreground: #f8fafb;
   --muted: #e9eef0;
@@ -428,17 +417,6 @@
    has already waited and sets `--skeleton-wait` to 0. */
 @utility skeleton-wait {
   animation: skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards;
-}
-
-@utility skeleton-blink {
-  animation: skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards;
-
-  @media (prefers-reduced-motion: no-preference) {
-    /* The blink starts once the fade has finished; both move opacity. */
-    animation:
-      skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards,
-      blink 1.8s ease-in-out calc(var(--skeleton-wait, 150ms) + 250ms) infinite;
-  }
 }
 
 @utility recessed-control {
@@ -912,22 +890,6 @@
   }
   to {
     stroke-dashoffset: 0;
-  }
-}
-
-@keyframes coil-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes bead {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 1;
   }
 }
 
