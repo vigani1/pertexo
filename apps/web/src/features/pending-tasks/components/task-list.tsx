@@ -14,6 +14,7 @@ import { SkeletonRows } from '@/components/patterns/states/loading';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { tasksQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
+import { bySoonestDeadline } from '../model/task-presentation';
 import { TaskRow } from './task-row';
 function NoTasks({
   compact,
@@ -56,6 +57,9 @@ export function TaskList({
   selectedTaskId?: string | undefined;
 }>) {
   const query = useInfiniteQuery(tasksQueryOptions(scope, filters));
+  const { runId, view, status, kind } = filters;
+  const requestSearch =
+    runId === undefined ? { view, status, kind } : undefined;
   // Expiry reads "expires in 12 minutes"; a minute's tick keeps it honest.
   const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   return (
@@ -69,9 +73,7 @@ export function TaskList({
         // Waiting requests come soonest deadline first, within the pages
         // loaded so far.
         const ordered =
-          filters.status === 'pending'
-            ? [...items].sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
-            : items;
+          filters.status === 'pending' ? items.sort(bySoonestDeadline) : items;
         return (
           <div>
             {items.length === 0 ? (
@@ -89,7 +91,7 @@ export function TaskList({
                     nowMs={nowMs}
                     selected={task.id === selectedTaskId}
                     inDetail={selectedTaskId !== undefined}
-                    filters={filters}
+                    search={requestSearch}
                   />
                 ))}
               </ul>

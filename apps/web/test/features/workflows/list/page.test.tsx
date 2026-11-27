@@ -335,6 +335,33 @@ describe('workflow list', () => {
     expect(reads).toEqual([]);
     expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
   });
+  it('reports unknown outcomes separately from failures in the workflow strip', async () => {
+    const createdAt = new Date(Date.now() - 60_000).toISOString();
+    mockServer.use(
+      ...discoveryHandlers(['workflow:create', 'run:read']),
+      draftHandler(),
+      statisticsHandler(),
+      listHandler(() => ({
+        items: [
+          summary(workflowId, 'Invoice intake', {
+            listSummary: {
+              shape: { nodes: [], edges: [] },
+              recentRuns: [
+                { status: 'outcome_unknown', createdAt },
+                { status: 'failed', createdAt },
+              ],
+            },
+          }),
+        ],
+        nextCursor: null,
+      })),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
+    const strip = await screen.findByRole('img', {
+      name: 'Last 7 days: 1 failed run, 1 unknown outcome',
+    });
+    expect(within(strip).getByTitle(/^Outcome unknown/u)).toBeInTheDocument();
+  });
   it('says a workflow that hasn’t run has no recent runs', async () => {
     mockServer.use(
       ...discoveryHandlers(['workflow:create', 'run:read']),

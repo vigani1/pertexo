@@ -6,6 +6,7 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/patterns/status/status-mark';
+import { bySoonestDeadline } from '@/features/pending-tasks/public';
 import { needsReconnecting } from '@/features/connections/public';
 import { formatElapsedTime } from '@/lib/format/time';
 import { formatCount, pluralWord } from '@/lib/format/count';
@@ -38,7 +39,7 @@ export function taskAttentionItems(
 ): readonly AttentionItem[] {
   return tasks
     .filter((task) => task.status === 'pending' && task.canRespond)
-    .sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
+    .sort(bySoonestDeadline)
     .map((task) => ({
       key: `request:${task.id}`,
       tone: 'waiting',

@@ -1,14 +1,15 @@
+import { statusToneText } from '@/components/patterns/status/status-tone';
+import { describeRunStatus } from '@/features/workflow-runs/public';
 import { cn } from '@/lib/class-names';
-import { formatCount } from '@/lib/format/count';
 import { formatDateTime } from '@/lib/format/time';
-import { FAILURE_STRIP_DAYS, type FailureStrip } from '../../model/run-strip';
+import { describeFailureStrip, type FailureStrip } from '../../model/run-strip';
 
 /**
- * The last week as one quiet thread ending in a knot at now, with a short red
- * tick for each failure. A week without runs is a faint dashed line.
+ * The last week as a thread ending in a knot at now, with a status-coloured
+ * tick for each unsuccessful run. A week without runs is a faint dashed line.
  */
 export function RunStrip({ strip }: Readonly<{ strip: FailureStrip }>) {
-  const label = `Last ${String(FAILURE_STRIP_DAYS)} days: ${stripSummary(strip)}`;
+  const label = describeFailureStrip(strip);
   return (
     <span role="img" aria-label={label} className="relative block h-4 w-full">
       <span
@@ -31,21 +32,21 @@ export function RunStrip({ strip }: Readonly<{ strip: FailureStrip }>) {
           className="absolute top-1/2 right-0 size-1 -translate-y-1/2 rounded-full bg-subtle-foreground"
         />
       )}
-      {strip.ticks.map((tick, index) => (
-        <span
-          key={`${tick.at}:${String(index)}`}
-          aria-hidden="true"
-          title={`Failed ${formatDateTime(tick.at)}`}
-          className="absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive"
-          style={{ left: `${String(tick.position)}%` }}
-        />
-      ))}
+      {strip.ticks.map((tick, index) => {
+        const look = describeRunStatus(tick);
+        return (
+          <span
+            key={`${tick.at}:${String(index)}`}
+            aria-hidden="true"
+            title={`${look.label} ${formatDateTime(tick.at)}`}
+            className={cn(
+              'absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current',
+              statusToneText[look.tone],
+            )}
+            style={{ left: `${String(tick.position)}%` }}
+          />
+        );
+      })}
     </span>
   );
-}
-
-function stripSummary(strip: FailureStrip): string {
-  if (strip.start === undefined) return 'no runs';
-  if (strip.ticks.length === 0) return 'no failures';
-  return formatCount(strip.ticks.length, 'failed run');
 }

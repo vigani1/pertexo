@@ -3,7 +3,7 @@ import {
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { SparklesIcon, XIcon } from 'lucide-react';
-import { useId, useRef, type RefObject } from 'react';
+import { useId, useLayoutEffect, useRef, type RefObject } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,7 +67,19 @@ function AssistantPanel({
   const panelRef = useRef<HTMLElement>(null);
   const requestRef = useRef<HTMLTextAreaElement>(null);
   const panel = useAssistantPanel({ requestRef, onApplied: onClose });
-  const { destination, review, pending } = panel;
+  const { destination, review, pending, stale } = panel;
+  const canRequest = destination?.kind === 'ready' && !stale;
+  useLayoutEffect(() => {
+    panelRef.current?.focus();
+  }, []);
+  useLayoutEffect(() => {
+    if (
+      canRequest &&
+      (document.activeElement === panelRef.current ||
+        document.activeElement === document.body)
+    )
+      requestRef.current?.focus();
+  }, [canRequest]);
   const close = () => {
     if (!pending) onClose();
   };
@@ -75,6 +87,7 @@ function AssistantPanel({
   return (
     <aside
       ref={panelRef}
+      tabIndex={-1}
       aria-labelledby={titleId}
       data-slot="assistant-panel"
       className="lens pointer-events-auto absolute inset-x-0 top-0 bottom-16 z-50 flex flex-col overflow-hidden rounded-xl md:left-auto md:w-[min(26rem,100%)] lg:bottom-0"
@@ -92,10 +105,14 @@ function AssistantPanel({
           <AskedRequest
             asked={panel.asked}
             pending={pending}
-            onEdit={() => {
-              panel.edit();
-              requestRef.current?.focus();
-            }}
+            onEdit={
+              stale
+                ? undefined
+                : () => {
+                    panel.edit();
+                    requestRef.current?.focus();
+                  }
+            }
           />
         )}
         {review === undefined ? null : (
@@ -108,7 +125,7 @@ function AssistantPanel({
                 onFix(target);
               }}
             />
-            {review.kind === 'inspected' ? (
+            {review.kind === 'inspected' && !stale ? (
               <ProposalActions
                 pending={pending}
                 onDiscard={panel.discard}
@@ -133,11 +150,11 @@ function AssistantPanel({
             disabled={pending}
             onClick={panel.checkAssistant}
           >
-            Check again
+            {stale ? 'Regenerate' : 'Check again'}
           </Button>
         ) : null}
       </div>
-      {destination?.kind === 'ready' ? (
+      {canRequest ? (
         <RequestForm
           requestRef={requestRef}
           request={panel.request}
@@ -191,22 +208,28 @@ function AskedRequest({
   asked,
   pending,
   onEdit,
-}: Readonly<{ asked: string; pending: boolean; onEdit: () => void }>) {
+}: Readonly<{
+  asked: string;
+  pending: boolean;
+  onEdit: (() => void) | undefined;
+}>) {
   return (
     <section aria-label="Your request" className="grid gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="text-meta font-medium text-muted-foreground">
           Your request
         </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          onClick={onEdit}
-        >
-          Edit
-        </Button>
+        {onEdit === undefined ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={onEdit}
+          >
+            Edit
+          </Button>
+        )}
       </div>
       <p className="wrap-anywhere text-foreground">{asked}</p>
     </section>
@@ -278,7 +301,12 @@ function RequestForm({
             onChange(event.target.value);
           }}
           onKeyDown={(event) => {
-            if (event.key !== 'Enter' || event.shiftKey) return;
+            if (
+              event.key !== 'Enter' ||
+              event.shiftKey ||
+              event.nativeEvent.isComposing
+            )
+              return;
             event.preventDefault();
             onSend();
           }}
@@ -324,7 +352,7 @@ function ProposalFeedback({
       {error === null ? null : (
         <p role="alert" className="text-sm text-destructive">
           {stale
-            ? 'The draft changed. Check the assistant again, then send your request.'
+            ? 'The draft changed. Regenerate the proposal against the latest revision.'
             : describeCommandError(error, 'the draft proposal')}
         </p>
       )}
