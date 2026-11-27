@@ -62,7 +62,8 @@ function SampleOutputEditor({
         <FieldLabel htmlFor="pinned-sample-json">Output (JSON)</FieldLabel>
         <Textarea
           id="pinned-sample-json"
-          className="min-h-48 font-mono"
+          typography="mono"
+          className="min-h-48"
           spellCheck={false}
           autoComplete="off"
           value={text}

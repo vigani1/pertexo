@@ -27,12 +27,17 @@ export function Field({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-export function FieldLabel({ className, ...props }: ComponentProps<'label'>) {
+export function FieldLabel({
+  className,
+  compact = false,
+  ...props
+}: ComponentProps<'label'> & Readonly<{ compact?: boolean }>) {
   return (
     <label
       data-slot="field-label"
       className={cn(
-        'text-label font-semibold text-foreground/85 group-data-[disabled=true]/field:opacity-50 group-data-[invalid=true]/field:text-destructive',
+        'font-semibold text-foreground/85 group-data-[disabled=true]/field:opacity-50 group-data-[invalid=true]/field:text-destructive',
+        compact ? 'text-xs' : 'text-label',
         className,
       )}
       {...props}

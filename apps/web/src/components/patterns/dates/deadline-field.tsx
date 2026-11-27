@@ -138,7 +138,7 @@ export function DeadlineField({
             autoComplete="off"
             inputMode="numeric"
             placeholder="YYYY-MM-DD"
-            className="font-mono"
+            typography="mono"
             disabled={disabled}
             value={date}
             onChange={(event) => {
@@ -178,7 +178,7 @@ export function DeadlineField({
             autoComplete="off"
             inputMode="numeric"
             placeholder="HH:MM"
-            className="font-mono"
+            typography="mono"
             disabled={disabled}
             value={time}
             onChange={(event) => {

@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentListQuery } from '@pertexo/contracts';
 import { LoadMore } from '@/components/patterns/lists/load-more';
@@ -35,7 +36,7 @@ export function DiscussionThreads({
             {data.pages
               .flatMap((page) => page.items)
               .map((thread) => (
-                <li key={thread.id} className="row-divider">
+                <Row key={thread.id} frame="bare" lift="none" transition="none">
                   <button
                     type="button"
                     className="flex w-full gap-3 rounded-lg px-3 py-4 text-left transition-colors hover:bg-select focus-ring motion-reduce:transition-none"
@@ -64,7 +65,7 @@ export function DiscussionThreads({
                       </span>
                     </span>
                   </button>
-                </li>
+                </Row>
               ))}
           </ul>
         )}

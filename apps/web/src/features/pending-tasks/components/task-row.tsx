@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import type {
   PendingTaskListQuery,
   PendingTaskSummary,
@@ -50,11 +51,13 @@ export function TaskRow({
   const blocked = waiting ? blockedLabel(task.blockedReason) : undefined;
   const when = waiting ? task.expiresAt : (task.completedAt ?? task.createdAt);
   return (
-    <li
+    <Row
+      lift="pointer"
+      selected={selected}
+      transition="none"
       className={cn(
-        'group/row row-divider grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 rounded-lg px-3 py-2.5 hover:bg-select',
+        'group/row grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 px-3 py-2.5',
         !inDetail && 'sm:grid-cols-[1.25rem_minmax(0,1fr)_auto]',
-        selected && 'bg-select-raised',
       )}
     >
       <span
@@ -120,7 +123,7 @@ export function TaskRow({
             : formatElapsedTime(when, nowMs)}
         </time>
       </div>
-    </li>
+    </Row>
   );
 }
 

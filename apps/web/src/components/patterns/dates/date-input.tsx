@@ -40,7 +40,7 @@ export function DateInput({
         autoComplete="off"
         inputMode="numeric"
         placeholder="YYYY-MM-DD"
-        className="font-mono"
+        typography="mono"
         disabled={disabled}
         required={required}
         value={value}

@@ -201,7 +201,7 @@ function RuleCard({
       />
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3">
         <Field>
-          <FieldLabel htmlFor={`${baseId}-type`} className="text-xs">
+          <FieldLabel htmlFor={`${baseId}-type`} compact>
             Type
           </FieldLabel>
           <ChoiceSelect
@@ -231,7 +231,7 @@ function RuleCard({
               update((current) => ({ ...current, required }));
             }}
           />
-          <FieldLabel htmlFor={`${baseId}-required`} className="text-xs">
+          <FieldLabel htmlFor={`${baseId}-required`} compact>
             Must be there
           </FieldLabel>
         </Field>

@@ -19,7 +19,7 @@ export function NoTriggers({
   // tab's empty state: no divider above it.
   return (
     <>
-      <Empty className="border-t-0 py-2">
+      <Empty className="py-2">
         <EmptyTitle>
           {published
             ? 'This version has no trigger'

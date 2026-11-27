@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { useStepDescriptions } from '@/features/catalog/public';
 import type {
   AccessibleWorkspace,
@@ -78,10 +79,11 @@ export function RunRow({
     describeStep,
   );
   return (
-    <li
+    <Row
+      lift="pointer"
       data-slot="run-row"
       className={cn(
-        'group/row row-divider grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-3 transition-colors hover:bg-select md:gap-x-4 md:py-2.5',
+        'group/row grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 px-3 md:gap-x-4 md:py-2.5',
         layout.grid,
       )}
     >
@@ -162,6 +164,6 @@ export function RunRow({
           run={run}
         />
       </div>
-    </li>
+    </Row>
   );
 }

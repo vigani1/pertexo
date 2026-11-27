@@ -169,7 +169,8 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
                   name="run-input"
                   autoComplete="off"
                   spellCheck={false}
-                  className="min-h-32 font-mono text-base md:text-label"
+                  typography="code"
+                  className="min-h-32"
                   disabled={model.availability.fieldsBlocked}
                   value={model.runInput.input}
                   onChange={(event) => {

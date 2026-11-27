@@ -120,7 +120,7 @@ function EditCommentComposer({
     >
       {(locked) =>
         target.comment.revision === revision ? null : (
-          <Notice tone="warning" className="block">
+          <Notice tone="warning" layout="stacked">
             <p>
               This comment changed. Review its latest saved text before
               replacing it with your text and mentions.

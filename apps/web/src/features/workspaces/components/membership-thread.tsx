@@ -30,7 +30,6 @@ export function MembershipThread({
         <StatusMark
           display="mark"
           tone={state === 'accepted' ? 'success' : 'failure'}
-          className={state === 'accepted' ? 'text-success' : 'text-destructive'}
         />
       )}
     </div>

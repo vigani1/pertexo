@@ -54,7 +54,8 @@ export function EveryField({
             name="schedule.every"
             autoComplete="off"
             inputMode="numeric"
-            className="w-24 font-mono"
+            typography="mono"
+            className="w-24"
             value={draft.every}
             disabled={disabled}
             onChange={(event) => {
@@ -99,7 +100,8 @@ export function TimeField({
           {...control}
           type="time"
           name="schedule.time"
-          className="w-32 font-mono"
+          typography="mono"
+          className="w-32"
           value={draft.time}
           disabled={disabled}
           onChange={(event) => {
@@ -186,7 +188,7 @@ export function CronField({
           name="schedule.expression"
           autoComplete="off"
           spellCheck={false}
-          className="font-mono"
+          typography="mono"
           value={draft.expression}
           disabled={disabled}
           onChange={(event) => {

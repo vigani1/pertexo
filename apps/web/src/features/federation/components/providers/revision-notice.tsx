@@ -1,3 +1,4 @@
+import { Disclosure } from '@/components/ui/disclosure';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import type { SnapshotRead } from '@/lib/api/query-snapshot';
 import type { FederationSettings } from '@pertexo/contracts';
@@ -54,13 +55,13 @@ export function ProviderRevisionNotice({
           retry={onRetry}
         />
       ) : null}
-      <details className="mt-2 min-w-0">
-        <summary className="focus-ring cursor-pointer rounded-sm">
-          Review current provider settings
-        </summary>
+      <Disclosure
+        summary="Review current provider settings"
+        className="mt-2 min-w-0"
+      >
         <section
           aria-label="Current saved provider settings"
-          className="mt-2 max-h-64 overflow-y-auto break-words"
+          className="max-h-64 overflow-y-auto break-words"
         >
           <p>{organization.name}</p>
           <ul>
@@ -71,7 +72,7 @@ export function ProviderRevisionNotice({
             ))}
           </ul>
         </section>
-      </details>
+      </Disclosure>
     </Notice>
   );
 }

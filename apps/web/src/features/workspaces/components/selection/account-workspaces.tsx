@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -46,7 +47,12 @@ export function AccountWorkspacesSection({
         {(workspaces) => (
           <ul className="flex flex-col">
             {workspaces.map((workspace) => (
-              <li key={workspace.id} className="row-divider">
+              <Row
+                key={workspace.id}
+                frame="bare"
+                lift="none"
+                transition="none"
+              >
                 <Link
                   to="/w/$workspaceId"
                   params={{ workspaceId: workspace.id }}
@@ -67,10 +73,7 @@ export function AccountWorkspacesSection({
                     </span>
                   </span>
                   {workspace.status === 'pending_deletion' ? (
-                    <StatusMark
-                      tone="attention"
-                      className="text-xs font-normal"
-                    >
+                    <StatusMark tone="attention" typography="caption">
                       Deletion pending
                     </StatusMark>
                   ) : null}
@@ -79,7 +82,7 @@ export function AccountWorkspacesSection({
                     className="size-4 text-subtle-foreground transition-transform group-hover:translate-x-0.5"
                   />
                 </Link>
-              </li>
+              </Row>
             ))}
           </ul>
         )}

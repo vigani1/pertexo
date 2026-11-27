@@ -1,3 +1,4 @@
+import { Row } from '@/components/patterns/lists/row';
 import { CheckIcon } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import {
@@ -42,10 +43,11 @@ export function NoticeFrame({
   const { tone, word } = status;
 
   return (
-    <li
+    <Row
+      lift="pointer"
       data-slot="inbox-thread"
       data-unread={unread ? true : undefined}
-      className="group/row row-divider grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-select motion-reduce:transition-none sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
+      className="group/row grid-cols-[2rem_minmax(0,1fr)] gap-y-2 px-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
     >
       <span
         aria-hidden="true"
@@ -85,7 +87,7 @@ export function NoticeFrame({
           <div className="flex items-center">{actions}</div>
         )}
       </div>
-    </li>
+    </Row>
   );
 }
 

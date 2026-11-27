@@ -185,7 +185,7 @@ export function DeadEndJourney({
       <StatusMark
         display="mark"
         tone={state === 'expired' ? 'timeout' : 'canceled'}
-        className="mb-4 size-6 text-subtle-foreground [&_svg]:size-6"
+        className="mb-4 size-6"
       />
       <JourneyTitle>{copy.title}</JourneyTitle>
       <AuthLensDescription>

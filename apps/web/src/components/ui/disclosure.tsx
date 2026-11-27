@@ -8,6 +8,7 @@ const disclosureVariants = cva('', {
     // A plain fold in running text, or a framed one standing on its own.
     look: {
       plain: '',
+      tree: '',
       framed: 'rounded-lg border border-border bg-select',
     },
   },
@@ -27,6 +28,7 @@ const summaryVariants = cva(
       },
       look: {
         plain: 'py-0.5',
+        tree: 'w-full cursor-default gap-1 py-0.5 hover:bg-surface-ink/4',
         framed: 'w-full px-3 py-2.5 text-muted-foreground',
       },
     },
@@ -79,7 +81,9 @@ export function Disclosure({
       {lazy && !open ? null : (
         <div
           className={cn(
-            look === 'framed' ? 'border-t border-border px-3 py-3' : 'mt-2',
+            look === 'framed' && 'border-t border-border px-3 py-3',
+            look === 'tree' && 'ml-1.5 border-l border-border pl-1',
+            (look === undefined || look === null || look === 'plain') && 'mt-2',
             contentClassName,
           )}
         >

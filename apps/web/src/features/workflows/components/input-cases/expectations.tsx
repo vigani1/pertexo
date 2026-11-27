@@ -289,7 +289,8 @@ function ExpectationRow({
               value={item.expected}
               autoComplete="off"
               spellCheck={false}
-              className="min-h-16 font-mono"
+              typography="mono"
+              className="min-h-16"
               onChange={(event) => {
                 onChange({ expected: event.target.value });
               }}

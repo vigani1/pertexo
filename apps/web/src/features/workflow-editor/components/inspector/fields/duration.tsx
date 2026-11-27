@@ -103,7 +103,8 @@ export function DurationField({
           name={`config.${configKey}`}
           autoComplete="off"
           inputMode="numeric"
-          className="w-24 font-mono"
+          typography="mono"
+          className="w-24"
           value={live.text.amount}
           disabled={!form.editable}
           aria-invalid={live.error !== undefined}

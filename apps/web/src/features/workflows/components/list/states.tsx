@@ -18,11 +18,7 @@ export function WorkflowListError({
   return (
     <Empty>
       <EmptyMedia>
-        <StatusMark
-          display="mark"
-          tone="failure"
-          className="text-destructive"
-        />
+        <StatusMark display="mark" tone="failure" />
       </EmptyMedia>
       <EmptyTitle>Workflows didn’t load</EmptyTitle>
       <EmptyDescription>{readFailureReason(error)}</EmptyDescription>

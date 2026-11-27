@@ -261,7 +261,8 @@ function ConfigNumberField(props: LiveFieldProps) {
             // The digit pad has no minus or "." key on every phone, so only
             // whole counts from 0 in their own unit get it.
             inputMode={isNonnegativeInteger ? 'numeric' : undefined}
-            className={cn('font-mono', unitPadding(unit))}
+            typography="mono"
+            className={unitPadding(unit)}
             value={live.text}
             disabled={!form.editable}
             aria-invalid={live.error !== undefined}
