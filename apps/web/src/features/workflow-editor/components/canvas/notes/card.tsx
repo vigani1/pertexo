@@ -71,7 +71,7 @@ export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
           );
         }}
         className={cn(
-          'group/note flex size-full flex-col overflow-hidden rounded-lg border canvas-note-paint text-card-foreground shadow-sm outline-none focus-ring',
+          'group/note flex size-full flex-col overflow-hidden rounded-lg border canvas-note-paint text-card-foreground shadow-raised outline-none focus-ring',
           colors[note.color],
         )}
       >
