@@ -3,11 +3,11 @@ import {
   createUserFixture,
   createWorkspaceFixture,
 } from '../../../support/fixtures/identity';
-export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
-export const timestamp = '2026-09-15T10:00:00.000Z';
+const timestamp = '2026-09-15T10:00:00.000Z';
 
 export const user = createUserFixture({
   id: userId,

@@ -40,11 +40,7 @@ export function DayRangeForm({
 
   function pick(day: LocalDate) {
     const [first, last] =
-      extending && from !== ''
-        ? day < from
-          ? [day, from]
-          : [from, day]
-        : [day, day];
+      extending && from !== '' ? ordered(from, day) : [day, day];
     setFrom(first);
     setTo(last);
     setExtending(!extending);
@@ -78,6 +74,11 @@ export function DayRangeForm({
       )}
     </div>
   );
+}
+
+/** Two days, earliest first. */
+function ordered(a: LocalDate, b: LocalDate): readonly [LocalDate, LocalDate] {
+  return a <= b ? [a, b] : [b, a];
 }
 
 function rangeCaption(from: LocalDate, to: LocalDate): string {

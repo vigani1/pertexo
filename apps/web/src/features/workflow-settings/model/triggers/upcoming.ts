@@ -1,5 +1,5 @@
 /** How far ahead the Triggers tab lists schedule runs. */
-export const UPCOMING_WINDOW_MS = 24 * 60 * 60 * 1000;
+const UPCOMING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type UpcomingRun = Readonly<{
   triggerId: string;
