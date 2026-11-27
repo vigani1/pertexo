@@ -9,7 +9,7 @@ import {
   shiftMonths,
   typedDate,
 } from '../../src/components/ui/date-time-parts';
-import { DeadlineField } from '../../src/components/ui/deadline-field';
+import { DeadlineField } from '../../src/components/patterns/dates/deadline-field';
 
 function Harness({ initial = '' }: Readonly<{ initial?: string }>) {
   const [value, setValue] = useState(initial);

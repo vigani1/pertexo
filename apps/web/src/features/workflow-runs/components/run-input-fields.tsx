@@ -1,4 +1,4 @@
-import { DeadlineField } from '@/components/ui/deadline-field';
+import { DeadlineField } from '@/components/patterns/dates/deadline-field';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import type { RunInput } from '../hooks/use-run-input';
