@@ -6,10 +6,10 @@ import {
   workspaceId,
 } from '../workflow-editor/support';
 import { mockIdentity } from './auth/fixture';
+import { installAssistantProposal } from './core-flow-assistant-fixture';
 import {
   approvalId,
   failedRunId,
-  installAssistantProposal,
   installCoreFlowRoutes,
 } from './core-flow-layout-fixture';
 
@@ -28,7 +28,8 @@ const capture = process.env.PERTEXO_CORE_FLOW_SHOTS;
 
 async function shot(page: Page, name: string, size: string) {
   await page.locator('main').first().waitFor();
-  await page.waitForTimeout(300);
+  // Every read answered and drawn before the picture is taken.
+  await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
   if (capture) {
     await mkdir(capture, { recursive: true });
@@ -78,7 +79,6 @@ for (const [width, height] of viewports)
       page,
       context,
     }) => {
-      test.setTimeout(120_000);
       await page.setViewportSize({ width, height });
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
       await mockIdentity(page, { authenticated: false });
