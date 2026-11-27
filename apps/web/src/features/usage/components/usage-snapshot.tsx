@@ -6,7 +6,7 @@ import {
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
 import { isReadAccessLost } from '@/lib/api/read-denial';

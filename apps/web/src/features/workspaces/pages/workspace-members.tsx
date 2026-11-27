@@ -13,8 +13,8 @@ import {
 } from '@/components/patterns/page-header';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';

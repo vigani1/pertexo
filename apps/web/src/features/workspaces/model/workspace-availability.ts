@@ -3,7 +3,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   capabilitiesForRole,
 } from '@pertexo/policy';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 export type WorkspaceAvailability = Readonly<{
   openable: boolean;

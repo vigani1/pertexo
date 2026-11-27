@@ -1,7 +1,7 @@
 import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { destinationCommandError } from '../model/failure-notification-errors';

@@ -1,6 +1,6 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import type { RunTimelineRow, RunTimelineStepStatus } from './runs';
 import {
   describeStep,

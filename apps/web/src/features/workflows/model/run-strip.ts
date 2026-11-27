@@ -1,5 +1,5 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 
 export const RUN_STRIP_LENGTH = 20;
 

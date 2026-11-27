@@ -7,7 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { readFailureReason } from '@/lib/api/error-copy';
 
 export function WorkflowListError({

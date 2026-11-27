@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';

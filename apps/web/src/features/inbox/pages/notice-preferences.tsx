@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useId, type ReactNode } from 'react';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { notificationPreferencesQueryOptions } from '../data/notice-preferences.queries';
 import { NotificationScheduleEditor } from '../components/preferences/schedule-editor';
 import { NotificationRoute } from '../components/preferences/route';

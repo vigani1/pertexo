@@ -5,7 +5,7 @@ import { ChevronRightIcon } from 'lucide-react';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES } from '../../model/role-words';
 import { accessibleWorkspacesQueryOptions } from '../../data/workspaces.queries';

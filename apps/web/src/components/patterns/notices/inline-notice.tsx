@@ -1,8 +1,11 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
-import { StatusGlyph, type StatusTone } from './status';
-import { statusToneText } from './status-tone';
+import {
+  StatusGlyph,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 
 export type NoticeTone = 'info' | 'success' | 'warning' | 'destructive';
 

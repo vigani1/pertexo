@@ -1,7 +1,7 @@
 import { isApiError } from '@/lib/api/error';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 export function NotificationSaveFeedback({
   error,
   cause,

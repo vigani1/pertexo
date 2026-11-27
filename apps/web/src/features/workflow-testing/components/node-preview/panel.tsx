@@ -7,11 +7,11 @@ import { useStepSample } from './use-step-sample';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref, type ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Status, StatusGlyph } from '@/components/ui/status';
+import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
 import {
   ArtifactDownload,
   FilePages,

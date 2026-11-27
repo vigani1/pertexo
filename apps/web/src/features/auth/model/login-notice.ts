@@ -1,5 +1,5 @@
-import type { NoticeTone } from '@/components/ui/notice';
-import type { StatusTone } from '@/components/ui/status';
+import type { NoticeTone } from '@/components/patterns/notices/inline-notice';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { signInsLimitedFromNetwork } from './auth-failure';
 
 /** What an email link or provider callback told the sign-in page. */

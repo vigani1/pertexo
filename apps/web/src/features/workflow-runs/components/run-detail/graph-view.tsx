@@ -18,7 +18,10 @@ import {
 } from '@xyflow/react';
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
-import { Status, type StatusTone } from '@/components/ui/status';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { cn } from '@/lib/class-names';
 import {

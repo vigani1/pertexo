@@ -8,9 +8,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { readFailureReason, shownData } from '@/lib/api/error-copy';
 
 /** What a feature's own failure explanation needs to keep Retry working. */

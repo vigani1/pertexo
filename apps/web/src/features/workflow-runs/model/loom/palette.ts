@@ -1,4 +1,4 @@
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import type { Rgb } from '@/lib/canvas-scene';
 
 // Canvas 2D drawing for the Loom. Threads are drawn from real run times;

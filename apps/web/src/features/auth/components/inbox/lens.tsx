@@ -13,7 +13,7 @@ import {
   AuthLensDescription,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /** How long people wait before asking for the same email again. */
 export const RESEND_COOLDOWN_SECONDS = 60;

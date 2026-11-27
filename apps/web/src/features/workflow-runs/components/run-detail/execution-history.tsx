@@ -4,7 +4,7 @@ import { shortRunId } from '../../model/list/runs';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { describeStepError } from '../../model/step-inspection/error-copy';
 import {
   storyEntryMeta,

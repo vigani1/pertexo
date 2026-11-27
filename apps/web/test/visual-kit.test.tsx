@@ -14,7 +14,7 @@ import {
   FieldLabel,
 } from '../src/components/ui/field';
 import { LoadingOrb } from '../src/components/ui/loading-orb';
-import { Status } from '../src/components/ui/status';
+import { Status } from '../src/components/patterns/status/status-mark';
 import { FieldControl } from '../src/components/ui/field';
 
 describe('Weft visual primitives', () => {

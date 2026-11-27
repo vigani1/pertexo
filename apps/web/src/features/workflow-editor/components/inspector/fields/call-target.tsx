@@ -17,7 +17,7 @@ import {
 } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { FieldDescription, LabelledField } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';

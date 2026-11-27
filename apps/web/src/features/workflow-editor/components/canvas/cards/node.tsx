@@ -1,5 +1,5 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import {
   Handle,
   Position,

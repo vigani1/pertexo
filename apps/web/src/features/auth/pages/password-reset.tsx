@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { ResetPasswordLens } from '../components/reset-password-lens';
 import {

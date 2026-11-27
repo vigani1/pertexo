@@ -9,7 +9,7 @@ import type {
   ApiTokenMetadata,
 } from '@pertexo/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { TokenList } from './token-list';
 
 export function TokenResults({

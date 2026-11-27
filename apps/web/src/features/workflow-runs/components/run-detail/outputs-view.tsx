@@ -3,7 +3,7 @@ import { useHistoryPage } from '../../hooks/use-history-page';
 import { HistoryPager } from './history-pager';
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { useQuery } from '@tanstack/react-query';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { nodeRunOutputQueryOptions } from '../../data/stored-values.queries';

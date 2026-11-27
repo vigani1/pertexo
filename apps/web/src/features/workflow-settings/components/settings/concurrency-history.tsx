@@ -4,7 +4,7 @@ import {
   WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX,
   type WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatDateTime } from '@/lib/format/time';
 const labels = {
   webhook: 'Webhook',

@@ -1,7 +1,7 @@
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { AccessibleWorkspace, WorkflowFolder } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { useNotifications } from '@/components/ui/use-notifications';

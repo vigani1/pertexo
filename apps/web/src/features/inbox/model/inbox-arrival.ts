@@ -2,7 +2,7 @@ import type {
   WorkspaceInboxThread,
   WorkspaceInboxFailureThread,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { describeRunStatus } from '@/features/workflow-runs/public';
 import { describeInboxThread } from './inbox-thread';
 

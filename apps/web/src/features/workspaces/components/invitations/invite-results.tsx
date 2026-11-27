@@ -1,6 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Status, type StatusTone } from '@/components/ui/status';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 
 export type InviteDelivery =
   'waiting' | 'sending' | 'sent' | 'failed' | 'unsure' | 'skipped';

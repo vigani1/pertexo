@@ -5,7 +5,7 @@ import type {
   WorkflowAutoPauseSettings,
 } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -16,7 +16,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
 import { isAccessLost, shownData } from '@/lib/api/error-copy';
 import { cn } from '@/lib/class-names';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 function PausedStateNotice({
   workspaceId,
   settings,

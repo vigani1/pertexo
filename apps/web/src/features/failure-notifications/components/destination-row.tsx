@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { ProviderTile } from '@/features/connections/connections-views.public';
 import { formatRelativeTime } from '@/lib/format/time';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';

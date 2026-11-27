@@ -5,9 +5,9 @@ import type {
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { statusToneText } from '@/components/ui/status-tone';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { describeRunStatus, shortRunId } from '@/features/workflow-runs/public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';

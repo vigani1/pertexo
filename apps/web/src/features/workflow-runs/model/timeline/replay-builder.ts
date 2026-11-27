@@ -2,7 +2,7 @@ import type {
   WorkflowNodeRunSummary,
   WorkflowRunEvent,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import type { NodeStatus } from '../presentation/run-status';
 import type {
   StepOutcome,

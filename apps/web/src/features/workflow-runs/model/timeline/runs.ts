@@ -7,7 +7,7 @@ import type {
   WorkflowRunEvent,
   WorkflowRunSummary,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import {
   AGENT_FIND_ROWS,

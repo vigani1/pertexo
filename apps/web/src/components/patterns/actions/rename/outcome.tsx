@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { InlineRenameCommand } from './inline-rename.types';
 import type { useRenameDraft } from './use-draft';

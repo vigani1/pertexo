@@ -1,4 +1,4 @@
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { Handle, Position } from '@xyflow/react';
 import {

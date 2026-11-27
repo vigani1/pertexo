@@ -3,7 +3,7 @@ import type {
   WorkflowRunSummary,
 } from '@pertexo/contracts';
 import type { CoreOrbState } from '@/components/patterns/core/orb';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatCount } from '@/lib/format/count';
 
 export type RunStatus = WorkflowRunSummary['status'];

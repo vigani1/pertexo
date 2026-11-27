@@ -1,5 +1,5 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatRelativeTime } from '@/lib/format/time';
 import { workflowLabel } from '../list/runs';
 import {

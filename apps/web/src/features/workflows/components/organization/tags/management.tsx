@@ -13,7 +13,7 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { cn } from '@/lib/class-names';
 import type { WorkflowOrganizationInput } from '../../../model/organization/requests';

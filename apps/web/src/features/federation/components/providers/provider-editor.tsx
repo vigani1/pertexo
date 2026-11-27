@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { FederationScope } from '../../data/federation-settings.api';
 import type { useFederationCommand } from '../../data/federation-command.mutations';

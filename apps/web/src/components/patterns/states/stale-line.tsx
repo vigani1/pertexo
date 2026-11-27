@@ -1,6 +1,6 @@
 import { ReadRecovery } from './read-recovery';
 import type { ReactNode } from 'react';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 

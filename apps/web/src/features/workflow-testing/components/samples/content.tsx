@@ -3,7 +3,7 @@ import type { StepSampleResponse } from '@pertexo/contracts';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { formatByteLength } from '@/lib/format/bytes';
 import type { SampleDialogSource } from '../../model/step-samples';

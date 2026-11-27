@@ -1,6 +1,6 @@
 import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { useEditorStore } from '../../model/state/context';
 import { shownConflict } from '../../model/state/workflow-editor.store';
 

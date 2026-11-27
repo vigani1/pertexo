@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { WorkflowPromotionPreview } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { PromotionReview } from './promotion-review';
 export function PromotionConfirmation({
   review,

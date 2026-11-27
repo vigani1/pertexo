@@ -1,8 +1,8 @@
 import type { WorkflowRunEvent } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
 import { describeRunEvent } from '../../model/timeline/event-copy';
 

@@ -1,6 +1,6 @@
 import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { formatCount } from '@/lib/format/count';

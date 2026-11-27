@@ -8,10 +8,10 @@ import {
 import type { EditorPresenceSource } from '@/features/workflow-editor/public';
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatInitials } from '@/lib/format/initials';
 import { cn } from '@/lib/class-names';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { presenceTabId, usePresenceLease } from '../data/presence-lease';
 import { presenceQuery } from '../data/collaboration.queries';

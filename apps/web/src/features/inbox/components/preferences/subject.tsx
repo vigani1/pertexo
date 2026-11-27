@@ -7,7 +7,7 @@ import { useNotificationSubscriptionSave } from '../../data/notice-preferences.m
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel as Label } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import {
   Sheet,

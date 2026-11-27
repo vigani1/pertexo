@@ -8,7 +8,7 @@ import type {
   AccessibleWorkspace,
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { testFailureMessage } from '../model/test-failure';
 import { federationSettingsQueryOptions } from '../data/federation-settings.queries';
 import type { FederationScope } from '../data/federation-settings.api';

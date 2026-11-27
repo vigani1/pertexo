@@ -13,7 +13,7 @@ import type {
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { tablesQuery } from '../data/tables.queries';
 import type { TableScope } from '../data/tables.api';
 import { CreateDataTable } from '../components/create';

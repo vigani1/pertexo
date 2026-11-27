@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { PreviewRunSummary, StepSampleMetadata } from '@pertexo/contracts';
 import { PinIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { SampleScope } from '../../data/samples/step-samples.api';
 import type { SampleDialogSource } from '../../model/step-samples';
 import { SampleSummary } from './summary';

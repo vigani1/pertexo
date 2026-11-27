@@ -14,7 +14,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
 import { formatShortTime } from '@/lib/format/time';

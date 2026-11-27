@@ -6,7 +6,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Textarea } from '@/components/ui/textarea';
 import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 const modeNames: Readonly<Record<WorkflowPromotionMode, string>> = {

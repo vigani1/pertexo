@@ -1,7 +1,7 @@
 import { PencilIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { RenameFormProps } from './inline-rename.types';
 import { RenameInPlace } from './in-place';
 

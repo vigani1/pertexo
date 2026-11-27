@@ -3,8 +3,8 @@ import { canonicalJson, EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { Disclosure } from '@/components/ui/disclosure';
 export function PromotionReview({
   review,

@@ -12,7 +12,7 @@ import {
   localDateOf,
   shiftDays,
 } from '@/components/ui/date-time-parts';
-import { DayRangeForm } from '@/components/ui/day-range-form';
+import { DayRangeForm } from '@/components/patterns/dates/day-range-form';
 import { Input } from '@/components/ui/input';
 import {
   Popover,

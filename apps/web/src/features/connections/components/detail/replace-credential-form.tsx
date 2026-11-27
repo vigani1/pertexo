@@ -5,7 +5,7 @@ import { useId, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import {

@@ -8,7 +8,7 @@ import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { usePublicationReviewDecision } from '../../data/mutations/use-publication-review-decision';
 import type { ReviewScope } from '../../data/reviews/publication-review.api';

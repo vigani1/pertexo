@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
-import { Status } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import { Status } from '@/components/patterns/status/status-mark';
 import { useNoticeUnsubscribe } from '../data/notice-unsubscribe.mutations';
 /** No query key or automatic request contains the fragment capability. */
 export function NoticeUnsubscribePage({

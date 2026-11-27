@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import {
   describeWorkflowState,
   LIFECYCLE_CONSEQUENCES,

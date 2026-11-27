@@ -1,5 +1,5 @@
-import { StatusGlyph } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { stepTag } from '../../model/step-inspection/copy';

@@ -1,4 +1,4 @@
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import type { NodeStatus } from '../presentation/run-status';
 
 // The shapes a step's story is told in: its thread segments, its entries

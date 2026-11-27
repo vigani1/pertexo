@@ -1,7 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import {
   AuthLensDescription,
   AuthLensTitle,

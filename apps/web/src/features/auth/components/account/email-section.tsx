@@ -8,7 +8,7 @@ import { useRequestAccountEmailChange } from '../../data/account-security/accoun
 import { newEmailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { AccountCommandFailure, AccountSection } from './section';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /** Change email: confirmed at the old address, then verified at the new. */
 export function AccountEmailSection({

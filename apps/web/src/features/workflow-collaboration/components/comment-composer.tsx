@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { CommentForm } from '../forms/comment-form';
 interface NewThread {

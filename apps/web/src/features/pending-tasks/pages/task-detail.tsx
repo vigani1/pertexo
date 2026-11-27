@@ -8,7 +8,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { Status, StatusGlyph } from '@/components/ui/status';
+import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { taskQueryOptions } from '../data/tasks.queries';

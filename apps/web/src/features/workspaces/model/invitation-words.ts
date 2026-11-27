@@ -1,5 +1,5 @@
 import type { WorkspaceInvitation } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatCount } from '@/lib/format/count';
 
 const DAY_MS = 86_400_000;

@@ -4,7 +4,7 @@ import {
   FieldGroup,
   LabelledField,
 } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { RadioChoice } from '@/components/ui/radio-choice';
 import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import type { FieldValidation } from '@/components/ui/use-field-validation';

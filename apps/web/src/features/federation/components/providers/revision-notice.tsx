@@ -2,7 +2,7 @@ import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import type { SnapshotRead } from '@/lib/api/query-snapshot';
 import type { FederationSettings } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 export function ProviderRevisionNotice({
   organization,
   locked,

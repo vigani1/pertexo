@@ -12,8 +12,11 @@ import {
 } from '@/components/ui/dialog';
 import { LabelledField } from '@/components/ui/field';
 import { FileDrop } from '@/components/ui/file-drop';
-import { Notice } from '@/components/ui/notice';
-import { Status, type StatusTone } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import {
   useUpload,

@@ -1,4 +1,4 @@
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 export function UnavailableDataTable({ name }: Readonly<{ name: string }>) {
   return (

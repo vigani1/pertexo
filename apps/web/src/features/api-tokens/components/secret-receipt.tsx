@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CopyButton } from '@/components/ui/copy-button';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { Textarea } from '@/components/ui/textarea';
 
 export function TokenSecretReceipt({

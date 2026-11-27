@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AuthLens, AuthLensFooter, AuthLensTitle } from './auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from '../../data/auth.queries';
 

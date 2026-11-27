@@ -1,5 +1,5 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatDateTime } from '@/lib/format/time';
 
 /**

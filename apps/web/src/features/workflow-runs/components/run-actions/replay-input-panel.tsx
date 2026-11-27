@@ -1,7 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { WorkflowRunData } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import type { useRunInput } from '../../hooks/use-run-input';
 import { RunInputFields } from '../run-input-fields';

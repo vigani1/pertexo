@@ -1,7 +1,7 @@
 import type { PendingTaskSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { StatusGlyph } from '@/components/ui/status';
-import { statusToneText } from '@/components/ui/status-tone';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { statusToneText } from '@/components/patterns/status/status-tone';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   formatDateTime,

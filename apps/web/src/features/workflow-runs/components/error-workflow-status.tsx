@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatDateTime, formatTimeSpan } from '@/lib/format/time';
 import { ERROR_WORKFLOW_QUEUE_WAIT_SECONDS } from '@pertexo/workflow-model';
 

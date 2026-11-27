@@ -3,10 +3,10 @@ import type { WebhookTriggerHealthResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, RefreshCwIcon } from 'lucide-react';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import { describeStep } from '@/features/catalog/public';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import {
   describeTriggerRepair,

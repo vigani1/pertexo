@@ -10,7 +10,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { shownData } from '@/lib/api/error-copy';
 import { mcpExposureQuery } from '../../data/mcp-exposure.queries';

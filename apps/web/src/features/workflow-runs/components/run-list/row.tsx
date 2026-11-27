@@ -4,7 +4,7 @@ import type {
   WorkflowRunListItem,
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import type { ApiClient } from '@/lib/api/client';
 import {

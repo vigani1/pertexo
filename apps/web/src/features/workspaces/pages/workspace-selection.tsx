@@ -9,7 +9,7 @@ import { WorkspaceFirstRun } from '../components/selection/workspace-first-run';
 import { WorkspaceGrid } from '../components/selection/workspace-grid';
 import { WorkspacePickerHeader } from '../components/selection/workspace-picker-header';
 import { readLastWorkspace } from '../model/last-workspace';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 type WorkspaceSelectionPageProps = Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;

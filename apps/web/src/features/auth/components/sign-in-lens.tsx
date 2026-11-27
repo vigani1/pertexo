@@ -19,7 +19,7 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from './stage/auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 const fieldRules = { email: emailProblem, password: requiredPasswordProblem };
 

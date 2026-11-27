@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { StaleLine } from '../../src/components/patterns/states/stale-line';
 import { Button } from '../../src/components/ui/button';
-import { Notice } from '../../src/components/ui/notice';
+import { Notice } from '../../src/components/patterns/notices/inline-notice';
 
 describe('Notice', () => {
   it('announces destructive notices as alerts and the rest politely', () => {

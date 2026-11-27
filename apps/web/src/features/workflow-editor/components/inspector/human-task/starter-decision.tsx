@@ -8,7 +8,7 @@ import {
 } from '@/features/pending-tasks/pending-tasks-queries.public';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 

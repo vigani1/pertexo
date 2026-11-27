@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { WorkflowOrganizationOutcomes } from './outcomes';
 import type { Props } from './use-edit';

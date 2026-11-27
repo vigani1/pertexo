@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { MemberFormScope } from '../data/forms.api';
 import { useFormAccessCommand } from '../data/forms.mutations';
 function newCapability() {

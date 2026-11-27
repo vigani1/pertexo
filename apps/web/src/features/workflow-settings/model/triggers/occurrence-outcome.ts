@@ -3,7 +3,7 @@ import type {
   ScheduleOccurrenceResponse,
   ScheduleTriggerHealthResponse,
 } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { formatDurationMs } from '@/lib/format/time';
 
 type OccurrenceOutcome = Readonly<{

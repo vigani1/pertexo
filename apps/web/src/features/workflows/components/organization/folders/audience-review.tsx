@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import type { WorkflowMoveReview } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 /** Mounted per review, so an acknowledgement never carries into a different move. */
 export function AudienceMoveReview({

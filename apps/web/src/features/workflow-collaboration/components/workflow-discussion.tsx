@@ -7,8 +7,8 @@ import {
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentThread } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
-import { Notice } from '@/components/ui/notice';
+import { Status } from '@/components/patterns/status/status-mark';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { CollaborationScope } from '../data/collaboration.api';

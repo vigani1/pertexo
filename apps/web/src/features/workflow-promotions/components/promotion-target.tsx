@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import {
   Select,

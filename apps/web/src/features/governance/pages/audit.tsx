@@ -9,7 +9,7 @@ import {
 } from '@/components/patterns/page-header';
 import { RecentLog } from '@/components/patterns/lists/recent-log';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { GovernanceSettings } from '../components/governance-settings';
 import { AuditFilters } from '../components/audit-filters';
 import { AuditEntry } from '../components/audit-entry';

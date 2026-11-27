@@ -2,7 +2,7 @@ import type { WorkflowCallSummary } from '@pertexo/contracts';
 import { ChildHistory } from './child-history';
 import type { RunDataScope } from '../data/value';
 import { StepModelUsage } from '../run-diagnostics';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatDurationMs } from '@/lib/format/time';
 import { AGENT_SEND_SLACK_MESSAGE } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';

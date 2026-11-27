@@ -13,7 +13,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import {
   formatMoment,

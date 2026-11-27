@@ -1,6 +1,6 @@
 import type { WorkflowListQuery, WorkflowSummary } from '@pertexo/contracts';
 import { workflowOrganizationListQuerySchema } from '@pertexo/contracts';
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { describeWorkflowState } from './workflow-state';
 import { pluralWord } from '@/lib/format/count';
 

@@ -18,7 +18,7 @@ import {
   type ApprovalConfig,
   type InputRequestConfig,
 } from '@pertexo/workflow-model';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ConfigJsonEditor } from '../fields/config-json-editor';

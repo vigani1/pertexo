@@ -6,7 +6,7 @@ import type { FormDraftValue } from '../model/form-values';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DateInput } from '@/components/ui/date-input';
+import { DateInput } from '@/components/patterns/dates/date-input';
 
 export function FormFieldControl({
   field,

@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { WorkflowInputCase, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { useInputCases } from '../../data/input-cases/workflow-input-cases.mutations';

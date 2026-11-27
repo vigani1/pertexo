@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { PlusIcon, RepeatIcon } from 'lucide-react';
 import { use } from 'react';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import { LOOP_FRAME } from '../../../model/graph/for-each-body-layout';
 import type { BodyIssue } from '../../../model/graph/for-each-body-rules';
 import { CanvasActionsContext } from '../../../model/canvas/actions-context';

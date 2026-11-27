@@ -2,7 +2,7 @@ import type { WorkflowRunResponse } from '@pertexo/contracts';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import type { RunDataScope } from './data/value';
 import { RunExplanation } from '../explanation';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { describeRunFailureReason } from '../../model/presentation/run-failure-reason';
 
 export function RunFailureNotice({

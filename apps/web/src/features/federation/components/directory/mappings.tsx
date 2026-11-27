@@ -1,7 +1,7 @@
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { MappingRows } from './mapping-rows';
 import type { DelegatedRole } from '@pertexo/policy';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { useId, useState } from 'react';
 import {
   delegatedWorkspaceRoleSchema,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { useDirectoryCommand } from '../../data/directory.mutations';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { CommandFeedback } from '../command-feedback';

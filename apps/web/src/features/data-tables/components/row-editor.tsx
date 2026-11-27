@@ -2,14 +2,14 @@ import { useState } from 'react';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableRow, DataTableColumn } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
-import { DateInput } from '@/components/ui/date-input';
+import { DateInput } from '@/components/patterns/dates/date-input';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   LabelledField,
   type LabelledControlProps,
 } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   useFieldValidation,
   type FieldValidation,

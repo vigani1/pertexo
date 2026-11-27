@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { samlServiceProviderUrls } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { downloadTextFile } from '@/lib/download-file';

@@ -11,7 +11,7 @@ import type { FailureNotificationDestinationResponse } from '@pertexo/contracts'
 import { TestThread } from '@/features/connections/connections-views.public';
 import type { TestPhase } from '@/features/connections/public';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import { useDestinationTest } from '../data/destination-test.mutations';
 

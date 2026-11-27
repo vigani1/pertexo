@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import {
   needsReconnecting,
   connectionPresentation,

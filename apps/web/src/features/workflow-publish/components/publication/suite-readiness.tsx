@@ -1,6 +1,6 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   type WorkflowTestScope,
   type WorkflowSuiteList,

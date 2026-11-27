@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FileDrop } from '@/components/ui/file-drop';
 import { Textarea } from '@/components/ui/textarea';
 import { FieldLabel as Label } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
   Dialog,
   DialogFooter,

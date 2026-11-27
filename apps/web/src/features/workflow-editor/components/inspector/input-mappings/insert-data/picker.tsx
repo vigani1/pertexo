@@ -5,7 +5,7 @@ import {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_FIELDS,
 } from '@pertexo/workflow-model';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { DatabaseIcon } from 'lucide-react';
 import { useState, type ReactNode, type Ref } from 'react';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { WebhookTestEventSnapshot } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import {
   ConfirmDialog,

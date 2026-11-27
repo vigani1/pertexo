@@ -9,7 +9,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { useProviderTest } from '../../data/sign-in-journeys';
 import type { FederationScope } from '../../data/federation-settings.api';

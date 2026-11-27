@@ -1,4 +1,4 @@
-import type { StatusTone } from '@/components/ui/status';
+import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import {
   RUN_STRIP_LENGTH,

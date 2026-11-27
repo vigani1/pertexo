@@ -11,7 +11,7 @@ import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Disclosure } from '@/components/ui/disclosure';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
 import { apiTokensQueryOptions } from '../data/api-tokens.queries';
 import { CreateTokenDialog } from '../components/create-dialog';

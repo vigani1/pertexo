@@ -1,6 +1,6 @@
 import type { PollingTriggerHealth } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatDateTime } from '@/lib/format/time';
 import {
   databasePollingGuidance,

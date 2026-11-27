@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Separator } from '@/components/ui/separator';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { declaredType, editType } from '../../forms/callable/type-draft';

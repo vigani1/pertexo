@@ -2,8 +2,11 @@ import type { WorkflowTestSuiteDetail } from '@pertexo/contracts';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
-import { Status, type StatusTone } from '@/components/ui/status';
+import { Notice } from '@/components/patterns/notices/inline-notice';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import {
   Select,
   SelectTrigger,

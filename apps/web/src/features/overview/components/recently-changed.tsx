@@ -1,7 +1,7 @@
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/ui/status';
+import { Status } from '@/components/patterns/status/status-mark';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { describeWorkflowState } from '@/features/workflows/public';
 import { recentWorkflowsQueryOptions } from '@/features/workflows/workflows-queries.public';

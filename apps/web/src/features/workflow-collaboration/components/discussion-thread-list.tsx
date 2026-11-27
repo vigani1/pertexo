@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentListQuery } from '@pertexo/contracts';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { StatusGlyph } from '@/components/ui/status';
+import { StatusGlyph } from '@/components/patterns/status/status-mark';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { threadsQuery } from '../data/collaboration.queries';
 export function DiscussionThreads({

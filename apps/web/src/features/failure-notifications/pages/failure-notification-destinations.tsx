@@ -19,7 +19,7 @@ import {
 } from '@/components/patterns/guidance/how-it-works';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';

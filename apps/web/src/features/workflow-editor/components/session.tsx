@@ -1,7 +1,7 @@
 import { SaveFailureNotice } from './chrome/save-state';
 import { EditorSessionProvider } from '../model/state/provider';
 import type { EditorSession } from '../model/state/session';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { EditorPresenceSource } from '../model/state/presence';
 
 import { useState, type ReactNode } from 'react';

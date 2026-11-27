@@ -21,7 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { InputCasesPanel } from '@/features/workflows/workflows-views.public';
 import { useInputCases } from '@/features/workflows/public';
 import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';

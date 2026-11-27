@@ -6,7 +6,7 @@ import {
   needsFreshSignIn,
 } from '../../model/account/failure';
 import { allowlistedReturnPath, returnToSearch } from '../../model/return-path';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /**
  * A block on the account page, laid out like every settings page: the title

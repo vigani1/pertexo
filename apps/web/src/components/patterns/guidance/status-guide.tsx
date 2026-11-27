@@ -6,7 +6,10 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Status, type StatusTone } from '@/components/ui/status';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { HELP_LINKS } from '@/lib/help/guides';
 import { GuideLink } from './guide-link';

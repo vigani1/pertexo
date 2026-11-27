@@ -12,7 +12,7 @@ import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
+import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +22,10 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Status, type StatusTone } from '@/components/ui/status';
+import {
+  Status,
+  type StatusTone,
+} from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import type { PublishSummary } from '../../model/publication/summary';
 import type { WorkflowIssueGroup } from '../../model/validation/issues';
