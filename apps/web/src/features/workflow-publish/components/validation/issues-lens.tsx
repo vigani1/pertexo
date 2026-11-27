@@ -4,7 +4,7 @@ import { RefreshCwIcon, XIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { IssuesState } from '../../model/validation/issues-state';
 import { emptyDraftHint } from '../../model/publication/readiness';
 import type { WorkflowValidationTarget } from '../../model/validation/target';
@@ -64,7 +64,8 @@ export function IssuesLens({
       }}
     >
       <header className="flex items-start gap-3 border-b border-surface-ink/7 px-4 py-3">
-        <StatusGlyph
+        <StatusMark
+          display="mark"
           tone={count !== undefined && count > 0 ? 'failure' : 'neutral'}
           className="mt-1"
         />

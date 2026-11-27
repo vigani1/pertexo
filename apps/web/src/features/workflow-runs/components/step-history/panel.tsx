@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
@@ -133,7 +133,7 @@ function RecentRun({
         params={{ workspaceId, runId: run.runId }}
         className="flex items-start gap-2.5 rounded-md px-2 py-1.5 outline-none transition-colors hover:bg-surface-ink/[0.04] focus-ring motion-reduce:transition-none"
       >
-        <StatusGlyph tone={look.tone} className="mt-0.5" />
+        <StatusMark display="mark" tone={look.tone} className="mt-0.5" />
         <span className="min-w-0 flex-1">
           <span className="block text-label">
             {look.label}

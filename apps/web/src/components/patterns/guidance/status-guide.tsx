@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
@@ -80,7 +80,7 @@ export function StatusGuide({
                     {entry.tone === undefined ? (
                       entry.label
                     ) : (
-                      <Status tone={entry.tone}>{entry.label}</Status>
+                      <StatusMark tone={entry.tone}>{entry.label}</StatusMark>
                     )}
                   </dt>
                   <dd className="text-label leading-relaxed text-muted-foreground">

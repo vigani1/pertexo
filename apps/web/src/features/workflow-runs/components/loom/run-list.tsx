@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
 import type { LoomModel } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';
@@ -58,7 +58,7 @@ export function LoomRunList({
                       params={{ workspaceId, runId: run.id }}
                       className="flex items-center justify-between gap-3 rounded-sm py-1 text-muted-foreground hover:text-foreground focus-ring focus-visible:outline-none"
                     >
-                      <Status tone={look.tone}>{look.label}</Status>
+                      <StatusMark tone={look.tone}>{look.label}</StatusMark>
                       <span className="font-mono text-xs text-subtle-foreground">
                         {formatClock(run.createdAt)}
                         {run.endMs === null

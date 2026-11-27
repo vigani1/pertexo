@@ -4,7 +4,7 @@ import { XIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
 import { buttonVariants } from './button-variants';
 import {
-  StatusGlyph,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { LoadingOrb } from './loading-orb';
@@ -26,7 +26,9 @@ const TIMER_COLOR_BY_TYPE: Record<string, string> = {
 
 function ToastLeading({ type }: Readonly<{ type: string | undefined }>) {
   if (type === 'loading') return <LoadingOrb />;
-  return <StatusGlyph tone={TONE_BY_TYPE[type ?? 'info'] ?? 'live'} />;
+  return (
+    <StatusMark display="mark" tone={TONE_BY_TYPE[type ?? 'info'] ?? 'live'} />
+  );
 }
 
 function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {

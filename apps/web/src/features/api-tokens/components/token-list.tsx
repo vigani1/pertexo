@@ -1,7 +1,7 @@
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 import { KeyRoundIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { statusToneText } from '@/components/patterns/status/status-tone';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
@@ -53,14 +53,7 @@ export function TokenList({
                 <h3 className="min-w-0 font-semibold break-words">
                   {token.name}
                 </h3>
-                <p
-                  className={cn(
-                    'text-label font-medium',
-                    statusToneText[status.tone],
-                  )}
-                >
-                  {status.label}
-                </p>
+                <StatusMark tone={status.tone}>{status.label}</StatusMark>
               </div>
               {token.status === 'revoked' || onRevoke === undefined ? null : (
                 <Button

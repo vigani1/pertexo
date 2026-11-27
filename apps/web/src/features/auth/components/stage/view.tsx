@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { ConvergingThreads } from './converging-threads';
 import { Wordmark } from './wordmark';
@@ -62,7 +62,8 @@ function ProductFacts() {
       <ul className="mt-5 grid gap-2.5 rounded-lg bg-background p-3 font-mono text-label leading-snug text-muted-foreground">
         {FACTS.map((fact) => (
           <li key={fact.text} className="flex items-start gap-2.5 text-pretty">
-            <StatusGlyph
+            <StatusMark
+              display="mark"
               tone={fact.tone}
               className={cn(
                 'mt-px',

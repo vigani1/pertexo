@@ -3,7 +3,7 @@ import { useHistoryPage } from '../../hooks/use-history-page';
 import { HistoryPager } from './history-pager';
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { useQuery } from '@tanstack/react-query';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { nodeRunOutputQueryOptions } from '../../data/stored-values.queries';
@@ -111,7 +111,7 @@ export function RunOutputsView({
                   }}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <StatusGlyph tone={row.tone} />
+                    <StatusMark display="mark" tone={row.tone} />
                     <span className="truncate text-sm">{row.label}</span>
                   </span>
                   <span className="min-w-0 truncate font-mono text-xs text-subtle-foreground">

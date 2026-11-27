@@ -8,7 +8,7 @@ import {
 } from '@/features/catalog/public';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeScheduleHold } from '../../../model/triggers/occurrence-outcome';
@@ -79,9 +79,9 @@ export function ScheduleCard({
           <StepTile step={describeStep('core.schedule')} size="lg" />
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{stepName}</h3>
-            <Status tone={state.tone} className="mt-1 text-xs">
+            <StatusMark tone={state.tone} className="mt-1 text-xs">
               {state.label}
-            </Status>
+            </StatusMark>
           </div>
         </div>
         {editable ? (

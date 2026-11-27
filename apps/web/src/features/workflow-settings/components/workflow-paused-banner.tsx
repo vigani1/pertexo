@@ -16,7 +16,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
 import { isAccessLost, shownData } from '@/lib/api/error-copy';
 import { cn } from '@/lib/class-names';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 function PausedStateNotice({
   workspaceId,
   settings,
@@ -139,7 +139,8 @@ function PauseReadProblem({
           side === 'below' ? 'top-1' : 'bottom-1',
         )}
       >
-        <StatusGlyph
+        <StatusMark
+          display="mark"
           tone={checking ? 'waiting' : 'attention'}
           still={!checking}
           className={cn(

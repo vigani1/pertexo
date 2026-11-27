@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   describeWorkflowState,
   LIFECYCLE_CONSEQUENCES,
@@ -39,7 +39,7 @@ function LifecycleCard({
     <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Now</span>
-        <Status tone={state.tone}>{state.label}</Status>
+        <StatusMark tone={state.tone}>{state.label}</StatusMark>
       </div>
       <p className="text-sm font-medium">
         {archived ? 'If you restore it:' : 'If you archive it:'}

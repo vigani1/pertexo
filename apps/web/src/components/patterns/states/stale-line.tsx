@@ -1,6 +1,6 @@
 import { ReadRecovery } from './read-recovery';
 import type { ReactNode } from 'react';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 
@@ -34,7 +34,7 @@ export function StaleLine({
         className,
       )}
     >
-      <StatusGlyph tone="attention" />
+      <StatusMark display="mark" tone="attention" />
       <span>
         Couldn’t refresh. Showing results from{' '}
         <time

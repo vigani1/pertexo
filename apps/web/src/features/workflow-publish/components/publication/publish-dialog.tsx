@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
@@ -236,7 +236,7 @@ function PublishProgress({
             key={step.stage}
             aria-current={index === activeIndex ? 'step' : undefined}
           >
-            <Status
+            <StatusMark
               tone={tone}
               className={cn(
                 'text-sm font-medium',
@@ -246,7 +246,7 @@ function PublishProgress({
               {requesting && step.stage === 'publishing'
                 ? 'Sending the exact draft for review'
                 : step.label}
-            </Status>
+            </StatusMark>
           </li>
         );
       })}

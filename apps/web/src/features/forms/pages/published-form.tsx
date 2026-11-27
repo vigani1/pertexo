@@ -8,7 +8,7 @@ import type {
   FormSubmissionResponse,
 } from '@pertexo/contracts';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -67,7 +67,7 @@ export function FormPage({
     return (
       <section className="flex flex-col gap-4">
         <h1>
-          <Status tone={look.tone}>{look.label}</Status>
+          <StatusMark tone={look.tone}>{look.label}</StatusMark>
         </h1>
         <p>{look.detail}</p>
         <Button variant="outline" onClick={command.reset}>
@@ -112,12 +112,12 @@ function SubmissionReceipt({
     <section className="flex flex-col gap-4">
       <FinishedThread />
       <h1 className="font-heading text-3xl font-semibold">Response sent</h1>
-      <Status
+      <StatusMark
         tone="success"
         className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
       >
         <ThankYouMessage message={receipt.thankYouMessage} />
-      </Status>
+      </StatusMark>
       {receipt.redirectUrl === undefined ? null : (
         <a
           href={receipt.redirectUrl}

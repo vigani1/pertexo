@@ -1,7 +1,7 @@
 import type { StepSampleMetadata } from '@pertexo/contracts';
 import { PinIcon } from 'lucide-react';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatRelativeTime } from '@/lib/format/time';
 import { sampleStateLabel } from '../../model/step-samples';
 const SOURCE_LABEL: Readonly<
@@ -25,9 +25,9 @@ export function SampleSummary({
         <PinIcon className="size-4 text-muted-foreground" aria-hidden="true" />
         <h3 className="text-sm font-medium">Sample output</h3>
         {state === undefined ? null : (
-          <Status tone={state === 'pinned' ? 'success' : 'attention'}>
+          <StatusMark tone={state === 'pinned' ? 'success' : 'attention'}>
             {sampleStateLabel[state]}
-          </Status>
+          </StatusMark>
         )}
       </div>
       <p className="text-xs text-muted-foreground">

@@ -11,7 +11,7 @@ import type { FailureNotificationDestinationResponse } from '@pertexo/contracts'
 import { TestThread } from '@/features/connections/connections-views.public';
 import type { TestPhase } from '@/features/connections/public';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import { useDestinationTest } from '../data/destination-test.mutations';
 
@@ -136,10 +136,12 @@ function DestinationTestResult({
 }>) {
   switch (phase) {
     case 'running':
-      return <Status tone="live">Sending one test message…</Status>;
+      return <StatusMark tone="live">Sending one test message…</StatusMark>;
     case 'ok':
       return (
-        <Status tone="success">The service accepted the test message.</Status>
+        <StatusMark tone="success">
+          The service accepted the test message.
+        </StatusMark>
       );
     case 'unsure':
       return (

@@ -812,7 +812,7 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 | Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                                |
 | --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/patterns/status/status-mark.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                          |
+| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/patterns/status/status-mark.tsx` (`StatusMark`, `StatusTone`)                                     |
 | Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                                  |
 | Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core/orb.tsx` + `orb-scene.ts` (Canvas 2D, token colours, drifts; live work quickens it) |
 | Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                             |
@@ -856,18 +856,21 @@ hairlines.
 Features map their own enums to a `StatusTone` in their `model/` (for example
 `features/workflows/model/state.ts`). Never colour a status ad hoc.
 
-| Tone        | Glyph (motion)                | Used for                                                             |
-| ----------- | ----------------------------- | -------------------------------------------------------------------- |
-| `live`      | light travels along a thread  | running runs/steps/previews, starting activation, info notifications |
-| `queued`    | three beads brighten in turn  | queued runs, pending/ready steps                                     |
-| `waiting`   | a slowly turning coil         | waiting runs/steps, scheduled retries, stopping                      |
-| `success`   | knot                          | succeeded, healthy, enabled, live workflows                          |
-| `failure`   | cross (the thread stops at ×) | failed, error, unhealthy, revoked-by-failure                         |
-| `timeout`   | thread stopped by a bar       | timed out                                                            |
-| `attention` | dotted gap, slow blink        | outcome unknown, degraded, reauthorization required                  |
-| `canceled`  | cut thread                    | canceled, revoked, archived                                          |
-| `skipped`   | dashed thread                 | skipped branches                                                     |
-| `neutral`   | hollow bead                   | drafts and states without meaning                                    |
+The 20 px mark always accompanies a word or carries an accessible name when the
+word appears elsewhere. Running moves when motion is allowed. The other eight
+terminals stay still.
+
+| State           | Terminal              |
+| --------------- | --------------------- |
+| Running         | Live bead on a thread |
+| Succeeded       | Solid ink knot        |
+| Failed          | Red cross             |
+| Waiting         | Violet ring           |
+| Queued          | Three ink dots        |
+| Needs attention | Amber diamond         |
+| Draft           | Ink ring              |
+| Skipped         | Ink bar               |
+| Off             | Faint thread          |
 
 #### Shared building blocks
 
@@ -903,7 +906,7 @@ their own:
 | Query states   | `components/patterns/states/query-view.tsx`                                               | `QueryView`: the one owner of a read's states: `loading`, a first-read failure (`error` slot, `FailedReadState` or `InlineFailedRead`), `StaleLine` over kept data, `empty`, and access loss hiding data                                                                                                                          |
 | Clock          | `lib/use-now.ts`, `lib/use-countdown.ts`, `lib/format-time.ts`                            | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24"                                                                                                                                    |
 | Canvas         | `lib/canvas-scene.ts`, `lib/use-canvas-renderer.ts`                                       | `CanvasScene` (sized, cleared, token colours) for the Core, sign-in threads, Loom and loading wave; the hook owns the loop                                                                                                                                                                                                        |
-| Status colour  | `components/patterns/status/status-mark.tsx`, `components/patterns/status/status-tone.ts` | `Status`/`StatusGlyph` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                              |
+| Status colour  | `components/patterns/status/status-mark.tsx`, `components/patterns/status/status-tone.ts` | `StatusMark` and `statusToneText`, the one colour per tone                                                                                                                                                                                                                                                                        |
 | Pagination     | `lib/api/pagination.ts`                                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                                                                                                                                                      |
 | Setting        | `components/patterns/settings/sentence.tsx`                                               | `SettingSentence`: a setting read as one sentence of its current value; Change opens its unchanged editor in place (kept mounted, so edits and an unconfirmed retry survive closing) and the rules wait in "How this works"                                                                                                       |
 | Settings rail  | `features/workspaces/components/shell/settings-rail.tsx`                                  | `SettingsRail`: Settings' own navigation beside every Settings page (a pathless layout keeps it mounted); a bead per page and a knot for the open one while the page has room beside it (a container query), otherwise one button naming the open section that lists them all in a sheet                                          |

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import {
@@ -121,10 +121,10 @@ function SuiteResult({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <Status tone={tones[detail.status] ?? 'neutral'}>
+        <StatusMark tone={tones[detail.status] ?? 'neutral'}>
           {detail.evaluation === undefined ? 'Suite' : 'Evaluation'} ·{' '}
           {detail.status}
-        </Status>
+        </StatusMark>
         <span className="text-xs text-muted-foreground">
           {detail.passed}/{detail.total} passed · {detail.failed} failed ·{' '}
           {detail.errors} errors · {detail.skipped} skipped
@@ -171,12 +171,12 @@ function SuiteResult({
               <span className="min-w-0 flex-1 text-sm wrap-anywhere">
                 {name}
               </span>
-              <Status tone={tones[entry.status] ?? 'neutral'}>
+              <StatusMark tone={tones[entry.status] ?? 'neutral'}>
                 {detail.evaluation !== undefined &&
                 (entry.status === 'error' || entry.status === 'skipped')
                   ? 'incomplete'
                   : entry.status}
-              </Status>
+              </StatusMark>
               <div className="ml-auto flex flex-wrap gap-1">
                 {entry.runId === null ? null : (
                   <Button

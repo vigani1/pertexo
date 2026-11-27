@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   Tooltip,
   TooltipContent,
@@ -86,7 +86,7 @@ export function WorkflowListHeader({
                   {total === 1 && more === '' ? 'workflow' : 'workflows'}
                 </span>
                 {countWorkflowStates(workflows).map((state) => (
-                  <Status
+                  <StatusMark
                     key={state.label}
                     tone={state.tone}
                     className="font-mono text-xs font-normal"
@@ -96,7 +96,7 @@ export function WorkflowListHeader({
                       {more}
                     </b>{' '}
                     {state.label}
-                  </Status>
+                  </StatusMark>
                 ))}
                 <StatusGuide
                   sections={WORKFLOW_LIST_GUIDE}

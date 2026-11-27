@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 
 // Small decorative thread drawings for system states. Motion stops under
@@ -103,7 +103,11 @@ export function FinishedThread({ className }: IllustrationProps) {
       )}
     >
       <span className="h-px w-24 bg-success/40" />
-      <StatusGlyph tone="success" className="size-10 text-success" />
+      <StatusMark
+        display="mark"
+        tone="success"
+        className="size-10 text-success"
+      />
     </div>
   );
 }

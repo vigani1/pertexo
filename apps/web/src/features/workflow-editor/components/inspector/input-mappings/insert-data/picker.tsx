@@ -5,7 +5,7 @@ import {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_FIELDS,
 } from '@pertexo/workflow-model';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { DatabaseIcon } from 'lucide-react';
 import { useState, type ReactNode, type Ref } from 'react';
@@ -176,7 +176,7 @@ function InsertDataChoices({
         {failureSource === undefined ? null : (
           <li>
             <p className="flex items-center gap-2 text-label font-semibold">
-              <StatusGlyph tone="failure" />
+              <StatusMark display="mark" tone="failure" />
               Source failure
             </p>
             <FieldList

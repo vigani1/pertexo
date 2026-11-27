@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { MemberFormScope } from '../data/forms.api';
 import { useFormAccessCommand } from '../data/forms.mutations';
 function newCapability() {
@@ -64,11 +64,11 @@ function SharedFormAccess({
   return (
     <section className="flex min-w-0 flex-col gap-3 border-t border-border pt-4">
       <h3 className="font-medium">Who can open this form</h3>
-      <Status tone={access.access === 'public' ? 'attention' : 'neutral'}>
+      <StatusMark tone={access.access === 'public' ? 'attention' : 'neutral'}>
         {access.access === 'public'
           ? 'Anyone with the link'
           : 'Workspace members'}
-      </Status>
+      </StatusMark>
       <p className="text-xs text-muted-foreground">
         Sharing uses the published form. Publish to apply field changes.
       </p>

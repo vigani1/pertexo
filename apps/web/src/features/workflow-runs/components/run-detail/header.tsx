@@ -13,7 +13,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import {
   formatMoment,
@@ -94,7 +94,7 @@ function RunLiveIndicator({
   if (look === undefined) return null;
   return (
     <span className="inline-flex items-center gap-1.5" role="status">
-      <Status tone={look.tone}>{look.label}</Status>
+      <StatusMark tone={look.tone}>{look.label}</StatusMark>
       {look.paused ? (
         <Button type="button" size="xs" variant="ghost" onClick={onReconnect}>
           <RefreshCwIcon aria-hidden="true" />

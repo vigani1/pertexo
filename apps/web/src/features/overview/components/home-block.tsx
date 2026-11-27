@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeReadError } from '@/lib/api/error-copy';
 import type { HomeBlockState } from '../model/home-block-state';
 
@@ -63,7 +63,7 @@ export function HomeBlockBody({
           role="alert"
           className="flex items-center gap-2 text-sm text-destructive"
         >
-          <StatusGlyph tone="failure" />
+          <StatusMark display="mark" tone="failure" />
           {describeReadError(state.error, title)}
         </p>
         <Button

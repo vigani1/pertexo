@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { useTestHistory } from '../../hooks/use-test-history';
 import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
@@ -27,7 +27,7 @@ export function WorkflowStepTestResult({
       className="flex min-w-0 flex-col gap-3 border-b border-border pb-4"
     >
       <h3 className="text-sm font-semibold">Latest workflow test</h3>
-      <Status tone={state.tone}>{state.label}</Status>
+      <StatusMark tone={state.tone}>{state.label}</StatusMark>
       <p className="text-xs text-muted-foreground">
         Draft {latest.snapshot.data?.draftRevision}
       </p>

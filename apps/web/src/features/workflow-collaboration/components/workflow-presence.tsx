@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { formatInitials } from '@/lib/format/initials';
 import { cn } from '@/lib/class-names';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { presenceTabId, usePresenceLease } from '../data/presence-lease';
 import { presenceQuery } from '../data/collaboration.queries';
@@ -67,7 +67,7 @@ export function WorkflowPresenceSummary() {
           render={<Button type="button" variant="ghost" size="sm" />}
           aria-label="Presence unavailable"
         >
-          <Status tone="neutral">Presence</Status>
+          <StatusMark tone="neutral">Presence</StatusMark>
         </PopoverTrigger>
         <PopoverContent align="end">
           <PopoverTitle>Presence unavailable</PopoverTitle>

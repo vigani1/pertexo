@@ -3,7 +3,7 @@ import type { FocusEvent } from 'react';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { stepTitle } from '../../../model/graph/step-title';
 import type { GraphLevel } from '../../../model/graph/scopes';
@@ -138,7 +138,11 @@ export function ConditionRuleCard({
         >
           {message === undefined ? null : (
             <>
-              <StatusGlyph tone="failure" className="mt-px shrink-0" />
+              <StatusMark
+                display="mark"
+                tone="failure"
+                className="mt-px shrink-0"
+              />
               {message}
             </>
           )}

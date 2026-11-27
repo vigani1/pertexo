@@ -4,7 +4,7 @@ import { Toast } from '@base-ui/react/toast';
 import { Link } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { formatElapsedTime } from '@/lib/format/time';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
@@ -165,7 +165,8 @@ export function InboxArrivalCard({
           <div className="mt-3 flex items-center justify-between gap-3">
             <span aria-hidden="true" className="flex items-center">
               {view.marks.map((mark, index) => (
-                <StatusGlyph
+                <StatusMark
+                  display="mark"
                   // A fixed row whose order never changes.
                   key={index}
                   tone={mark}

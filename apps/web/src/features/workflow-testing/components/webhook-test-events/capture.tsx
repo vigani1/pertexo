@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { WebhookTestEventSnapshot } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import {
   ConfirmDialog,
@@ -37,7 +37,7 @@ export function CapturedEvent({
     <>
       <JsonTree value={output.value} label="Received test data" />
       {kept ? (
-        <Status tone="success">Kept as pinned sample</Status>
+        <StatusMark tone="success">Kept as pinned sample</StatusMark>
       ) : (
         <Button
           size="sm"

@@ -4,7 +4,7 @@ import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Disclosure } from '@/components/ui/disclosure';
 export function PromotionReview({
   review,
@@ -24,9 +24,9 @@ export function PromotionReview({
       <div className="flex flex-wrap items-center gap-3 border-y border-border py-4 text-sm">
         <span>{review.sourceWorkspaceName}</span>
         <span aria-hidden="true" className="h-px min-w-8 flex-1 bg-action/40" />
-        <Status tone={review.compatible ? 'success' : 'attention'}>
+        <StatusMark tone={review.compatible ? 'success' : 'attention'}>
           {review.targetWorkspaceName}
-        </Status>
+        </StatusMark>
       </div>
       <p className="text-sm text-muted-foreground">
         Only workflow definitions move. Target credentials, variable values,
@@ -120,9 +120,9 @@ export function PromotionReview({
                 key={canonicalJson(requirement)}
                 className="grid gap-2 py-3 sm:grid-cols-[7rem_1fr]"
               >
-                <Status tone={REQUIREMENT_STATUS[requirement.status].tone}>
+                <StatusMark tone={REQUIREMENT_STATUS[requirement.status].tone}>
                   {REQUIREMENT_STATUS[requirement.status].label}
-                </Status>
+                </StatusMark>
                 <div className="min-w-0 break-words text-sm">
                   <p className="font-medium">
                     {requirement.kind}: {requirement.name}

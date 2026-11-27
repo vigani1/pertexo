@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import { WorkspaceMark } from '../shell/workspace-mark';
 import { workspaceAvailability } from '../../model/workspace-availability';
@@ -49,7 +49,9 @@ export function WorkspaceCard({
         </span>
         <span className="flex flex-wrap items-center gap-2">
           <Badge variant="muted">{ROLE_NAMES[workspace.role]}</Badge>
-          <Status tone={availability.tone}>{availability.status}</Status>
+          <StatusMark tone={availability.tone}>
+            {availability.status}
+          </StatusMark>
         </span>
       </span>
       <span className="mt-auto flex w-full items-center justify-between gap-3 text-label text-muted-foreground">

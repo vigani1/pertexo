@@ -7,7 +7,7 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime } from '@/lib/format/time';
 import type { FederationScope } from '../../data/federation-settings.api';
@@ -29,7 +29,7 @@ export function DomainEntry(props: DomainEntryProps) {
         <h3 className="min-w-0 break-all text-sm font-semibold">
           {model.domain.domain}
         </h3>
-        <Status tone={model.status.tone}>{model.status.label}</Status>
+        <StatusMark tone={model.status.tone}>{model.status.label}</StatusMark>
       </div>
       <DomainChallenge challenge={model.domain.challenge} />
       <div className="flex flex-wrap gap-2">

@@ -34,7 +34,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { AddConnectionSheet } from '../components/add-connection/sheet';
@@ -72,9 +72,9 @@ function ConnectionsHeader({
               <b className="text-foreground">{counts.active}</b> active
             </span>
             {counts.reconnect > 0 ? (
-              <Status tone="attention">
+              <StatusMark tone="attention">
                 {counts.reconnect} needs reconnecting
-              </Status>
+              </StatusMark>
             ) : null}
           </PageHeaderMeta>
         ) : null}

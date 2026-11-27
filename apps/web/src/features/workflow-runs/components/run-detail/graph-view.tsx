@@ -19,7 +19,7 @@ import {
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import {
-  Status,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
@@ -64,6 +64,7 @@ const toneFill: Readonly<Record<StatusTone, string>> = {
   timeout: 'var(--destructive)',
   attention: 'var(--warning)',
   canceled: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
+  off: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
   skipped: 'color-mix(in srgb, var(--subtle-foreground) 45%, transparent)',
   neutral: 'color-mix(in srgb, var(--muted-foreground) 60%, transparent)',
 };
@@ -308,7 +309,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
         )}
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-surface-ink/6 px-3 py-2">
-        <Status tone={data.tone}>{data.statusLabel}</Status>
+        <StatusMark tone={data.tone}>{data.statusLabel}</StatusMark>
         {data.invocations > 1 ? (
           <span className="font-mono text-caption text-subtle-foreground">
             ×{String(data.invocations)}

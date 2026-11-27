@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { cn } from '@/lib/class-names';
 import {
   describeInvitationDelivery,
@@ -51,9 +51,9 @@ function InvitationRow({
       <span className="text-label font-semibold max-sm:hidden">
         {ROLE_NAMES[invitation.role]}
       </span>
-      <Status tone={status.tone} className="max-sm:hidden">
+      <StatusMark tone={status.tone} className="max-sm:hidden">
         {status.label}
-      </Status>
+      </StatusMark>
       <span
         className={cn(
           'col-start-1 font-mono text-caption sm:col-start-auto',

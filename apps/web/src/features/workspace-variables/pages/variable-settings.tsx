@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { variablesQueryOptions } from '../data/variables.queries';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { VariablesEditor } from '../components/variables-editor';
@@ -122,11 +122,11 @@ export function WorkspaceVariablesPage({
               below draws the page's one divider. */}
           <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:gap-6">
             <p className="flex items-center gap-2">
-              <StatusGlyph tone="live" />
+              <StatusMark display="mark" tone="live" />
               New runs take the current values.
             </p>
             <p className="flex items-center gap-2">
-              <StatusGlyph tone="success" />
+              <StatusMark display="mark" tone="success" />
               Existing runs keep their captured set.
             </p>
           </div>

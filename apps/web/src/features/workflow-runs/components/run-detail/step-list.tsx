@@ -1,4 +1,4 @@
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
 import type { RunTimelineRow } from '../../model/timeline/runs';
@@ -67,7 +67,7 @@ export function RunStepList({
                   statusToneText[row.tone],
                 )}
               >
-                <StatusGlyph tone={row.tone} />
+                <StatusMark display="mark" tone={row.tone} />
                 {row.attempts > 1 ? `×${String(row.attempts)}` : null}
               </span>
             </button>

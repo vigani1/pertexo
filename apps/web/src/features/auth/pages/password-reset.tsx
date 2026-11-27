@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { ResetPasswordLens } from '../components/reset-password-lens';
 import {
@@ -103,7 +103,8 @@ export function PasswordResetPage({
                 <OutcomeLens
                   id="reset-done"
                   glyph={
-                    <StatusGlyph
+                    <StatusMark
+                      display="mark"
                       tone="success"
                       className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
                     />

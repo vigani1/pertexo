@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 import {
@@ -255,9 +255,9 @@ export function WorkflowRow({
       <RowTitle workspaceId={workspace.id} workflow={workflow} graph={graph} />
       <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 lg:contents">
         <div className="min-w-0">
-          <Status tone={state.tone} className="text-label">
+          <StatusMark tone={state.tone} className="text-label">
             {state.label}
-          </Status>
+          </StatusMark>
         </div>
         <div>
           <TriggerIcons graph={graph} />

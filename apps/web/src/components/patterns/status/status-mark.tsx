@@ -1,176 +1,58 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
-import { statusToneText } from './status-tone';
 
-// One glyph, one colour, one word for every status in the product. Features
-// map their own enums onto these tones in their `model/`; this primitive knows
-// nothing about runs, triggers or connections.
-export type StatusTone =
-  | 'live'
-  | 'queued'
-  | 'waiting'
-  | 'success'
-  | 'failure'
-  | 'timeout'
-  | 'attention'
-  | 'canceled'
-  | 'skipped'
-  | 'neutral';
-
-const statusVariants = cva(
-  // A status is one short word and never gives up its space to the text
-  // beside it: that text wraps instead.
-  'inline-flex shrink-0 items-center gap-1.5 text-label leading-none font-semibold whitespace-nowrap',
-  {
-    variants: { tone: statusToneText },
-    defaultVariants: { tone: 'neutral' },
-  },
-);
-
-const strokeProps = {
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 1.8,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
+const presentations = {
+  live: ['running', 'Running'],
+  success: ['succeeded', 'Succeeded'],
+  failure: ['failed', 'Failed'],
+  waiting: ['waiting', 'Waiting'],
+  queued: ['queued', 'Queued'],
+  attention: ['attention', 'Needs attention'],
+  neutral: ['draft', 'Draft'],
+  skipped: ['skipped', 'Skipped'],
+  off: ['off', 'Off'],
+  canceled: ['off', 'Canceled'],
+  timeout: ['failed', 'Timed out'],
 } as const;
 
-function GlyphShape({
-  tone,
-  still,
-}: Readonly<{ tone: StatusTone; still: boolean }>) {
-  const loop = (animation: string) => (still ? undefined : animation);
-  switch (tone) {
-    case 'live':
-      return (
-        <>
-          <path d="M1.5 8h13" opacity={0.28} />
-          <path
-            d="M1.5 8h13"
-            className={cn(
-              '[stroke-dasharray:4_22] drop-shadow-[0_0_3px_currentColor]',
-              loop('motion-loop:animate-thread-flow'),
-            )}
-          />
-        </>
-      );
-    case 'queued':
-      return (
-        <g fill="currentColor" stroke="none">
-          <circle
-            cx="3"
-            cy="8"
-            r="1.5"
-            className={loop('motion-loop:animate-bead')}
-          />
-          <circle
-            cx="8"
-            cy="8"
-            r="1.5"
-            className={loop('motion-loop:animate-bead [animation-delay:300ms]')}
-          />
-          <circle
-            cx="13"
-            cy="8"
-            r="1.5"
-            className={loop('motion-loop:animate-bead [animation-delay:600ms]')}
-          />
-        </g>
-      );
-    case 'waiting':
-      return <path d="M8 3.2a4.8 4.8 0 1 1-4.8 4.8" />;
-    case 'success':
-      return (
-        <>
-          <path d="M1.5 8h6" />
-          <circle cx="11.2" cy="8" r="3.3" fill="currentColor" stroke="none" />
-        </>
-      );
-    case 'failure':
-      // The thread stops at a cross.
-      return <path d="M1.5 8h5.5M9.5 5l6 6M15.5 5l-6 6" />;
-    case 'timeout':
-      return (
-        <>
-          <path d="M1.5 8h9.5" />
-          <path d="M13.2 3.6v8.8" />
-        </>
-      );
-    case 'attention':
-      return (
-        <>
-          <path d="M1.5 8h5" />
-          <path
-            d="M9 8h6"
-            className={cn(
-              '[stroke-dasharray:1_2.4]',
-              loop('motion-loop:animate-blink'),
-            )}
-          />
-        </>
-      );
-    case 'canceled':
-      return <path d="M1.5 8h4.6M10 8h4.5M7 11.6 9.1 4.4" />;
-    case 'skipped':
-      return <path d="M1.5 8h13" strokeDasharray="2 2.6" />;
-    case 'neutral':
-      return <circle cx="8" cy="8" r="3.2" />;
-  }
-}
+export type StatusTone = keyof typeof presentations;
 
-/**
- * `still` holds the glyph's motion for a status that isn't happening right
- * now, such as a zero count or a legend entry.
- */
-export function StatusGlyph({
+/** The state word can live elsewhere in a row. The mark has a name there. */
+export function StatusMark({
   tone,
   still = false,
-  className,
-}: Readonly<{ tone: StatusTone; still?: boolean; className?: string }>) {
-  return (
-    <span
-      data-slot="status-glyph"
-      aria-hidden="true"
-      className={cn(
-        'inline-grid size-4 shrink-0 place-items-center',
-        tone === 'waiting' && !still && 'motion-loop:animate-coil',
-        className,
-      )}
-    >
-      <svg
-        viewBox="0 0 16 16"
-        className="size-full overflow-visible"
-        {...strokeProps}
-      >
-        <GlyphShape tone={tone} still={still} />
-      </svg>
-    </span>
-  );
-}
-
-/** A status word led by its glyph. The children are the accessible label. */
-export function Status({
-  tone,
-  still = false,
+  display = 'word',
   className,
   children,
   ...props
 }: Omit<ComponentProps<'span'>, 'children'> &
-  VariantProps<typeof statusVariants> & {
+  Readonly<{
     tone: StatusTone;
     still?: boolean;
+    display?: 'word' | 'mark';
     children?: ReactNode;
-  }) {
+  }>) {
+  const [state, word] = presentations[tone];
   return (
     <span
       data-slot="status"
       data-tone={tone}
-      className={cn(statusVariants({ tone }), className)}
+      role={display === 'mark' ? 'img' : undefined}
+      aria-label={display === 'mark' ? word : undefined}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1.5 text-meta leading-none whitespace-nowrap text-muted-foreground',
+        className,
+      )}
       {...props}
     >
-      <StatusGlyph tone={tone} still={still} />
-      {children === undefined ? null : <span>{children}</span>}
+      <span
+        data-slot="status-glyph"
+        data-state={state}
+        data-still={still || undefined}
+        aria-hidden="true"
+        className="status-terminal"
+      />
+      {display === 'word' ? <span>{children ?? word}</span> : null}
     </span>
   );
 }

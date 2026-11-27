@@ -16,7 +16,7 @@ import {
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { stepTag } from '../../model/step-inspection/copy';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import { shortRunId } from '../../model/list/runs';
@@ -95,7 +95,7 @@ export function RunStepDetails({
         </p>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Status tone={row.tone}>{row.statusLabel}</Status>
+        <StatusMark tone={row.tone}>{row.statusLabel}</StatusMark>
         <span className="font-mono text-xs text-subtle-foreground">
           {stepTag(row, nowMs)}
         </span>

@@ -1,6 +1,6 @@
 import type { PendingTaskSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
@@ -52,7 +52,7 @@ export function TaskRow({
         {timedOut ? (
           <TimedOutGlyph className="text-warning" />
         ) : (
-          <StatusGlyph tone={tone} />
+          <StatusMark display="mark" tone={tone} />
         )}
       </span>
       <div className="flex min-w-0 flex-col gap-1">

@@ -9,7 +9,7 @@ import type {
   ApiTokenMetadata,
 } from '@pertexo/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { TokenList } from './token-list';
 
 export function TokenResults({
@@ -28,7 +28,7 @@ export function TokenResults({
         isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
         empty={
           <div className="flex flex-col gap-3 py-5">
-            <Status tone="neutral">No API tokens yet</Status>
+            <StatusMark tone="neutral">No API tokens yet</StatusMark>
             <p className="text-sm text-muted-foreground">
               Create one for the script you want to connect, with only the
               scopes it needs.

@@ -1,7 +1,7 @@
 import { CheckIcon } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import {
-  StatusGlyph,
+  StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
@@ -57,7 +57,7 @@ export function NoticeFrame({
             : 'border-border bg-surface-ink/[0.02] opacity-70',
         )}
       >
-        <StatusGlyph tone={tone} />
+        <StatusMark display="mark" tone={tone} />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 sm:flex-nowrap">

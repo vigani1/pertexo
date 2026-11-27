@@ -5,7 +5,7 @@ import {
   type TaskExpiryChoice,
 } from '@pertexo/workflow-model';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { formatTimeSpan } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
@@ -88,7 +88,12 @@ function ExpiryTimeline({
           {continues ? (
             <TimedOutGlyph className="size-3.5" />
           ) : (
-            <StatusGlyph tone="failure" still className="size-3.5" />
+            <StatusMark
+              display="mark"
+              tone="failure"
+              still
+              className="size-3.5"
+            />
           )}
         </span>
       </div>
@@ -179,7 +184,14 @@ export function TaskExpiry({
                 handle it.
               </>
             ),
-            glyph: <StatusGlyph tone="failure" still className="size-3.5" />,
+            glyph: (
+              <StatusMark
+                display="mark"
+                tone="failure"
+                still
+                className="size-3.5"
+              />
+            ),
             disabled: timedOutLinked,
           },
           {

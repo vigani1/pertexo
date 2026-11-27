@@ -11,7 +11,7 @@ import {
   AGENT_SLACK_CONNECTION_SLOT,
   agentToolsAllowedWithoutApproval,
 } from '@pertexo/workflow-model';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { DescribeStep } from '@/features/catalog/public';
 
 export function ReviewCandidate({
@@ -133,7 +133,7 @@ function AgentWriteAllowance({
       key={tool.alias}
       className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
     >
-      <Status tone="attention">Allowed without approval</Status>
+      <StatusMark tone="attention">Allowed without approval</StatusMark>
       <span>
         {describe(tool.definition).name} · {tool.alias}
       </span>

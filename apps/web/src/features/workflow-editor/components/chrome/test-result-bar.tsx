@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describePreviewStatus } from '@/features/workflow-testing/public';
 import { shortStepError } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
@@ -58,9 +58,9 @@ function TestResult({
       aria-label="Last test"
       className="lens pointer-events-auto flex min-h-12 flex-wrap items-center gap-x-3.5 gap-y-0.5 rounded-xl py-1.5 pr-1.5 pl-3.5"
     >
-      <Status tone={status.tone} className="shrink-0">
+      <StatusMark tone={status.tone} className="shrink-0">
         {status.label}
-      </Status>
+      </StatusMark>
       {/* On phones the path takes its own line under the status. The path
           gives way (ellipsis) so its time and reason stay on the line. */}
       <p

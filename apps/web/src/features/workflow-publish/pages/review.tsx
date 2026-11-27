@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { formatDateTime } from '@/lib/format/time';
 import { publicationReviewOptions } from '../data/reviews/publication-review.queries';
 import type { ReviewScope } from '../data/reviews/publication-review.api';
@@ -30,7 +30,9 @@ export function PublicationReviewPage({
         <div className="flex min-w-0 max-w-4xl flex-col gap-6">
           <PageHeader>
             <PageHeaderTitle>Publication review</PageHeaderTitle>
-            <Status tone={reviewTone(request.status)}>{request.status}</Status>
+            <StatusMark tone={reviewTone(request.status)}>
+              {request.status}
+            </StatusMark>
           </PageHeader>
           <section className="flex flex-col gap-3 rounded-xl border border-border p-5">
             <h2 className="font-semibold [overflow-wrap:anywhere]">

@@ -1,7 +1,7 @@
 import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { statusToneText } from '@/components/patterns/status/status-tone';
 import { cn } from '@/lib/class-names';
 import { describeRunEvent } from '../../model/timeline/event-copy';
@@ -53,7 +53,8 @@ export function RunEventsView({
               <span className="pt-px text-right font-mono text-caption text-subtle-foreground">
                 {line.offset}
               </span>
-              <StatusGlyph
+              <StatusMark
+                display="mark"
                 tone={line.tone}
                 className={cn('mt-0.5', statusToneText[line.tone])}
               />

@@ -8,7 +8,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { Status, StatusGlyph } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { taskQueryOptions } from '../data/tasks.queries';
@@ -85,7 +85,7 @@ export function TaskDetailPage({
                   aria-hidden="true"
                   className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border border-border"
                 >
-                  <StatusGlyph tone={taskTone(task.status)} />
+                  <StatusMark display="mark" tone={taskTone(task.status)} />
                 </span>
                 <div className="min-w-0">
                   <h2 className="font-medium">
@@ -153,9 +153,9 @@ function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
     );
   return (
     <>
-      <Status tone={taskTone(task.status)}>
+      <StatusMark tone={taskTone(task.status)}>
         {taskStatusLabel(task.status)}
-      </Status>
+      </StatusMark>
       {task.status === 'pending' ? (
         <span className="inline-flex items-center gap-1.5">
           <TimedOutGlyph className="size-3.5 text-subtle-foreground" />

@@ -1,7 +1,7 @@
 import { isApiError } from '@/lib/api/error';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 export function NotificationSaveFeedback({
   error,
   cause,
@@ -58,7 +58,7 @@ export function NotificationSaveFeedback({
         </div>
       ) : null}
       {saved ? (
-        <Status tone="success">Notification choices saved</Status>
+        <StatusMark tone="success">Notification choices saved</StatusMark>
       ) : null}
     </>
   );

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   needsReconnecting,
   connectionPresentation,
@@ -150,14 +150,14 @@ function WorkflowsTile({
       ) : (
         <span className="flex flex-wrap gap-x-3 gap-y-1">
           {states.map((state) => (
-            <Status
+            <StatusMark
               key={state.label}
               tone={state.tone}
               className="font-mono text-caption font-normal"
             >
               {figure({ count: state.count, more: query.hasNextPage })}{' '}
               {state.label}
-            </Status>
+            </StatusMark>
           ))}
           {archived === 0 ? null : (
             <span className="font-mono text-caption">
@@ -265,7 +265,7 @@ function ConnectionsTile({
         <>
           {facts(providers)}
           {needsAttention === 0 ? null : (
-            <Status tone="attention" className="mt-1 text-xs font-normal">
+            <StatusMark tone="attention" className="mt-1 text-xs font-normal">
               {counted({
                 count: needsAttention,
                 one: 'needs',
@@ -273,7 +273,7 @@ function ConnectionsTile({
                 more: query.hasNextPage,
               })}{' '}
               reconnecting
-            </Status>
+            </StatusMark>
           )}
         </>
       )}

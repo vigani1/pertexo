@@ -1,7 +1,7 @@
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ChannelNames } from '@/features/failure-notifications/public';
 import {
   channelNameNote,
@@ -50,7 +50,7 @@ export function CurrentAlertDestination({
   if (destination === null)
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Status tone="neutral">Off</Status>
+        <StatusMark tone="off">Off</StatusMark>
         Failures of this workflow aren’t announced anywhere.
       </p>
     );
@@ -81,7 +81,7 @@ export function CurrentAlertDestination({
   return (
     <div className="flex flex-col gap-1">
       <p className="flex flex-wrap items-center gap-2 text-sm">
-        <Status tone="success">On</Status>
+        <StatusMark tone="success">On</StatusMark>
         <span className="text-muted-foreground">Failures go to</span>
         <span className="min-w-0 font-medium break-words">{label}</span>
       </p>

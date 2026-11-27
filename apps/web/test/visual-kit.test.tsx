@@ -14,12 +14,14 @@ import {
   FieldLabel,
 } from '../src/components/ui/field';
 import { LoadingOrb } from '../src/components/ui/loading-orb';
-import { Status } from '../src/components/patterns/status/status-mark';
+import { StatusMark } from '../src/components/patterns/status/status-mark';
 import { FieldControl } from '../src/components/ui/field';
 
 describe('Weft visual primitives', () => {
   it('labels a status with its word and keeps the glyph decorative', () => {
-    const { container } = render(<Status tone="failure">Failed</Status>);
+    const { container } = render(
+      <StatusMark tone="failure">Failed</StatusMark>,
+    );
     expect(screen.getByText('Failed')).toBeVisible();
     expect(
       container.querySelector('[data-slot="status-glyph"]'),

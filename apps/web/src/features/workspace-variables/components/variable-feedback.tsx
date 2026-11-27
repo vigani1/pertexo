@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { Status } from '@/components/patterns/status/status-mark';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import { isApiError } from '@/lib/api/error';
 type CommandFeedback = Readonly<{
   error: string | undefined;
@@ -51,7 +51,9 @@ export function VariableSaveFeedback({
   revision,
 }: Readonly<{ revision: number | undefined }>) {
   return revision === undefined ? null : (
-    <Status tone="success">Saved revision {revision} for new runs</Status>
+    <StatusMark tone="success">
+      Saved revision {revision} for new runs
+    </StatusMark>
   );
 }
 
