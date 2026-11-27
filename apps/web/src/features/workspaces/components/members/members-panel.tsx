@@ -13,8 +13,12 @@ import {
   FailedReadState,
   QueryView,
 } from '@/components/patterns/states/query-view';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyTitle,
+} from '@/components/patterns/states/empty';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import type { ApiClient } from '@/lib/api/client';
 import { MemberManagement } from './management';
 import { whoCan } from '../../model/workspace-roles';

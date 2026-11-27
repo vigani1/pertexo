@@ -9,8 +9,8 @@ import {
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
-import { SkeletonRows } from '@/components/ui/skeleton';
+} from '@/components/patterns/states/empty';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { tasksQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';

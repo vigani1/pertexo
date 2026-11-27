@@ -7,7 +7,7 @@ import {
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { ExampleCards } from '../templates/example-cards';
 
 /**

@@ -14,7 +14,11 @@ import type {
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyTitle,
+  EmptyDescription,
+} from '@/components/patterns/states/empty';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';

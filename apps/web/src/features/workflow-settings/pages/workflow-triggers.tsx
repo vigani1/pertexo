@@ -13,7 +13,7 @@ import {
   EmptyActions,
   EmptyDescription,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { PollingSection } from '../components/triggers/polling-section';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';

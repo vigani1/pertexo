@@ -12,8 +12,12 @@ import {
   FailedReadState,
   QueryView,
 } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import { SkeletonRows } from '@/components/patterns/states/loading';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyTitle,
+} from '@/components/patterns/states/empty';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { InvitationCommand } from '../../data/mutations/use-invitation-command';
 import {

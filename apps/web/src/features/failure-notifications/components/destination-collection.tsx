@@ -14,8 +14,8 @@ import {
   EmptyActions,
   EmptyDescription,
   EmptyTitle,
-} from '@/components/ui/empty';
-import { SkeletonRows } from '@/components/ui/skeleton';
+} from '@/components/patterns/states/empty';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import type { FailureNotificationDestinationList } from '../data/failure-notifications.api';
 import type { ChannelNames } from '../model/channel-names';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';

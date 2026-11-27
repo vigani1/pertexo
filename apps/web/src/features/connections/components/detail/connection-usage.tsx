@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { useStepDescriptions } from '@/features/catalog/public';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionUsageQueryOptions } from '../../data/connections.queries';

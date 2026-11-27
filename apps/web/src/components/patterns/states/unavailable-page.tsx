@@ -1,4 +1,8 @@
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyTitle,
+} from '@/components/patterns/states/empty';
 import { PageHeader, PageHeaderTitle } from '../page-header';
 
 /**

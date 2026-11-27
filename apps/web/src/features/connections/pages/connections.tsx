@@ -11,7 +11,7 @@ import {
   FailedReadState,
   QueryView,
 } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -33,7 +33,7 @@ import {
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';

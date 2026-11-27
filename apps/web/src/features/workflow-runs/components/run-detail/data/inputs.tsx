@@ -5,7 +5,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useId, type ReactNode } from 'react';
 import { Disclosure } from '@/components/ui/disclosure';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { nodeRunInputQueryOptions } from '../../../data/stored-values.queries';
 import { feedingRows } from '../../../model/step-inspection/inputs';
 import type { RunTimelineRow } from '../../../model/timeline/runs';

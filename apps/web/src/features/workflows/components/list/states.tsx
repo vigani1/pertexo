@@ -6,7 +6,7 @@ import {
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
+} from '@/components/patterns/states/empty';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { readFailureReason } from '@/lib/api/error-copy';
 

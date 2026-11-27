@@ -1,6 +1,6 @@
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { ScheduleRunTimes } from '@/features/catalog/catalog-views.public';
 import { useSchedulePreview } from '@/features/workflow-testing/public';
 import type { ScheduleRecurrence } from '../../../model/inspector/schedule-draft';

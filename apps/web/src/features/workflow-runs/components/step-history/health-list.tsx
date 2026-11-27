@@ -5,7 +5,7 @@ import type {
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { SkeletonRows } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/patterns/states/loading';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';

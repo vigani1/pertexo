@@ -5,7 +5,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Skeleton, SkeletonLines } from '@/components/ui/skeleton';
+import { SkeletonLines } from '@/components/patterns/states/loading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { describeReadError, isNotFound } from '@/lib/api/error-copy';
 
 /** The loaded header's shape, so the connection lands without a jump. */
