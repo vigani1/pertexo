@@ -845,8 +845,8 @@
     }
   }
 
-  /* Leave a clear gap above the editor's panel bar or the workspace's
-     phone navigation. Only the bar mounted on this page reserves space. */
+  /* Leave a clear gap above the editor's panel bar and the workspace's
+     phone navigation. Only the bars mounted on this page reserve space. */
   @media (width < 64rem) {
     body:has(nav[aria-label='Editor panels']) [data-slot='toast-viewport'] {
       --toast-bottom: calc(4.5rem + env(safe-area-inset-bottom));
@@ -856,6 +856,13 @@
   @media (width < 48rem) {
     body:has(nav[aria-label='Workspace']) [data-slot='toast-viewport'] {
       --toast-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
+    /* The editor's panel bar stands on top of the phone navigation, so
+       toasts clear both. */
+    body:has(nav[aria-label='Workspace']):has(nav[aria-label='Editor panels'])
+      [data-slot='toast-viewport'] {
+      --toast-bottom: calc(5.5rem + 4.5rem + env(safe-area-inset-bottom));
     }
 
     body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {

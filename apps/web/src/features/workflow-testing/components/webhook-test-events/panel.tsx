@@ -38,11 +38,15 @@ export function WebhookTestEventPanel({
   });
   const { listener, query } = test;
   const heading = useRef<HTMLHeadingElement>(null);
+  const progress = useRef<HTMLDivElement>(null);
   const listenerId = listener?.id;
   useEffect(() => {
     if (listenerId !== undefined) {
       heading.current?.focus({ preventScroll: true });
       heading.current?.scrollIntoView({ block: 'start' });
+      // A short step panel (a phone, under the editor header) can't show the
+      // whole section: the test URL and its copy button come first.
+      progress.current?.scrollIntoView({ block: 'nearest' });
     }
   }, [listenerId]);
   const { now, expiresAt } = useListenerClock({
@@ -86,18 +90,20 @@ export function WebhookTestEventPanel({
       </div>
       {listener === undefined ? null : (
         <>
-          <StatusMark role="status" tone={status.tone}>
-            {status.label}
-          </StatusMark>
-          {state === 'waiting' ? (
-            <ListenerCredentials
-              listener={listener}
-              remainingSeconds={Math.max(
-                0,
-                Math.ceil(((expiresAt ?? 0) - now) / 1000),
-              )}
-            />
-          ) : null}
+          <div ref={progress} className="flex flex-col gap-3">
+            <StatusMark role="status" tone={status.tone}>
+              {status.label}
+            </StatusMark>
+            {state === 'waiting' ? (
+              <ListenerCredentials
+                listener={listener}
+                remainingSeconds={Math.max(
+                  0,
+                  Math.ceil(((expiresAt ?? 0) - now) / 1000),
+                )}
+              />
+            ) : null}
+          </div>
           {output !== undefined && output !== null ? (
             <CapturedEvent
               key={listener.id}
