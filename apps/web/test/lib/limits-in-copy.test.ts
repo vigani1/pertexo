@@ -55,9 +55,13 @@ const NOT_LIMITS: readonly string[] = [
   'features/usage/pages/workspace-usage.tsx: 6 hours',
   'features/usage/pages/workspace-usage.tsx: 7 days',
   'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
-  // The same window choices, said in a sentence, and the deadline presets.
+  // The same window choices, said in a sentence or as Home's heading, and
+  // the deadline presets.
   'components/ui/deadline-field.tsx: In 1 day',
   'components/ui/deadline-field.tsx: In 1 hour',
+  'features/overview/components/home-loom.tsx: The last 24 hours',
+  'features/overview/components/home-loom.tsx: The last 6 hours',
+  'features/overview/components/home-loom.tsx: The last 7 days',
   'features/overview/components/home-loom.tsx: the last 24 hours',
   'features/overview/components/home-loom.tsx: the last 6 hours',
   'features/overview/components/home-loom.tsx: the last 7 days',
