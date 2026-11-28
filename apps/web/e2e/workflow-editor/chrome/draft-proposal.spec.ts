@@ -16,6 +16,7 @@ import {
   workspaceId,
 } from '../support';
 import { mappingGraph } from '../graph';
+import { openAssistant } from '../actions';
 
 const initial = mappingGraph();
 const target = {
@@ -206,7 +207,7 @@ test('shows field changes within the width of a phone', async ({
   }
 });
 
-test('focuses the assistant request when it opens from the phone toolbar', async ({
+test('focuses the assistant request when it opens from the phone workflow menu', async ({
   page,
   context,
 }) => {
@@ -218,9 +219,7 @@ test('focuses the assistant request when it opens from the phone toolbar', async
     (route) => route.fulfill({ json: assistantDestination }),
   );
   await page.goto(editorUrl);
-  await page
-    .getByRole('button', { name: 'Ask the assistant', exact: true })
-    .click();
+  await openAssistant(page);
   await expect(page.getByLabel('What should the workflow do?')).toBeFocused();
 });
 
@@ -242,12 +241,7 @@ async function requestProposal(page: Page, result: DraftProposalResult) {
       }),
   );
   await page.goto(editorUrl);
-  await page
-    .getByRole('button', {
-      name: 'Ask the assistant',
-      exact: true,
-    })
-    .click();
+  await openAssistant(page);
   const request = page.getByRole('complementary', { name: 'Assistant' });
   await request
     .getByLabel('What should the workflow do?')
