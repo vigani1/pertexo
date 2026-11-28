@@ -51,11 +51,13 @@ function ActionLink({
           params={{ workspaceId, runId: action.runId }}
           className={className}
         >
-          {action.retryStep !== undefined &&
-          workspace.status === 'active' &&
-          workspace.capabilities.includes('run:replay')
-            ? `Review retry from ${action.retryStep}`
-            : 'Open run'}
+          <span className="min-w-0 wrap-anywhere">
+            {action.retryStep !== undefined &&
+            workspace.status === 'active' &&
+            workspace.capabilities.includes('run:replay')
+              ? `Review retry from ${action.retryStep}`
+              : 'Open run'}
+          </span>
         </Link>
       );
     case 'triggers':

@@ -51,7 +51,7 @@ export function TaskDetailPage({
     >
       {({ task }) => {
         return (
-          <article className="flex max-w-3xl min-w-0 flex-col gap-6">
+          <article className="flex max-w-3xl min-w-0 flex-col gap-4 md:gap-6">
             <PageHeader>
               <div className="flex min-w-0 flex-col gap-2">
                 <p className="text-sm text-muted-foreground">
@@ -87,7 +87,7 @@ export function TaskDetailPage({
               className="flex min-w-0 flex-col gap-4"
             >
               {task.instructions === '' ? null : (
-                <p className="text-lg whitespace-pre-wrap break-words">
+                <p className="text-base whitespace-pre-wrap md:text-lg break-words">
                   {task.instructions}
                 </p>
               )}
