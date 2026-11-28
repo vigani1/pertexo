@@ -75,7 +75,6 @@ test('confirms method and session removal before sending security commands', asy
   );
 
   await page.goto('/account/security');
-  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
   await page.getByRole('button', { name: 'Remove Google' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Remove sign-in method?' }),
@@ -93,7 +92,6 @@ test('confirms method and session removal before sending security commands', asy
     page.getByRole('list', { name: 'Sign-in methods' }).getByText('Google'),
   ).toHaveCount(0);
 
-  await page.getByRole('tab', { name: 'Sessions' }).click();
   await page
     .getByRole('button', { name: 'Sign out all other devices' })
     .click();
@@ -171,7 +169,6 @@ test('requires an existing-method challenge before starting provider linking', a
   );
 
   await page.goto('/account/security');
-  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
   await page.getByRole('button', { name: 'Add a sign-in method' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add a sign-in method' });
   await dialog.getByRole('button', { name: 'Continue to Google' }).click();

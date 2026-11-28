@@ -8,7 +8,7 @@ import { useRequestAccountEmailChange } from '../../data/account-security/accoun
 import { newEmailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { AccountCommandFailure } from './section';
-import { SettingRow } from '@/components/patterns/settings/row';
+import { SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 
 /** Change email: confirmed at the old address, then verified at the new. */
@@ -38,14 +38,15 @@ export function AccountEmailSection({
   }
 
   return (
-    <SettingRow
-      layout="section"
-      title="Change email"
-      description="We confirm it at your current address, then at the new one. Finishing signs you out everywhere."
-    >
+    <>
+      <SheetTitle>Change email</SheetTitle>
+      <SheetDescription>
+        We confirm it at your current address, then at the new one. Finishing
+        signs you out everywhere.
+      </SheetDescription>
       <form
         noValidate
-        className="flex max-w-md flex-col gap-4"
+        className="mt-5 flex max-w-md flex-col gap-4"
         onSubmit={submit}
       >
         <LabelledField
@@ -89,6 +90,6 @@ export function AccountEmailSection({
           Change email
         </ProgressButton>
       </form>
-    </SettingRow>
+    </>
   );
 }

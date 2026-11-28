@@ -1,3 +1,4 @@
+import { Row, RowList } from '@/components/patterns/lists/row';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { useDeferredValue, useId, useState } from 'react';
@@ -122,7 +123,7 @@ export function DirectoryPeople({
         }
       >
         {() => (
-          <ul className="divide-y divide-border" aria-label="Directory people">
+          <RowList aria-label="Directory people">
             {rows.map((person) => {
               const canUnbindPerson =
                 editable &&
@@ -130,9 +131,11 @@ export function DirectoryPeople({
                 !person.deleted &&
                 person.boundUserId !== null;
               return (
-                <li
+                <Row
+                  frame="bare"
+                  lift="none"
                   key={person.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
                 >
                   <div className="min-w-0">
                     <p className="break-words font-medium">{person.userName}</p>
@@ -157,10 +160,10 @@ export function DirectoryPeople({
                       Review membership for {person.userName}
                     </Button>
                   ) : null}
-                </li>
+                </Row>
               );
             })}
-          </ul>
+          </RowList>
         )}
       </QueryView>
       <LoadMore

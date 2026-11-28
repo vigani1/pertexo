@@ -39,7 +39,7 @@ export function TriggerRow({
       <article
         id={id}
         aria-label={label}
-        className="grid min-w-0 grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 sm:grid-cols-[2.25rem_minmax(0,1fr)_10rem_3rem]"
+        className="grid min-w-0 grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 sm:grid-cols-[2.25rem_minmax(0,1fr)_minmax(5rem,9rem)_auto]"
       >
         <span className="pt-0.5">{icon}</span>
         <div className="flex min-w-0 flex-col gap-1">

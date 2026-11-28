@@ -45,7 +45,6 @@ function WorkflowRule({
     scope.apiClient,
     scope.userId,
     scope.workspace.id,
-    scope.workflowId,
   );
   const notifications = useNotifications();
   async function save() {
@@ -57,6 +56,7 @@ function WorkflowRule({
       return;
     const saved = await command.send({
       kind: 'workflow',
+      workflowId: scope.workflowId,
       body: {
         enabled: current.enabled,
         thresholdOverride:
@@ -130,6 +130,7 @@ function WorkflowRule({
       <div>
         <ProgressButton
           type="submit"
+          variant="outline"
           pending={command.pending}
           pendingLabel="Saving…"
           disabled={false}

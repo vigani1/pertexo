@@ -1,5 +1,5 @@
 import { formAccessQueryOptions } from '../data/forms.queries';
-import { encode } from 'uqr';
+import { QrCode } from '@/components/ui/qr-code';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { isApiError } from '@/lib/api/error';
 import { useState } from 'react';
@@ -180,14 +180,6 @@ function PublicFormLink({
   workflowId,
   oneTime,
 }: Readonly<{ link: string; workflowId: string; oneTime: boolean }>) {
-  const { data, size } = encode(link);
-  const path = data
-    .flatMap((row, y) =>
-      row.flatMap((dark, x) =>
-        dark ? [`M${String(x + 4)} ${String(y + 4)}h1v1h-1z`] : [],
-      ),
-    )
-    .join('');
   return (
     <>
       <LabelledField
@@ -206,16 +198,7 @@ function PublicFormLink({
           </div>
         )}
       </LabelledField>
-      <svg
-        role="img"
-        aria-label="Public form QR code"
-        viewBox={`0 0 ${String(size + 8)} ${String(size + 8)}`}
-        className="size-48 max-w-full"
-        shapeRendering="crispEdges"
-      >
-        <rect width="100%" height="100%" fill="white" />
-        <path d={path} fill="black" />
-      </svg>
+      <QrCode value={link} label="Public form QR code" />
     </>
   );
 }

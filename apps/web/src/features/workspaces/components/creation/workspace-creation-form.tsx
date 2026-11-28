@@ -213,7 +213,7 @@ export function WorkspaceCreationForm({
                 spellCheck={false}
                 maxLength={64}
                 // Set like its preview, so the handle reads the same.
-                className="font-mono"
+                typography="mono"
                 disabled={locked}
                 value={slug}
                 onChange={(event) => {

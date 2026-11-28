@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { DownloadIcon } from 'lucide-react';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
 import {
@@ -8,12 +8,17 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { RecentLog } from '@/components/patterns/lists/recent-log';
+import { Disclosure } from '@/components/ui/disclosure';
+import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { GovernanceSettings } from '../components/governance-settings';
 import { AuditFilters } from '../components/audit-filters';
 import { AuditEntry } from '../components/audit-entry';
-import { auditQueryOptions } from '../data/audit.queries';
+import {
+  auditQueryOptions,
+  governanceQueryOptions,
+} from '../data/audit.queries';
 import type { GovernanceScope } from '../data/audit.api';
 import { useAuditExport } from '../data/audit-export';
 import { auditActionWords } from '../model/audit-ledger';
@@ -34,6 +39,10 @@ export function AuditPage({
   const allowed = workspace.capabilities.includes('audit:read');
   const events = useInfiniteQuery({
     ...auditQueryOptions(scope, filters),
+    enabled: allowed,
+  });
+  const settings = useQuery({
+    ...governanceQueryOptions(scope),
     enabled: allowed,
   });
   const auditExport = useAuditExport(scope);
@@ -62,6 +71,12 @@ export function AuditPage({
             <span className="wrap-anywhere">
               Who changed what in {workspace.name}
             </span>
+            {settings.data === undefined ? null : (
+              <span>
+                Events are kept for{' '}
+                {formatCount(settings.data.auditRetentionDays, 'day')}.
+              </span>
+            )}
           </PageHeaderMeta>
         </div>
         <PageHeaderActions>
@@ -118,9 +133,9 @@ export function AuditPage({
       {/* Below the log and only once it has loaded, so the settings never
           appear first and then get pushed down by arriving events. */}
       {events.isPending ? null : (
-        <div className="flex flex-col">
+        <Disclosure summary="Governance settings">
           <GovernanceSettings scope={scope} workspace={workspace} />
-        </div>
+        </Disclosure>
       )}
     </div>
   );

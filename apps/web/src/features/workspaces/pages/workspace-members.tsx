@@ -17,7 +17,6 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { SearchInput } from '@/components/ui/input';
 import { Disclosure } from '@/components/ui/disclosure';
-import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';
 import { InvitePeopleSheet } from '../components/invitations/invite-people-sheet';
@@ -229,22 +228,30 @@ export function WorkspaceMembersPage({
           onSearchChange({ ...search, invite: true });
         }}
       />
-      {canManage && pendingInvitations > 0 ? (
-        <p className="-mt-4 flex items-center gap-2 text-meta">
-          <StatusMark tone="queued">
-            {pendingInvitations} {pluralWord(pendingInvitations, 'invitation')}{' '}
-            pending
-          </StatusMark>
-          <span aria-hidden="true" className="text-subtle-foreground">
-            ·
-          </span>
-          <a
-            href="#invitations"
-            className="text-muted-foreground hover:text-foreground focus-ring"
-          >
-            Review
-          </a>
-        </p>
+      {canManage ? (
+        <Disclosure
+          defaultOpen={search.tab === 'invitations'}
+          summary={
+            pendingInvitations === 0 ? (
+              'Invitations'
+            ) : (
+              <span className="flex flex-wrap items-center gap-2">
+                <StatusMark tone="queued">
+                  {pendingInvitations}{' '}
+                  {pluralWord(pendingInvitations, 'invitation')} pending
+                </StatusMark>
+                <span>Review</span>
+              </span>
+            )
+          }
+          appearance={{ size: 'xs' }}
+        >
+          <InvitationsPanel
+            query={invitations}
+            invitations={invitationItems}
+            command={command}
+          />
+        </Disclosure>
       ) : null}
       <SearchInput
         className="w-full sm:w-85"
@@ -264,22 +271,6 @@ export function WorkspaceMembersPage({
         members={memberItems}
         search={q}
       />
-      {canManage ? (
-        <section
-          id="invitations"
-          aria-labelledby="invitations-heading"
-          className="flex flex-col gap-2"
-        >
-          <RuleHeading id="invitations-heading" count={pendingInvitations}>
-            Invitations
-          </RuleHeading>
-          <InvitationsPanel
-            query={invitations}
-            invitations={invitationItems}
-            command={command}
-          />
-        </section>
-      ) : null}
       <Disclosure summary="Compare roles">
         <RolesMatrix yourRole={workspace.role} />
       </Disclosure>

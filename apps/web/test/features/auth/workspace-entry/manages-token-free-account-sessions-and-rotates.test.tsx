@@ -114,10 +114,9 @@ describe('authentication and workspace entry', () => {
 
     await renderLoadedApp('/account/security', { strict: true });
     expect(
-      await screen.findByRole('heading', { name: 'Account & security' }),
+      await screen.findByRole('heading', { name: user.displayName }),
     ).toBeVisible();
     const actor = userEvent.setup();
-    await actor.click(screen.getByRole('tab', { name: 'Sessions' }));
     expect(await screen.findByText('Firefox on Windows')).toBeVisible();
     expect(screen.getByText('Chrome on macOS')).toBeVisible();
     expect(screen.getByText('This device')).toBeVisible();
@@ -161,7 +160,6 @@ describe('authentication and workspace entry', () => {
       await screen.findByText('Signed out of Firefox on Windows'),
     ).toBeVisible();
 
-    await actor.click(screen.getByRole('tab', { name: 'Sign-in & security' }));
     await actor.type(
       await screen.findByLabelText('Current password'),
       'current secure password',
@@ -181,13 +179,19 @@ describe('authentication and workspace entry', () => {
     expect(await screen.findByText('Password changed')).toBeVisible();
     expect(screen.getByLabelText('Current password')).toHaveValue('');
 
-    await actor.click(screen.getByRole('tab', { name: 'Profile' }));
     expect(await screen.findByText('Verified')).toBeVisible();
+    expect(screen.queryByLabelText('New email')).not.toBeInTheDocument();
+    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    const emailDrawer = within(
+      screen.getByRole('dialog', { name: 'Change email' }),
+    );
     await actor.type(
-      screen.getByLabelText('New email'),
+      emailDrawer.getByLabelText('New email'),
       'new.operator@example.test',
     );
-    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    await actor.click(
+      emailDrawer.getByRole('button', { name: 'Change email' }),
+    );
     await waitFor(() => {
       expect(emailChangeRequested).toBe(true);
     });
@@ -219,14 +223,26 @@ describe('authentication and workspace entry', () => {
     );
     await renderLoadedApp('/account/security');
     const actor = userEvent.setup();
-    const email = await screen.findByLabelText('New email');
+    const changeEmail = await screen.findByRole('button', {
+      name: 'Change email',
+    });
+    await waitFor(() => expect(changeEmail).toBeEnabled());
+    await actor.click(changeEmail);
+    const emailDrawer = within(
+      screen.getByRole('dialog', { name: 'Change email' }),
+    );
+    const email = emailDrawer.getByLabelText('New email');
     await actor.type(email, user.email);
-    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    await actor.click(
+      emailDrawer.getByRole('button', { name: 'Change email' }),
+    );
     expect(email).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByText(/That’s your current email/u)).toBeVisible();
     await actor.clear(email);
     await actor.type(email, 'new.operator@example.test');
-    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    await actor.click(
+      emailDrawer.getByRole('button', { name: 'Change email' }),
+    );
     expect(
       await screen.findByText(/For your security, sign in again/u),
     ).toBeVisible();

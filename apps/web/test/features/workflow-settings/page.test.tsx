@@ -49,7 +49,9 @@ describe('workflow settings tab', () => {
     const { queryClient } = await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     const identity = await screen.findByRole('region', { name: 'Identity' });
-    expect(await within(identity).findByText('Daily control')).toBeVisible();
+    expect(
+      await within(identity).findByRole('link', { name: 'Build' }),
+    ).toBeVisible();
     expect(
       within(identity).getByText(`${workflowId.slice(0, 8)}…`),
     ).toBeVisible();
@@ -209,7 +211,9 @@ describe('workflow settings tab', () => {
         await screen.findAllByText(/Couldn’t refresh. Showing results from/u)
       )[0],
     ).toBeVisible();
-    expect(within(region('Identity')).getByText('Daily control')).toBeVisible();
+    expect(
+      within(region('Identity')).getByRole('link', { name: 'Build' }),
+    ).toBeVisible();
     expect(
       screen.getByRole('heading', { name: 'Archive this workflow?' }),
     ).toBeVisible();

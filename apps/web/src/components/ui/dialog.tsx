@@ -72,10 +72,7 @@ export function DialogTitle({
 }: ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn(
-        'font-display text-xl leading-tight wrap-anywhere [--display-optical-size:24] [--display-width:84%]',
-        className,
-      )}
+      className={cn('overlay-title', className)}
       {...props}
     />
   );

@@ -1,3 +1,4 @@
+import { Row, RowList } from '@/components/patterns/lists/row';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
@@ -51,11 +52,13 @@ export function DirectoryCredentials({
         </div>
         <CopyButton value={endpoint} label="Copy SCIM base URL" />
       </div>
-      <ul className="divide-y divide-border">
+      <RowList>
         {settings.credentials.map((credential) => (
-          <li
+          <Row
+            frame="bare"
+            lift="none"
             key={credential.id}
-            className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+            className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
           >
             <div className="min-w-0">
               <p className="break-words font-medium">{credential.name}</p>
@@ -76,9 +79,9 @@ export function DirectoryCredentials({
                 Revoke {credential.name}
               </Button>
             ) : null}
-          </li>
+          </Row>
         ))}
-      </ul>
+      </RowList>
       <p className="text-xs text-muted-foreground">
         {active} of {DIRECTORY_LIMITS.credentials} active credentials. Revoke an
         unused credential before creating another at the limit.

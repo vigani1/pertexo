@@ -89,6 +89,21 @@ export function WebhookCard({
           )}
         </>
       }
+      control={
+        editable && trigger.endpointReady ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={blocked}
+            onClick={() => {
+              onCommand('authentication');
+            }}
+          >
+            Edit
+          </Button>
+        ) : null
+      }
       details={
         <>
           {unresolved === undefined ? null : (

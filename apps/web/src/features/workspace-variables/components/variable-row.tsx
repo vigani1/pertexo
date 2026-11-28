@@ -1,3 +1,4 @@
+import { NativeSelect } from '@/components/ui/native-select';
 import { EllipsisIcon } from 'lucide-react';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Button } from '@/components/ui/button';
@@ -13,9 +14,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { workspaceVariableNameSchema } from '@pertexo/workflow-model';
 import { valuePreview, VARIABLE_TYPE_LABELS } from '../model/variable-draft';
 import type { VariableRow as Row } from '../model/variable-draft';
-const selectClass =
-  'recessed-control h-9 w-full rounded-md border px-3 text-base outline-offset-2 md:text-sm focus-visible:outline-2 focus-visible:outline-ring';
-
 type RowActions = Readonly<{
   onChange: (row: Row) => void;
   onOpen: () => void;
@@ -147,11 +145,10 @@ function VariableForm({
         </LabelledField>
         <LabelledField id={`${prefix}-type`} label="Type">
           {(control) => (
-            <select
+            <NativeSelect
               {...control}
               id={`${prefix}-type`}
               name={`${prefix}.type`}
-              className={selectClass}
               value={row.type}
               onChange={(event) => {
                 const type = event.currentTarget.value;
@@ -166,7 +163,7 @@ function VariableForm({
               <option value="text">Text</option>
               <option value="number">Number</option>
               <option value="boolean">True / false</option>
-            </select>
+            </NativeSelect>
           )}
         </LabelledField>
       </div>
@@ -174,10 +171,9 @@ function VariableForm({
         {(control) => {
           if (row.type === 'boolean') {
             return (
-              <select
+              <NativeSelect
                 {...control}
                 name={`${prefix}.value`}
-                className={selectClass}
                 value={row.value}
                 onChange={(event) => {
                   onChange({ ...row, value: event.currentTarget.value });
@@ -185,7 +181,7 @@ function VariableForm({
               >
                 <option value="true">True</option>
                 <option value="false">False</option>
-              </select>
+              </NativeSelect>
             );
           }
           if (row.type === 'text') {

@@ -93,3 +93,24 @@ function ProgressButtonLabel({
   }
   return children;
 }
+
+export function ProgressIconButton({
+  icon,
+  pending,
+  disabled,
+  label,
+  ...props
+}: Omit<ComponentProps<typeof Button>, 'children' | 'aria-label' | 'title'> &
+  Readonly<{ icon: ReactNode; label: string; pending: boolean }>) {
+  return (
+    <Button
+      aria-label={label}
+      title={label}
+      disabled={disabled === true || pending}
+      data-pending={pending ? '' : undefined}
+      {...props}
+    >
+      {pending ? <LoadingOrb /> : icon}
+    </Button>
+  );
+}

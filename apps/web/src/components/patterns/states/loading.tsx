@@ -51,10 +51,8 @@ export function SkeletonRows({
           className="grid grid-cols-[2rem_minmax(0,12rem)_minmax(0,1fr)] items-center gap-4"
         >
           <Skeleton
-            className={cn(
-              'size-8',
-              mark === 'avatar' ? 'rounded-full' : 'rounded-md',
-            )}
+            shape={mark === 'avatar' ? 'round' : 'control'}
+            className="size-8"
           />
           <Skeleton className="h-2.5" />
           <SkeletonThread

@@ -265,7 +265,8 @@ function CellInput({
           onChange={(event) => {
             onChange(event.currentTarget.value);
           }}
-          className={column.type === 'json' ? 'font-mono' : 'min-h-9'}
+          typography={column.type === 'json' ? 'mono' : undefined}
+          className={column.type === 'json' ? undefined : 'min-h-9'}
           rows={Math.min(
             8,
             Math.max(column.type === 'json' ? 4 : 1, text.split('\n').length),

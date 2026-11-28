@@ -2,7 +2,7 @@ import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableQuery } from '@pertexo/node-sdk';
 import { PlusIcon, RefreshCwIcon, UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { ProgressIconButton } from '@/components/ui/progress-button';
 import { ExportTableRows } from '../export-table';
 import type { TableScope } from '../../data/tables.api';
 import { DataTableFilters, DataTableSort } from '../filters';
@@ -31,42 +31,41 @@ export function RowsToolbar({
       <DataTableFilters table={table} query={query} onChange={onChange} />
       <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
         <DataTableSort table={table} query={query} onChange={onChange} />
-        <Button
+        <ProgressIconButton
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Refresh rows"
-          title="Refresh rows"
+          label="Refresh rows"
+          pending={refreshing}
           onClick={onRefresh}
-        >
-          {refreshing ? <LoadingOrb /> : <RefreshCwIcon aria-hidden="true" />}
-        </Button>
+          icon={<RefreshCwIcon aria-hidden="true" />}
+        />
+        {editable ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onCreate.importCsv();
+            }}
+          >
+            <UploadIcon aria-hidden="true" data-icon="inline-start" />
+            <span className="max-sm:sr-only">Import CSV</span>
+          </Button>
+        ) : null}
         <ExportTableRows scope={scope} table={table} query={query} />
         {editable ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onCreate.importCsv();
-              }}
-            >
-              <UploadIcon aria-hidden="true" data-icon="inline-start" />
-              <span className="max-sm:sr-only">Import CSV</span>
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                onCreate.addRow();
-              }}
-            >
-              <PlusIcon aria-hidden="true" data-icon="inline-start" />
-              Add row
-            </Button>
-          </>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onCreate.addRow();
+            }}
+          >
+            <PlusIcon aria-hidden="true" data-icon="inline-start" />
+            Add row
+          </Button>
         ) : null}
       </div>
     </div>

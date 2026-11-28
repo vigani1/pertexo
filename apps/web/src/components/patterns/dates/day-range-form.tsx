@@ -22,11 +22,13 @@ function dayWords(day: LocalDate): string {
 export function DayRangeForm({
   initial,
   markedDays,
+  bounds,
   onApply,
 }: Readonly<{
   /** Days already chosen; empty text where an end is still open. */
   initial?: Readonly<{ from: string; to: string }> | undefined;
   markedDays?: ReadonlySet<LocalDate> | undefined;
+  bounds?: Readonly<{ from: LocalDate; to: LocalDate }> | undefined;
   onApply: (from: LocalDate, to: LocalDate) => string | undefined;
 }>) {
   const [from, setFrom] = useState(initial?.from ?? '');
@@ -43,22 +45,24 @@ export function DayRangeForm({
   function pick(day: LocalDate) {
     const [first, last] =
       extending && from !== '' ? ordered(from, day) : [day, day];
+    const problem = onApply(first, last);
+    setError(problem);
+    if (problem !== undefined) return;
     setFrom(first);
     setTo(last);
     setExtending(!extending);
-    setError(onApply(first, last));
   }
 
   return (
     <div className="min-w-0">
-      <p className="text-xs font-medium text-muted-foreground">Custom days</p>
-      <p aria-live="polite" className="mt-1 text-sm">
+      <p aria-live="polite" className="text-meta text-muted-foreground">
         {rangeCaption(from, to)}
       </p>
       <div className="mt-2">
         <Calendar
           value={undefined}
-          max={today}
+          {...(bounds === undefined ? {} : { min: bounds.from })}
+          max={bounds?.to ?? today}
           markedDays={markedDays}
           range={{
             ...(from === '' ? {} : { from }),
@@ -68,8 +72,8 @@ export function DayRangeForm({
         />
       </div>
       <p className="mt-2 text-xs text-subtle-foreground">
-        Your time zone is {localTimeZone()}. Pick another day to extend the
-        range.
+        Dates shown in {bounds === undefined ? localTimeZone() : 'UTC'}.{' '}
+        {extending ? ' Pick another day to extend the range.' : null}
       </p>
       {error === undefined ? null : (
         <FieldError className="mt-2">{error}</FieldError>

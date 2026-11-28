@@ -1,3 +1,10 @@
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
+import { Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button-variants';
 import type { ComponentProps } from 'react';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -116,6 +123,11 @@ function TriggersSession({
       <TriggersHeader
         versions={versions.data?.items}
         publishedVersionId={summary.data?.publishedVersionId}
+        {...(workspace.capabilities.includes('run:start') &&
+        workspace.status === 'active' &&
+        shownData(summary)?.lifecycleStatus !== 'archived'
+          ? { runFromBuild: { workspaceId: workspace.id, workflowId } }
+          : {})}
       />
       <PublicationDiscovery discovery={publication} />
       <TriggersSection
@@ -129,6 +141,10 @@ function TriggersSession({
           publishedVersionId: summary.data?.publishedVersionId,
           form,
           formsPaused,
+          ...(workspace.status === 'active' &&
+          workspace.capabilities.includes('run:start')
+            ? { formLink: { workspaceId: workspace.id, workflowId } }
+            : {}),
           onFailure,
         }}
       />
@@ -150,27 +166,40 @@ function TriggersSession({
 function TriggersHeader({
   versions,
   publishedVersionId,
+  runFromBuild,
 }: Readonly<{
   versions:
     readonly Readonly<{ id: string; versionNumber: number }>[] | undefined;
   publishedVersionId: string | null | undefined;
+  runFromBuild?: Readonly<{ workspaceId: string; workflowId: string }>;
 }>) {
   const published = versions?.find(
     (version) => version.id === publishedVersionId,
   );
   return (
-    <header className="flex flex-col gap-2">
-      <h1 className="font-heading text-section font-semibold">
-        Ways a run can start
-      </h1>
-      <p className="text-meta text-subtle-foreground">
-        {published === undefined
-          ? 'From the published version.'
-          : `From the published version, v${String(published.versionNumber)}.`}{' '}
-        Turning a schedule off stops new runs from it right away; the draft is
-        not touched.
-      </p>
-    </header>
+    <PageHeader>
+      <div className="flex flex-col gap-2">
+        <PageHeaderTitle size="section">Ways a run can start</PageHeaderTitle>
+        <p className="text-meta text-subtle-foreground">
+          {published === undefined
+            ? 'From the published version.'
+            : `From the published version, v${String(published.versionNumber)}.`}{' '}
+          Turning a schedule off stops new runs from it right away; the draft is
+          not touched.
+        </p>
+      </div>
+      {runFromBuild === undefined || publishedVersionId == null ? null : (
+        <PageHeaderActions>
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId"
+            params={runFromBuild}
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            Run in Build
+          </Link>
+        </PageHeaderActions>
+      )}
+    </PageHeader>
   );
 }
 

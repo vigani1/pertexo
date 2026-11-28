@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps } from 'react';
 import {
   Select,
   SelectContent,
@@ -7,7 +7,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  ROLE_SUMMARIES,
   type ManagedRole,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
@@ -26,17 +25,14 @@ const ROLE_ITEMS = Object.entries(ROLE_NAMES).map(([role, label]) => ({
   label,
 }));
 
-/** The shared picker: its value, trigger and the options each variant draws. */
-function RoleSelectFrame({
+/** Picks a workspace role by name, e.g. inline on a member row. */
+export function RoleSelect({
   value,
   roles,
   disabled,
   onChange,
   triggerProps,
-  contentClassName,
-  children,
-}: RoleSelectProps &
-  Readonly<{ contentClassName?: string; children: ReactNode }>) {
+}: RoleSelectProps) {
   return (
     <Select
       value={value}
@@ -50,41 +46,13 @@ function RoleSelectFrame({
       <SelectTrigger {...triggerProps}>
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className={contentClassName}>{children}</SelectContent>
+      <SelectContent>
+        {roles.map((role) => (
+          <SelectItem key={role} value={role}>
+            {ROLE_NAMES[role]}
+          </SelectItem>
+        ))}
+      </SelectContent>
     </Select>
-  );
-}
-
-/** Picks a workspace role by name, e.g. inline on a member row. */
-export function RoleSelect(props: RoleSelectProps) {
-  return (
-    <RoleSelectFrame {...props}>
-      {props.roles.map((role) => (
-        <SelectItem key={role} value={role}>
-          {ROLE_NAMES[role]}
-        </SelectItem>
-      ))}
-    </RoleSelectFrame>
-  );
-}
-
-/**
- * Picks a role with each option's one-line description, for people deciding
- * what to give someone, e.g. when inviting.
- */
-export function RoleSelectWithSummaries(props: RoleSelectProps) {
-  return (
-    <RoleSelectFrame {...props} contentClassName="min-w-72">
-      {props.roles.map((role) => (
-        <SelectItem key={role} value={role}>
-          <span className="flex flex-col">
-            <span>{ROLE_NAMES[role]}</span>
-            <span className="text-xs text-muted-foreground">
-              {ROLE_SUMMARIES[role]}
-            </span>
-          </span>
-        </SelectItem>
-      ))}
-    </RoleSelectFrame>
   );
 }

@@ -1,4 +1,3 @@
-import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { UnavailableDataTable } from '../components/unavailable';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { shownData } from '@/lib/api/error-copy';
@@ -170,10 +169,6 @@ function TableDetail({
             {table.keyColumn === null
               ? 'no unique key'
               : `unique by ${table.keyColumn}`}
-          </p>
-          <p className="mt-1 text-meta text-subtle-foreground">
-            {table.keyColumn === null ? 'Rows can repeat. ' : ''}Each row fits{' '}
-            {formatByteSize(DATA_TABLE_LIMITS.rowBytes)}.
           </p>
         </div>
         {actions}

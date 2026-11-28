@@ -14,12 +14,11 @@ export function useAutoPauseCommand(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
-  workflowId: string,
 ) {
   const cache = useQueryClient();
   const mutation = useLowEffectMutation({
     send: (command: AutoPauseCommand, key) =>
-      commandAutoPause({ apiClient, workspaceId, workflowId, command, key }),
+      commandAutoPause({ apiClient, workspaceId, command, key }),
     // Workflow settings, workspace settings and Resume are separate targets.
     slotOf: ({ kind }) => kind,
     refresh: (command) =>
@@ -34,7 +33,7 @@ export function useAutoPauseCommand(
                   apiClient,
                   userId,
                   workspaceId,
-                  workflowId,
+                  command.workflowId,
                 ).queryKey,
                 exact: true,
               }),

@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { formatDate } from '@/lib/format/time';
+import { formatDayMonth } from '@/lib/format/time';
 import {
   ROLE_SUMMARIES,
   type ManagedRole,
@@ -161,7 +161,7 @@ function MemberRow({
         </p>
       </div>
       <span className="font-mono text-caption whitespace-nowrap text-subtle-foreground max-sm:hidden">
-        joined {formatDate(member.createdAt)}
+        joined {formatDayMonth(member.createdAt)}
       </span>
       <div>
         {control.canChange(member) ? (
@@ -243,6 +243,7 @@ function MemberGroupSection({
       <div className="mt-1">
         <ShowAll
           count={group.members.length}
+          subject={ROLE_GROUP_NAMES[group.role].toLowerCase()}
           controls={listId}
           expanded={expanded}
           onExpandedChange={setExpanded}

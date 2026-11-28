@@ -1,6 +1,5 @@
-import { useId, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ReceiptFooter } from '@/components/patterns/actions/receipt-footer';
+import { useId } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -16,7 +15,6 @@ export function TokenSecretReceipt({
   onDone: () => void;
 }>) {
   const id = useId();
-  const [stored, setStored] = useState(false);
   return (
     <>
       <DialogTitle>Save this token now</DialogTitle>
@@ -45,20 +43,7 @@ export function TokenSecretReceipt({
           className="min-h-28 break-all"
         />
       </div>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-          <Checkbox checked={stored} onCheckedChange={setStored} />
-          I’ve saved this token
-        </label>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={!stored}
-          onClick={onDone}
-        >
-          Done
-        </Button>
-      </div>
+      <ReceiptFooter acknowledgment="I’ve saved this token" onDone={onDone} />
     </>
   );
 }

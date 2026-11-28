@@ -6,6 +6,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/class-names';
 import { pluralWord } from '@/lib/format/count';
 
 type Crumb = Readonly<{ key: string; label: ReactNode }>;
@@ -62,7 +63,10 @@ export function ShellBreadcrumb({
         {page === undefined ? null : (
           <li
             aria-current="page"
-            className="flex max-w-[60%] min-w-0 shrink-0 items-center gap-2 sm:max-w-none sm:shrink"
+            className={cn(
+              'max-w-[60%] min-w-0 shrink-0 items-center gap-2 sm:max-w-none sm:shrink',
+              middle.length === 0 ? 'sr-only' : 'flex',
+            )}
           >
             <Separator />
             <span className="truncate">{page.label}</span>
@@ -81,7 +85,7 @@ function FoldedCrumbs({ crumbs }: Readonly<{ crumbs: readonly Crumb[] }>) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label={`Show ${String(count)} more ${pluralWord(count, 'step')} of the path`}
-        className="grid size-7 place-items-center rounded-md outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring"
+        className="grid size-7 pointer-coarse:size-10 place-items-center rounded-md outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring"
       >
         <EllipsisIcon aria-hidden="true" className="size-4" />
       </PopoverTrigger>

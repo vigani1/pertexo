@@ -1,3 +1,4 @@
+import { PageHeaderTitle } from '@/components/patterns/page-header';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { McpExposureSection } from '../components/settings/mcp-exposure-section';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
@@ -11,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { FailureAlertsSection } from '../components/settings/failure-alerts-section';
+import { WorkflowPolicySummary } from '../components/settings/policy-summary';
 import { IdentitySection } from '../components/settings/identity-section';
 import { LifecycleSection } from '../components/settings/lifecycle-section';
 import { RunDurationSection } from '../components/settings/run-duration-section';
@@ -47,11 +49,20 @@ function SettingsSession({
   const summary = useQuery(
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
+  const workflow = shownData(summary);
   return (
     <div className="flex max-w-190 flex-col gap-10">
-      <h1 className="font-heading text-section font-semibold">
-        Workflow settings
-      </h1>
+      <header className="flex flex-col gap-2">
+        <PageHeaderTitle size="section">Workflow settings</PageHeaderTitle>
+        {workflow === undefined ? null : (
+          <WorkflowPolicySummary
+            apiClient={apiClient}
+            userId={user.id}
+            workspace={workspace}
+            workflow={workflow}
+          />
+        )}
+      </header>
       <IdentitySection
         apiClient={apiClient}
         userId={user.id}
@@ -71,7 +82,7 @@ function SettingsSession({
                   workspaceId: workspace.id,
                 }}
                 subject={{ subjectKind: 'workflow', subjectId: workflowId }}
-                name={shownData(summary)?.name ?? 'this workflow'}
+                name={workflow?.name ?? 'this workflow'}
               />
             }
           />
@@ -102,7 +113,7 @@ function SettingsSession({
           apiClient={apiClient}
           userId={user.id}
           workspace={workspace}
-          workflow={shownData(summary)}
+          workflow={workflow}
         />
         <ConcurrencySection
           apiClient={apiClient}

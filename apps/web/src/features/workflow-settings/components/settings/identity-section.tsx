@@ -1,8 +1,6 @@
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import {
-  WorkflowNameField,
-  WorkflowTemplateOrigin,
-} from '@/features/workflows/workflows-views.public';
+import { Link } from '@tanstack/react-router';
+import { WorkflowTemplateOrigin } from '@/features/workflows/workflows-views.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   formatDate,
@@ -16,22 +14,7 @@ import {
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
-import { shownData } from '@/lib/api/error-copy';
 
-function identityDescription(
-  workspace: AccessibleWorkspace,
-  workflow: WorkflowSummary | undefined,
-): string {
-  return workflow?.lifecycleStatus === 'archived' &&
-    workspace.capabilities.includes('workflow:update')
-    ? 'Restore the workflow to rename it.'
-    : 'What people see in lists, runs and the Inbox.';
-}
-
-/**
- * The workflow's name (renamed in place by its editors), its ID for support
- * and APIs, and its age.
- */
 export function IdentitySection({
   apiClient,
   userId,
@@ -43,7 +26,6 @@ export function IdentitySection({
   workspace: AccessibleWorkspace;
   query: ReadQuery<WorkflowSummary>;
 }>) {
-  const workflow = shownData(query);
   return (
     <SettingsGroup title="Identity">
       <QueryView
@@ -53,22 +35,6 @@ export function IdentitySection({
       >
         {(shown) => (
           <>
-            <SettingRow
-              title="Name"
-              description={identityDescription(workspace, workflow)}
-            >
-              <WorkflowNameField
-                apiClient={apiClient}
-                userId={userId}
-                workspace={workspace}
-                workflow={shown}
-                textClassName="text-base font-semibold"
-              >
-                <span className="min-w-0 text-base font-semibold break-words">
-                  {shown.name}
-                </span>
-              </WorkflowNameField>
-            </SettingRow>
             <SettingRow
               title="Workflow ID"
               description="How API clients and exports refer to this workflow."
@@ -83,12 +49,23 @@ export function IdentitySection({
             <SettingRow
               title="Created"
               description={
-                <WorkflowTemplateOrigin
-                  apiClient={apiClient}
-                  userId={userId}
-                  workspace={workspace}
-                  workflowId={shown.id}
-                />
+                <>
+                  Rename the workflow from its name in{' '}
+                  <Link
+                    to="/w/$workspaceId/workflows/$workflowId"
+                    params={{ workspaceId: workspace.id, workflowId: shown.id }}
+                    className="inline-link"
+                  >
+                    Build
+                  </Link>
+                  .
+                  <WorkflowTemplateOrigin
+                    apiClient={apiClient}
+                    userId={userId}
+                    workspace={workspace}
+                    workflowId={shown.id}
+                  />
+                </>
               }
               action={
                 <span className="font-mono text-caption text-subtle-foreground">

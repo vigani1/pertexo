@@ -44,11 +44,13 @@ export function CommandPalette({
   onQueryChange,
   search,
   workspaceName,
+  footerHint,
 }: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groups: readonly CommandGroup[];
   workspaceName?: string;
+  footerHint?: string;
   resolveQuery?: (query: string) => CommandGroup | undefined;
   /** Lets a caller search the server for what's being typed. */
   onQueryChange?: (query: string) => void;
@@ -107,7 +109,7 @@ export function CommandPalette({
               ref={input}
               aria-label="Search pages, workflows and actions"
               // Short enough to fit a phone without being cut mid-word.
-              placeholder="Search pages and actions"
+              placeholder="Search workflows, pages, actions…"
               className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-subtle-foreground"
             />
             {/* A key to press only where there's a keyboard. */}
@@ -166,6 +168,11 @@ export function CommandPalette({
             )}
           </Autocomplete.List>
         </Autocomplete.Root>
+        {query.trim() === '' && footerHint !== undefined ? (
+          <p className="px-4 pt-1 pb-3 text-meta text-muted-foreground">
+            {footerHint}
+          </p>
+        ) : null}
         <div className="flex min-w-0 items-center gap-4 border-t border-border px-4 py-3 text-meta text-muted-foreground">
           <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
             <Kbd>↑</Kbd>

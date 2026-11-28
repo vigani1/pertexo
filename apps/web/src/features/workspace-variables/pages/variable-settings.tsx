@@ -137,7 +137,7 @@ export function WorkspaceVariablesPage({
           </p>
           <Disclosure
             summary="Limits"
-            className="text-xs"
+            contentClassName="text-xs"
             appearance={{ size: 'xs' }}
           >
             <p className="max-w-lg leading-relaxed">

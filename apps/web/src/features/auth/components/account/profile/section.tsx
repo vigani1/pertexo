@@ -2,13 +2,18 @@ import type {
   AccountSecurityResponse,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import { PencilIcon } from 'lucide-react';
 import { useState } from 'react';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatInitials } from '@/lib/format/initials';
-import { SettingRow } from '@/components/patterns/settings/row';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { AccountEmailSection } from '../email-section';
 import { DisplayNameForm } from './form';
 
 /** Who you are across workspaces: initials, an editable name and email. */
@@ -24,65 +29,76 @@ export function AccountProfileSection({
   /** The name changed: reload everything that shows it. */
   onProfileChanged: () => void;
 }>) {
-  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState<'name' | 'email'>();
   const email = security?.email ?? user.email;
+  const name = user.displayName || email;
   return (
-    <SettingRow
-      layout="section"
-      title="Name and email"
-      description="How teammates see you, in every workspace."
-    >
-      {/* The name edits in its own row, beside the initials, so nothing
-          below moves further than the form's own height. */}
-      <div
-        className={
-          editing ? 'flex items-start gap-4' : 'flex items-center gap-4'
-        }
-      >
+    <PageHeader>
+      <div className="flex min-w-0 items-center gap-4">
         <span
           aria-hidden="true"
-          className="grid size-14 shrink-0 place-items-center rounded-full bg-raised font-heading text-lg font-bold ring-2 ring-primary/25 ring-offset-2 ring-offset-background"
+          className="grid size-14 shrink-0 place-items-center rounded-full bg-raised font-heading text-lg font-bold ring-1 ring-border-strong"
         >
-          {formatInitials(user.displayName || user.email)}
+          {formatInitials(name)}
         </span>
-        {editing ? (
-          <DisplayNameForm
-            apiClient={apiClient}
-            user={user}
-            onClose={() => {
-              setEditing(false);
-            }}
-            onChanged={onProfileChanged}
-          />
-        ) : (
-          <div className="min-w-0">
-            <p className="flex min-w-0 items-center gap-1">
-              <span className="truncate font-heading text-xl font-semibold">
-                {user.displayName}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Edit your name"
-                onClick={() => {
-                  setEditing(true);
-                }}
-              >
-                <PencilIcon aria-hidden="true" />
-              </Button>
-            </p>
+        <div className="min-w-0">
+          <PageHeaderTitle className="wrap-anywhere">{name}</PageHeaderTitle>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="wrap-anywhere">{email}</span>
+            <EmailVerification security={security} />
           </div>
-        )}
+        </div>
       </div>
-      <dl className="grid gap-1">
-        <dt className="text-label text-subtle-foreground">Email</dt>
-        <dd className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="[overflow-wrap:anywhere]">{email}</span>
-          {<EmailVerification security={security} />}
-        </dd>
-      </dl>
-    </SettingRow>
+      <PageHeaderActions>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setEdit('name');
+          }}
+        >
+          Edit your name
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={security === undefined}
+          onClick={() => {
+            setEdit('email');
+          }}
+        >
+          Change email
+        </Button>
+      </PageHeaderActions>
+      <Sheet
+        open={edit !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setEdit(undefined);
+        }}
+      >
+        {edit === undefined ? null : (
+          <SheetContent variant="form">
+            {edit === 'name' ? (
+              <>
+                <SheetTitle>Edit your name</SheetTitle>
+                <DisplayNameForm
+                  apiClient={apiClient}
+                  user={user}
+                  onClose={() => {
+                    setEdit(undefined);
+                  }}
+                  onChanged={onProfileChanged}
+                />
+              </>
+            ) : security === undefined ? null : (
+              <AccountEmailSection apiClient={apiClient} security={security} />
+            )}
+          </SheetContent>
+        )}
+      </Sheet>
+    </PageHeader>
   );
 }
 

@@ -44,12 +44,14 @@ type VersionActions = Readonly<{
 export function VersionDetail({
   version,
   previous,
+  newer,
   live,
   liveLabel,
   actions,
 }: Readonly<{
   version: HistoryVersion;
   previous: HistoryVersion | undefined;
+  newer: HistoryVersion | undefined;
   live: HistoryVersion | undefined;
   liveLabel: string;
   actions: VersionActions;
@@ -67,7 +69,13 @@ export function VersionDetail({
         </h2>
         {live === undefined ? null : (
           <StatusMark tone={isLive ? 'success' : 'off'}>
-            {isLive ? liveLabel : 'Not live'}
+            {isLive
+              ? liveLabel
+              : version.versionNumber < live.versionNumber
+                ? newer === undefined
+                  ? 'Retired'
+                  : `Retired when v${String(newer.versionNumber)} was published`
+                : 'Not live'}
           </StatusMark>
         )}
       </div>
@@ -106,16 +114,6 @@ export function VersionDetail({
               : `Compare with ${liveLabel.toLowerCase()}`}
           </Button>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            actions.onPreview(version);
-          }}
-        >
-          <EyeIcon aria-hidden="true" data-icon="inline-start" />
-          Preview
-        </Button>
         <MoreActions version={version} label={label} actions={actions} />
       </div>
       {actions.onRestore === undefined ? null : (
@@ -158,12 +156,6 @@ function MoreActions({
   actions: VersionActions;
 }>) {
   const { promotionWorkspaceId, onExport, onDuplicate } = actions;
-  if (
-    promotionWorkspaceId === undefined &&
-    onExport === undefined &&
-    onDuplicate === undefined
-  )
-    return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -174,6 +166,14 @@ function MoreActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
+          <DropdownMenuItem
+            onClick={() => {
+              actions.onPreview(version);
+            }}
+          >
+            <EyeIcon aria-hidden="true" />
+            Preview
+          </DropdownMenuItem>
           {promotionWorkspaceId === undefined ? null : (
             <DropdownMenuLinkItem
               render={

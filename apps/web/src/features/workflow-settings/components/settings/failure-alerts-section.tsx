@@ -164,8 +164,8 @@ function DestinationPicker({
     <div className="flex flex-wrap items-end gap-3">
       {options.length === 0 ? null : (
         <>
-          <Field className="min-w-64 flex-1">
-            <FieldLabel id="failure-destination-label">
+          <Field className="min-w-0 sm:w-56">
+            <FieldLabel id="failure-destination-label" className="sr-only">
               Send failure alerts to
             </FieldLabel>
             <Select
@@ -189,6 +189,7 @@ function DestinationPicker({
           </Field>
           <ProgressButton
             type="button"
+            variant="outline"
             pending={pending}
             pendingLabel="Saving…"
             disabled={selected === undefined}
@@ -253,6 +254,19 @@ export function FailureAlertsSection({
     <SettingRow
       title="Failure alerts"
       description="Where Pertexo tells you when a run of this workflow fails."
+      action={
+        !canSet ||
+        (choices.options.length === 0 &&
+          (choices.current?.destination ?? null) === null) ? null : (
+          <DestinationPicker
+            options={choices.options}
+            pending={commands.pending}
+            alertsOff={choices.current?.destination === null}
+            onSave={(option) => void update(option)}
+            onTurnOff={() => void update()}
+          />
+        )
+      }
     >
       {!canSet ? (
         <p className="text-sm text-muted-foreground">
@@ -296,16 +310,6 @@ export function FailureAlertsSection({
             <Notice tone="destructive">{commands.error}</Notice>
           )}
 
-          {choices.options.length === 0 &&
-          (choices.current?.destination ?? null) === null ? null : (
-            <DestinationPicker
-              options={choices.options}
-              pending={commands.pending}
-              alertsOff={choices.current?.destination === null}
-              onSave={(option) => void update(option)}
-              onTurnOff={() => void update()}
-            />
-          )}
           {workspace.capabilities.includes('connection:manage') ? (
             <Link
               to="/w/$workspaceId/settings/alerts"

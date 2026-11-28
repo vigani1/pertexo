@@ -206,10 +206,11 @@ describe('team: invitations', () => {
     await browser.clear(field);
     await browser.type(field, 'taken@example.test{Enter}');
     expect(field).toHaveAttribute('aria-invalid', 'false');
-    await browser.click(lens().getByRole('combobox', { name: 'Role' }));
-    await browser.click(
-      await screen.findByRole('option', { name: /^Operator/u }),
-    );
+    const roles = lens().getByRole('radiogroup', { name: 'Role' });
+    const operator = within(roles).getByRole('radio', { name: /^Operator/u });
+    expect(operator).toBeVisible();
+    await browser.click(operator);
+    expect(operator).toBeChecked();
     await browser.click(
       lens().getByRole('button', { name: 'Send 2 invitations' }),
     );

@@ -13,7 +13,7 @@ import {
   succeededRunId,
   taskId,
 } from './activity-data';
-import { tables } from './workspace-data';
+import { connections, tables } from './workspace-data';
 
 type Screen = Readonly<{
   name: string;
@@ -118,7 +118,7 @@ export const workspaceScreens: readonly Screen[] = [
   {
     name: 'account-security',
     path: '/account/security',
-    ready: heading(/Account/u),
+    ready: (page) => page.getByRole('heading', { level: 1 }),
   },
   {
     name: 'public-form',
@@ -222,6 +222,14 @@ export const workspaceScreens: readonly Screen[] = [
     ready: (page) => page.getByRole('list', { name: 'Connections' }),
   },
   {
+    name: 'connections-many',
+    path: `${root}/connections?connection=${connections[0]?.id ?? ''}`,
+    open: async (page) => {
+      await page.getByRole('button', { name: 'Show all 12 workflows' }).click();
+    },
+    ready: heading('All 12 workflows'),
+  },
+  {
     name: 'tables',
     path: `${root}/data-tables`,
     ready: (page) => page.getByRole('navigation', { name: 'Tables' }),
@@ -237,9 +245,17 @@ export const workspaceScreens: readonly Screen[] = [
     ready: (page) => page.getByRole('list', { name: 'Builders' }),
   },
   {
+    name: 'team-invite',
+    path: `${root}/team`,
+    open: async (page) => {
+      await page.getByRole('button', { name: 'Invite people' }).click();
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Invite people' }),
+  },
+  {
     name: 'settings',
     path: `${root}/settings`,
-    ready: heading('How it’s known'),
+    ready: heading('Automatic pause'),
   },
   {
     name: 'usage',
@@ -252,29 +268,27 @@ export const workspaceScreens: readonly Screen[] = [
     path: `${root}/settings/audit`,
     ready: heading('Audit log'),
   },
-  { name: 'account', path: `${root}/account`, ready: heading('Change email') },
   {
-    name: 'account-methods',
+    name: 'account',
+    path: `${root}/account`,
+    ready: heading('How you sign in'),
+  },
+  {
+    name: 'account-edit-email',
     path: `${root}/account`,
     open: async (page) => {
-      await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+      await page.getByRole('button', { name: 'Change email' }).click();
     },
-    ready: heading('Sign-in methods'),
+    ready: (page) => page.getByRole('dialog', { name: 'Change email' }),
   },
   {
     name: 'account-sessions',
     path: `${root}/account`,
-    open: async (page) => {
-      await page.getByRole('tab', { name: 'Sessions' }).click();
-    },
     ready: (page) => page.getByText('This device', { exact: true }),
   },
   {
     name: 'audit-calendar',
     path: `${root}/settings/audit`,
-    open: async (page) => {
-      await page.getByRole('button', { name: /^When:/u }).click();
-    },
     ready: (page) =>
       page.getByRole('button', { name: 'Yesterday', exact: true }),
   },
@@ -313,6 +327,6 @@ export const workspaceScreens: readonly Screen[] = [
   {
     name: 'not-found',
     path: `${root}/nowhere`,
-    ready: (page) => page.getByRole('link', { name: /home/iu }).first(),
+    ready: (page) => page.getByText(`${root}/nowhere`, { exact: true }),
   },
 ];

@@ -66,8 +66,14 @@ for (const width of [360, 1440])
       page.getByText('No rows yet. Add a row or import CSV to start.'),
     ).toBeVisible();
     await expect(page.getByText('0 rows total')).toBeVisible();
-    await page.getByLabel('Value', { exact: true }).fill('missing');
+    await expect(page.getByLabel('Value', { exact: true })).toBeHidden();
     await page.getByRole('button', { name: 'Filter', exact: true }).click();
+    const filter = page.getByRole('dialog', { name: 'Filter rows' });
+    await filter.getByLabel('Value', { exact: true }).fill('missing');
+    await filter
+      .getByRole('button', { name: 'Apply filter', exact: true })
+      .click();
+    await expect(filter).toBeHidden();
     await expect(
       page.getByText('No rows match this filter. Try a different filter.'),
     ).toBeVisible();

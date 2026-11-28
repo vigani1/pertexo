@@ -31,11 +31,11 @@ import {
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/workflows-queries.public';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { AppearanceChoice } from '@/components/patterns/appearance/choice';
 import {
   WORKSPACE_PLACES,
@@ -115,20 +115,36 @@ export function WorkspaceCommandPalette({
   });
 
   const actions = workspaceActions({ workspace, navigate });
-  const groups: CommandGroup[] = [
-    ...(actions.length === 0 ? [] : [{ label: 'Actions', items: actions }]),
-    { label: 'Go to', items: places },
-    ...(workflowItems.length === 0
-      ? []
-      : [{ label: 'Workflows', items: workflowItems }]),
-    { label: 'Help', items: HELP_ITEMS },
-    { label: 'Account', items: accountItems },
-  ];
+  const isInitial = typed === '';
+  const invited = actions.filter((action) => action.id === 'invite-people');
+  const suggestedPlaces = ['team', 'workflows', 'runs'].flatMap((id) =>
+    places.filter((place) => place.id === id),
+  );
+  const groups: CommandGroup[] = isInitial
+    ? [
+        ...(invited.length === 0 ? [] : [{ label: 'Actions', items: invited }]),
+        { label: 'Go to', items: suggestedPlaces },
+        ...(workflowItems.length === 0
+          ? []
+          : [{ label: 'Workflows', items: workflowItems.slice(0, 1) }]),
+      ]
+    : [
+        ...(actions.length === 0 ? [] : [{ label: 'Actions', items: actions }]),
+        { label: 'Go to', items: places },
+        ...(workflowItems.length === 0
+          ? []
+          : [{ label: 'Workflows', items: workflowItems }]),
+        { label: 'Help', items: HELP_ITEMS },
+        { label: 'Account', items: accountItems },
+      ];
 
   return (
     <>
       <CommandPalette
         workspaceName={workspace.name}
+        {...(can('run:read')
+          ? { footerHint: 'Paste a run ID to open that run.' }
+          : {})}
         open={open}
         onOpenChange={onOpenChange}
         groups={groups}
@@ -156,16 +172,16 @@ export function WorkspaceCommandPalette({
           };
         }}
       />
-      <Dialog open={themeOpen} onOpenChange={setThemeOpen}>
-        <DialogContent>
-          <DialogTitle>Switch theme</DialogTitle>
-          <DialogDescription>
+      <Sheet open={themeOpen} onOpenChange={setThemeOpen}>
+        <SheetContent variant="form">
+          <SheetTitle>Switch theme</SheetTitle>
+          <SheetDescription>
             Saved for this browser, across workspaces. System follows your
             device’s appearance.
-          </DialogDescription>
+          </SheetDescription>
           <AppearanceChoice />
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

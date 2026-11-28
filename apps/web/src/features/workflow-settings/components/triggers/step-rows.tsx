@@ -1,4 +1,5 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Link } from '@tanstack/react-router';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import { describeStep } from '@/features/catalog/public';
@@ -15,12 +16,14 @@ export function StepTriggerRows({
   publishedVersionId,
   form,
   formsPaused,
+  formLink,
   onFailure,
 }: Readonly<{
   versions: readonly WorkflowVersionResponse[] | undefined;
   publishedVersionId: string | null | undefined;
   form: boolean;
   formsPaused: boolean;
+  formLink?: Readonly<{ workspaceId: string; workflowId: string }>;
   onFailure: boolean;
 }>) {
   const steps = (key: string) =>
@@ -34,7 +37,18 @@ export function StepTriggerRows({
               label={`Form: ${step.name}`}
               icon={<StepTile step={describeStep('core.form')} />}
               name={step.name}
-              kind="Form · starts a run each time someone submits it. Its link, fields and who may submit are set on the step in Build."
+              kind="Form · starts a run on submission"
+              extra={
+                formLink === undefined ? null : (
+                  <Link
+                    to="/w/$workspaceId/forms/$workflowId"
+                    params={formLink}
+                    className={buttonVariants({ variant: 'link', size: 'sm' })}
+                  >
+                    Open form
+                  </Link>
+                )
+              }
               state={
                 formsPaused ? (
                   <StatusMark tone="off">Paused</StatusMark>

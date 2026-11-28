@@ -137,7 +137,10 @@ describe('workflow versions tab', () => {
       within(detail).getByRole('heading', { name: 'What changed from v1' }),
     ).toBeVisible();
 
-    await event.click(within(detail).getByRole('button', { name: 'Preview' }));
+    await event.click(
+      within(detail).getByRole('button', { name: 'More for v2' }),
+    );
+    await event.click(await screen.findByRole('menuitem', { name: 'Preview' }));
     const preview = await screen.findByRole('dialog', { name: 'v2' });
     // Listed once among the steps and once as added since v1.
     expect(within(preview).getAllByText('Call API')).toHaveLength(2);
@@ -388,8 +391,11 @@ describe('workflow versions tab', () => {
   it('offers previews but not restore to people who can’t change the draft', async () => {
     installQueries([]);
     await renderLoadedApp(versionsPath);
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^More for v/u }),
+    );
     expect(
-      await screen.findByRole('button', { name: 'Preview' }),
+      await screen.findByRole('menuitem', { name: 'Preview' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Restore to draft' }),

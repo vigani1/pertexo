@@ -59,7 +59,7 @@ for (const [width, height] of viewports) {
             const targets = await page.evaluate(() =>
               [
                 ...document.querySelectorAll(
-                  '[data-slot="button"], [data-slot="tabs-trigger"], [data-slot="dropdown-menu-item"], select',
+                  '[data-slot="button"], [data-slot="tabs-trigger"], [data-slot="dropdown-menu-item"], select, [role="grid"] td button, [data-slot="disclosure"] > summary',
                 ),
               ]
                 .filter(

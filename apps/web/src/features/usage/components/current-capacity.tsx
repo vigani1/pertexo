@@ -1,6 +1,7 @@
 import type { UsageCapacityResponse } from '@pertexo/contracts';
 import { formatByteLength } from '@/lib/format/bytes';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { Disclosure } from '@/components/ui/disclosure';
 import { cn } from '@/lib/class-names';
 
 const policyLabels: Readonly<
@@ -60,11 +61,6 @@ export function CurrentCapacity({
         />
       </span>
       <p className="text-meta text-subtle-foreground">
-        {artifacts.chargedCount.toLocaleString(FORMAT_LOCALE)} of{' '}
-        {artifacts.artifactCountLimit.toLocaleString(FORMAT_LOCALE)} files,
-        counted from upload until they’re fully deleted.
-      </p>
-      <p className="text-meta text-subtle-foreground">
         Right now{' '}
         <span className="font-mono text-muted-foreground">
           {execution.activeRuns.toLocaleString(FORMAT_LOCALE)}
@@ -85,8 +81,16 @@ export function CurrentCapacity({
         <span className="font-mono text-muted-foreground">
           {execution.queuedRuns.toLocaleString(FORMAT_LOCALE)}
         </span>{' '}
-        queued behind them.{reservedPlaces(execution.reservedActiveSlots)}
+        queued behind them.
       </p>
+      <Disclosure summary="Capacity details" appearance={{ size: 'xs' }}>
+        <p className="text-meta text-subtle-foreground">
+          {artifacts.chargedCount.toLocaleString(FORMAT_LOCALE)} of{' '}
+          {artifacts.artifactCountLimit.toLocaleString(FORMAT_LOCALE)} files,
+          counted from upload until they’re fully deleted.
+          {reservedPlaces(execution.reservedActiveSlots)}
+        </p>
+      </Disclosure>
       {execution.policy.state === 'active' ? null : (
         <p className="text-sm">
           New runs aren’t accepted right now: this workspace’s limits are{' '}

@@ -83,7 +83,11 @@ for (const width of [1280, 360])
       page.getByText('workspace.created', { exact: true }),
     ).toBeHidden();
     await expectFitsAndTappable(page);
-    await page.getByLabel('Keep audit events (days)').fill('30');
+    await expect(page.getByText('Events are kept for 365 days.')).toBeVisible();
+    const retentionInput = page.getByLabel('Keep audit events (days)');
+    await expect(retentionInput).toBeHidden();
+    await page.getByText('Governance settings', { exact: true }).click();
+    await retentionInput.fill('30');
     await page
       .getByRole('button', { name: 'Save retention', exact: true })
       .click();
@@ -251,7 +255,6 @@ test('applies a rolling Last 24 hours window and clears the previous upper bound
   await page.goto(
     `/w/${workspaceId}/settings/audit?until=2026-11-17T00%3A00%3A00.000Z`,
   );
-  await page.getByRole('button', { name: /^When:/u }).click();
   const rolling = page.getByRole('button', {
     name: 'Last 24 hours',
     exact: true,

@@ -201,14 +201,19 @@ test('creates an invitation and refreshes the authoritative pending list', async
   await page.getByRole('button', { name: 'Invite people' }).click();
   const lens = page.locator('[data-slot="sheet-content"]');
   await lens.getByLabel('Email addresses').fill('new.builder@example.test');
-  await lens.getByRole('combobox', { name: 'Role' }).click();
-  await page.getByRole('option', { name: /^Builder/u }).click();
+  const roles = lens.getByRole('radiogroup', { name: 'Role' });
+  await expect(roles.getByRole('radio', { name: /^Viewer/u })).toBeChecked();
+  const builder = roles.getByRole('radio', { name: /^Builder/u });
+  await expect(builder).toBeVisible();
+  await builder.click();
+  await expect(builder).toBeChecked();
   await lens.getByRole('button', { name: 'Send invitation' }).click();
   await expect(
     page.getByText('Invitation sent to new.builder@example.test'),
   ).toBeVisible();
 
-  // Invitations sit under the members on the same page.
+  await expect(page.getByRole('list', { name: 'Invitations' })).toBeHidden();
+  await page.getByText('Review', { exact: true }).click();
   const row = page
     .getByRole('list', { name: 'Invitations' })
     .getByRole('listitem')

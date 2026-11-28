@@ -1,13 +1,11 @@
-import { useId, useState } from 'react';
+import { ReceiptFooter } from '@/components/patterns/actions/receipt-footer';
 import type { WebhookManagementCommandResponse } from '@pertexo/contracts';
-import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Switch } from '@/components/ui/switch';
 import { webhookAddress } from '../../../model/triggers/endpoint-key';
 import { CopyField } from '../../copy-field';
 
@@ -18,8 +16,6 @@ function RevealContent({
   credentials: WebhookManagementCommandResponse;
   onDone: () => void;
 }>) {
-  const [stored, setStored] = useState(false);
-  const storedId = useId();
   return (
     <>
       <SheetTitle>Store these now</SheetTitle>
@@ -48,23 +44,7 @@ function RevealContent({
           />
         )}
       </div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <label
-          htmlFor={storedId}
-          className="flex cursor-pointer items-center gap-2.5 text-sm"
-        >
-          <Switch id={storedId} checked={stored} onCheckedChange={setStored} />
-          I’ve stored these
-        </label>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={!stored}
-          onClick={onDone}
-        >
-          Done
-        </Button>
-      </div>
+      <ReceiptFooter acknowledgment="I’ve stored these" onDone={onDone} />
     </>
   );
 }

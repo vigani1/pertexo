@@ -1,3 +1,4 @@
+import { PageHeaderTitle } from '@/components/patterns/page-header';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -26,11 +27,13 @@ export function WorkspaceGeneralPage({
   onWorkspaceChanged,
   onLeft,
   assistantSettings,
+  automaticPauseSettings,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   assistantSettings?: ReactNode;
+  automaticPauseSettings?: ReactNode;
   onWorkspaceChanged: () => void | Promise<void>;
   /** The person left; their sessions have ended. */
   onLeft: () => void | Promise<void>;
@@ -54,9 +57,9 @@ export function WorkspaceGeneralPage({
           <p className="font-mono text-micro tracking-[0.08em] text-subtle-foreground uppercase">
             Workspace
           </p>
-          <h1 className="mt-1 font-display text-4xl leading-tight wrap-anywhere sm:text-display">
+          <PageHeaderTitle className="mt-1 wrap-anywhere">
             {workspace.name}
-          </h1>
+          </PageHeaderTitle>
           <p className="mt-2 font-mono text-caption wrap-anywhere text-subtle-foreground">
             {workspace.slug} · {workspace.id.slice(0, 8)}… · created{' '}
             <time
@@ -119,21 +122,28 @@ export function WorkspaceGeneralPage({
       </SettingsGroup>
 
       {assistantSettings}
+      {automaticPauseSettings === undefined ? null : (
+        <SettingsGroup title="Automatic pause">
+          <SettingRow title="Workspace default">
+            {automaticPauseSettings}
+          </SettingRow>
+        </SettingsGroup>
+      )}
       {canManage || workspace.status === 'active' ? (
         <SettingsGroup title="Hard to undo">
+          {workspace.status === 'active' ? (
+            <WorkspaceLeave
+              apiClient={apiClient}
+              workspace={workspace}
+              onLeft={onLeft}
+            />
+          ) : null}
           {canManage ? (
             <WorkspaceLifecycleControls
               apiClient={apiClient}
               workspace={workspace}
               userId={user.id}
               onCompleted={onWorkspaceChanged}
-            />
-          ) : null}
-          {workspace.status === 'active' ? (
-            <WorkspaceLeave
-              apiClient={apiClient}
-              workspace={workspace}
-              onLeft={onLeft}
             />
           ) : null}
         </SettingsGroup>

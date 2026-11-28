@@ -19,12 +19,13 @@ export function PageHeader({ className, ...props }: ComponentProps<'header'>) {
 
 const HEADING_TAGS = { 1: 'h1', 2: 'h2' } as const;
 
-const titleVariants = cva('font-display leading-tight', {
+const titleVariants = cva('leading-tight', {
   variants: {
     size: {
-      page: 'text-4xl [--display-width:80%] sm:text-display',
-      hero: 'text-4xl [--display-width:80%] sm:text-5xl',
-      detail: 'text-3xl [--display-width:78%] sm:text-display',
+      page: 'font-display text-4xl [--display-width:80%] sm:text-display',
+      hero: 'font-display text-4xl [--display-width:80%] sm:text-5xl',
+      section: 'font-heading text-section font-semibold',
+      detail: 'font-display text-3xl [--display-width:78%] sm:text-display',
     },
   },
   defaultVariants: { size: 'page' },

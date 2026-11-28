@@ -13,10 +13,6 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import {
-  HowItWorks,
-  type HowItWorksStep,
-} from '@/components/patterns/guidance/how-it-works';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -50,21 +46,6 @@ function isHidden(error: unknown): boolean {
     (isApiError(error) && error.status === 401)
   );
 }
-
-const HOW_ALERTS_WORK: readonly HowItWorksStep[] = [
-  {
-    title: 'A run goes wrong',
-    body: 'It fails, times out or ends with an unknown outcome. Runs that succeed stay quiet.',
-  },
-  {
-    title: 'Pertexo posts it',
-    body: 'To the destination chosen in that workflow’s Settings, through a workspace connection or this server’s mail.',
-  },
-  {
-    title: 'Someone finds the run',
-    body: 'The alert names the run, its workflow and version, what started it and the error code.',
-  },
-];
 
 /**
  * The lens that adds (no destination) or edits one destination. Each opening
@@ -334,12 +315,6 @@ export function FailureNotificationDestinationsPage({
           lens.open();
         }}
       />
-      <p className="-mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Pertexo sends an alert when a run fails, times out or ends with an
-        unknown outcome. Add where it goes here, then choose it in a workflow’s
-        settings.
-      </p>
-
       <DestinationCollection
         query={destinations}
         items={items}
@@ -352,11 +327,10 @@ export function FailureNotificationDestinationsPage({
         }}
         onEdit={lens.open}
       />
-      <HowItWorks
-        title="How alerts work"
-        className="border-t border-border pt-8"
-        steps={HOW_ALERTS_WORK}
-      />
+      <p className="text-sm text-muted-foreground">
+        Choose a destination in a workflow’s settings to alert people when a run
+        fails, times out or ends with an unknown outcome.
+      </p>
       {canManage ? <ConnectionsLoadProblem query={connections} /> : null}
 
       <DestinationSheet

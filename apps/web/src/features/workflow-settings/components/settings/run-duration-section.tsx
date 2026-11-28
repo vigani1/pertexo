@@ -170,7 +170,9 @@ function DurationPicker({
   const choices = choicesWith(durationMs);
   return (
     <Field>
-      <FieldLabel id="run-duration-label">Maximum run duration</FieldLabel>
+      <FieldLabel id="run-duration-label" className="sr-only">
+        Maximum run duration
+      </FieldLabel>
       <div className="flex flex-wrap items-center gap-3">
         <Select
           items={choices.map((choice) => ({
@@ -235,49 +237,50 @@ export function RunDurationSection({
   const canUpdate = workspace.capabilities.includes('workflow:update');
   const archived = workflow?.lifecycleStatus === 'archived';
 
+  const draft = shownData(stored.draft);
+  const draftMs =
+    choice.requested === undefined
+      ? draft === undefined
+        ? undefined
+        : maxRunDurationOf(draft.draft.graph)
+      : choice.requested.duration;
   return (
     <SettingRow
       title="Maximum run duration"
-      description="How long a run may take before Pertexo stops it. With no limit, a run takes as long as it needs."
+      description="How long a run may take before Pertexo stops it."
+      action={
+        draft === undefined || !canUpdate ? undefined : (
+          <DurationPicker
+            durationMs={draftMs}
+            disabled={archived || choice.pending}
+            saving={choice.pending}
+            note={
+              archived
+                ? 'Restore the workflow to change this.'
+                : publishNote(draftMs, stored.live)
+            }
+            onChoose={(durationMs) => void choice.choose(durationMs)}
+          />
+        )
+      }
     >
       <QueryView
         query={stored.draft}
         resource="The draft"
         failure={settingsReadFailure}
-      >
-        {(snapshot) => {
-          const draftMs =
-            choice.requested === undefined
-              ? maxRunDurationOf(snapshot.draft.graph)
-              : choice.requested.duration;
-          if (!canUpdate)
-            return (
-              <p className="text-sm text-muted-foreground">
-                {draftMs === undefined
-                  ? 'Runs have no time limit in the draft.'
-                  : `Runs stop after ${describeRunDuration(draftMs)} in the draft.`}{' '}
-                {roleLimitSentence(
-                  workspace.role,
-                  'workflow:update',
-                  'change how long runs may take',
-                )}
-              </p>
-            );
-          return (
-            <DurationPicker
-              durationMs={draftMs}
-              disabled={archived || choice.pending}
-              saving={choice.pending}
-              note={
-                archived
-                  ? 'Restore the workflow to change this.'
-                  : publishNote(draftMs, stored.live)
-              }
-              onChoose={(durationMs) => void choice.choose(durationMs)}
-            />
-          );
-        }}
-      </QueryView>
+      />
+      {draft === undefined || canUpdate ? null : (
+        <p className="text-sm text-muted-foreground">
+          {draftMs === undefined
+            ? 'Runs have no time limit in the draft.'
+            : `Runs stop after ${describeRunDuration(draftMs)} in the draft.`}{' '}
+          {roleLimitSentence(
+            workspace.role,
+            'workflow:update',
+            'change how long runs may take',
+          )}
+        </p>
+      )}
       {choice.problem === undefined ? null : (
         <Notice
           tone={choice.problem.retry ? 'warning' : 'destructive'}

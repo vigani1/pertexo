@@ -73,7 +73,7 @@ export const connectionUsage = {
     workflowLifecycleStatus: 'active',
     workflowVersionId: id(9, index + 1),
     versionNumber: (index % 4) + 1,
-    isCurrentPublication: true,
+    isCurrentPublication: index < 8,
     operationKeys: ['http.request'],
   })),
   nextCursor: null,
