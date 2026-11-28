@@ -25,6 +25,7 @@ import {
 } from '../../support/ordinary-editor-session';
 import { qualifyColumnNames } from './qualify-column-names';
 import { qualifyLargeDownload } from './qualify-download';
+import { qualifyRowFilter } from './qualify-row-filter';
 for (const width of [1280, 375])
   test(`real typed data tables create, import, edit, export and execute at ${String(width)}px`, async ({
     page,
@@ -176,29 +177,7 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('row').filter({ hasText: 'beta' }),
     ).toContainText('7');
-    await page.getByRole('button', { name: 'Filter', exact: true }).click();
-    const filter = page.getByRole('dialog', {
-      name: 'Filter rows',
-      exact: true,
-    });
-    await filter
-      .getByRole('textbox', { name: 'Value', exact: true })
-      .fill('missing-order');
-    await filter
-      .getByRole('button', { name: 'Apply filter', exact: true })
-      .click();
-    await expect(filter).toBeHidden();
-    await expect(
-      page.getByText('No rows match this filter. Try a different filter.', {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(
-      page.getByText('0 matching rows', { exact: true }),
-    ).toBeVisible();
-    await page
-      .getByRole('button', { name: 'Clear filter', exact: true })
-      .click();
+    await qualifyRowFilter(page);
     await page
       .getByRole('row')
       .filter({ hasText: 'alpha' })

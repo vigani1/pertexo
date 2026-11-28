@@ -320,10 +320,7 @@ test('reads an order, approves a separate Agent write and reviews its allowance'
     await owner.goto(`/w/${workspace}/settings/audit`);
     await owner.getByText('Governance settings', { exact: true }).click();
     await owner
-      .getByRole('checkbox', {
-        name: 'Require approval to publish',
-        exact: true,
-      })
+      .getByRole('checkbox', { name: /^Require approval to publish$/u })
       .check();
     await owner
       .getByRole('button', { name: 'Save publishing policy', exact: true })
