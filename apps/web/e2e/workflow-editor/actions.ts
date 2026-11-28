@@ -48,3 +48,14 @@ export async function focusStep(page: Page, nodeId: string) {
   await step.focus();
   await expect(step).toBeFocused();
 }
+
+/** Open the assistant from the workflow menu on phones and the toolbar elsewhere. */
+export async function openAssistant(page: Page): Promise<void> {
+  if ((page.viewportSize()?.width ?? 1280) < 640) {
+    await openWorkflowAction(page, 'Ask the assistant');
+    return;
+  }
+  await page
+    .getByRole('button', { name: 'Ask the assistant', exact: true })
+    .click();
+}
