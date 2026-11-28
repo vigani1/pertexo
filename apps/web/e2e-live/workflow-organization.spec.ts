@@ -197,7 +197,6 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await expect(page).toHaveURL(
     (url) => url.searchParams.get('query') === 'Alpha',
   );
-  await openFilters(page);
   await choose(
     page,
     page.getByRole('combobox', { name: 'Filter by tag' }),
@@ -208,6 +207,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
     page.getByRole('combobox', { name: 'Filter by folder' }),
     'Delivery',
   );
+  await openFilters(page);
   await page.getByRole('button', { name: 'My favorites', exact: true }).click();
   await expect(page).toHaveURL(
     (url) =>
@@ -240,7 +240,6 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await closeFilters(page);
   await organize(page, alphaName, 'move', 'Unfiled / top level');
   await phase('unfile');
-  await openFilters(page);
   await choose(
     page,
     page.getByRole('combobox', { name: 'Filter by folder' }),
@@ -249,7 +248,6 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await expect(row(page, alphaName)).toBeVisible();
   await expect(row(page, betaName)).toBeVisible();
   expect(new URL(page.url()).searchParams.get('folderId')).toBe('root');
-  await closeFilters(page);
 
   // Lose only a REAL completed response. No response body is fabricated; the
   // move must land once and be what the person sees after refreshing.

@@ -133,8 +133,7 @@ function PauseReadProblem({
       <p
         role="status"
         className={cn(
-          // Right-aligned on a phone, clear of the canvas tools on the left;
-          // centred from `sm` up.
+          // Float above the canvas. The canvas toolbar sits at the bottom.
           'pointer-events-auto absolute right-0 z-20 flex max-w-[calc(100%-7.5rem)] items-center sm:right-auto sm:left-1/2 sm:max-w-[calc(100vw-2rem)] sm:-translate-x-1/2 gap-2 rounded-2xl border border-border bg-card/95 py-1 pr-1.5 pl-2.5 text-xs text-muted-foreground shadow-raised backdrop-blur-sm sm:rounded-full sm:whitespace-nowrap',
           side === 'below' ? 'top-1' : 'bottom-1',
         )}

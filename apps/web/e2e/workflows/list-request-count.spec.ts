@@ -42,6 +42,17 @@ test('renders 50 workflow summaries without row requests', async ({
     });
   });
   await page.goto(`/w/${workspaceId}/workflows`);
+  const showAll = page.getByRole('button', {
+    name: 'Show all 50',
+    exact: true,
+  });
+  const rows = page.getByRole('list', { name: 'Workflows', exact: true });
+  await expect(rows.getByRole('listitem')).toHaveCount(5);
+  await expect(showAll).toHaveAttribute('aria-expanded', 'false');
+  await showAll.click();
+  await expect(
+    page.getByRole('button', { name: 'Show fewer', exact: true }),
+  ).toHaveAttribute('aria-expanded', 'true');
   await expect(
     page.getByRole('link', { name: 'Workflow 49', exact: true }),
   ).toBeAttached();

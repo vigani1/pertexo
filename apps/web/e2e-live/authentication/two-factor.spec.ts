@@ -61,7 +61,9 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
     'Factor owner',
   );
   await page.goto('/account/security');
-  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'How you sign in', exact: true }),
+  ).toBeVisible();
   await page
     .getByRole('button', { name: 'Turn on two-factor sign-in', exact: true })
     .click();
@@ -191,7 +193,9 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
   await page.getByRole('button', { name: 'Verify code' }).click();
   await expect(page).toHaveURL('/workspaces');
   await page.goto('/account/security');
-  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'How you sign in', exact: true }),
+  ).toBeVisible();
   // The spent code is gone from the count. Refusing it again is pinned by
   // the API's integration tests; a second sign-in here would spend the
   // identity budget (10 a minute per address, sign-ups, sign-ins, enable

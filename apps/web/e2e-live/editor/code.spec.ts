@@ -203,6 +203,10 @@ test('browser-authored Code uses the actual worker runner and keeps diagnostics 
   ).toMatchObject({ message: 'private Code failure', line: 2 });
   expect(JSON.stringify(failed)).not.toContain('private Code failure');
   await page.setViewportSize({ width: 375, height: 768 });
+  await page.getByText(/^See all \d+ steps? and the error$/u).click();
+  await expect(
+    page.getByRole('tab', { name: 'Timeline', exact: true }),
+  ).toBeVisible();
   await page
     .getByRole('button', { name: 'Calculate: Failed', exact: true })
     .click();

@@ -28,8 +28,6 @@ const syncWorkflowId = '20000000-0000-4000-8000-000000000005';
 const remindersWorkflowId = '20000000-0000-4000-8000-000000000007';
 export const secondApprovalId = '20000000-0000-4000-8000-000000000006';
 
-const minute = 60_000;
-
 /** `took`: started this many minutes ago, for this many seconds. */
 function nodeRun(
   nodeId: string,
@@ -121,7 +119,7 @@ function task(id: string, title: string, expiresInMinutes: number) {
     details: { Invoice: 'INV-2291', Amount: '7,480.00 EUR' },
     status: 'pending',
     createdAt: at(0.25),
-    expiresAt: new Date(Date.now() + expiresInMinutes * minute).toISOString(),
+    expiresAt: at(-expiresInMinutes),
     onExpiry: 'fail',
     completedAt: null,
     completedByName: null,

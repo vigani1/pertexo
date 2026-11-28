@@ -60,9 +60,9 @@ for (const width of [1280, 375]) {
     });
     await providerSignIn(page, 'Google', email);
     await page.goto(`/w/${workspaceId}/account`);
-    await page
-      .getByRole('tab', { name: 'Sign-in & security', exact: true })
-      .click();
+    await expect(
+      page.getByRole('heading', { name: 'How you sign in', exact: true }),
+    ).toBeVisible();
     const methods = page.getByRole('list', { name: 'Sign-in methods' });
     await expect(methods.getByText('Google', { exact: true })).toBeVisible();
     await expect(methods.getByText('Password', { exact: true })).toBeVisible();
@@ -91,9 +91,9 @@ for (const width of [1280, 375]) {
     );
     await createEditorWorkspace(page, `GitHub ${String(width)}`);
     await page.goto('/account/security');
-    await page
-      .getByRole('tab', { name: 'Sign-in & security', exact: true })
-      .click();
+    await expect(
+      page.getByRole('heading', { name: 'How you sign in', exact: true }),
+    ).toBeVisible();
     const methods = page.getByRole('list', { name: 'Sign-in methods' });
     await expect(methods.getByText('GitHub', { exact: true })).toBeVisible();
     await expect(methods.getByText('Password', { exact: true })).toHaveCount(0);
@@ -113,9 +113,9 @@ for (const width of [1280, 375]) {
     );
     await createEditorWorkspace(page, `Apple ${String(width)}`);
     await page.goto('/account/security');
-    await page
-      .getByRole('tab', { name: 'Sign-in & security', exact: true })
-      .click();
+    await expect(
+      page.getByRole('heading', { name: 'How you sign in', exact: true }),
+    ).toBeVisible();
     const methods = page.getByRole('list', { name: 'Sign-in methods' });
     await expect(methods.getByText('Apple', { exact: true })).toBeVisible();
     await expect(

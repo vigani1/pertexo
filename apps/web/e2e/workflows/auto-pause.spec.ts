@@ -269,14 +269,15 @@ for (const width of [1280, 375])
     const box = await line.boundingBox();
     // One line: a phone's 44 px Retry target sets its height there.
     expect(box?.height).toBeLessThanOrEqual(width < 640 ? 56 : 40);
-    const note = await page
-      .getByRole('button', { name: 'Add note', exact: true })
+    const toolbar = await page
+      .getByRole('toolbar', { name: 'Canvas toolbar', exact: true })
       .boundingBox();
-    // Clear of the canvas tools beside it.
-    expect(box?.x ?? 0).toBeGreaterThanOrEqual(
-      (note?.x ?? 0) + (note?.width ?? 0),
-    );
-    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+    if (box === null || toolbar === null)
+      throw new Error('Missing canvas controls');
+    // The notice floats above the canvas and clears the bottom toolbar.
+    expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
     answer = 'hold';
     await line.getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(

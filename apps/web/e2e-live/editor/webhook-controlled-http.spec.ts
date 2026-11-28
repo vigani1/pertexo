@@ -162,8 +162,8 @@ test('signed acceptance replay produces two immutable runs and one actual contro
   const receipt: unknown = await invoked.json();
   assertInvocationReceipt(receipt);
   await reveal
-    .getByRole('switch', { name: 'I’ve stored these', exact: true })
-    .click();
+    .getByRole('checkbox', { name: 'I’ve stored these', exact: true })
+    .check();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
   const trueRun = await waitForRun(
     page,

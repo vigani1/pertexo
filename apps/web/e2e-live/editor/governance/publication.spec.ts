@@ -59,8 +59,12 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     expect(setup.status()).toBe(200);
     const { viewerId } = (await setup.json()) as { viewerId: string };
     await page.goto(`/w/${workspaceId}/settings/audit`);
+    await page.getByText('Governance settings', { exact: true }).click();
     await page
-      .getByRole('checkbox', { name: 'Require approval to publish' })
+      .getByRole('checkbox', {
+        name: 'Require approval to publish',
+        exact: true,
+      })
       .check();
     await page
       .getByRole('button', { name: 'Save publishing policy', exact: true })
@@ -125,8 +129,12 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     });
     expect(saved.status(), await saved.text()).toBe(200);
     await page.goto(`/w/${workspaceId}/settings/audit`);
+    await page.getByText('Governance settings', { exact: true }).click();
     await page
-      .getByRole('checkbox', { name: 'Require approval to publish' })
+      .getByRole('checkbox', {
+        name: 'Require approval to publish',
+        exact: true,
+      })
       .check();
     await page
       .getByRole('button', { name: 'Save publishing policy', exact: true })

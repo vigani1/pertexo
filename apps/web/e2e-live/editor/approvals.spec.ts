@@ -208,7 +208,7 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       );
       await decider.setViewportSize({ width, height: 768 });
       await decider.emulateMedia({ reducedMotion: 'reduce' });
-      await decider.goto(`/w/${workspaceId}/inbox`);
+      await decider.goto(`/w/${workspaceId}/inbox?filter=all`);
       const notices = decider.getByRole('list', {
         name: 'Notices',
         exact: true,
@@ -333,7 +333,7 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       review: { Amount: 120, Customer: 'Captured customer', Ready: false },
     });
     await waitForRun(page, workspaceId, runId, 'waiting');
-    await page.goto(`/w/${workspaceId}/inbox`);
+    await page.goto(`/w/${workspaceId}/inbox?filter=all`);
     await page
       .getByRole('list', { name: 'Notices', exact: true })
       .getByRole('link', { name: 'Review approval', exact: true })

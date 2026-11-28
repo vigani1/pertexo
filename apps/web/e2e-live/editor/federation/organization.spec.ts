@@ -152,9 +152,9 @@ for (const width of [1280, 375]) {
       page.getByText(`Organization ${String(width)}`, { exact: true }),
     ).toBeVisible();
     await page.goto('/account/security');
-    await page
-      .getByRole('tab', { name: 'Sign-in & security', exact: true })
-      .click();
+    await expect(
+      page.getByRole('heading', { name: 'How you sign in', exact: true }),
+    ).toBeVisible();
     await expect(
       page
         .getByRole('list', { name: 'Sign-in methods' })

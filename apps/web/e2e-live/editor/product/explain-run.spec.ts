@@ -9,7 +9,11 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
-import { connectModel, modelScreenshots } from './model-editor';
+import {
+  connectModel,
+  enableAssistant,
+  modelScreenshots,
+} from './model-editor';
 import { key, model, openModelProvider } from './model-provider';
 
 test.use({ accountGroup: 'assistant', viewport: { width: 1280, height: 960 } });
@@ -61,16 +65,7 @@ test('confirms the transfer and follows an authorized step from the explanation'
       .getByRole('button', { name: 'Cancel', exact: true })
       .click();
 
-    await page.goto(`/w/${workspace}/settings`);
-    await page.getByLabel('AI connection', { exact: true }).click();
-    await page
-      .getByRole('option', { name: 'Order model', exact: true })
-      .click();
-    await page.getByLabel('Model identifier', { exact: true }).fill(model);
-    await page.getByRole('button', { name: 'Save assistant settings' }).click();
-    await expect(
-      page.getByText('Assistant is on.', { exact: true }),
-    ).toBeVisible();
+    await enableAssistant(page, workspace, model);
     await page.goto(`/w/${workspace}/runs/${run}`);
 
     inference.answerWith({

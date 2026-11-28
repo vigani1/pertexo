@@ -38,15 +38,16 @@ export function WebhookTestEventPanel({
   });
   const { listener, query } = test;
   const heading = useRef<HTMLHeadingElement>(null);
-  const progress = useRef<HTMLDivElement>(null);
+  const credentials = useRef<HTMLDivElement>(null);
   const listenerId = listener?.id;
   useEffect(() => {
     if (listenerId !== undefined) {
       heading.current?.focus({ preventScroll: true });
-      heading.current?.scrollIntoView({ block: 'start' });
-      // A short step panel (a phone, under the editor header) can't show the
-      // whole section: the test URL and its copy button come first.
-      progress.current?.scrollIntoView({ block: 'nearest' });
+      // A short inspector can clip the full credentials block. Bring its
+      // URL row into view so the copy control can be used immediately.
+      (credentials.current ?? heading.current)?.scrollIntoView({
+        block: 'nearest',
+      });
     }
   }, [listenerId]);
   const { now, expiresAt } = useListenerClock({
@@ -90,12 +91,13 @@ export function WebhookTestEventPanel({
       </div>
       {listener === undefined ? null : (
         <>
-          <div ref={progress} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             <StatusMark role="status" tone={status.tone}>
               {status.label}
             </StatusMark>
             {state === 'waiting' ? (
               <ListenerCredentials
+                urlRowRef={credentials}
                 listener={listener}
                 remainingSeconds={Math.max(
                   0,

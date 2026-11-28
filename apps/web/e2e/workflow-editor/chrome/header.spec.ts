@@ -55,7 +55,10 @@ async function expectSameHeader(
     const before = baseline[index];
     if (before === undefined) throw new Error('Missing header baseline');
     for (const key of ['x', 'y', 'width', 'height'] as const)
-      expect(Math.abs(box[key] - before[key])).toBeLessThan(1);
+      expect(
+        Math.abs(box[key] - before[key]),
+        `Header control ${index} ${key}`,
+      ).toBeLessThan(1);
   }
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),

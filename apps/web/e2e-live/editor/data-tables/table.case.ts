@@ -176,8 +176,18 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('row').filter({ hasText: 'beta' }),
     ).toContainText('7');
-    await page.getByLabel('Value', { exact: true }).fill('missing-order');
     await page.getByRole('button', { name: 'Filter', exact: true }).click();
+    const filter = page.getByRole('dialog', {
+      name: 'Filter rows',
+      exact: true,
+    });
+    await filter
+      .getByRole('textbox', { name: 'Value', exact: true })
+      .fill('missing-order');
+    await filter
+      .getByRole('button', { name: 'Apply filter', exact: true })
+      .click();
+    await expect(filter).toBeHidden();
     await expect(
       page.getByText('No rows match this filter. Try a different filter.', {
         exact: true,

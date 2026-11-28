@@ -1,9 +1,12 @@
 import type { WebhookTestEventStarted } from '@pertexo/contracts';
+import type { Ref } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
 export function ListenerCredentials({
   listener,
   remainingSeconds,
+  urlRowRef,
 }: {
+  urlRowRef: Ref<HTMLDivElement>;
   listener: WebhookTestEventStarted;
   remainingSeconds: number;
 }) {
@@ -15,7 +18,7 @@ export function ListenerCredentials({
         {String(remainingSeconds)} seconds left. Test credentials are separate
         from production.
       </p>
-      <div className="flex min-w-0 items-start gap-2">
+      <div ref={urlRowRef} className="flex min-w-0 items-start gap-2">
         <code className="min-w-0 flex-1 break-all text-xs">{url}</code>
         <CopyButton value={url} label="Copy test URL" />
       </div>

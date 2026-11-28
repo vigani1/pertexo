@@ -41,17 +41,17 @@ export async function invitedActor(input: {
     });
     await sheet.getByLabel('Email addresses', { exact: true }).fill(email);
     await sheet.getByLabel('Email addresses', { exact: true }).press('Enter');
-    const role = sheet.getByRole('combobox', { name: 'Role', exact: true });
-    await role.focus();
-    await input.owner.keyboard.press('ArrowDown');
-    await input.owner
-      .getByRole('option', {
+    const role = sheet
+      .getByRole('radiogroup', { name: 'Role', exact: true })
+      .getByRole('radio', {
         name: new RegExp(
           `^${input.role[0]?.toUpperCase() ?? ''}${input.role.slice(1)} `,
           'u',
         ),
-      })
-      .click();
+      });
+    await role.focus();
+    await role.press('Space');
+    await expect(role).toBeChecked();
     const response = await command({
       page: input.owner,
       button: sheet.getByRole('button', {
