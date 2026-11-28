@@ -5,9 +5,11 @@ export function canControlWorkflowTriggers(
   workspace: AccessibleWorkspace,
   workflow: WorkflowSummary | undefined,
 ): boolean {
+  const capability = 'workflow:publish';
   return (
     workspace.status === 'active' &&
-    rolesAllowedTo('workflow:publish').includes(workspace.role) &&
+    rolesAllowedTo(capability).includes(workspace.role) &&
+    workspace.capabilities.includes(capability) &&
     workflow !== undefined &&
     (workflow.resourceAccess?.canPublish ?? true)
   );
