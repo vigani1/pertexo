@@ -315,11 +315,13 @@ test('keeps workflow metadata contained and labeled at responsive widths', async
         surfaceBox.x + surfaceBox.width + 1,
       );
     }
+    const documentWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth,
+    );
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true);
+      documentWidth,
+      `Workflow collection fits at ${String(width)} px`,
+    ).toBeLessThanOrEqual(width);
     if (width === 768 || width === 1024) {
       const screenshot = await page.screenshot({ fullPage: true });
       await testInfo.attach(`workflow-collection-${String(width)}`, {
