@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
+import { cn } from '@/lib/class-names';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import {
@@ -96,11 +97,12 @@ export function SessionCommandBar({
         commands={
           paused ? null : (
             <>
-              {hasCleanCheck ? (
-                <StatusMark tone="success" className="max-xl:hidden">
-                  No issues
-                </StatusMark>
-              ) : null}
+              <StatusMark
+                tone="success"
+                className={cn('max-xl:hidden', !hasCleanCheck && 'invisible')}
+              >
+                No issues
+              </StatusMark>
               {canPropose ? (
                 <Button
                   {...{ [ASSISTANT_TRIGGER_ATTRIBUTE]: '' }}
