@@ -91,7 +91,8 @@ export const workflows = appSchema.table(
     }),
     triggerPauseReason: varchar('trigger_pause_reason', {
       length: WIDTHS.triggerPauseReason,
-    }).$type<'consecutive_failures'>(),
+    }).$type<'consecutive_failures' | 'manual'>(),
+    triggerPausedBy: uuid('trigger_paused_by'),
     triggerPauseFailures: integer('trigger_pause_failures'),
     triggerPauseLastRunId: uuid('trigger_pause_last_run_id'),
     triggerPausePollTriggerId: uuid('trigger_pause_poll_trigger_id'),
@@ -141,7 +142,7 @@ export const workflows = appSchema.table(
     check('workflows_name_revision_positive', sql`(name_revision > 0)`),
     check(
       'workflows_trigger_pause_valid',
-      sql`((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE`,
+      sql`((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_paused_by IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((((trigger_pause_reason)::text = 'manual'::text) AND (trigger_paused_by IS NOT NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_paused_by IS NULL) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))))) IS TRUE`,
     ),
     uniqueIndex('workflows_mcp_tool_name_unique')
       .on(table.workspaceId, sql`(${table.mcpExposure}->>'name')`)

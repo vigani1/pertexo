@@ -18,7 +18,10 @@ import {
   workflowAccessible,
   workflowActions,
 } from '../../../shared/resources/workflow-access.repository.js';
-import { workflowProjection } from '../representation/workflow-representations.repository.js';
+import {
+  workflowProjection,
+  workflowReadProjection,
+} from '../representation/workflow-representations.repository.js';
 
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';
 
@@ -144,6 +147,7 @@ function listRows(
   return db
     .select({
       ...readProjection,
+      workflow: workflowReadProjection,
       cursor_position_at: sql<string>`to_char(${position} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
     })
     .from(w)

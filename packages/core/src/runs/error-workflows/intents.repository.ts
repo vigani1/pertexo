@@ -60,7 +60,10 @@ export async function lockErrorWorkflowTarget(
   input: Readonly<{ workspaceId: string; workflowId: string }>,
 ) {
   const [target] = await drizzle(client)
-    .select({ lifecycle_status: workflows.lifecycleStatus })
+    .select({
+      lifecycle_status: workflows.lifecycleStatus,
+      trigger_pause_state: workflows.triggerPauseState,
+    })
     .from(workflows)
     .where(
       and(

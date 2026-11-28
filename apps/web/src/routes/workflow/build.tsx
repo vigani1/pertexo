@@ -13,7 +13,10 @@ import {
 import { FirstRunGuide } from '@/features/workflows/workflows-views.public';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/pages/workflow-editor';
-import { WorkflowPausedBanner } from '@/features/workflow-settings/workflow-settings-views.public';
+import {
+  WorkflowPausedBanner,
+  WorkflowTriggerStatus,
+} from '@/features/workflow-settings/workflow-settings-views.public';
 import { ResourceNotFound } from '../root/status/pages';
 import { useWorkflowHubScope } from './hub/scope';
 
@@ -46,6 +49,16 @@ export function WorkflowBuildRoute() {
     <WorkflowEditorPage
       stepDiscussions={stepDiscussions}
       headerPresence={<WorkflowPresenceSummary />}
+      renderHeaderStatus={(status) => (
+        <WorkflowTriggerStatus
+          apiClient={apiClient}
+          userId={user.id}
+          workspaceId={workspace.id}
+          workflowId={workflowId}
+        >
+          {status}
+        </WorkflowTriggerStatus>
+      )}
       renderEditingPresence={(source) => (
         <WorkflowEditingPresence source={source} />
       )}

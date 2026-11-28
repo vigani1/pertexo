@@ -1235,12 +1235,11 @@ describe('generic webhook database seam', () => {
       "update app.trigger_schedules set status='disabled' where trigger_id=$1",
       [resources.scheduleId],
     );
-    await ownerQuery(
-      `update app.workflows set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),
-      trigger_pause_reason='consecutive_failures',trigger_pause_failures=10,trigger_pause_last_run_id=$3,
-      trigger_pause_revision=trigger_pause_revision+1 where workspace_id=$1 and id=$2`,
-      [workspaceId, pausedWorkflowId, before.runId],
-    );
+    await controls.pauseWorkflow({
+      ...scope,
+      expectedPauseRevision: '3',
+      idempotencyKey: randomUUID(),
+    });
     await authoring.transitionWorkflowLifecycle({
       ...scope,
       command: 'archive',

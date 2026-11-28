@@ -84,6 +84,33 @@ it('pauses for lost authentication, audits the poll, and resumes the same positi
   });
 });
 
+it('stops polling and admits new items after a manual pause is resumed', async () => {
+  const { triggerId } = await poll.publish();
+  await poll.scanner(feed('baseline'))();
+  const command = {
+    ...scope(),
+    idempotencyKey: randomUUID(),
+    expectedPauseRevision: '1',
+  };
+  const paused = await poll.controls.pauseWorkflow(command);
+  expect(paused.settings).toMatchObject({
+    pauseState: 'paused',
+    pauseReason: 'manual',
+  });
+  await poll.makeDue(triggerId);
+  const scan = poll.scanner(feed('new', 'baseline'));
+  expect(await scan()).toMatchObject({ claimed: 0 });
+  expect(await poll.admitted()).toEqual([]);
+
+  await poll.controls.resumeWorkflow({
+    ...command,
+    idempotencyKey: randomUUID(),
+    expectedPauseRevision: paused.settings.pauseRevision,
+  });
+  expect(await scan()).toMatchObject({ claimed: 1 });
+  expect(await poll.admitted()).toEqual([{ item: { key: 'new' }, outbox: 1 }]);
+});
+
 it('uses the configured threshold, clears the streak after a valid fetch, and starts a new streak on resume', async () => {
   await poll.controls.updateWorkflowSettings({
     ...scope(),

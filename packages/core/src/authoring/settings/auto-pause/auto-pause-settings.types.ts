@@ -10,7 +10,8 @@ export type WorkflowAutoPauseSettings = Readonly<{
   pauseState: 'none' | 'paused';
   pauseRevision: string;
   pausedAt: string | null;
-  pauseReason: 'consecutive_failures' | null;
+  pauseReason: 'consecutive_failures' | 'manual' | null;
+  pausedBy?: Readonly<{ id: string; displayName: string | null }> | undefined;
   pausedFailures: number | null;
   pausedLastRunId: string | null;
   pauseEvidence?: PollPauseEvidence | undefined;
@@ -48,7 +49,7 @@ export type UpdateWorkflowAutoPauseInput = WorkflowAutoPauseScope &
     thresholdOverride: number | null;
     expectedSettingsRevision: number;
   }>;
-export type ResumeWorkflowInput = WorkflowAutoPauseScope &
+export type ChangeWorkflowPauseInput = WorkflowAutoPauseScope &
   Command &
   Readonly<{ expectedPauseRevision: string }>;
 export type UpdateWorkspaceAutoPauseInput = WorkspaceAutoPauseScope &

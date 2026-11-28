@@ -56,6 +56,10 @@ export const workflowProjection = {
   createdAt: workflows.createdAt,
   updatedAt: workflows.updatedAt,
 };
+export const workflowReadProjection = {
+  ...workflowProjection,
+  triggerPauseState: workflows.triggerPauseState,
+};
 export const draftProjection = {
   workflowId: workflowDrafts.workflowId,
   workspaceId: workflowDrafts.workspaceId,

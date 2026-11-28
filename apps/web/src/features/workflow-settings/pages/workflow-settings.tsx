@@ -14,6 +14,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { FailureAlertsSection } from '../components/settings/failure-alerts-section';
 import { WorkflowPolicySummary } from '../components/settings/policy-summary';
 import { IdentitySection } from '../components/settings/identity-section';
+import { TriggerPauseRow } from '../components/trigger-pause-row';
 import { LifecycleSection } from '../components/settings/lifecycle-section';
 import { RunDurationSection } from '../components/settings/run-duration-section';
 import { AutoPauseSection } from '../components/settings/auto-pause-section';
@@ -134,6 +135,14 @@ function SettingsSession({
           />
         </SettingsGroup>
       ) : null}
+      {workflow === undefined ? null : (
+        <TriggerPauseRow
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={workflow}
+        />
+      )}
       <LifecycleSection
         apiClient={apiClient}
         userId={user.id}

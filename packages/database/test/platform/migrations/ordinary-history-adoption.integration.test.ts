@@ -70,6 +70,7 @@ it('upgrades an adopted baseline through the real later migrations, preserving d
     expect((await admin.query('select * from app.workflows')).rows).toEqual(
       before.map((workflow) => ({
         ...workflow,
+        trigger_paused_by: null,
         trigger_pause_poll_error_code: null,
         trigger_pause_poll_trigger_id: null,
         mcp_exposure: null,

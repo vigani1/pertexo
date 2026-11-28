@@ -54,7 +54,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       },
     );
     it('accepts every route with only its narrowest required scopes', async () => {
-      expect(routes).toHaveLength(27);
+      expect(routes).toHaveLength(28);
       for (const route of routes) {
         const headers = await world.credential(route.scopes);
         let payload =
@@ -109,7 +109,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
     });
 
-    it('publishes the scopes independently qualified by each of the 27 real operations', async () => {
+    it('publishes the scopes independently qualified by each of the 28 real operations', async () => {
       const response = await api.send('GET', '/v1/openapi.json');
       expect(response.statusCode, response.payload).toBe(200);
       const document = response.json<{

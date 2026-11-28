@@ -6,6 +6,7 @@ import {
   workspaceId,
   workflowId,
   editorUrl,
+  workflowSummary,
 } from '../workflow-editor/support';
 import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
@@ -46,6 +47,16 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
       ],
     },
   });
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) =>
+      route.fulfill({
+        json: workflowSummary(
+          'Customer onboarding',
+          'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        ),
+      }),
+  );
   let settings = paused;
   const writes: { body: unknown; key: string | undefined }[] = [];
   await page.route(

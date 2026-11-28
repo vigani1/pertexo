@@ -36,6 +36,7 @@ function fixture(role: Role = 'owner') {
     updateWorkflowSettings: vi
       .fn()
       .mockResolvedValue({ settings, replayed: false }),
+    pauseWorkflow: vi.fn().mockResolvedValue({ settings, replayed: true }),
     resumeWorkflow: vi.fn().mockResolvedValue({ settings, replayed: true }),
     readWorkspaceSettings: vi
       .fn()
@@ -59,25 +60,30 @@ function fixture(role: Role = 'owner') {
 }
 
 describe('workflow automatic pause application boundary', () => {
-  it('preserves bigint revision strings and exact replay responses', async () => {
-    const { persistence, controls } = fixture('builder');
-    const result = await controls.resume({
-      actor,
-      routeWorkspaceId: workspaceId,
-      workflowId,
-      idempotencyKey: 'resume-once',
-      request: { expectedPauseRevision: settings.pauseRevision },
-    });
-    expect(result).toEqual({ settings, replayed: true });
-    expect(persistence.resumeWorkflow).toHaveBeenCalledWith({
-      workspaceId,
-      workflowId,
-      actorId,
-      idempotencyKey: 'resume-once',
-      requestId: 'pause-test',
-      expectedPauseRevision: '9007199254740993',
-    });
-  });
+  it.each(['pause', 'resume'] as const)(
+    'preserves bigint revision strings and exact %s replay responses',
+    async (intent) => {
+      const { persistence, controls } = fixture('builder');
+      const result = await controls.changePause(intent, {
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        idempotencyKey: 'resume-once',
+        request: { expectedPauseRevision: settings.pauseRevision },
+      });
+      expect(result).toEqual({ settings, replayed: true });
+      expect(
+        persistence[intent === 'pause' ? 'pauseWorkflow' : 'resumeWorkflow'],
+      ).toHaveBeenCalledWith({
+        workspaceId,
+        workflowId,
+        actorId,
+        idempotencyKey: 'resume-once',
+        requestId: 'pause-test',
+        expectedPauseRevision: '9007199254740993',
+      });
+    },
+  );
 
   it.each(['operator', 'viewer'] as const)(
     'does not let %s resume or edit workflow settings',
@@ -91,7 +97,7 @@ describe('workflow automatic pause application boundary', () => {
         request: { expectedPauseRevision: '1' },
       };
       await expect(
-        problemResult(controls.resume(input), authoringFailure),
+        problemResult(controls.changePause('resume', input), authoringFailure),
       ).rejects.toMatchObject({
         code: 'resource.not_found',
       });
@@ -108,7 +114,11 @@ describe('workflow automatic pause application boundary', () => {
           authoringFailure,
         ),
       ).rejects.toMatchObject({ code: 'resource.not_found' });
+      await expect(
+        problemResult(controls.changePause('pause', input), authoringFailure),
+      ).rejects.toMatchObject({ code: 'resource.not_found' });
       expect(persistence.resumeWorkflow).not.toHaveBeenCalled();
+      expect(persistence.pauseWorkflow).not.toHaveBeenCalled();
       expect(persistence.updateWorkflowSettings).not.toHaveBeenCalled();
       expect(await controls.readWorkflow(input)).toEqual(settings);
     },

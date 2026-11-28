@@ -45,13 +45,26 @@ export class WorkflowAutoPauseController {
     });
   }
 
+  @Route(routes.pause)
+  public async pause(
+    @Caller() caller: WorkspaceCaller,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.pause>,
+  ) {
+    return await this.controls.changePause('pause', {
+      ...serviceCaller(caller),
+      request: body,
+      idempotencyKey,
+      workflowId: params.workflowId,
+    });
+  }
+
   @Route(routes.resume)
   public async resume(
     @Req() request: WorkflowAuthoringRequest,
     @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.resume>,
   ) {
-    return await this.controls.resume({
+    return await this.controls.changePause('resume', {
       ...serviceCaller(caller),
       request: body,
       idempotencyKey,

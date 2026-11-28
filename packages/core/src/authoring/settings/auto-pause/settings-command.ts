@@ -26,6 +26,7 @@ export function command<T>(
     operation: string;
     resourceId: string;
     workflowId?: string;
+    capability?: 'workflow:publish';
     roles: readonly Role[];
     request: unknown;
     receipt: z.ZodType<T>;
@@ -52,7 +53,10 @@ export function command<T>(
       resource:
         options.workflowId === undefined
           ? undefined
-          : { workflowId: options.workflowId, capability: 'workflow:update' },
+          : {
+              workflowId: options.workflowId,
+              capability: options.capability ?? 'workflow:update',
+            },
     });
     const identity = {
       workspaceId,

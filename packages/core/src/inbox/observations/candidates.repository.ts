@@ -67,7 +67,12 @@ function workflowCandidates(db: Pick<NodePgDatabase, 'select'>) {
       capacity_limit: noLimit,
     })
     .from(workflows)
-    .where(eq(workflows.triggerPauseState, 'paused'));
+    .where(
+      and(
+        eq(workflows.triggerPauseState, 'paused'),
+        eq(workflows.triggerPauseReason, 'consecutive_failures'),
+      ),
+    );
   const connection = db
     .select({
       workspace_id: connections.workspaceId,

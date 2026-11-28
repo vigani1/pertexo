@@ -125,7 +125,10 @@ export function useEditorApiFixture(context: {
           },
         }),
     ...(artifactScenario ? { artifacts: parseArtifactStoreConfig() } : {}),
-    schedules: scenario === 'schedule' || scenario === 'curated-templates',
+    schedules:
+      scenario === 'schedule' ||
+      scenario === 'curated-templates' ||
+      scenario === 'product',
     ...(httpMaster === undefined
       ? {}
       : {

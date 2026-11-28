@@ -186,6 +186,19 @@ describe('workflow list view', () => {
     ]);
   });
 
+  it('counts a paused publication as paused', () => {
+    const workflow: WorkflowSummary = {
+      ...summary('5', 'Paused intake'),
+      lifecycleStatus: 'active',
+      activationStatus: 'active',
+      publishedVersionId: '9',
+      triggerPauseState: 'paused',
+    };
+    expect(countWorkflowStates([workflow])).toEqual([
+      { label: 'paused', tone: 'waiting', count: 1 },
+    ]);
+  });
+
   it('parses list URL state tolerantly and omits defaults when updating', () => {
     expect(
       parseWorkflowListSearch({ create: 'true', view: 'all', sort: 'created' }),

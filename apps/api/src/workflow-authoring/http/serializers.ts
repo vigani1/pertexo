@@ -186,6 +186,9 @@ export function workflowSummary(
     lifecycleStatus: workflow.lifecycleStatus,
     lifecycleRevision: workflow.lifecycleRevision,
     activationStatus: workflow.activationStatus,
+    ...(projection !== undefined && workflow.triggerPauseState === 'paused'
+      ? { triggerPauseState: 'paused' as const }
+      : {}),
     webhookSetupRequired: workflow.webhookSetupRequired,
     ...(workflow.pollingTriggers === undefined
       ? {}

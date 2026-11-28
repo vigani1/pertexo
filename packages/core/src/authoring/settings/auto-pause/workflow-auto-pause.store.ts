@@ -1,4 +1,4 @@
-import { readDatabaseClockText } from '../../../shared/database-clock.repository.js';
+import { changeWorkflowPause } from './change-workflow-pause.js';
 import {
   ROLES,
   WORKFLOW_EDITOR_ROLES,
@@ -8,17 +8,12 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  workflows,
-  workspaces,
-  workflowFailureStreaks,
-  workflowTriggerPausePeriods,
-} from '@pertexo/database/schema';
+import { workflows, workspaces } from '@pertexo/database/schema';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { command } from './settings-command.js';
 import type {
   AutoPauseCommandResult,
-  ResumeWorkflowInput,
+  ChangeWorkflowPauseInput,
   Transact,
   UpdateWorkflowAutoPauseInput,
   UpdateWorkspaceAutoPauseInput,
@@ -29,7 +24,6 @@ import type {
 } from './auto-pause-settings.types.js';
 import {
   WorkflowAutoPauseSettingsRevisionConflictError,
-  WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './auto-pause.errors.js';
 import {
@@ -64,8 +58,10 @@ export function createWorkflowAutoPauseStore(transact: Transact) {
       readWorkflowPauseSettings(transact, input),
     readWorkspaceSettings: (input: WorkspaceAutoPauseScope) =>
       readWorkspacePauseSettings(transact, input),
-    resumeWorkflow: (input: ResumeWorkflowInput) =>
-      resumePausedWorkflow(transact, input),
+    pauseWorkflow: (input: ChangeWorkflowPauseInput) =>
+      changeWorkflowPause(transact, input, 'pause'),
+    resumeWorkflow: (input: ChangeWorkflowPauseInput) =>
+      changeWorkflowPause(transact, input, 'resume'),
     updateWorkflowSettings: (input: UpdateWorkflowAutoPauseInput) =>
       updateWorkflowPauseSettings(transact, input),
     updateWorkspaceSettings: (input: UpdateWorkspaceAutoPauseInput) =>
@@ -121,99 +117,6 @@ async function readWorkspacePauseSettings(
       threshold: workspace.autoPauseThreshold,
       revision: workspace.revision,
     };
-  });
-}
-
-async function resumePausedWorkflow(
-  transact: Transact,
-  input: ResumeWorkflowInput,
-): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>> {
-  const workflowId = input.workflowId;
-  const request = {
-    expectedPauseRevision: input.expectedPauseRevision,
-  };
-  return command(transact, input, {
-    operation: 'workflow.autopause.resume',
-    receipt: workflowSettings,
-    resourceId: workflowId,
-    workflowId,
-    roles: EDITORS,
-    request,
-    exclusive: false,
-    apply: async (client, workspace) => {
-      const current = await lockWorkflow(client, input.workspaceId, workflowId);
-      if (current.triggerPauseRevision !== request.expectedPauseRevision)
-        throw new WorkflowPauseRevisionConflictError(
-          current.triggerPauseRevision,
-        );
-      if (current.triggerPauseState !== 'paused')
-        return { settings: workflowSettingsOf(current, workspace) };
-      // Outcomes that ended before the resume no longer count.
-      const resumedAt = await readDatabaseClockText(client);
-      const db = drizzle(client);
-      // The paused-state CHECK guarantees the retained pause start is present.
-      await db
-        .insert(workflowTriggerPausePeriods)
-        .values({
-          workspaceId: input.workspaceId,
-          workflowId,
-          pauseRevision: BigInt(current.triggerPauseRevision),
-          pausedAt: sql<string>`${current.triggerPausedAt}::timestamptz`,
-          resumedAt,
-        })
-        .catch(rethrowQueryFailure);
-      await db
-        .insert(workflowFailureStreaks)
-        .values({
-          workspaceId: input.workspaceId,
-          workflowId,
-          consecutiveFailures: 0,
-          legacyFailures: 0,
-          resumedAfter: resumedAt,
-        })
-        .onConflictDoUpdate({
-          target: [
-            workflowFailureStreaks.workspaceId,
-            workflowFailureStreaks.workflowId,
-          ],
-          set: {
-            consecutiveFailures: 0,
-            legacyFailures: 0,
-            lastRunId: null,
-            lastEndedAt: null,
-            resumedAfter: resumedAt,
-            updatedAt: sql`clock_timestamp()`,
-          },
-        })
-        .catch(rethrowQueryFailure);
-      const [updated] = await db
-        .update(workflows)
-        .set({
-          triggerPauseState: 'none',
-          triggerPausedAt: null,
-          triggerPauseReason: null,
-          triggerPauseFailures: null,
-          triggerPauseLastRunId: null,
-          triggerPausePollTriggerId: null,
-          triggerPausePollErrorCode: null,
-          triggerPauseRevision: sql`${workflows.triggerPauseRevision}+1`,
-        })
-        .where(
-          and(
-            eq(workflows.workspaceId, input.workspaceId),
-            eq(workflows.id, workflowId),
-          ),
-        )
-        .returning(workflowProjection)
-        .catch(rethrowQueryFailure);
-      return {
-        settings: workflowSettingsOf(updated ?? current, workspace),
-        audit: {
-          action: 'workflow.triggers_resumed',
-          targetType: 'workflow',
-        },
-      };
-    },
   });
 }
 

@@ -37,7 +37,7 @@ import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js
 import { workflowActions } from '../../shared/resources/workflow-access.repository.js';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { WorkflowRecord } from '../workflows/representation/workflow-record.types.js';
-import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
+import { workflowReadProjection } from '../workflows/representation/workflow-representations.repository.js';
 
 type Scope = Readonly<{
   workspaceId: string;
@@ -225,7 +225,7 @@ function organizedRows(
     );
   return db
     .select({
-      workflow: workflowProjection,
+      workflow: workflowReadProjection,
       organizationRevision:
         sql<number>`coalesce(${workflowOrganizationState.revision},1)`.mapWith(
           workflowOrganizationState.revision,

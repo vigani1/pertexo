@@ -50,13 +50,18 @@ export class WorkflowAutoPauseService {
     });
   }
 
-  public async resume(
+  public async changePause(
+    intent: 'pause' | 'resume',
     input: CommandInput<z.output<typeof workflowResumeRequestSchema>> &
       Readonly<{ workflowId: string }>,
   ) {
     await this.authorize(input, 'workflow:publish');
     const { request } = input;
-    return await this.persistence.resumeWorkflow({
+    const command =
+      intent === 'pause'
+        ? this.persistence.pauseWorkflow
+        : this.persistence.resumeWorkflow;
+    return await command({
       ...this.commandContext(input),
       ...request,
       workflowId: input.workflowId,

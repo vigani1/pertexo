@@ -26,6 +26,7 @@ export function WorkflowEditorPage({
   onPublished,
   triggerNotice,
   headerPresence,
+  renderHeaderStatus,
   renderEditingPresence,
   stepDiscussions,
 }: Readonly<{
@@ -42,6 +43,7 @@ export function WorkflowEditorPage({
   onPublished?: () => void;
   triggerNotice?: ReactNode;
   headerPresence?: ReactNode;
+  renderHeaderStatus?: ((status: ReactNode) => ReactNode) | undefined;
   renderEditingPresence?: (source: EditorPresenceSource) => ReactNode;
 }>) {
   const { apiClient, user, workspace, workflowId } = scope;
@@ -71,6 +73,7 @@ export function WorkflowEditorPage({
               onRunAccepted={onRunAccepted}
               triggerNotice={triggerNotice}
               headerPresence={headerPresence}
+              renderHeaderStatus={renderHeaderStatus}
               {...(renderEditingPresence === undefined
                 ? {}
                 : { renderEditingPresence })}
