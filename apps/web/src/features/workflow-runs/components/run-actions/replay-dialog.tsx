@@ -294,26 +294,13 @@ export function ReplayRunDialog({
       locked={replay.pending}
       onClose={close}
       footer={
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={replay.pending}
-            onClick={close}
-          >
-            Cancel
-          </Button>
-          <ProgressButton
-            form={formId}
-            type="submit"
-            variant="primary"
-            pending={replay.pending}
-            pendingLabel="Replaying…"
-            disabled={cannotStart}
-          >
-            {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
-          </ProgressButton>
-        </>
+        <ReplayDrawerActions
+          formId={formId}
+          pending={replay.pending}
+          retryAvailable={replay.retryAvailable}
+          cannotStart={cannotStart}
+          onClose={close}
+        />
       }
     >
       <form
@@ -353,5 +340,42 @@ export function ReplayRunDialog({
         </ConfirmationDetails>
       </form>
     </ActionDialog>
+  );
+}
+
+function ReplayDrawerActions({
+  formId,
+  pending,
+  retryAvailable,
+  cannotStart,
+  onClose,
+}: Readonly<{
+  formId: string;
+  pending: boolean;
+  retryAvailable: boolean;
+  cannotStart: boolean;
+  onClose: () => void;
+}>) {
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={pending}
+        onClick={onClose}
+      >
+        Cancel
+      </Button>
+      <ProgressButton
+        form={formId}
+        type="submit"
+        variant="primary"
+        pending={pending}
+        pendingLabel="Replaying…"
+        disabled={cannotStart}
+      >
+        {retryAvailable ? 'Retry same replay' : 'Replay run'}
+      </ProgressButton>
+    </>
   );
 }

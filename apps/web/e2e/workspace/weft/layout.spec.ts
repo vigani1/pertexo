@@ -1,5 +1,5 @@
 import { mkdir } from 'node:fs/promises';
-import { test, expect } from '../../support/fixtures';
+import { test, expect, type Page } from '../../support/fixtures';
 import { fixtureRun } from '../../../test/support/fixtures/run';
 import { succeededRunId } from './activity-data';
 import { installWorkflowTabRoutes, liveVersionId } from './workflow-data';
@@ -85,50 +85,9 @@ for (const [width, height] of viewports) {
               [],
             );
           }
-          if (screen.name === 'workflow-settings') {
-            const concurrency = page.getByRole('region', {
-              name: 'Runs at once',
-            });
-            const limit = concurrency.getByRole('textbox', {
-              name: 'Runs at once',
-            });
-            await expect(limit).toBeVisible();
-            await expect(
-              concurrency.getByRole('combobox', {
-                name: 'When the limit is reached',
-              }),
-            ).toBeVisible();
-            if (width >= 768) {
-              const heading = await concurrency
-                .getByRole('heading', { name: 'Runs at once' })
-                .boundingBox();
-              const control = await limit.boundingBox();
-              expect(control?.x ?? 0).toBeGreaterThan(heading?.x ?? 0);
-              expect(
-                Math.abs((control?.y ?? 0) - (heading?.y ?? 0)),
-              ).toBeLessThan(24);
-            }
-            const errorSave = page.getByRole('button', {
-              name: 'Save error workflow',
-            });
-            const quietFill = await concurrency
-              .getByRole('button', { name: 'Save concurrency limit' })
-              .evaluate((button) => getComputedStyle(button).backgroundColor);
-            await expect(errorSave).toHaveCSS('background-color', quietFill);
-          }
-          if (screen.name === 'audit') {
-            const eventTime = page
-              .locator('time[datetime]')
-              .filter({ visible: true })
-              .first();
-            await expect(eventTime).toBeVisible();
-            const localClock = await eventTime.evaluate((time) =>
-              new Intl.DateTimeFormat(navigator.language, {
-                timeStyle: 'short',
-              }).format(new Date(time.getAttribute('datetime') ?? '')),
-            );
-            await expect(eventTime).toHaveText(localClock);
-          }
+          if (screen.name === 'workflow-settings')
+            await checkSettingsLayout(page, width);
+          if (screen.name === 'audit') await checkAuditTime(page);
           if (screen.name === 'versions') {
             const draft = page.getByRole('link', {
               name: /^Draft · candidate/u,
@@ -175,6 +134,50 @@ for (const [width, height] of viewports) {
         });
       }
   });
+}
+
+async function checkSettingsLayout(page: Page, width: number) {
+  const concurrency = page.getByRole('region', {
+    name: 'Runs at once',
+  });
+  const limit = concurrency.getByRole('textbox', {
+    name: 'Runs at once',
+  });
+  await expect(limit).toBeVisible();
+  await expect(
+    concurrency.getByRole('combobox', {
+      name: 'When the limit is reached',
+    }),
+  ).toBeVisible();
+  if (width >= 768) {
+    const heading = await concurrency
+      .getByRole('heading', { name: 'Runs at once' })
+      .boundingBox();
+    const control = await limit.boundingBox();
+    expect(control?.x ?? 0).toBeGreaterThan(heading?.x ?? 0);
+    expect(Math.abs((control?.y ?? 0) - (heading?.y ?? 0))).toBeLessThan(24);
+  }
+  const errorSave = page.getByRole('button', {
+    name: 'Save error workflow',
+  });
+  const quietFill = await concurrency
+    .getByRole('button', { name: 'Save concurrency limit' })
+    .evaluate((button) => getComputedStyle(button).backgroundColor);
+  await expect(errorSave).toHaveCSS('background-color', quietFill);
+}
+
+async function checkAuditTime(page: Page) {
+  const eventTime = page
+    .locator('time[datetime]')
+    .filter({ visible: true })
+    .first();
+  await expect(eventTime).toBeVisible();
+  const localClock = await eventTime.evaluate((time) =>
+    new Intl.DateTimeFormat(navigator.language, {
+      timeStyle: 'short',
+    }).format(new Date(time.getAttribute('datetime') ?? '')),
+  );
+  await expect(eventTime).toHaveText(localClock);
 }
 
 test('Home shows the same 24-hour failures in its header and Needs you', async ({
