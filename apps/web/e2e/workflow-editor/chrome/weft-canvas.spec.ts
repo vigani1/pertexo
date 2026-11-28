@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { expect, test, type Page } from '../../support/fixtures';
 import { installAssistantProposal } from '../../workspace/core-flow-assistant-fixture';
-import { triageGraph } from '../../workspace/core-flow-invoice-graph';
+import { installAgentRun, task } from './weft-agent-fixture';
 import { installCoreFlowRoutes } from '../../workspace/core-flow-layout-fixture';
 import { addCsrfCookie, editorUrl } from '../support';
 
@@ -135,7 +135,7 @@ for (const viewport of screenshots === undefined
       test('shows the agent task first and opens its input mappings', async ({
         page,
       }) => {
-        await installCoreFlowRoutes(page, { graph: triageGraph() });
+        await installAgentRun(page);
         await page.goto(editorUrl);
         const step = page.getByTestId('rf__node-reply');
         await step.press('Enter');
@@ -148,6 +148,11 @@ for (const viewport of screenshots === undefined
         await expect(
           inspector.getByRole('heading', { name: 'Task', exact: true }),
         ).toBeVisible();
+        await expect(inspector.getByText(task, { exact: true })).toBeAttached();
+        await expect(inspector.getByLabel('Last run output')).toBeAttached();
+        await expect(
+          inspector.getByText('Last run: Succeeded', { exact: true }),
+        ).toBeAttached();
         await checkCanvas(page, 'build-ai-steps', theme);
         await inspector.getByRole('button', { name: 'Edit in Inputs' }).click();
         await expect(
