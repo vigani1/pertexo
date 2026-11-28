@@ -259,6 +259,26 @@ export const workspaceScreens: readonly Screen[] = [
     ready: heading('Automatic pause'),
   },
   {
+    name: 'settings-confirmation',
+    path: `${root}/settings`,
+    prepare: async (page) => {
+      let settings = { threshold: 10, revision: 1 };
+      await page.route('**/v1/workspaces/*/auto-pause', (route) => {
+        if (route.request().method() !== 'PUT')
+          return route.fulfill({ json: settings });
+        settings = { threshold: 12, revision: 2 };
+        return route.fulfill({ json: { settings, replayed: false } });
+      });
+    },
+    open: async (page) => {
+      await page.getByRole('textbox', { name: 'Workspace default' }).fill('12');
+      await page
+        .getByRole('button', { name: 'Save workspace default' })
+        .click();
+    },
+    ready: heading('Workspace auto-pause default saved'),
+  },
+  {
     name: 'usage',
     path: `${root}/settings/usage`,
     ready: heading('By workflow'),
