@@ -6,10 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  type ManagedRole,
-  type WorkspaceRole,
-} from '../../model/workspace-roles';
+import type { ManagedRole, WorkspaceRole } from '../../model/workspace-roles';
 import { ROLE_NAMES } from '../../model/role-words';
 
 type RoleSelectProps = Readonly<{

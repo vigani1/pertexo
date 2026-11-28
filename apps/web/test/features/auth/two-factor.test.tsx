@@ -119,7 +119,9 @@ describe('two-factor account controls', () => {
     );
     const { actor } = await openSecurity();
     expect(
-      await screen.findByText(/Only 2 recovery codes left/u),
+      within(
+        await screen.findByRole('region', { name: 'Needs you' }),
+      ).getByText(/Only 2 recovery codes left/u),
     ).toBeVisible();
     await actor.click(
       screen.getByRole('button', { name: 'Get new recovery codes' }),

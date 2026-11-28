@@ -173,23 +173,31 @@ export function CommandPalette({
             {footerHint}
           </p>
         ) : null}
-        <div className="flex min-w-0 items-center gap-4 border-t border-border px-4 py-3 text-meta text-muted-foreground">
-          <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
-            <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> Move
-          </span>
-          <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
-            <Kbd>↵</Kbd> Open
-          </span>
-          <span className="hidden items-center gap-1 sm:inline-flex pointer-coarse:hidden">
-            <Kbd>Esc</Kbd> Close
-          </span>
-          <span className="ml-auto min-w-0 truncate font-mono">
-            {workspaceName}
-          </span>
-        </div>
+        <CommandPaletteKeys workspaceName={workspaceName} />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CommandPaletteKeys({
+  workspaceName,
+}: Readonly<{ workspaceName: string | undefined }>) {
+  return (
+    <div className="flex min-w-0 items-center gap-4 border-t border-border px-4 py-3 text-meta text-muted-foreground">
+      <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
+        <Kbd>↑</Kbd>
+        <Kbd>↓</Kbd> Move
+      </span>
+      <span className="inline-flex items-center gap-1 pointer-coarse:hidden">
+        <Kbd>↵</Kbd> Open
+      </span>
+      <span className="hidden items-center gap-1 sm:inline-flex pointer-coarse:hidden">
+        <Kbd>Esc</Kbd> Close
+      </span>
+      <span className="ml-auto min-w-0 truncate font-mono">
+        {workspaceName}
+      </span>
+    </div>
   );
 }
 

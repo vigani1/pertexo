@@ -92,8 +92,9 @@ function AssistantSelection({
     model.trim() !== '' && options.some((option) => option.id === connectionId);
   const next = { connectionId, model: model.trim() };
   const edited =
-    next.connectionId !== selection?.connectionId ||
-    next.model !== selection?.model;
+    selection === null ||
+    next.connectionId !== selection.connectionId ||
+    next.model !== selection.model;
 
   async function save(next: Settings['selection']) {
     await command.mutateAsync({ selection: next }).catch(() => undefined);
