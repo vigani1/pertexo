@@ -63,6 +63,10 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await expect(
     page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
   ).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('dialog', { name: 'When runs started' }),
+  ).toBeHidden();
   await page
     .getByRole('button', { name: 'Remove filter Status: Succeeded' })
     .click();
