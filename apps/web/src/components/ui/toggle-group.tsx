@@ -6,7 +6,8 @@ import { cn } from '@/lib/class-names';
 const groupVariants = cva('inline-flex w-fit items-center gap-0.5', {
   variants: {
     appearance: {
-      segmented: 'rounded-md border border-border bg-well p-[3px]',
+      segmented:
+        'max-w-full flex-wrap rounded-md border border-border bg-well p-[3px]',
       frameless: '',
     },
   },
