@@ -1,3 +1,5 @@
+import { styles as weftStyles } from '../../infrastructure/checks/weft/styles.mjs';
+import { rules as weftRules } from '../../infrastructure/checks/weft/plugin.mjs';
 import { remainingEslintPolicy } from '../../infrastructure/checks/lint-rule-ownership.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from '../../infrastructure/checks/browser-entry-dependencies.mjs';
 import tseslint from 'typescript-eslint';
@@ -65,6 +67,18 @@ export const lintPolicy = tseslint.config(
     },
   },
   { ignores: ['playwright-report/**', 'test-results/**'] },
+  {
+    files: ['src/**/*.css'],
+    ignores: ['src/styles/globals.css'],
+    processor: weftStyles,
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { weft: { rules: weftRules } },
+    rules: Object.fromEntries(
+      Object.keys(weftRules).map((name) => [`weft/${name}`, 'error']),
+    ),
+  },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
