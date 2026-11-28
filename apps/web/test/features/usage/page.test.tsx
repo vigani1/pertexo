@@ -97,6 +97,7 @@ describe('workspace Usage', () => {
     await actor.click(
       perDay.getByRole('button', { name: 'When: Choose dates' }),
     );
+    await actor.click(screen.getByRole('button', { name: 'Next month' }));
     await actor.click(
       screen.getByRole('button', { name: 'Saturday, October 17, 2026' }),
     );

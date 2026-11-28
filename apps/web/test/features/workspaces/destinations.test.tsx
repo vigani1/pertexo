@@ -89,14 +89,19 @@ describe('workspace destinations by role', () => {
       expect(offered.map((name) => name.replace(/\d+.*$/u, '').trim())).toEqual(
         [...spine],
       );
-      await userEvent
-        .setup()
-        .click(within(nav).getByRole('button', { name: 'Search' }));
-      const dialog = await screen.findByRole('dialog');
-      for (const [place, shown] of Object.entries(palette))
-        expect(
-          within(dialog).queryByRole('option', { name: place }) !== null,
-        ).toBe(shown);
+      const actor = userEvent.setup();
+      await actor.click(within(nav).getByRole('button', { name: 'Search' }));
+      const dialog = within(await screen.findByRole('dialog'));
+      const search = dialog.getByRole('combobox', {
+        name: 'Search pages, workflows and actions',
+      });
+      for (const [place, shown] of Object.entries(palette)) {
+        await actor.clear(search);
+        await actor.paste(place);
+        expect(dialog.queryByRole('option', { name: place }) !== null).toBe(
+          shown,
+        );
+      }
     },
   );
 
