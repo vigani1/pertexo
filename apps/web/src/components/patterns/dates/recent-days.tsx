@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { cn } from '@/lib/class-names';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export type RecentDay = Readonly<{
@@ -20,11 +22,13 @@ export function RecentDays({
   selected,
   onPick,
   label = 'Jump to a day',
+  renderDetail,
 }: Readonly<{
   days: readonly RecentDay[];
   selected: string | undefined;
   onPick: (value: string | undefined) => void;
   label?: string;
+  renderDetail?: (day: RecentDay) => ReactNode;
 }>) {
   return (
     <ToggleGroup
@@ -41,10 +45,14 @@ export function RecentDays({
           key={day.value}
           value={day.value}
           aria-label={day.name}
-          className="min-w-0 justify-center px-1.5 sm:px-3"
+          className={cn(
+            'min-w-0 justify-center px-1.5 sm:px-3',
+            renderDetail !== undefined && 'flex-col gap-0 py-1',
+          )}
         >
           <span className="max-sm:hidden">{day.label}</span>
           <span className="sm:hidden">{day.shortLabel}</span>
+          {renderDetail?.(day)}
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
