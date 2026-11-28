@@ -126,6 +126,7 @@ async function readAutoPauseFact(
   const [row] = await drizzle(client)
     .select({
       trigger_pause_state: workflows.triggerPauseState,
+      trigger_pause_reason: workflows.triggerPauseReason,
       trigger_pause_revision: sql<string>`${workflows.triggerPauseRevision}::text`,
     })
     .from(workflows)
@@ -140,7 +141,9 @@ async function readAutoPauseFact(
   return {
     ...base,
     workflowId: subject.subjectId,
-    active: row?.trigger_pause_state === 'paused',
+    active:
+      row?.trigger_pause_state === 'paused' &&
+      row.trigger_pause_reason === 'consecutive_failures',
     sourceRevision: row?.trigger_pause_revision ?? 'removed',
   };
 }

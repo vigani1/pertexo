@@ -35,8 +35,12 @@ export const workflowSettings = z
     pausedAt: z.iso
       .datetime({ precision: STORED_TIMESTAMP_FRACTION_DIGITS })
       .nullable(),
-    pauseReason: z.literal('consecutive_failures').nullable(),
+    pauseReason: z.enum(['consecutive_failures', 'manual']).nullable(),
     pausedFailures: z.number().int().positive().nullable(),
+    pausedBy: z
+      .object({ id: z.uuid(), displayName: z.string().nullable() })
+      .strict()
+      .optional(),
     pausedLastRunId: z.uuid().nullable(),
     pauseEvidence: pollPauseEvidenceSchema.optional(),
   })

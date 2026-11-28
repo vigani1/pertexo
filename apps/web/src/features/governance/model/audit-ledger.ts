@@ -30,6 +30,7 @@ const PHRASES: Readonly<Record<string, Phrase>> = {
   'workflow.auto_pause_settings_changed': {
     words: 'changed when a workflow pauses itself',
   },
+  'workflow.triggers_paused': { words: 'paused workflow triggers' },
   'workflow.triggers_resumed': { words: 'resumed a paused workflow' },
   'workflow.publication_requested': { words: 'asked for a publishing review' },
   'workflow.publication_approved': {

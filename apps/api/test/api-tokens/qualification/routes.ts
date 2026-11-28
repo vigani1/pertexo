@@ -51,12 +51,21 @@ export const routes: readonly Case[] = [
     status: 200,
   },
   {
+    name: 'pause',
+    operationId: 'pauseWorkflow',
+    method: 'POST',
+    path: (w) => `${w.schedule.workflow}/pause`,
+    scopes: ['workflow:publish'],
+    body: { expectedPauseRevision: '1' },
+    status: 200,
+  },
+  {
     name: 'resume',
     operationId: 'resumeWorkflow',
     method: 'POST',
-    path: (w) => `${workflow(w)}/resume`,
+    path: (w) => `${w.schedule.workflow}/resume`,
     scopes: ['workflow:publish'],
-    body: { expectedPauseRevision: '1' },
+    body: { expectedPauseRevision: '2' },
     status: 200,
   },
   {

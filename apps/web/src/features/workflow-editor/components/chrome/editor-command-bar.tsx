@@ -26,6 +26,7 @@ export function EditorCommandBar({
   onRedo,
   commands,
   presence,
+  renderStatus,
 }: Readonly<{
   shortcuts: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
   secondaryMenuItems: ReactNode;
@@ -37,6 +38,7 @@ export function EditorCommandBar({
   onRedo: () => void;
   commands: ReactNode;
   presence?: ReactNode;
+  renderStatus?: ((status: ReactNode) => ReactNode) | undefined;
 }>) {
   const { scope, editing } = useEditorSession();
   const { apiClient, userId, workspace, workflowId } = scope;
@@ -61,6 +63,7 @@ export function EditorCommandBar({
         slots={{
           presence,
           phoneOverflowActions: phoneMenuItems,
+          renderStatus,
           overflowActions: (
             <>
               <DialogTrigger

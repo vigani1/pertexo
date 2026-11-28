@@ -61,6 +61,7 @@ export function WorkflowHubBar({
     glyph?: ReactNode;
     presence?: ReactNode;
     detail?: ReactNode;
+    renderStatus?: ((status: ReactNode) => ReactNode) | undefined;
     actions?: ReactNode;
     overflowActions?: ReactNode;
     phoneOverflowActions?: ReactNode;
@@ -68,7 +69,8 @@ export function WorkflowHubBar({
 }>) {
   const { apiClient, userId, workspace, workflowId } = scope;
 
-  const { glyph, presence, detail, actions, overflowActions } = slots;
+  const { glyph, presence, detail, actions, overflowActions, renderStatus } =
+    slots;
   const build = activeTab === 'build';
 
   const secondaryActions =
@@ -121,6 +123,7 @@ export function WorkflowHubBar({
           workflow={workflow}
           activeTab={activeTab}
           detail={detail}
+          renderStatus={renderStatus}
         />
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <div
@@ -181,11 +184,13 @@ function HubTitle({
   workflow,
   activeTab,
   detail,
+  renderStatus,
 }: Readonly<{
   scope: HubScope;
   workflow: WorkflowSummary | undefined;
   activeTab: WorkflowHubTab;
   detail: ReactNode;
+  renderStatus?: ((status: ReactNode) => ReactNode) | undefined;
 }>) {
   const { apiClient, userId, workspace, workflowId } = scope;
   return (
@@ -213,6 +218,7 @@ function HubTitle({
           workflowId={workflowId}
           workflow={workflow}
           activeTab={activeTab}
+          renderStatus={renderStatus}
         />
         {detail}
         {/* Appended to a line that already exists, so it moves nothing

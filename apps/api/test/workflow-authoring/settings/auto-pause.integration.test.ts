@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   workflowPauseConflictProblemSchema,
+  workflowListResponseSchema,
   workflowAutoPauseSettingsConflictProblemSchema,
   workspaceAutoPauseSettingsConflictProblemSchema,
   type WorkflowAutoPauseCommandResponse,
@@ -44,108 +45,179 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
     });
   }
 
-  it('requires session, CSRF, one key and strict bigint-string bodies', async () => {
-    const owner = await fixture.login('owner');
-    const url = `${workflowPath()}/resume`;
-    const payload = { expectedPauseRevision: '1' };
-    expectProblem(
-      await fixture.application.inject({ method: 'POST', url, payload }),
-      401,
-      'auth.unauthenticated',
-    );
-    expectProblem(
-      await fixture.application.inject({
-        method: 'POST',
-        url,
-        payload,
-        headers: {
-          cookie: owner.cookieHeader,
-          'idempotency-key': 'without-csrf',
-        },
-      }),
-      403,
-      'auth.forbidden',
-    );
-    for (const headers of [
-      { cookie: owner.cookieHeader, 'x-csrf-token': owner.csrf },
-      mutationHeaders(owner, { 'idempotency-key': 'first,second' }),
-    ])
+  it.each(['pause', 'resume'] as const)(
+    '%s requires session, CSRF, one key and strict bigint-string bodies',
+    async (intent) => {
+      const owner = await fixture.login('owner');
+      const url = `${workflowPath()}/${intent}`;
+      const payload = { expectedPauseRevision: '1' };
+      expectProblem(
+        await fixture.application.inject({ method: 'POST', url, payload }),
+        401,
+        'auth.unauthenticated',
+      );
       expectProblem(
         await fixture.application.inject({
           method: 'POST',
           url,
           payload,
-          headers,
+          headers: {
+            cookie: owner.cookieHeader,
+            'idempotency-key': 'without-csrf',
+          },
         }),
-        400,
-        'request.invalid',
+        403,
+        'auth.forbidden',
       );
-    for (const invalid of [
-      { expectedPauseRevision: 1 },
-      { expectedPauseRevision: '01' },
-      { expectedPauseRevision: '9223372036854775808' },
-      { ...payload, warning: true },
-    ])
-      expectProblem(
-        await fixture.application.inject({
-          method: 'POST',
-          url,
-          payload: invalid,
-          headers: mutationHeaders(owner),
-        }),
-        400,
-        'request.invalid',
-      );
-    for (const [setting, invalid] of [
-      [
-        'auto-pause',
-        { enabled: true, thresholdOverride: 2, expectedSettingsRevision: 1 },
-      ],
-      [
-        'auto-pause',
-        { enabled: true, thresholdOverride: 101, expectedSettingsRevision: 1 },
-      ],
-      [
-        'auto-pause',
-        {
-          enabled: true,
-          thresholdOverride: null,
-          expectedSettingsRevision: 1,
-          warning: true,
-        },
-      ],
-      ['error-workflow', { targetWorkflowId: null, expectedRevision: 0 }],
-      [
-        'error-workflow',
-        { targetWorkflowId: 'foreign-id', expectedRevision: 1 },
-      ],
-      [
-        'error-workflow',
-        {
-          targetWorkflowId: null,
-          expectedRevision: 1,
-          input: { password: 's' },
-        },
-      ],
-      [
-        'error-workflow',
-        {
-          targetWorkflowId: null,
-          expectedRevision: 1,
-          targetWorkflowName: 'x',
-        },
-      ],
-    ] as const)
-      expectProblem(
-        await fixture.application.inject({
-          method: 'PUT',
-          url: `${workflowPath()}/${setting}`,
-          payload: invalid,
-          headers: mutationHeaders(owner),
-        }),
-        400,
-        'request.invalid',
-      );
+      for (const headers of [
+        { cookie: owner.cookieHeader, 'x-csrf-token': owner.csrf },
+        mutationHeaders(owner, { 'idempotency-key': 'first,second' }),
+      ])
+        expectProblem(
+          await fixture.application.inject({
+            method: 'POST',
+            url,
+            payload,
+            headers,
+          }),
+          400,
+          'request.invalid',
+        );
+      for (const invalid of [
+        { expectedPauseRevision: 1 },
+        { expectedPauseRevision: '01' },
+        { expectedPauseRevision: '9223372036854775808' },
+        { ...payload, warning: true },
+      ])
+        expectProblem(
+          await fixture.application.inject({
+            method: 'POST',
+            url,
+            payload: invalid,
+            headers: mutationHeaders(owner),
+          }),
+          400,
+          'request.invalid',
+        );
+      for (const [setting, invalid] of [
+        [
+          'auto-pause',
+          { enabled: true, thresholdOverride: 2, expectedSettingsRevision: 1 },
+        ],
+        [
+          'auto-pause',
+          {
+            enabled: true,
+            thresholdOverride: 101,
+            expectedSettingsRevision: 1,
+          },
+        ],
+        [
+          'auto-pause',
+          {
+            enabled: true,
+            thresholdOverride: null,
+            expectedSettingsRevision: 1,
+            warning: true,
+          },
+        ],
+        ['error-workflow', { targetWorkflowId: null, expectedRevision: 0 }],
+        [
+          'error-workflow',
+          { targetWorkflowId: 'foreign-id', expectedRevision: 1 },
+        ],
+        [
+          'error-workflow',
+          {
+            targetWorkflowId: null,
+            expectedRevision: 1,
+            input: { password: 's' },
+          },
+        ],
+        [
+          'error-workflow',
+          {
+            targetWorkflowId: null,
+            expectedRevision: 1,
+            targetWorkflowName: 'x',
+          },
+        ],
+      ] as const)
+        expectProblem(
+          await fixture.application.inject({
+            method: 'PUT',
+            url: `${workflowPath()}/${setting}`,
+            payload: invalid,
+            headers: mutationHeaders(owner),
+          }),
+          400,
+          'request.invalid',
+        );
+    },
+  );
+
+  it('pauses a publication once and returns a typed conflict for a stale pause', async () => {
+    const builder = await fixture.login('builder');
+    const viewer = await fixture.login('viewer');
+    const url = `${workflowPath()}/pause`;
+    const payload = { expectedPauseRevision: '1' };
+    const headers = mutationHeaders(builder);
+    const send = (sessionHeaders: typeof headers) =>
+      fixture.application.inject({
+        method: 'POST',
+        url,
+        payload,
+        headers: sessionHeaders,
+      });
+    expectProblem(
+      await send(mutationHeaders(viewer)),
+      404,
+      'resource.not_found',
+    );
+    const first = await send(headers);
+    expect(first.statusCode, first.payload).toBe(200);
+    const accepted = first.json<WorkflowAutoPauseCommandResponse>();
+    expect(accepted).toMatchObject({
+      replayed: false,
+      settings: {
+        pauseState: 'paused',
+        pauseReason: 'manual',
+        pauseRevision: '2',
+        pausedBy: { displayName: 'Lifecycle builder' },
+      },
+    });
+    expect(accepted.settings.pausedAt).toBeTypeOf('string');
+    expect(accepted.settings.pausedBy?.id).toBeTypeOf('string');
+    const workflows = await fixture.application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${fixture.workspaceId}/workflows?include=listSummary`,
+      headers: { cookie: builder.cookieHeader },
+    });
+    expect(workflows.statusCode, workflows.payload).toBe(200);
+    const page = workflowListResponseSchema.parse(workflows.json());
+    expect(
+      page.items.find(({ id }) => id === fixture.ids.published)
+        ?.triggerPauseState,
+    ).toBe('paused');
+    const replay = await send(headers);
+    expect(replay.statusCode, replay.payload).toBe(200);
+    expect(replay.json()).toEqual({ ...accepted, replayed: true });
+    const stale = await send(mutationHeaders(builder));
+    expectProblem(stale, 409, 'workflow.pause_conflict');
+    expect(
+      workflowPauseConflictProblemSchema.parse(stale.json())
+        .currentPauseRevision,
+    ).toBe('2');
+    const restored = await fixture.application.inject({
+      method: 'POST',
+      url: `${workflowPath()}/resume`,
+      headers: mutationHeaders(builder),
+      payload: { expectedPauseRevision: '2' },
+    });
+    expect(restored.statusCode, restored.payload).toBe(200);
+    expect(restored.json()).toMatchObject({
+      settings: { pauseState: 'none', pauseRevision: '3' },
+    });
   });
 
   it('lets a builder resume once and replay exactly without clearing a later pause', async () => {

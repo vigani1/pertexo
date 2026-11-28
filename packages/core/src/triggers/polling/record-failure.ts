@@ -64,12 +64,15 @@ export async function recordPollFailure(
     transaction,
     { workspaceId, workflowId },
     {
-      kind: 'poll',
-      triggerId: claim.trigger_id,
-      errorCode: code,
-      failures: count,
+      kind: 'automatic',
+      evidence: {
+        kind: 'poll',
+        triggerId: claim.trigger_id,
+        errorCode: code,
+        failures: count,
+      },
+      threshold,
     },
-    threshold,
   );
   return 'paused';
 }

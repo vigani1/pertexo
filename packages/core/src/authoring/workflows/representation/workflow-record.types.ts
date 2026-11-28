@@ -25,6 +25,7 @@ export type WorkflowRecord = Readonly<
     | 'createdAt'
     | 'updatedAt'
   > & {
+    triggerPauseState?: (typeof workflows.$inferSelect)['triggerPauseState'];
     webhookSetupRequired: boolean;
     pollingTriggers?: readonly PollingTriggerRead[];
     listSummary?: WorkflowSummary['listSummary'];

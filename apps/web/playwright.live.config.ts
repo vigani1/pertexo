@@ -13,6 +13,9 @@ const unprotectedSnapshotProbe =
 if (unprotectedSnapshotProbe) delete process.env.PLAYWRIGHT_NO_COPY_PROMPT;
 else process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
 
+const LIVE_JOURNEYS = '**/*.spec.ts';
+const TRIGGER_RECURRENCE_JOURNEY = '**/manual-trigger-pause.spec.ts';
+
 function testMatch() {
   if (process.env.PERTEXO_BROWSER_LIFETIME_PROBE !== undefined)
     return '**/*.lifetime-probe.ts';
@@ -20,7 +23,7 @@ function testMatch() {
     return '**/http-secret-actions.probe.ts';
   if (process.env.PERTEXO_VERIFICATION_REDACTION_PROBE === 'true')
     return '**/verification-navigation.probe.ts';
-  return '**/*.spec.ts';
+  return LIVE_JOURNEYS;
 }
 
 // Only a journey listed in live-failure-artifacts.mjs (run-only accounts on a
@@ -38,12 +41,26 @@ if (liveWebOrigin === undefined)
   );
 
 const JOURNEY_TIMEOUT_MILLIS = 60_000;
+const selectedTests = testMatch();
 
 export default defineConfig({
   testDir: './e2e-live',
   // Playwright empties this when it starts, and journeys run side by side.
   outputDir: `test-results/live-${new URL(liveWebOrigin).port}${failureArtifacts === undefined ? '' : `/${failureArtifacts}`}`,
-  testMatch: testMatch(),
+  testMatch: selectedTests,
+  ...(selectedTests === LIVE_JOURNEYS
+    ? {
+        projects: [
+          { testIgnore: TRIGGER_RECURRENCE_JOURNEY },
+          {
+            name: 'trigger recurrence',
+            testMatch: TRIGGER_RECURRENCE_JOURNEY,
+            // The schedule fires once while paused and once after resume, a minute apart.
+            timeout: 180_000,
+          },
+        ],
+      }
+    : {}),
   forbidOnly: true,
   retries: 0,
   workers: 1,

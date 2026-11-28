@@ -48,7 +48,10 @@ export async function acceptErrorWorkflow(
   if (row.status !== 'pending') return;
   const refuse = (code: ErrorWorkflowRefusalCode) =>
     refuseErrorWorkflow(client, input, code);
-  if (target?.lifecycle_status !== 'active') {
+  if (
+    target?.lifecycle_status !== 'active' ||
+    target.trigger_pause_state === 'paused'
+  ) {
     await refuse('target_unavailable');
     return;
   }

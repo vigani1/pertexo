@@ -6,6 +6,7 @@ import * as schemas from '../../schemas/workflows/auto-pause.js';
 const routes = [
   settings.autoPause,
   settings.updateAutoPause,
+  settings.pause,
   settings.resume,
   settings.workspaceAutoPause,
   settings.updateWorkspaceAutoPause,

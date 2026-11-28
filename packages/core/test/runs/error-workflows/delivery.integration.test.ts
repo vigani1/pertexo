@@ -99,6 +99,24 @@ describe('durable error workflow admission', () => {
     });
   });
 
+  it('refuses a failure-triggered run when its target triggers are paused by hand', async () => {
+    const f = await fixture();
+    await f.produce();
+    await admin.query(
+      `update app.workflows
+       set trigger_pause_state='paused', trigger_pause_reason='manual', trigger_paused_by=$2,
+           trigger_paused_at=statement_timestamp(), trigger_pause_revision=trigger_pause_revision+1
+       where id=$1`,
+      [f.childWorkflowId, userId],
+    );
+    await store.dispatch(await delivery(f));
+    expect(await intent(f)).toMatchObject({
+      status: 'refused',
+      refusal_code: 'target_unavailable',
+      accepted_run_id: null,
+    });
+  });
+
   it('refuses changed transport data and cannot read another workspace intent', async () => {
     const f = await fixture();
     await f.produce();

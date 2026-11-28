@@ -52,7 +52,7 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
       pauseState: z.enum(['none', 'paused']),
       pauseRevision: workflowPauseRevisionSchema,
       pausedAt: z.iso.datetime().nullable(),
-      pauseReason: z.literal('consecutive_failures').nullable(),
+      pauseReason: z.enum(['consecutive_failures', 'manual']).nullable(),
       pausedFailures: z
         .number()
         .int()
@@ -64,6 +64,10 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
         .describe(
           'Typed evidence for a paused trigger. Completed-run responses may carry only pausedLastRunId.',
         ),
+      pausedBy: z
+        .object({ id: z.uuid(), displayName: z.string().nullable() })
+        .strict()
+        .optional(),
       pausedLastRunId: z
         .uuid()
         .nullable()
@@ -73,12 +77,33 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
     })
     .strict()
     .refine(
-      ({ pauseState, pausedLastRunId, pauseEvidence }) =>
-        pauseEvidence === undefined ||
-        (pauseState === 'paused' &&
-          (pauseEvidence.kind === 'run'
-            ? pausedLastRunId === pauseEvidence.runId
-            : pausedLastRunId === null)),
+      ({
+        pauseState,
+        pauseReason,
+        pausedAt,
+        pausedBy,
+        pausedFailures,
+        pausedLastRunId,
+        pauseEvidence,
+      }) => {
+        if (pauseReason === 'manual')
+          return (
+            pauseState === 'paused' &&
+            pausedAt !== null &&
+            pausedBy !== undefined &&
+            pausedFailures === null &&
+            pausedLastRunId === null &&
+            pauseEvidence === undefined
+          );
+        return (
+          pausedBy === undefined &&
+          (pauseEvidence === undefined ||
+            (pauseState === 'paused' &&
+              (pauseEvidence.kind === 'run'
+                ? pausedLastRunId === pauseEvidence.runId
+                : pausedLastRunId === null)))
+        );
+      },
       'Pause evidence must match the workflow’s pause state.',
     ),
 );

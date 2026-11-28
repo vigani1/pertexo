@@ -1,4 +1,7 @@
-import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
+import {
+  workflowKeys,
+  workflowOrganizationKeys,
+} from '@/features/workflows/workflows-queries.public';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useLowEffectMutation,
@@ -19,23 +22,27 @@ export function useAutoPauseCommand(
   const mutation = useLowEffectMutation({
     send: (command: AutoPauseCommand, key) =>
       commandAutoPause({ apiClient, workspaceId, command, key }),
-    // Workflow settings, workspace settings and Resume are separate targets.
     slotOf: ({ kind }) => kind,
     refresh: (command) =>
       Promise.all([
         cache.invalidateQueries({
           queryKey: autoPauseKeys.workflowRoot(userId, workspaceId),
         }),
-        ...(command.kind === 'resume'
+        ...(command.kind === 'resume' || command.kind === 'pause'
           ? [
               cache.invalidateQueries({
-                queryKey: workflowSummaryQueryOptions(
-                  apiClient,
+                queryKey: workflowKeys.detail(
                   userId,
                   workspaceId,
                   command.workflowId,
-                ).queryKey,
+                ),
                 exact: true,
+              }),
+              cache.invalidateQueries({
+                queryKey: workflowKeys.lists(userId, workspaceId),
+              }),
+              cache.invalidateQueries({
+                queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
               }),
             ]
           : []),
@@ -69,10 +76,9 @@ export function useAutoPauseCommand(
       return false;
     }
   }
-  const action =
-    mutation.variables?.kind === 'resume'
-      ? 'resuming triggers'
-      : 'saving auto-pause settings';
+  let action = 'saving auto-pause settings';
+  if (mutation.variables?.kind === 'pause') action = 'pausing triggers';
+  if (mutation.variables?.kind === 'resume') action = 'resuming triggers';
   let problem: string | undefined;
   if (mutation.isError)
     problem = conflict

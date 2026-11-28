@@ -24,6 +24,7 @@ export const workflowTriggerPausePeriods = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
+    pausedBy: uuid('paused_by'),
     pauseRevision: bigint('pause_revision', { mode: 'bigint' }).notNull(),
     pausedAt: timestamp('paused_at', {
       withTimezone: true,

@@ -112,6 +112,7 @@ export function isUnfilteredWorkflowList(search: WorkflowListSearch): boolean {
 
 const STATE_WORDS: ReadonlyMap<string, Readonly<[string, string]>> = new Map([
   ['Live', ['live', 'live']],
+  ['Paused', ['paused', 'paused']],
   ['Starting', ['starting', 'starting']],
   ['Stopping', ['stopping', 'stopping']],
   ['Degraded', ['degraded', 'degraded']],

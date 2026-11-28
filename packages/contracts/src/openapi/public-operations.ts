@@ -119,8 +119,13 @@ export const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
       'workflow.auto_pause_settings_conflict',
     ],
   },
+  pauseWorkflow: {
+    summary: 'Pause workflow triggers',
+    tag: 'Workflows',
+    problems: ['request.idempotency_conflict', 'workflow.pause_conflict'],
+  },
   resumeWorkflow: {
-    summary: 'Resume automatic triggers',
+    summary: 'Resume workflow triggers',
     tag: 'Workflows',
     problems: ['request.idempotency_conflict', 'workflow.pause_conflict'],
   },

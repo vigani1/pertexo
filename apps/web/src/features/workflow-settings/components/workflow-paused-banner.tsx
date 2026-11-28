@@ -1,4 +1,7 @@
-import { isPollAuthenticationFailure } from '@pertexo/workflow-model';
+import {
+  isPollAuthenticationFailure,
+  type PollPauseEvidence,
+} from '@pertexo/workflow-model';
 import { Link } from '@tanstack/react-router';
 import type {
   AccessibleWorkspace,
@@ -22,6 +25,7 @@ function PausedStateNotice({
   settings,
   workflowId,
   canResume,
+  showResume,
   pending,
   disabled,
   onResume,
@@ -30,6 +34,7 @@ function PausedStateNotice({
   workflowId: string;
   settings: WorkflowAutoPauseSettings | undefined;
   canResume: boolean;
+  showResume: boolean;
   pending: boolean;
   disabled: boolean;
   onResume: () => void;
@@ -43,17 +48,12 @@ function PausedStateNotice({
     settings.pauseEvidence?.kind === 'poll'
       ? settings.pauseEvidence
       : undefined;
-  let failures = 'failed triggered runs';
-  if (poll !== undefined)
-    failures = poll.errorCode.startsWith('database.')
-      ? 'failed database checks'
-      : 'failed feed checks';
   return (
     <Notice
       tone="warning"
       title="Workflow triggers are paused"
       action={
-        canResume ? (
+        showResume && canResume ? (
           <ProgressButton
             type="button"
             variant="outline"
@@ -68,21 +68,8 @@ function PausedStateNotice({
       }
     >
       <p>
-        {poll !== undefined && isPollAuthenticationFailure(poll.errorCode) ? (
-          <>
-            Paused when the{' '}
-            {poll.errorCode === 'database.authentication_failed'
-              ? 'database'
-              : 'feed'}{' '}
-            could no longer authenticate{time}
-          </>
-        ) : (
-          <>
-            Paused after {String(settings.pausedFailures)} {failures} in a row
-            {time}
-          </>
-        )}{' '}
-        Manual runs and replays still work.
+        {describePause(settings, poll)}
+        {time} Manual runs and replays still work.
       </p>
       {poll === undefined ? null : (
         <p className="mt-1">
@@ -112,6 +99,19 @@ function PausedStateNotice({
       )}
     </Notice>
   );
+}
+function describePause(
+  settings: WorkflowAutoPauseSettings,
+  poll: PollPauseEvidence | undefined,
+) {
+  if (settings.pauseReason === 'manual')
+    return `Paused by ${settings.pausedBy?.displayName ?? 'a workflow editor'}`;
+  if (poll === undefined)
+    return `Paused after ${String(settings.pausedFailures)} failed triggered runs in a row`;
+  const source = poll.errorCode.startsWith('database.') ? 'database' : 'feed';
+  if (isPollAuthenticationFailure(poll.errorCode))
+    return `Paused when the ${source} could no longer authenticate`;
+  return `Paused after ${String(settings.pausedFailures)} failed ${source} checks in a row`;
 }
 /**
  * A failed background read of the pause state, as one quiet line: it
@@ -199,6 +199,7 @@ export function WorkflowPausedBanner({
   workspace,
   workflowId,
   showReadError = true,
+  showResume = true,
   problemSide = 'below',
 }: Readonly<{
   apiClient: ApiClient;
@@ -206,6 +207,7 @@ export function WorkflowPausedBanner({
   workspace: AccessibleWorkspace;
   workflowId: string;
   showReadError?: boolean;
+  showResume?: boolean;
   /**
    * Where a failed read's line floats: over the canvas below the editor's
    * bar, or in the top margin above a hub tab.
@@ -255,6 +257,7 @@ export function WorkflowPausedBanner({
         settings={settings}
         workflowId={workflowId}
         canResume={canResume}
+        showResume={showResume}
         pending={command.pending}
         disabled={query.isError}
         onResume={() => void resume()}

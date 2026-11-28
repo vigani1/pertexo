@@ -15,28 +15,39 @@ export async function writeTriggerPause(
     workspaceId,
     workflowId,
   }: Readonly<{ workspaceId: string; workflowId: string }>,
-  evidence: Readonly<TriggerPauseEvidence & { failures: number }>,
-  threshold: number,
+  cause: Readonly<
+    | { kind: 'manual'; actorId: string }
+    | {
+        kind: 'automatic';
+        evidence: TriggerPauseEvidence & { failures: number };
+        threshold: number;
+      }
+  >,
 ) {
   const db = 'db' in writer ? writer.db : drizzle(writer);
+  const evidence = cause.kind === 'automatic' ? cause.evidence : undefined;
   await db
     .update(workflows)
     .set({
       triggerPauseState: 'paused',
-      triggerPausedAt: sql`clock_timestamp()`,
-      triggerPauseReason: 'consecutive_failures',
-      triggerPauseFailures: evidence.failures,
-      triggerPauseLastRunId: evidence.kind === 'run' ? evidence.runId : null,
+      triggerPausedAt: sql`statement_timestamp()`,
+      triggerPauseReason:
+        cause.kind === 'manual' ? 'manual' : 'consecutive_failures',
+      triggerPausedBy: cause.kind === 'manual' ? cause.actorId : null,
+      triggerPauseFailures: evidence?.failures ?? null,
+      triggerPauseLastRunId: evidence?.kind === 'run' ? evidence.runId : null,
       triggerPausePollTriggerId:
-        evidence.kind === 'poll' ? evidence.triggerId : null,
+        evidence?.kind === 'poll' ? evidence.triggerId : null,
       triggerPausePollErrorCode:
-        evidence.kind === 'poll' ? evidence.errorCode : null,
+        evidence?.kind === 'poll' ? evidence.errorCode : null,
       triggerPauseRevision: sql`${workflows.triggerPauseRevision}+1`,
     })
     .where(
       and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
     )
     .catch(rethrowQueryFailure);
+  if (cause.kind === 'manual') return;
+  const { evidence: automatic, threshold } = cause;
   await appendAuditFact(writer, {
     workspaceId,
     action: 'workflow.triggers_paused',
@@ -44,11 +55,11 @@ export async function writeTriggerPause(
     targetId: workflowId,
     metadata: {
       reason: 'consecutive_failures',
-      failures: evidence.failures,
+      failures: automatic.failures,
       threshold,
-      ...(evidence.kind === 'run'
-        ? { lastRunId: evidence.runId }
-        : { triggerId: evidence.triggerId, errorCode: evidence.errorCode }),
+      ...(automatic.kind === 'run'
+        ? { lastRunId: automatic.runId }
+        : { triggerId: automatic.triggerId, errorCode: automatic.errorCode }),
     },
   });
 }

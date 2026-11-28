@@ -4952,6 +4952,7 @@ CREATE TABLE app.workflow_trigger_pause_periods (
     pause_revision bigint NOT NULL,
     paused_at timestamp with time zone NOT NULL,
     resumed_at timestamp with time zone NOT NULL,
+    paused_by uuid,
     CONSTRAINT workflow_trigger_pause_periods_check CHECK ((resumed_at >= paused_at)),
     CONSTRAINT workflow_trigger_pause_periods_pause_revision_check CHECK ((pause_revision > 0))
 );
@@ -5076,6 +5077,7 @@ CREATE TABLE app.workflows (
     trigger_pause_poll_trigger_id uuid,
     trigger_pause_poll_error_code text,
     mcp_exposure jsonb,
+    trigger_paused_by uuid,
     CONSTRAINT workflows_activation_status_valid CHECK (((activation_status)::text = ANY (ARRAY[('inactive'::character varying)::text, ('activating'::character varying)::text, ('active'::character varying)::text, ('deactivating'::character varying)::text, ('degraded'::character varying)::text, ('error'::character varying)::text]))),
     CONSTRAINT workflows_auto_pause_settings_revision_check CHECK ((auto_pause_settings_revision > 0)),
     CONSTRAINT workflows_auto_pause_threshold_valid CHECK (((auto_pause_threshold IS NULL) OR ((auto_pause_threshold >= 3) AND (auto_pause_threshold <= 100)))),
@@ -5084,7 +5086,7 @@ CREATE TABLE app.workflows (
     CONSTRAINT workflows_lifecycle_status_valid CHECK (((lifecycle_status)::text = ANY (ARRAY[('active'::character varying)::text, ('archived'::character varying)::text]))),
     CONSTRAINT workflows_name_nonempty CHECK (((length(btrim((name)::text)) >= 1) AND (length(btrim((name)::text)) <= 128))),
     CONSTRAINT workflows_name_revision_positive CHECK ((name_revision > 0)),
-    CONSTRAINT workflows_trigger_pause_valid CHECK ((((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE))
+    CONSTRAINT workflows_trigger_pause_valid CHECK ((((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_paused_by IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((((trigger_pause_reason)::text = 'manual'::text) AND (trigger_paused_by IS NOT NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_paused_by IS NULL) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))))) IS TRUE))
 );
 
 
@@ -16951,6 +16953,14 @@ GRANT UPDATE(trigger_pause_poll_error_code) ON TABLE app.workflows TO pertexo_ma
 --
 
 GRANT SELECT(mcp_exposure),UPDATE(mcp_exposure) ON TABLE app.workflows TO pertexo_app;
+
+
+--
+-- Name: COLUMN workflows.trigger_paused_by; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(trigger_paused_by) ON TABLE app.workflows TO pertexo_app;
+GRANT UPDATE(trigger_paused_by) ON TABLE app.workflows TO pertexo_maintenance;
 
 
 --
