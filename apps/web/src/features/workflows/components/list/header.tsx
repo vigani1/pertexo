@@ -10,15 +10,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { StatusGuide } from '@/components/patterns/guidance/status-guide';
-import { WORKFLOW_LIST_GUIDE } from '../../model/guide';
-import { countWorkflowStates } from '../../model/list-view';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 /**
@@ -51,7 +47,7 @@ export function NewWorkflowButton({
 }
 
 /**
- * Title, a mono line counting loaded workflows by state ("+" while more pages
+ * Title, a mono line counting loaded workflows ("+" while more pages
  * exist, since counts cover only what's loaded) and the page's `actions`,
  * e.g. `<NewWorkflowButton />`.
  */
@@ -60,10 +56,12 @@ export function WorkflowListHeader({
   loading,
   hasMore,
   actions,
+  workspaceName,
 }: Readonly<{
   workflows: readonly WorkflowSummary[];
   loading: boolean;
   hasMore: boolean;
+  workspaceName: string;
   actions?: ReactNode;
 }>) {
   const more = hasMore ? '+' : '';
@@ -83,25 +81,9 @@ export function WorkflowListHeader({
                     {total.toLocaleString(FORMAT_LOCALE)}
                     {more}
                   </b>{' '}
-                  {total === 1 && more === '' ? 'workflow' : 'workflows'}
+                  {total === 1 && more === '' ? 'workflow' : 'workflows'} in{' '}
+                  {workspaceName}
                 </span>
-                {countWorkflowStates(workflows).map((state) => (
-                  <StatusMark
-                    key={state.label}
-                    tone={state.tone}
-                    typography="metadata"
-                  >
-                    <b className="font-semibold">
-                      {state.count.toLocaleString(FORMAT_LOCALE)}
-                      {more}
-                    </b>{' '}
-                    {state.label}
-                  </StatusMark>
-                ))}
-                <StatusGuide
-                  sections={WORKFLOW_LIST_GUIDE}
-                  className="-my-1 -ml-2"
-                />
               </>
             )}
           </PageHeaderMeta>

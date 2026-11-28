@@ -185,8 +185,9 @@ const LOOM_COMPACT_WIDTH = 640;
  * How tall the loom is for its lanes: a single workflow's thread doesn't sit
  * alone in a tall empty frame, and many lanes stop growing at the cap.
  */
-export function loomHeight(laneCount: number): number {
-  return Math.min(320, Math.max(176, 64 + laneCount * 52));
+export function loomHeight(laneCount: number, coarse = false): number {
+  const standard = Math.min(320, Math.max(176, 64 + laneCount * 52));
+  return coarse ? Math.max(standard, 64 + laneCount * 40) : standard;
 }
 
 /** From this height a roomy loom's Core is drawn at full size. */

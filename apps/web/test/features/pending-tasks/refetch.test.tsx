@@ -19,6 +19,7 @@ import {
   userId,
   workspaceId,
 } from '../../support/fixtures/team';
+import { fixtureRun } from '../../support/fixtures/run';
 import { base, detail, summary, taskId } from './fixtures';
 
 it.each(['approval', 'input_request'] as const)(
@@ -30,6 +31,14 @@ it.each(['approval', 'input_request'] as const)(
       ...identityHandlers(ownerWorkspace),
       http.get(base, () =>
         HttpResponse.json({ items: [], nextCursor: null, pendingCount: 0 }),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/runs/${task.runId}`,
+        () =>
+          HttpResponse.json({
+            run: fixtureRun(task.runId, 'waiting'),
+            nodes: [],
+          }),
       ),
       http.get(`${base}/${taskId}`, () =>
         failing ? HttpResponse.error() : HttpResponse.json({ task }),

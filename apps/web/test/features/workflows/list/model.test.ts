@@ -12,7 +12,7 @@ import {
 } from '@/features/workflows/model/list-view';
 import {
   describeWorkflowPath,
-  definitionName,
+  stepLabel,
   layoutPatternGlyph,
   workflowTriggerKinds,
 } from '@/features/workflows/model/shape';
@@ -100,7 +100,9 @@ describe('workflow shape', () => {
   });
 
   it('names unknown definitions from their key and finds trigger kinds', () => {
-    expect(definitionName('acme.create_invoice')).toBe('Create invoice');
+    expect(
+      stepLabel({ definition: { key: 'acme.create_invoice', version: 1 } }),
+    ).toBe('Create invoice');
     expect(
       workflowTriggerKinds(
         graph(

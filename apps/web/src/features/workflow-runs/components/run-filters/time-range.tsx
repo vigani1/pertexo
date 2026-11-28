@@ -30,7 +30,7 @@ export function TimeRangeFilter({
     <DayRangePicker
       title="When runs started"
       label={timeRangeLabel(search)}
-      className="order-last col-span-2 w-full justify-start sm:order-none sm:col-span-1 sm:w-auto"
+      className="justify-start"
       presets={runPresetRanges.map((range) => ({
         label: presetRangeLabel(range),
         selected: search.range === range,

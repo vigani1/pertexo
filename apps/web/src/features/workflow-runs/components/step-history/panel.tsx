@@ -291,7 +291,7 @@ function StepRecord({
             <Link
               to="/w/$workspaceId/runs/$runId"
               params={{ workspaceId: workspace.id, runId: lastResult.runId }}
-              className="text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
+              className="text-foreground underline decoration-current/20 underline-offset-4 hover:decoration-foreground"
             >
               {formatRelativeTime(lastResult.runCreatedAt)}
             </Link>

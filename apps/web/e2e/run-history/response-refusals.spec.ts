@@ -57,6 +57,8 @@ for (const width of [1280, 375])
         (route) => route.fulfill({ json: { output: { kind: 'none' } } }),
       );
       await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+      if (width < 640)
+        await page.getByText(/^See all .* and the error$/u).click();
       await page
         .getByRole('button', { name: /http: Failed/u })
         .first()

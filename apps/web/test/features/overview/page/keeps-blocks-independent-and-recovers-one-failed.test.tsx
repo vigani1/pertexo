@@ -64,9 +64,7 @@ describe('workspace home', () => {
     await userEvent.setup().click(retry);
     expect(screen.getByRole('link', { name: 'Daily intake' })).toBeVisible();
     expect(
-      await within(attention).findByText(
-        'Daily intake failed once in the last 24 hours',
-      ),
+      await within(attention).findByText('Daily intake failed'),
     ).toBeVisible();
     expect(failedReads).toBe(readsBeforeRetry + 1);
   });
@@ -108,7 +106,7 @@ describe('workspace home', () => {
 
     await renderLoadedApp(`/w/${workspaceId}`);
     const item = await screen.findByText(
-      'Daily intake failed once in the last 24 hours',
+      'Daily intake failed',
       undefined,
       coldStart,
     );
@@ -198,7 +196,10 @@ describe('workspace home', () => {
     ).toBeVisible();
     expect(
       within(attention).getByRole('link', { name: 'Reconnect' }),
-    ).toHaveAttribute('href', `/w/${workspaceId}/connections`);
+    ).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
   });
   it('guides a new workspace with its getting-started checklist instead of the loom', async () => {
     mockServer.use(

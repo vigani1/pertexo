@@ -15,7 +15,6 @@ import {
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import {
@@ -43,7 +42,7 @@ import { WorkflowRowMenu } from './workflow-row-menu';
  * thread, so the bead never sits on anything.
  */
 export const WORKFLOW_ROW_COLUMNS =
-  'grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_auto] lg:grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_4.5rem_7rem_5.5rem_6rem]';
+  'grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_auto] lg:grid-cols-[calc(3.9rem_+_var(--row-select,0rem))_minmax(0,1fr)_8rem_7rem_6rem]';
 
 const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
@@ -147,18 +146,6 @@ function RowRuns({
       </span>
     );
   return <RunStrip strip={failureStrip(summary.recentRuns, nowMs)} />;
-}
-
-function UpdatedAt({ at }: Readonly<{ at: string }>) {
-  return (
-    <time
-      dateTime={at}
-      title={`Updated ${formatDateTime(at)}`}
-      className="font-mono text-caption text-subtle-foreground"
-    >
-      {formatRelativeTime(at)}
-    </time>
-  );
 }
 
 /**
@@ -274,11 +261,8 @@ export function WorkflowRow({
         <div>
           {showRuns ? <RowRuns summary={workflow.listSummary} /> : null}
         </div>
-        <div>
-          <UpdatedAt at={workflow.updatedAt} />
-        </div>
       </div>
-      <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-6">
+      <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-5">
         {runnable ? (
           <RowRunButton
             workflow={workflow}

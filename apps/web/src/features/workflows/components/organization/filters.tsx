@@ -1,3 +1,5 @@
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { OrganizationVocabularyControls } from './vocabulary';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { useState, type Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -49,6 +51,7 @@ export function WorkflowOrganizationFilters({
   const [managing, setManaging] = useState(false);
   const filterCount = [
     search.view,
+    search.publication,
     search.folderId,
     search.tagId,
     search.favoritesOnly,
@@ -66,6 +69,20 @@ export function WorkflowOrganizationFilters({
       aria-label="Find and organize workflows"
       className="flex flex-col gap-3"
     >
+      <div className="flex flex-wrap items-center gap-2">
+        <WorkflowStateFilter
+          search={search}
+          onChange={(next) => {
+            void change(next);
+          }}
+        />
+        <OrganizationVocabularyControls
+          folders={vocabulary.folders}
+          tags={vocabulary.tags}
+          search={search}
+          onChange={(next) => void change(next)}
+        />
+      </div>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
           <OrganizationNameFilter
@@ -84,8 +101,6 @@ export function WorkflowOrganizationFilters({
           <PopoverContent className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-4">
             <PopoverTitle>Filter workflows</PopoverTitle>
             <WorkflowFilterChoices
-              folders={vocabulary.folders}
-              tags={vocabulary.tags}
               search={search}
               onChange={(next) => {
                 void change(next);
@@ -116,31 +131,32 @@ export function WorkflowOrganizationFilters({
                 onLoadMore={vocabulary.loadMoreTags}
               />
             </WorkflowFilterChoices>
+            <Select
+              items={[
+                { value: 'updated', label: 'Recently updated' },
+                { value: 'created', label: 'Oldest first' },
+              ]}
+              value={search.sort ?? 'updated'}
+              onValueChange={(sort) => {
+                if (sort === 'updated' || sort === 'created')
+                  void change({ sort });
+              }}
+            >
+              <SelectTrigger
+                aria-label="Sort workflows"
+                className="w-auto min-w-40"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="updated">Recently updated</SelectItem>
+                  <SelectItem value="created">Oldest first</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </PopoverContent>
         </Popover>
-        <Select
-          items={[
-            { value: 'updated', label: 'Recently updated' },
-            { value: 'created', label: 'Oldest first' },
-          ]}
-          value={search.sort ?? 'updated'}
-          onValueChange={(sort) => {
-            if (sort === 'updated' || sort === 'created') void change({ sort });
-          }}
-        >
-          <SelectTrigger
-            aria-label="Sort workflows"
-            className="w-auto min-w-40"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="updated">Recently updated</SelectItem>
-              <SelectItem value="created">Oldest first</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
       </div>
       {managing ? (
         <WorkflowTagsDialog
@@ -160,5 +176,36 @@ export function WorkflowOrganizationFilters({
         />
       ) : null}
     </section>
+  );
+}
+
+function WorkflowStateFilter({
+  search,
+  onChange,
+}: Readonly<{
+  search: WorkflowListSearch;
+  onChange: (search: Parameters<typeof updateWorkflowListSearch>[1]) => void;
+}>) {
+  return (
+    <ToggleGroup
+      aria-label="Which workflows to show"
+      value={[
+        search.view === 'archived'
+          ? 'archived'
+          : (search.publication ?? search.view ?? 'active'),
+      ]}
+      onValueChange={([value]) => {
+        if (value === 'live' || value === 'drafts')
+          onChange({ view: 'active', publication: value });
+        else if (value === 'archived' || value === 'all' || value === 'active')
+          onChange({ view: value, publication: null });
+      }}
+    >
+      <ToggleGroupItem value="active">Active</ToggleGroupItem>
+      <ToggleGroupItem value="all">All</ToggleGroupItem>
+      <ToggleGroupItem value="live">Live</ToggleGroupItem>
+      <ToggleGroupItem value="drafts">Drafts</ToggleGroupItem>
+      <ToggleGroupItem value="archived">Archived</ToggleGroupItem>
+    </ToggleGroup>
   );
 }

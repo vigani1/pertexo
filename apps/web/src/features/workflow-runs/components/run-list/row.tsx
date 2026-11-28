@@ -11,7 +11,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   formatDateTime,
   formatDurationMs,
-  formatElapsedTime,
+  formatShortTime,
 } from '@/lib/format/time';
 import { shortRunId, workflowLabel } from '../../model/list/runs';
 import { describeListedFailure } from '../../model/presentation/run-failure';
@@ -25,20 +25,18 @@ import { RunAdmissionBlockers } from '../run-admission-blockers';
 /** When a run started: relative, in mono, with the exact time on hover. */
 function StartedAt({
   run,
-  nowMs,
   className,
 }: Readonly<{
   run: WorkflowRunListItem;
-  nowMs: number;
   className?: string;
 }>) {
   return (
     <time
-      dateTime={run.createdAt}
-      title={formatDateTime(run.createdAt)}
+      dateTime={run.startedAt ?? run.createdAt}
+      title={formatDateTime(run.startedAt ?? run.createdAt)}
       className={cn('font-mono text-xs', className)}
     >
-      {formatElapsedTime(run.createdAt, nowMs)}
+      {formatShortTime(run.startedAt ?? run.createdAt, 'h23')}
     </time>
   );
 }
@@ -55,7 +53,6 @@ export function RunRow({
   run,
   variant,
   durationMs,
-  nowMs,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -63,7 +60,6 @@ export function RunRow({
   run: WorkflowRunListItem;
   variant: RunListVariant;
   durationMs: number | undefined;
-  nowMs: number;
 }>) {
   const look = describeRunStatus({
     status: run.status,
@@ -99,7 +95,7 @@ export function RunRow({
         )}
       >
         {inWorkflow ? (
-          <StartedAt run={run} nowMs={nowMs} className="text-sm" />
+          <StartedAt run={run} className="text-sm" />
         ) : (
           workflowLabel(run)
         )}
@@ -115,7 +111,7 @@ export function RunRow({
         {inWorkflow ? null : (
           <StartedAt
             run={run}
-            nowMs={nowMs}
+
             className={cn(
               'text-subtle-foreground md:row-start-1',
               layout.started,

@@ -54,7 +54,6 @@ function WorkflowListContent({
   const scope = { apiClient, userId: user.id, workspace };
   const list = useWorkflowList(scope, search);
   const { workflows } = list;
-  // An empty workspace with no filter shows the first-workflow onboarding.
   const onboarding = list.shown === 'empty' && isUnfilteredWorkflowList(search);
   const filterRef = useRef<HTMLInputElement>(null);
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
@@ -108,6 +107,7 @@ function WorkflowListContent({
     <div className="flex flex-col gap-6">
       <WorkflowListHeader
         workflows={list.items}
+        workspaceName={workspace.name}
         loading={workflows.isPending}
         hasMore={workflows.hasNextPage}
         actions={
@@ -126,6 +126,14 @@ function WorkflowListContent({
           ) : undefined
         }
       />
+      <WorkflowOrganizationFilters
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        search={search}
+        filterRef={filterRef}
+        onSearchChange={onSearchChange}
+      />
       <WorkflowFolders
         apiClient={apiClient}
         userId={user.id}
@@ -136,14 +144,6 @@ function WorkflowListContent({
             updateWorkflowListSearch(current, { folderId }),
           );
         }}
-      />
-      <WorkflowOrganizationFilters
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        search={search}
-        filterRef={filterRef}
-        onSearchChange={onSearchChange}
       />
       <WorkflowListResults
         scope={scope}

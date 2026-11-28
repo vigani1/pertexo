@@ -206,7 +206,7 @@ function run(id: string, status: 'failed' | 'succeeded') {
   };
 }
 
-test('shows the loom, what needs attention and recent changes on mobile', async ({
+test('shows a compact Today block after what needs attention on mobile', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -221,21 +221,18 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
     }),
   ).toBeVisible();
   const attention = page.getByRole('region', { name: 'Needs you' });
-  await expect(
-    attention.getByText('Daily intake failed once in the last 24 hours'),
-  ).toBeVisible();
+  await expect(attention.getByText('Daily intake failed')).toBeVisible();
   await expect(
     attention.getByRole('link', { name: 'Open run' }),
   ).toHaveAttribute('href', `/w/${workspaceId}/runs/${failedRunId}`);
+  const today = page.getByRole('region', { name: 'Today' });
   await expect(
-    page
-      .getByRole('region', { name: 'Recently changed' })
-      .getByRole('link', { name: 'Daily intake' }),
-  ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
-  await expect(page.getByRole('img', { name: /Timeline of/u })).toBeVisible();
-  expect(queries.workflowQueries).toContain(
-    '?limit=5&include=listSummary&order=updated_desc',
-  );
+    today.getByText('1 run started today and finished.'),
+  ).toBeVisible();
+  await expect(
+    today.getByRole('link', { name: 'Daily intake Succeeded' }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);
+  await expect(page.getByRole('img', { name: /Timeline of/u })).toBeHidden();
   for (const status of ['running', 'waiting', 'queued', 'failed'])
     expect(
       queries.runQueries.some((query) => query.get('status') === status),
@@ -245,10 +242,7 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
       .find((query) => query.get('status') === 'failed')
       ?.get('createdAtFrom'),
   ).toBeTruthy();
-  await expect(page.getByText('3 runs in the last hour.')).toBeVisible();
-  expect(queries.statisticsQueries.map(String)).toEqual(
-    expect.arrayContaining(['window=24h', 'window=1h&breakdown=workflow']),
-  );
+  expect(queries.statisticsQueries.map(String)).toContain('window=24h');
 
   await expect(
     page
@@ -304,15 +298,15 @@ test('opens a plotted run from a native timeline link with the keyboard', async 
   );
 });
 
-test('opens a plotted run through its native link on a narrow timeline', async ({
+test('opens the featured run through its native link in Today', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}`);
   const link = page
-    .getByRole('group', { name: 'Runs on this timeline' })
-    .getByRole('link', { name: /Daily intake: Succeeded/u });
+    .getByRole('region', { name: 'Today' })
+    .getByRole('link', { name: 'Daily intake Succeeded' });
   await expect(link).toBeVisible();
   await link.click();
   await expect(page).toHaveURL(

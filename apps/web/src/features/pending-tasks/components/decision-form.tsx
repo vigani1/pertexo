@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { PENDING_TASK_LIMITS } from '@pertexo/workflow-model';
+import { useId, useState, type ReactNode } from 'react';
 import type { PendingTaskDetail } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,9 +12,11 @@ import { blockedSentence } from '../model/task-presentation';
 export function DecisionForm({
   task,
   scope,
+  queueNavigation,
 }: Readonly<{
   task: Extract<PendingTaskDetail, { kind: 'approval' }>;
   scope: TaskScope;
+  queueNavigation: ReactNode;
 }>) {
   const id = useId();
   const [comment, setComment] = useState('');
@@ -36,7 +39,7 @@ export function DecisionForm({
               <Textarea
                 {...control}
                 value={comment}
-                maxLength={2000}
+                maxLength={PENDING_TASK_LIMITS.commentCharacters}
                 rows={4}
                 disabled={disabled}
                 onChange={(event) => {
@@ -45,31 +48,39 @@ export function DecisionForm({
               />
             )}
           </LabelledField>
-          <div className="flex flex-wrap gap-3">
-            <ProgressButton
-              type="button"
-              variant="primary"
-              size="lg"
-              pending={command.pending}
-              pendingLabel="Recording…"
-              disabled={disabled}
-              onClick={() =>
-                void command.send({ decision: 'approved', comment })
-              }
+          <div aria-hidden="true" className="h-28 md:hidden" />
+          <div className="max-md:lens max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] max-md:z-30 max-md:rounded-2xl max-md:p-2">
+            {queueNavigation}
+            <div
+              role="group"
+              aria-label="Approval decision"
+              className="flex flex-wrap gap-3 max-md:[&>button]:flex-1"
             >
-              Approve
-            </ProgressButton>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              disabled={disabled}
-              onClick={() =>
-                void command.send({ decision: 'rejected', comment })
-              }
-            >
-              Reject
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={disabled}
+                onClick={() =>
+                  void command.send({ decision: 'rejected', comment })
+                }
+              >
+                Reject
+              </Button>
+              <ProgressButton
+                type="button"
+                variant="primary"
+                size="lg"
+                pending={command.pending}
+                pendingLabel="Recording…"
+                disabled={disabled}
+                onClick={() =>
+                  void command.send({ decision: 'approved', comment })
+                }
+              >
+                Approve
+              </ProgressButton>
+            </div>
           </div>
         </>
       ) : null}
