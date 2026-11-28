@@ -1,5 +1,5 @@
 import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   dataTableCreateSchema,
   type DataTableCreate,
@@ -40,6 +40,7 @@ export function CreateDataTable({
   onClose: () => void;
   onCreated: (id: string) => void;
 }>) {
+  const nameId = useId();
   const [name, setName] = useState('');
   const [columns, setColumns] = useState<Column[]>(() => [newColumn()]);
   const [keyColumn, setKeyColumn] = useState('');
@@ -97,9 +98,9 @@ export function CreateDataTable({
         >
           <fieldset disabled={locked} className="contents">
             <div className="grid gap-2">
-              <Label htmlFor="table-name">Table name</Label>
+              <Label htmlFor={nameId}>Table name</Label>
               <Input
-                id="table-name"
+                id={nameId}
                 value={name}
                 onChange={(event) => {
                   setName(event.target.value);

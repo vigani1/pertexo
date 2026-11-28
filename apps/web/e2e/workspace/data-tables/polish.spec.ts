@@ -50,6 +50,18 @@ for (const width of [360, 1440])
       route.fulfill({ json: { rows: [], affected: 0, hasMore: false } }),
     );
     await page.goto(`/w/${workspaceId}/data-tables/${id}`);
+    await page.getByRole('button', { name: 'New table', exact: true }).click();
+    const create = page.getByRole('dialog', {
+      name: 'New data table',
+      exact: true,
+    });
+    const tableName = create.getByRole('textbox', {
+      name: 'Table name',
+      exact: true,
+    });
+    await tableName.fill('New orders');
+    await expect(tableName).toHaveValue('New orders');
+    await create.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(
       page.getByText('No rows yet. Add a row or import CSV to start.'),
     ).toBeVisible();
