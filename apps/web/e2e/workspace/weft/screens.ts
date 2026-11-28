@@ -31,14 +31,16 @@ const hub = editorUrl.replace(/\/$/u, '');
 const heading = (name: string | RegExp) => (page: Page) =>
   page.getByRole('heading', { name }).first();
 
+const homeHeading = (page: Page) =>
+  heading(
+    (page.viewportSize()?.width ?? 1280) < 768 ? 'Today' : 'The last hour',
+  )(page);
+
 export const workspaceScreens: readonly Screen[] = [
   {
     name: 'home',
     path: root,
-    ready: (page) =>
-      heading(
-        (page.viewportSize()?.width ?? 1280) < 768 ? 'Today' : 'The last hour',
-      )(page),
+    ready: homeHeading,
   },
   { name: 'workflows', path: `${root}/workflows`, ready: heading('Workflows') },
   { name: 'runs', path: `${root}/runs`, ready: heading('Runs') },
@@ -144,7 +146,7 @@ export const workspaceScreens: readonly Screen[] = [
     name: 'command-palette',
     path: root,
     open: async (page) => {
-      await heading('The last hour')(page).waitFor();
+      await homeHeading(page).waitFor();
       await page.keyboard.press('Control+k');
     },
     ready: (page) => page.getByRole('dialog', { name: 'Search Pertexo' }),
