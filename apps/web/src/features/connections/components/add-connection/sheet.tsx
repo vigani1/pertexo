@@ -46,7 +46,7 @@ import {
 } from '../../model/saved-credential';
 import { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { useConnectionTest } from '../../data/connection-test.mutations';
-import { useCredentialForm } from '../credential/use-form';
+import { useCredentialForm } from '../../hooks/credential/use-form';
 import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';
 import { AddConnectionFooter } from './content';

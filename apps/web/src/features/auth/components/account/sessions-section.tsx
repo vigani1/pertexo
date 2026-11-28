@@ -18,7 +18,7 @@ import { describeUserAgent } from '../../model/account/user-agent';
 import { FreshSignInLink } from './section';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { useSessionEnding, type SessionEnding } from './use-session-ending';
+import { useSessionEnding, type SessionEnding } from '../../hooks/account/use-session-ending';
 
 type Session = AccountSecuritySessionsResponse['items'][number];
 
