@@ -110,8 +110,48 @@ for (const [width, height] of viewports)
           ).toBeVisible();
         }
       }
+      await captureOrganizationDrawers(page, root, width, size);
     });
   }
+
+async function captureOrganizationDrawers(
+  page: Page,
+  root: string,
+  width: number,
+  size: string,
+) {
+  await page.goto(`${root}/workflows`);
+  await page.getByRole('button', { name: 'New folder' }).click();
+  const folder = page.getByRole('dialog', { name: 'New folder' });
+  await expect(
+    folder.getByRole('textbox', { name: 'Folder name' }),
+  ).toBeVisible();
+  await assertDrawerWidth(folder, width);
+  await shot(page, 'workflow-folder', size);
+
+  await folder.getByRole('button', { name: 'Cancel' }).click();
+  await expect(folder).toBeHidden();
+  await page.getByRole('button', { name: 'Filters' }).click();
+  await page.getByRole('button', { name: 'Manage tags…' }).click();
+  const tags = page.getByRole('dialog', { name: 'Tags' });
+  await expect(tags.getByRole('button', { name: 'Done' })).toBeVisible();
+  await assertDrawerWidth(tags, width);
+  await shot(page, 'workflow-tags', size);
+}
+
+async function assertDrawerWidth(
+  dialog: ReturnType<Page['getByRole']>,
+  width: number,
+) {
+  const box = await dialog.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  if (width === 390) expect(box.width).toBe(width);
+  else {
+    expect(box.x).toBeGreaterThan(width / 2);
+    expect(box.x + box.width).toBeGreaterThan(width - 20);
+  }
+}
 
 async function assertCoreFlow(page: Page, name: string, width: number) {
   if (name === 'home') {
