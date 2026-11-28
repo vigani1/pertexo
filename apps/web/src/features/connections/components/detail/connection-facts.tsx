@@ -121,20 +121,27 @@ export function ConnectionFacts({
           <Fact term="Updated">{formatMoment(connection.updatedAt)}</Fact>
         ) : null}
       </dl>
-      <Disclosure summary="Details">
-        <dl className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
-          <IdentifierFact
-            term="Connection ID"
-            value={connection.id}
-            copyLabel="Copy connection ID"
-          />
-          <IdentifierFact
-            term="Secret version"
-            value={connection.secretVersionId}
-            copyLabel="Copy secret version"
-          />
-        </dl>
-      </Disclosure>
     </div>
+  );
+}
+
+export function ConnectionDetails({
+  connection,
+}: Readonly<{ connection: ConnectionResponse }>) {
+  return (
+    <Disclosure summary="Details">
+      <dl className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
+        <IdentifierFact
+          term="Connection ID"
+          value={connection.id}
+          copyLabel="Copy connection ID"
+        />
+        <IdentifierFact
+          term="Secret version"
+          value={connection.secretVersionId}
+          copyLabel="Copy secret version"
+        />
+      </dl>
+    </Disclosure>
   );
 }

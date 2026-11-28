@@ -27,7 +27,7 @@ import {
 import { useConnectionTest } from '../../data/connection-test.mutations';
 import { ConnectionTestPanel } from '../connection-test/panel';
 import { ProviderTile } from '../provider-tile';
-import { ConnectionFacts } from './connection-facts';
+import { ConnectionDetails, ConnectionFacts } from './connection-facts';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
 import { OAuth2OverviewActions } from '../oauth2/overview-actions';
 import { ReplaceCredentialForm } from './replace-credential-form';
@@ -185,6 +185,7 @@ function DetailBody({
             connectionName={connection.name}
             canRead={permissions.canReadUsage ?? false}
           />
+          <ConnectionDetails connection={connection} />
           {permissions.canFollow === false ? null : (
             <>
               <NoticeSubjectActions
