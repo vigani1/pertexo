@@ -27,6 +27,13 @@ import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 /** Below Tailwind's sm breakpoint, where the page's own controls fold away. */
 const PHONE_MEDIA_QUERY = '(max-width: 39.999rem)';
 
+type HubScope = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  workflowId: string;
+}>;
+
 const TITLE_CLASS =
   'truncate font-display text-lg leading-tight [--display-optical-size:19] [--display-width:84%]';
 
@@ -49,12 +56,7 @@ export function WorkflowHubBar({
   activeTab: WorkflowHubTab;
   duplicateBlocked?: boolean;
   overflowRef?: RefObject<HTMLButtonElement | null>;
-  scope: Readonly<{
-    apiClient: ApiClient;
-    userId: string;
-    workspace: AccessibleWorkspace;
-    workflowId: string;
-  }>;
+  scope: HubScope;
   slots?: Readonly<{
     glyph?: ReactNode;
     presence?: ReactNode;
@@ -98,56 +100,28 @@ export function WorkflowHubBar({
       <div
         className={cn(
           'flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0',
-          build &&
-            'max-sm:min-w-0 max-sm:gap-1 max-[380px]:col-span-2 xl:min-w-0',
+          build && 'max-sm:min-w-0 max-sm:gap-1 xl:min-w-0',
         )}
       >
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId: workspace.id }}
           aria-label="Back to workflows"
-          className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+            build &&
+              'max-[380px]:absolute max-[380px]:bottom-0.5 max-[380px]:left-2',
+          )}
         >
           <ArrowLeftIcon aria-hidden="true" />
         </Link>
         {glyph}
-        <div className="min-w-0 flex-1">
-          {workflow === undefined ? (
-            // The name is still loading: hold its place instead of showing
-            // a stand-in word that then changes.
-            <>
-              <h1 className="sr-only">Workflow</h1>
-              <Skeleton className="my-1 h-3.5 w-40" />
-            </>
-          ) : (
-            <WorkflowNameWithDialog
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
-              workflow={workflow}
-            >
-              <h1 className={TITLE_CLASS}>{workflow.name}</h1>
-            </WorkflowNameWithDialog>
-          )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:relative max-sm:z-10 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-caption text-subtle-foreground">
-            <WorkflowActivationState
-              workspace={workspace}
-              workflowId={workflowId}
-              workflow={workflow}
-              activeTab={activeTab}
-            />
-            {detail}
-            {/* Appended to a line that already exists, so it moves nothing
-                when it arrives; a phone reads it in Settings instead. */}
-            <WorkflowTemplateOrigin
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
-              workflowId={workflowId}
-              className="min-w-0 truncate max-sm:hidden"
-            />
-          </div>
-        </div>
+        <HubTitle
+          scope={scope}
+          workflow={workflow}
+          activeTab={activeTab}
+          detail={detail}
+        />
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <div
             className={
@@ -183,15 +157,15 @@ export function WorkflowHubBar({
         workflowId={workflowId}
         className={cn(
           build &&
-            'max-sm:col-span-2 max-sm:row-start-2 max-[380px]:row-start-3',
-          build && presence !== undefined && 'max-sm:w-[calc(100%-2.75rem)]',
+            'max-sm:col-span-2 max-sm:row-start-2 max-[380px]:ml-11 max-[380px]:w-auto',
+          build && presence !== undefined && 'max-sm:mr-11 max-sm:w-auto',
         )}
       />
       <div
         className={cn(
           'flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end',
           build &&
-            'max-sm:col-start-2 max-sm:row-start-1 max-sm:w-auto max-sm:gap-0.5 max-[380px]:col-span-2 max-[380px]:col-start-1 max-[380px]:row-start-2 max-[380px]:justify-self-end',
+            'max-sm:col-start-2 max-sm:row-start-1 max-sm:w-auto max-sm:gap-0.5',
           actions === undefined && 'hidden',
         )}
       >
@@ -199,6 +173,59 @@ export function WorkflowHubBar({
         {actions}
       </div>
     </header>
+  );
+}
+
+function HubTitle({
+  scope,
+  workflow,
+  activeTab,
+  detail,
+}: Readonly<{
+  scope: HubScope;
+  workflow: WorkflowSummary | undefined;
+  activeTab: WorkflowHubTab;
+  detail: ReactNode;
+}>) {
+  const { apiClient, userId, workspace, workflowId } = scope;
+  return (
+    <div className="min-w-0 flex-1">
+      {workflow === undefined ? (
+        // The name is still loading: hold its place instead of showing
+        // a stand-in word that then changes.
+        <>
+          <h1 className="sr-only">Workflow</h1>
+          <Skeleton className="my-1 h-3.5 w-40" />
+        </>
+      ) : (
+        <WorkflowNameWithDialog
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          workflow={workflow}
+        >
+          <h1 className={TITLE_CLASS}>{workflow.name}</h1>
+        </WorkflowNameWithDialog>
+      )}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:relative max-sm:z-10 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-caption text-subtle-foreground">
+        <WorkflowActivationState
+          workspace={workspace}
+          workflowId={workflowId}
+          workflow={workflow}
+          activeTab={activeTab}
+        />
+        {detail}
+        {/* Appended to a line that already exists, so it moves nothing
+            when it arrives; a phone reads it in Settings instead. */}
+        <WorkflowTemplateOrigin
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          workflowId={workflowId}
+          className="min-w-0 truncate max-sm:hidden"
+        />
+      </div>
+    </div>
   );
 }
 

@@ -22,7 +22,15 @@ export function WorkflowActivationState({
   const needsSetup = activating && workflow.webhookSetupRequired;
   const state = describeWorkflowState(workflow);
   const word = (
-    <StatusMark tone={state.tone} typography="label">
+    <StatusMark
+      tone={state.tone}
+      typography="label"
+      className={
+        activeTab === 'build'
+          ? 'max-[380px]:[&>[data-slot=status-glyph]]:hidden'
+          : undefined
+      }
+    >
       {state.label}
     </StatusMark>
   );
