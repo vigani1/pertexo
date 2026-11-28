@@ -559,6 +559,17 @@
     );
 }
 
+/* A single quiet dot grid on the Build canvas. */
+@utility editor-grid {
+  background-color: var(--canvas-ground);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--surface-ink) 12%, transparent) 1px,
+    transparent 1.2px
+  );
+  background-size: 24px 24px;
+}
+
 /* Live edge (aurora v2): a light travelling around a surface's border while
    real work is in flight. Animates one custom property instead of rotating a
    viewport-sized layer, so its cost is bounded to the element. */
