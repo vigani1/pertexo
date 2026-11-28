@@ -82,19 +82,17 @@ function AssistantSelection({
   selection: Settings['selection'];
   options: readonly Readonly<{ id: string; name: string }>[];
 }>) {
-  const [connectionId, setConnectionId] = useState(
-    selection?.connectionId ?? '',
-  );
-  const [model, setModel] = useState(selection?.model ?? '');
+  const savedConnectionId = selection?.connectionId ?? '';
+  const savedModel = selection?.model ?? '';
+  const [connectionId, setConnectionId] = useState(savedConnectionId);
+  const [model, setModel] = useState(savedModel);
   const command = useAssistantSettings(scope);
   const configured = selection !== null;
   const valid =
     model.trim() !== '' && options.some((option) => option.id === connectionId);
   const next = { connectionId, model: model.trim() };
   const edited =
-    selection === null ||
-    next.connectionId !== selection.connectionId ||
-    next.model !== selection.model;
+    next.connectionId !== savedConnectionId || next.model !== savedModel;
 
   async function save(next: Settings['selection']) {
     await command.mutateAsync({ selection: next }).catch(() => undefined);
