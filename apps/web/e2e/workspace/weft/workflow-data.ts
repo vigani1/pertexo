@@ -184,19 +184,17 @@ export async function installWorkflowTabRoutes(
   page: Page,
   triggers: 'all' | 'without-form' | 'manual-only' = 'all',
 ) {
-  const manualSteps = [
-    node('manual-node', 'core.manual', 'Manual input', 0),
-    ...steps.filter((step) => step.definition.key === 'core.set'),
-  ];
-  const listedVersions = versions.map((item) => ({
-    ...item,
-    graph:
-      triggers === 'all'
-        ? item.graph
-        : triggers === 'without-form'
-          ? graph(steps.filter((step) => step.definition.key !== 'core.form'))
-          : graph(manualSteps),
-  }));
+  const replacementSteps =
+    triggers === 'manual-only'
+      ? [
+          node('manual-node', 'core.manual', 'Manual input', 0),
+          ...steps.filter((step) => step.definition.key === 'core.set'),
+        ]
+      : steps.filter((step) => step.definition.key !== 'core.form');
+  const listedVersions =
+    triggers === 'all'
+      ? versions
+      : versions.map((item) => ({ ...item, graph: graph(replacementSteps) }));
   await page.route(`**/v1/workspaces/${workspaceId}/auto-pause`, (route) =>
     route.fulfill({ json: { threshold: 10, revision: 1 } }),
   );
