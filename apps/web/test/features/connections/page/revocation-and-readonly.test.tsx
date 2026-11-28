@@ -182,7 +182,9 @@ describe('connections page', () => {
     await event.click(
       await screen.findByRole('button', { name: /Read only Slack/u }),
     );
-    expect(await lens().findByText('Service')).toBeVisible();
+    expect(
+      await lens().findByText('Slack · bot token, stored encrypted'),
+    ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: /add connection|connect slack/iu }),
     ).not.toBeInTheDocument();
