@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Link } from '@tanstack/react-router';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -30,6 +31,8 @@ export function LoomThreadLinks({
   height: number;
   nowMs: number;
 }>) {
+  const coarse = useMediaQuery('(pointer: coarse)');
+  const targetSize = coarse ? 40 : 24;
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
@@ -74,9 +77,9 @@ export function LoomThreadLinks({
                   >
                     <rect
                       x={span.x0 - 5}
-                      y={y - 12}
-                      width={Math.max(24, span.x1 - span.x0 + 10)}
-                      height={24}
+                      y={y - targetSize / 2}
+                      width={Math.max(targetSize, span.x1 - span.x0 + 10)}
+                      height={targetSize}
                       rx={4}
                       className="fill-transparent stroke-transparent stroke-2 group-focus-visible:fill-primary/15 group-focus-visible:stroke-primary"
                     />

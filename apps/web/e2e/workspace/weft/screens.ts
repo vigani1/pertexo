@@ -31,7 +31,14 @@ const heading = (name: string | RegExp) => (page: Page) =>
   page.getByRole('heading', { name }).first();
 
 export const workspaceScreens: readonly Screen[] = [
-  { name: 'home', path: root, ready: heading('The last hour') },
+  {
+    name: 'home',
+    path: root,
+    ready: (page) =>
+      heading(
+        (page.viewportSize()?.width ?? 1280) < 768 ? 'Today' : 'The last hour',
+      )(page),
+  },
   { name: 'workflows', path: `${root}/workflows`, ready: heading('Workflows') },
   { name: 'runs', path: `${root}/runs`, ready: heading('Runs') },
   {
@@ -81,7 +88,7 @@ export const workspaceScreens: readonly Screen[] = [
     path: `${hub}/comments`,
     ready: heading('Comments'),
   },
-  { name: 'approvals', path: `${root}/approvals`, ready: heading('Approvals') },
+  { name: 'approvals', path: `${root}/approvals`, ready: heading('Inbox') },
   { name: 'requests', path: `${root}/requests`, ready: heading('Inbox') },
   {
     name: 'approval-detail',

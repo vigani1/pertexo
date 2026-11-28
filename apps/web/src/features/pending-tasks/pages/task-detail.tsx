@@ -1,6 +1,6 @@
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
-import { buttonVariants } from '@/components/ui/button-variants';
-import { ArrowLeftIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ApprovalPosition } from '../components/approval-position';
 import { InputResponse } from '../components/input-response';
 import { TaskDetails } from '../components/task-details';
 import { useQuery } from '@tanstack/react-query';
@@ -32,11 +32,15 @@ import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
   taskId,
-  backSearch,
+  queueView,
+  renderRunThread,
 }: Readonly<{
   scope: TaskScope;
   taskId: string;
-  backSearch?: Pick<PendingTaskListQuery, 'view' | 'status' | 'kind'>;
+  queueView: PendingTaskListQuery['view'];
+  renderRunThread: (
+    task: Extract<PendingTaskDetail, { kind: 'approval' }>,
+  ) => ReactNode;
 }>) {
   const query = useQuery(taskQueryOptions(scope, taskId));
   return (
@@ -48,19 +52,6 @@ export function TaskDetailPage({
       {({ task }) => {
         return (
           <article className="flex max-w-3xl min-w-0 flex-col gap-6">
-            {backSearch === undefined ? null : (
-              <div className="min-[900px]:hidden">
-                <Link
-                  to="/w/$workspaceId/requests"
-                  search={backSearch}
-                  params={{ workspaceId: scope.workspaceId }}
-                  className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-                >
-                  <ArrowLeftIcon aria-hidden="true" />
-                  Back to requests
-                </Link>
-              </div>
-            )}
             <PageHeader>
               <div className="flex min-w-0 flex-col gap-2">
                 <p className="text-sm text-muted-foreground">
@@ -79,7 +70,10 @@ export function TaskDetailPage({
                     <> at step {task.stepName}</>
                   )}
                 </p>
-                <PageHeaderTitle className="min-w-0 break-words [overflow-wrap:anywhere]">
+                <PageHeaderTitle
+                  size="detail"
+                  className="min-w-0 break-words [overflow-wrap:anywhere]"
+                >
                   {task.title}
                 </PageHeaderTitle>
                 <PageHeaderMeta>
@@ -97,17 +91,14 @@ export function TaskDetailPage({
                   {task.instructions}
                 </p>
               )}
-              <TaskDetails details={task.details} />
+              {Object.keys(task.details).length > 0 ? (
+                <div className="grid gap-3 rounded-lg border border-border p-4">
+                  <h2 className="font-medium">The request</h2>
+                  <TaskDetails details={task.details} />
+                </div>
+              ) : null}
             </section>
-            <section aria-labelledby="task-audience" className="grid gap-2">
-              <RuleHeading id="task-audience">
-                {task.kind === 'approval' ? 'Who decides' : 'Who responds'}
-              </RuleHeading>
-              <p className="text-sm text-muted-foreground">
-                {audienceSentence(task)}
-                {task.canRespond ? ' You can answer it.' : null}
-              </p>
-            </section>
+            {task.kind === 'approval' ? renderRunThread(task) : null}
             {task.kind !== 'approval' || task.output === null ? null : (
               <section aria-labelledby="task-decision" className="grid gap-2">
                 <RuleHeading id="task-decision">
@@ -156,8 +147,28 @@ export function TaskDetailPage({
                 </dl>
               </section>
             ) : null}
+            <section aria-labelledby="task-audience" className="grid gap-2">
+              <RuleHeading id="task-audience">
+                {task.kind === 'approval' ? 'Who decides' : 'Who responds'}
+              </RuleHeading>
+              <p className="text-sm text-muted-foreground">
+                {audienceSentence(task)}
+                {task.canRespond ? ' You can answer it.' : null}
+              </p>
+            </section>
             {task.kind === 'approval' ? (
-              <DecisionForm key={task.id} task={task} scope={scope} />
+              <DecisionForm
+                key={task.id}
+                task={task}
+                scope={scope}
+                queueNavigation={
+                  <ApprovalPosition
+                    scope={scope}
+                    taskId={task.id}
+                    view={queueView}
+                  />
+                }
+              />
             ) : (
               <InputResponse key={task.id} task={task} scope={scope} />
             )}
@@ -180,10 +191,15 @@ function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
     enabled: task.status === 'pending',
   });
   const timedOut = timedOutAfter(task);
+  const expiry =
+    task.onExpiry === 'continue'
+      ? ', then takes the Timed out path'
+      : ', then the step fails';
   const due = (
     <span title={formatDateTime(task.expiresAt)}>
       {task.status === 'pending' ? 'Expires' : 'Was due'}{' '}
       {formatRelativeTime(task.expiresAt, nowMs, 'long')}
+      {task.status === 'pending' && task.kind === 'approval' ? expiry : null}
     </span>
   );
   if (timedOut !== undefined)

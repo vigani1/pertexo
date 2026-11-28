@@ -28,7 +28,7 @@ export function InboxRoute() {
       onNoticeKindChange={(noticeKind) =>
         void navigate({
           search: {
-            ...(search.filter === undefined ? {} : { filter: search.filter }),
+            filter: search.filter ?? 'all',
             ...(noticeKind === undefined ? {} : { noticeKind }),
           },
         })
@@ -39,7 +39,7 @@ export function InboxRoute() {
             ...(search.noticeKind === undefined
               ? {}
               : { noticeKind: search.noticeKind }),
-            ...(filter === 'unread' ? { filter } : {}),
+            filter,
           },
         })
       }

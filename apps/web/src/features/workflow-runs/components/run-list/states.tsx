@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { roleLimitSentence } from '@/features/workspaces/public';
 import { Link } from '@tanstack/react-router';
@@ -40,22 +41,20 @@ export function NoMatchingRuns({
   partial,
 }: Readonly<{ onClearFilters: () => void; partial: boolean }>) {
   return (
-    <Empty>
-      <EmptyMedia className="w-full max-w-56">
-        <LooseThread />
-      </EmptyMedia>
-      <EmptyTitle>No runs match these filters</EmptyTitle>
-      <EmptyDescription>
-        {partial
-          ? 'The trigger filter only checks runs loaded so far. Load more runs or clear the filters to see everything.'
-          : 'Try a wider time range or another status, or clear the filters to see every run.'}
-      </EmptyDescription>
-      <EmptyActions>
-        <Button type="button" variant="outline" onClick={onClearFilters}>
-          Clear filters
-        </Button>
-      </EmptyActions>
-    </Empty>
+    <IllustratedRunEmpty
+      title="No runs match these filters"
+      description={
+        <>
+          {partial
+            ? 'The trigger filter only checks runs loaded so far. Load more runs or clear the filters to see everything.'
+            : 'Try a wider time range or another status, or clear the filters to see every run.'}
+        </>
+      }
+    >
+      <Button type="button" variant="outline" onClick={onClearFilters}>
+        Clear filters
+      </Button>
+    </IllustratedRunEmpty>
   );
 }
 
@@ -64,17 +63,17 @@ export function NoRunsYet({
   canReadWorkflows,
 }: Readonly<{ workspaceId: string; canReadWorkflows: boolean }>) {
   return (
-    <Empty>
-      <EmptyMedia className="w-full max-w-56">
-        <LooseThread />
-      </EmptyMedia>
-      <EmptyTitle>No runs yet</EmptyTitle>
-      <EmptyDescription>
-        Runs show up here once a published workflow runs, from one of its
-        triggers or from Run in its editor.
-      </EmptyDescription>
+    <IllustratedRunEmpty
+      title="No runs yet"
+      description={
+        <>
+          Runs show up here once a published workflow runs, from one of its
+          triggers or from Run in its editor.
+        </>
+      }
+    >
       {canReadWorkflows ? (
-        <EmptyActions>
+        <>
           <Link
             to="/w/$workspaceId/workflows"
             params={{ workspaceId }}
@@ -82,9 +81,9 @@ export function NoRunsYet({
           >
             Go to workflows
           </Link>
-        </EmptyActions>
+        </>
       ) : null}
-    </Empty>
+    </IllustratedRunEmpty>
   );
 }
 
@@ -94,24 +93,41 @@ export function NoWorkflowRunsYet({
   workflowId,
 }: Readonly<{ workspaceId: string; workflowId: string }>) {
   return (
+    <IllustratedRunEmpty
+      title="No runs yet"
+      description={
+        <>
+          This workflow’s runs show up here once it’s published and runs, from
+          one of its triggers or from Run in Build.
+        </>
+      }
+    >
+      <Link
+        to="/w/$workspaceId/workflows/$workflowId"
+        params={{ workspaceId, workflowId }}
+        className={buttonVariants({ variant: 'primary' })}
+      >
+        Open Build
+      </Link>
+    </IllustratedRunEmpty>
+  );
+}
+
+function IllustratedRunEmpty({
+  title,
+  description,
+  children,
+}: Readonly<{ title: string; description: ReactNode; children: ReactNode }>) {
+  return (
     <Empty>
       <EmptyMedia className="w-full max-w-56">
         <LooseThread />
       </EmptyMedia>
-      <EmptyTitle>No runs yet</EmptyTitle>
-      <EmptyDescription>
-        This workflow’s runs show up here once it’s published and runs, from one
-        of its triggers or from Run in Build.
-      </EmptyDescription>
-      <EmptyActions>
-        <Link
-          to="/w/$workspaceId/workflows/$workflowId"
-          params={{ workspaceId, workflowId }}
-          className={buttonVariants({ variant: 'primary' })}
-        >
-          Open Build
-        </Link>
-      </EmptyActions>
+      <EmptyTitle>{title}</EmptyTitle>
+      <EmptyDescription>{description}</EmptyDescription>
+      {children == null || children === false ? null : (
+        <EmptyActions>{children}</EmptyActions>
+      )}
     </Empty>
   );
 }

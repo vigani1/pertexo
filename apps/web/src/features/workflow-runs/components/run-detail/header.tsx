@@ -1,3 +1,5 @@
+import { RecoverySummary } from '../recovery/summary';
+import type { RunTimelineRow } from '../../model/timeline/runs';
 import { RunRecoveryAction } from '../recovery/action';
 import { RunDetailActions } from '../run-actions/detail';
 import type {
@@ -8,32 +10,17 @@ import { Link } from '@tanstack/react-router';
 import { RefreshCwIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
-import {
-  PageHeaderMeta,
-  PageHeaderTitle,
-} from '@/components/patterns/page-header';
+import { PageHeaderTitle } from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  formatMoment,
-  formatDurationMs,
-  formatDateTime,
-} from '@/lib/format/time';
-import {
   describeLiveUpdates,
   type LiveConnectionStatus,
 } from '../../model/live-updates';
-import { StatusGuide } from '@/components/patterns/guidance/status-guide';
-import { RUN_PAGE_GUIDE } from '../../model/presentation/run-guide';
-import {
-  runDurationMs,
-  shortRunId,
-  workflowLabel,
-} from '../../model/list/runs';
+import { shortRunId, workflowLabel } from '../../model/list/runs';
 import {
   describeRunStatus,
-  describeTrigger,
   isActiveRunStatus,
   runCoreState,
 } from '../../model/presentation/run-status';
@@ -42,44 +29,7 @@ import { CancelRunDialog } from '../run-actions/cancel-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-dialog';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
 import { RunStalledNotice } from '../run-stalled-notice';
-import { pluralWord } from '@/lib/format/count';
-
-function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <span className="[&_b]:font-medium [&_b]:text-foreground">{children}</span>
-  );
-}
-
-function deadlineFact(run: WorkflowRunReadSummary, nowMs: number): ReactNode {
-  if (run.humanWait !== undefined)
-    return (
-      <>
-        execution budget paused
-        {run.humanWait.absoluteDeadlineAt === null ? null : (
-          <>
-            {' '}
-            · absolute deadline{' '}
-            <b>{formatDateTime(run.humanWait.absoluteDeadlineAt)}</b>
-          </>
-        )}
-      </>
-    );
-  if (run.deadlineAt === null) return 'no deadline';
-  const remaining = Date.parse(run.deadlineAt) - nowMs;
-  if (!isActiveRunStatus(run.status))
-    return (
-      <>
-        deadline <b>{formatMoment(run.deadlineAt)}</b>
-      </>
-    );
-  return remaining > 0 ? (
-    <>
-      deadline in <b>{formatDurationMs(remaining)}</b>
-    </>
-  ) : (
-    'deadline passed'
-  );
-}
+import { RunFacts } from '../run-context/facts';
 
 function RunLiveIndicator({
   status,
@@ -105,78 +55,6 @@ function RunLiveIndicator({
   );
 }
 
-/** The run's facts in mono: start, duration, trigger, version, deadline, stop. */
-function RunFacts({
-  run,
-  nowMs,
-  workspaceId,
-  versionLabel,
-}: Readonly<{
-  run: WorkflowRunReadSummary;
-  nowMs: number;
-  workspaceId: string;
-  versionLabel: string | undefined;
-}>) {
-  const active = isActiveRunStatus(run.status);
-  const durationMs = runDurationMs(run, nowMs);
-  return (
-    <PageHeaderMeta>
-      <MetaFact>
-        started <b>{formatMoment(run.startedAt ?? run.createdAt)}</b>
-      </MetaFact>
-      {durationMs === undefined ? null : (
-        <MetaFact>
-          <b>{formatDurationMs(durationMs)}</b>{' '}
-          {active ? 'elapsed' : 'in total'}
-        </MetaFact>
-      )}
-      <MetaFact>
-        {describeTrigger(run.triggerType).toLocaleLowerCase()}
-      </MetaFact>
-      {versionLabel === undefined ? null : (
-        <MetaFact>
-          version{' '}
-          <Link
-            to="/w/$workspaceId/workflows/$workflowId/versions"
-            params={{
-              workspaceId,
-              workflowId: run.workflowId,
-            }}
-            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
-          >
-            {versionLabel}
-          </Link>
-        </MetaFact>
-      )}
-      <MetaFact>{deadlineFact(run, nowMs)}</MetaFact>
-      {run.cancelRequestedAt === null ? null : (
-        <MetaFact>
-          stop requested <b>{formatMoment(run.cancelRequestedAt)}</b>
-        </MetaFact>
-      )}
-      {run.replaySourceRunId == null ? null : (
-        <MetaFact>
-          {run.recovery === undefined ? 'replay of' : 'recovered from'}{' '}
-          <Link
-            to="/w/$workspaceId/runs/$runId"
-            params={{ workspaceId, runId: run.replaySourceRunId }}
-            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
-          >
-            {shortRunId(run.replaySourceRunId)}
-          </Link>
-        </MetaFact>
-      )}
-      {run.recovery === undefined ? null : (
-        <MetaFact>
-          {String(run.recovery.reusedCount)} earlier{' '}
-          {pluralWord(run.recovery.reusedCount, 'step')} reused
-        </MetaFact>
-      )}
-      <StatusGuide sections={RUN_PAGE_GUIDE} className="-my-1 -ml-2" />
-    </PageHeaderMeta>
-  );
-}
-
 /**
  * The run's Core, a sentence that says where the run is, the facts in mono
  * and the two things you can do: replay it, or stop it while it runs.
@@ -184,6 +62,7 @@ function RunFacts({
 type RunHeaderProps = Readonly<{
   run: WorkflowRunReadSummary;
   sentence: string;
+  failedSteps: readonly RunTimelineRow[] | undefined;
   nowMs: number;
   versionNumber: number | undefined;
   /** Phone layout: Core beside the sentence, actions in a bottom bar. */
@@ -205,6 +84,7 @@ type RunHeaderProps = Readonly<{
 export function RunHeader({
   run,
   sentence,
+  failedSteps,
   nowMs,
   versionNumber,
   compact,
@@ -217,6 +97,9 @@ export function RunHeader({
   const { replayOpen, onReplayOpenChange, onRunAccepted } = replay;
 
   const { liveStatus, onReconnect } = live;
+  const openReplay = () => {
+    onReplayOpenChange(true);
+  };
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const active = isActiveRunStatus(run.status);
@@ -232,17 +115,42 @@ export function RunHeader({
     can('run:replay') &&
     (run.status === 'failed' || run.status === 'outcome_unknown') &&
     workspace.status === 'active';
+  const canRetry = canReplayRun && run.failureReasonCode == null;
+  const canReplay = can('run:replay');
+  const actions = (
+    <RunDetailActions
+      compact={compact}
+      recoveryAction={
+        canRetry ? (
+          <RunRecoveryAction
+            key={`${userId}:${workspace.id}:${run.id}`}
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            runId={run.id}
+            workflowId={run.workflowId}
+            workflowVersionId={run.workflowVersionId}
+            compact={compact}
+            onRunAccepted={onRunAccepted}
+            onReplay={openReplay}
+          />
+        ) : undefined
+      }
+      canReplay={canReplay}
+      canCancel={canCancel}
+      canOpenWorkflow={can('workflow:read')}
+      onReplay={openReplay}
+      onCancel={() => {
+        setCancelOpen(true);
+      }}
+      scope={{ workspaceId: workspace.id, workflowId: run.workflowId }}
+    />
+  );
   return (
     // The actions wrap under the story when the column is narrow (beside
     // the step lens) instead of squeezing the title into a ribbon.
     <header className="flex flex-row flex-wrap items-start gap-x-4 gap-y-4 md:items-center md:gap-x-5">
-      <div className="size-16 shrink-0 md:size-28">
-        <CoreOrb
-          state={runCoreState(run.status)}
-          energy={runEnergy(run.status)}
-          className="size-full"
-        />
-      </div>
+      <RunCore status={run.status} />
       <div className="min-w-[min(100%,18rem)] flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           {can('workflow:read') ? (
@@ -288,42 +196,13 @@ export function RunHeader({
           workspaceId={workspace.id}
           versionLabel={versionLabel}
         />
-        <RunAdmissionBlockers
-          run={run}
-          className="mt-3 text-sm text-muted-foreground"
-        />
-        <RunStalledNotice run={run} className="mt-3" />
+        <RunHeaderNotices run={run} />
       </div>
-      <RunDetailActions
-        compact={compact}
-        recoveryAction={
-          canReplayRun && run.failureReasonCode == null ? (
-            <RunRecoveryAction
-              key={`${userId}:${workspace.id}:${run.id}`}
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
-              runId={run.id}
-              workflowId={run.workflowId}
-              workflowVersionId={run.workflowVersionId}
-              compact={compact}
-              onRunAccepted={onRunAccepted}
-              onReplay={() => {
-                onReplayOpenChange(true);
-              }}
-            />
-          ) : undefined
-        }
-        canReplay={can('run:replay')}
-        canCancel={canCancel}
-        canOpenWorkflow={can('workflow:read')}
-        onReplay={() => {
-          onReplayOpenChange(true);
-        }}
-        onCancel={() => {
-          setCancelOpen(true);
-        }}
-        scope={{ workspaceId: workspace.id, workflowId: run.workflowId }}
+      <RecoverySection
+        steps={failedSteps}
+        actions={actions}
+        canCheckRetry={canRetry}
+        canReplay={canReplay}
       />
       {can('run:replay') ? (
         <ReplayRunDialog
@@ -357,4 +236,52 @@ function runEnergy(status: WorkflowRunReadSummary['status']) {
   if (status === 'running') return 1.1;
   if (isActiveRunStatus(status)) return 0.6;
   return CORE_IDLE_ENERGY;
+}
+
+function RunCore({
+  status,
+}: Readonly<{ status: WorkflowRunReadSummary['status'] }>) {
+  return (
+    <div className="size-16 shrink-0 md:size-28">
+      <CoreOrb
+        state={runCoreState(status)}
+        energy={runEnergy(status)}
+        className="size-full"
+      />
+    </div>
+  );
+}
+
+function RunHeaderNotices({ run }: Readonly<{ run: WorkflowRunReadSummary }>) {
+  return (
+    <>
+      <RunAdmissionBlockers
+        run={run}
+        className="mt-3 text-sm text-muted-foreground"
+      />
+      <RunStalledNotice run={run} className="mt-3" />
+    </>
+  );
+}
+
+function RecoverySection({
+  steps,
+  actions,
+  canCheckRetry,
+  canReplay,
+}: Readonly<{
+  steps: RunHeaderProps['failedSteps'];
+  actions: ReactNode;
+  canCheckRetry: boolean;
+  canReplay: boolean;
+}>) {
+  if (steps === undefined) return actions;
+  return (
+    <RecoverySummary
+      rows={steps}
+      actions={actions}
+      canCheckRetry={canCheckRetry}
+      canReplay={canReplay}
+    />
+  );
 }

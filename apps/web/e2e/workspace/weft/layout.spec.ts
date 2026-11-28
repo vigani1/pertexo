@@ -121,16 +121,15 @@ test('Home shows the same 24-hour failures in its header and Needs you', async (
     '1 failed in 24 h',
   );
   const attention = page.getByRole('region', { name: 'Needs you' });
+  const incidents = attention.getByRole('listitem');
+  await expect(incidents).toHaveCount(3);
+  await expect(incidents.nth(0)).toContainText('Invoice intake failed');
+  await expect(incidents.nth(1)).toContainText('Invoice intake timed out');
+  await expect(incidents.nth(2)).toContainText(
+    'Invoice intake has an unknown outcome',
+  );
   await expect(
-    attention.getByText(
-      'Invoice intake had 3 runs go wrong in the last 24 hours',
-    ),
-  ).toBeVisible();
-  await expect(
-    attention.getByText(/1 failed, 1 timed out, 1 unknown/u),
-  ).toBeVisible();
-  await expect(
-    attention.getByRole('link', { name: 'Open run' }),
+    incidents.nth(0).getByRole('link', { name: 'Open run' }),
   ).toHaveAttribute(
     'href',
     `/w/${workspaceId}/runs/11000000-0000-4000-8000-000000000007`,

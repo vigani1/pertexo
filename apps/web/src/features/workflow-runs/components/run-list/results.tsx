@@ -15,6 +15,7 @@ import { filterRunsByTrigger } from '../../model/list/runs';
 import {
   clearedRunSearch,
   hasRunFilters,
+  localDateValue,
   type RunSearch,
 } from '../../model/list/run-search';
 import type { RunHistoryQuery } from '../../hooks/use-run-history';
@@ -61,6 +62,7 @@ export function RunResults({
 }>) {
   const { apiClient, userId, workspace } = scope;
 
+  const oldest = runs.at(-1);
   const visible = filterRunsByTrigger(runs, search.trigger);
   const refreshing = query.isRefetching && !query.isFetchingNextPage;
   const empty = hasRunFilters(search) ? (
@@ -107,6 +109,12 @@ export function RunResults({
               workspace={workspace}
               runs={visible}
               variant={variant}
+              partial={query.hasNextPage}
+              oldestLoadedDay={
+                oldest === undefined
+                  ? undefined
+                  : localDateValue(Date.parse(oldest.createdAt))
+              }
             />
           ) : null}
           <LoadMore

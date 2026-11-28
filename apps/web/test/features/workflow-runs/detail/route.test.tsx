@@ -151,6 +151,10 @@ describe('run page', () => {
     ).toHaveTextContent(
       'The service this step calls was unavailable, so the step didn’t finish.',
     );
+    const disclosure = screen.getByText(/^See all .* and the error$/u);
+    const history = screen.getByRole('region', { name: 'Steps' });
+    expect(history).not.toBeVisible();
+    await userEvent.setup().click(disclosure);
     const steps = screen.getByRole('region', { name: 'Steps' });
     expect(
       within(steps).getByRole('button', {

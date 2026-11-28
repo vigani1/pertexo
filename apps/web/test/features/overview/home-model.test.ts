@@ -237,7 +237,7 @@ describe('needs attention', () => {
       action: { kind: 'task', taskId: 'soon' },
     });
   });
-  it('groups problem runs by workflow with the latest run to open', () => {
+  it('keeps separate incidents from the same workflow, newest first', () => {
     const items = runAttentionItems(
       {
         failed: [
@@ -270,13 +270,15 @@ describe('needs attention', () => {
       now,
     );
     expect(items.map((item) => item.title)).toEqual([
-      'Invoice intake failed twice in the last 24 hours',
-      'Lead enrichment timed out once in the last 24 hours',
+      'Invoice intake failed',
+      'Lead enrichment timed out',
+      'Invoice intake failed',
     ]);
-    expect(items[0]).toMatchObject({
-      tone: 'failure',
-      action: { kind: 'run', runId: 'f2' },
-    });
+    expect(items.map((item) => item.action)).toEqual([
+      { kind: 'run', runId: 'f2' },
+      { kind: 'run', runId: 't1' },
+      { kind: 'run', runId: 'f1' },
+    ]);
   });
 
   it('flags unhealthy triggers and disabled alert destinations', () => {
@@ -351,7 +353,7 @@ describe('connections that need attention', () => {
         tone: 'attention',
         title: 'Billing API needs reconnecting',
         detail: 'Steps that use it fail until it’s reconnected.',
-        action: { kind: 'connections' },
+        action: { kind: 'connections', connectionId: 'connection-1' },
       },
     ]);
   });

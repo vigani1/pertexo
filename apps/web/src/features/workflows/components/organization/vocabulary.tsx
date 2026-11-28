@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { updateWorkflowListSearch } from '../../model/list-view';
 import type { WorkflowListSearch } from '../../model/list-view';
 import { workflowFolderOptions } from '../../model/organization/folder-navigation';
@@ -71,16 +70,12 @@ export function OrganizationNameFilter({
 }
 
 export function WorkflowFilterChoices({
-  folders,
-  tags,
   search,
   onChange: change,
   onFavoritesChange,
   onManage,
   children,
 }: Readonly<{
-  folders: readonly WorkflowFolder[] | undefined;
-  tags: readonly WorkflowTag[] | undefined;
   search: WorkflowListSearch;
   onChange: (change: Parameters<typeof updateWorkflowListSearch>[1]) => void;
   onFavoritesChange: () => void;
@@ -89,26 +84,6 @@ export function WorkflowFilterChoices({
 }>) {
   return (
     <>
-      <ToggleGroup
-        aria-label="Which workflows to show"
-        value={[search.view ?? 'active']}
-        onValueChange={([view]) => {
-          if (view === 'active' || view === 'archived' || view === 'all')
-            change({ view });
-        }}
-      >
-        {(['active', 'archived', 'all'] as const).map((view) => (
-          <ToggleGroupItem key={view} value={view}>
-            {VIEW_LABELS[view]}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <OrganizationVocabularyControls
-        folders={folders}
-        tags={tags}
-        search={search}
-        onChange={change}
-      />
       <Button
         type="button"
         variant="outline"
@@ -123,6 +98,7 @@ export function WorkflowFilterChoices({
         onClick={() => {
           change({
             view: 'active',
+            publication: null,
             query: null,
             tagId: null,
             folderId: null,
@@ -141,7 +117,7 @@ export function WorkflowFilterChoices({
   );
 }
 
-function OrganizationVocabularyControls({
+export function OrganizationVocabularyControls({
   folders,
   tags,
   search,
@@ -175,7 +151,10 @@ function OrganizationVocabularyControls({
             change({ folderId: value === 'all' ? null : value });
         }}
       >
-        <SelectTrigger aria-label="Filter by folder" className="w-full">
+        <SelectTrigger
+          aria-label="Filter by folder"
+          className="w-auto min-w-32 max-w-full"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -197,7 +176,10 @@ function OrganizationVocabularyControls({
             change({ tagId: value === 'all' ? null : value });
         }}
       >
-        <SelectTrigger aria-label="Filter by tag" className="w-full">
+        <SelectTrigger
+          aria-label="Filter by tag"
+          className="w-auto min-w-32 max-w-full"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -237,12 +219,6 @@ export function OrganizationVocabularyReadFailure({
     </Notice>
   );
 }
-
-const VIEW_LABELS = {
-  active: 'Active',
-  archived: 'Archived',
-  all: 'All',
-} as const;
 
 function vocabularyFailure({
   denied,

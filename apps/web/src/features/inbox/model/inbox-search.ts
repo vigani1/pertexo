@@ -3,7 +3,7 @@ import {
   type WorkspaceNoticeKind,
 } from '@pertexo/contracts';
 export type InboxSearch = Readonly<{
-  filter?: 'unread';
+  filter?: 'all' | 'unread';
   noticeKind?: WorkspaceNoticeKind;
 }>;
 export function parseInboxSearch(
@@ -11,7 +11,9 @@ export function parseInboxSearch(
 ): InboxSearch {
   const kind = workspaceNoticeKindSchema.safeParse(search.noticeKind);
   return {
-    ...(search.filter === 'unread' ? { filter: 'unread' as const } : {}),
+    ...(search.filter === 'unread' || search.filter === 'all'
+      ? { filter: search.filter }
+      : {}),
     ...(kind.success ? { noticeKind: kind.data } : {}),
   };
 }

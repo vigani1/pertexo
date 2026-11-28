@@ -93,12 +93,12 @@ for (const width of [1280, 390]) {
     expect(reads.at(-1)?.searchParams.get('query')).toBe('Daily intake');
     await page.reload();
     await expect(search).toHaveValue('Daily intake ');
-    await page.getByRole('button', { name: /^Filters/u }).click();
     await expect(
       page.getByRole('combobox', { name: 'Filter by folder' }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Archived', exact: true }).click();
     await expect(page).toHaveURL(/view=archived/u);
+    await page.getByRole('button', { name: /^Filters/u }).click();
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(row).toBeVisible();
     await expect(page).not.toHaveURL(/query=|view=/u);

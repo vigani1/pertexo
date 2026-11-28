@@ -34,7 +34,7 @@ import {
 } from './list/fixture';
 
 describe('workspace runs', () => {
-  it('shows exact live counts in the header from one statistics read', async () => {
+  it('shows exact live counts in history options from one statistics read', async () => {
     const requests: URLSearchParams[] = [];
     const statistics: URLSearchParams[] = [];
     mockServer.use(
@@ -59,9 +59,14 @@ describe('workspace runs', () => {
         )
       ).closest('header') ?? document.body,
     );
-    expect(await header.findByText('101')).toBeVisible();
-    expect(header.getByText('7')).toBeVisible();
-    expect(header.queryByText(/\d\+/u)).not.toBeInTheDocument();
+    expect(header.getByText(/newest first$/u)).toBeVisible();
+    expect(header.queryByText('101')).not.toBeInTheDocument();
+    const options = screen.getByText('History options');
+    await userEvent.setup().click(options);
+    const historyOptions = within(options.closest('details') ?? document.body);
+    expect(await historyOptions.findByText('101')).toBeVisible();
+    expect(historyOptions.getByText('7')).toBeVisible();
+    expect(historyOptions.queryByText(/\d\+/u)).not.toBeInTheDocument();
     expect(statistics.map(String)).toEqual(['window=24h']);
     expect(requests.every((query) => query.get('status') === null)).toBe(true);
   });

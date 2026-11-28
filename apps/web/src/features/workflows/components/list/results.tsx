@@ -86,6 +86,9 @@ export function WorkflowListResults({
           userId={userId}
           workspace={workspace}
           items={list.organizations}
+          filtering={
+            search.publication !== undefined || search.query !== undefined
+          }
           workflows={workflows}
           actions={actions}
         />

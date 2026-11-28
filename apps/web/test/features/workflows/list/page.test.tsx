@@ -112,7 +112,7 @@ describe('workflow list', () => {
     ).not.toBeInTheDocument();
     expect(orders.every((order) => order === 'updated_desc')).toBe(true);
   });
-  it('explains what each workflow state means from the header', async () => {
+  it('explains workflow states next to the results', async () => {
     mockServer.use(
       ...discoveryHandlers(),
       draftHandler(),
@@ -239,8 +239,9 @@ describe('workflow list', () => {
       .getByRole('heading', { name: 'Workflows' })
       .closest('header');
     expect(header).toHaveTextContent('3 workflows');
-    expect(header).toHaveTextContent('1 degraded');
-    expect(header).toHaveTextContent('1 draft');
+    expect(header).toHaveTextContent('3 workflows in');
+    expect(header).not.toHaveTextContent('1 degraded');
+    expect(header).not.toHaveTextContent('1 draft');
     expect(
       within(invoice).getByRole('link', { name: 'Invoice intake' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);

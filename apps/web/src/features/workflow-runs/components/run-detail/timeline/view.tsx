@@ -81,7 +81,7 @@ export function RunTimeline({
                 aria-pressed={selected}
                 aria-label={`${row.label}: ${row.statusLabel}, ${stepTag(row, nowMs)}`}
                 className={cn(
-                  'grid h-13 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-lg px-2.5 text-left outline-none transition-colors duration-150 hover:bg-select focus-ring motion-reduce:transition-none @xl:grid-cols-[13rem_minmax(0,1fr)]',
+                  'grid h-13 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-lg px-2.5 text-left outline-none transition-colors duration-(--duration-quick) hover:bg-select focus-ring motion-reduce:transition-none @xl:grid-cols-[13rem_minmax(0,1fr)]',
                   selected &&
                     'bg-action-soft inset-ring inset-ring-action-line hover:bg-action-soft',
                 )}

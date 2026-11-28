@@ -26,7 +26,7 @@ export const approvalId = '20000000-0000-4000-8000-000000000003';
 const versionId = '20000000-0000-4000-8000-000000000004';
 const syncWorkflowId = '20000000-0000-4000-8000-000000000005';
 const remindersWorkflowId = '20000000-0000-4000-8000-000000000007';
-const secondApprovalId = '20000000-0000-4000-8000-000000000006';
+export const secondApprovalId = '20000000-0000-4000-8000-000000000006';
 
 const minute = 60_000;
 
@@ -67,20 +67,19 @@ function run(id: string, status: string, minutesAgo: number) {
     startedAt: at(minutesAgo),
     completedAt:
       status === 'running' ? null : at(Math.max(0, minutesAgo - 1.2)),
-    ...(status === 'failed'
-      ? {
-          failedStep: {
-            nodeId: 'receipt',
-            label: 'Send receipt',
-            definitionKey: 'email.send_notification',
-            safeErrorCode: 'provider.unavailable',
-          },
-        }
-      : {}),
   });
 }
 
 const failedRun = run(failedRunId, 'failed', 19);
+const listedFailure = {
+  ...failedRun,
+  failedStep: {
+    nodeId: 'receipt',
+    label: 'Send receipt',
+    definitionKey: 'email.send_notification',
+    safeErrorCode: 'provider.unavailable',
+  },
+};
 const liveRun = run(liveRunId, 'running', 1);
 
 function failedNodes() {
@@ -121,7 +120,7 @@ function task(id: string, title: string, expiresInMinutes: number) {
     title,
     details: { Invoice: 'INV-2291', Amount: '7,480.00 EUR' },
     status: 'pending',
-    createdAt: at(29),
+    createdAt: at(0.25),
     expiresAt: new Date(Date.now() + expiresInMinutes * minute).toISOString(),
     onExpiry: 'fail',
     completedAt: null,
@@ -179,12 +178,25 @@ export async function installCoreFlowRoutes(
       json: fixtureStatistics({
         window:
           new URL(route.request().url()).searchParams.get('window') ?? '24h',
-        workflows: [],
+        byStatus: { failed: 1, running: 1 },
+        workflows: [{ workflowId, workflowName: 'Invoice intake', total: 2 }],
         current: { running: 1, waiting: 2 },
       }),
     }),
   );
-  const runs = options.live === true ? [liveRun, failedRun] : [failedRun];
+  const runs = [
+    ...(options.live === true ? [liveRun] : []),
+    listedFailure,
+    ...Array.from({ length: 8 }, (_, index) => ({
+      ...run(
+        `20000000-0000-4000-8000-${String(100 + index).padStart(12, '0')}`,
+        'succeeded',
+        20 + index,
+      ),
+      workflowId: syncWorkflowId,
+      workflowName: 'Hourly stock sync',
+    })),
+  ];
   await page.route('**/v1/workspaces/*/runs?**', (route) => {
     const status = new URL(route.request().url()).searchParams.get('status');
     void route.fulfill({
@@ -200,24 +212,40 @@ export async function installCoreFlowRoutes(
   await page.route(`**/v1/workspaces/*/runs/${liveRunId}`, (route) =>
     route.fulfill({ json: { run: liveRun, nodes: liveNodes() } }),
   );
-  await page.route(`**/v1/workspaces/*/pending-tasks?**`, (route) =>
-    route.fulfill({
-      json: { items: tasks, nextCursor: null, pendingCount: tasks.length },
-    }),
-  );
-  await page.route(`**/v1/workspaces/*/pending-tasks/${approvalId}`, (route) =>
-    route.fulfill({
-      json: {
-        task: {
-          ...tasks[0],
-          workflowVersionId: versionId,
-          instructions:
-            'Invoices over 5,000 need a second look. Check that it matches a purchase order before it goes to the ERP.',
-          audience: { roles: ['owner', 'admin'], memberIds: [] },
-          output: null,
+  await page.route(`**/v1/workspaces/*/pending-tasks?**`, (route) => {
+    const kind = new URL(route.request().url()).searchParams.get('kind');
+    const items = kind === 'input_request' ? [] : tasks;
+    return route.fulfill({
+      json: { items, nextCursor: null, pendingCount: items.length },
+    });
+  });
+  for (const task of tasks) {
+    await page.route(`**/v1/workspaces/*/pending-tasks/${task.id}`, (route) =>
+      route.fulfill({
+        json: {
+          task: {
+            ...task,
+            workflowVersionId: versionId,
+            instructions:
+              'Invoices over 5,000 need a second look. Check that it matches a purchase order before it goes to the ERP.',
+            audience: { roles: ['owner', 'admin'], memberIds: [] },
+            output: null,
+          },
         },
-      },
-    }),
+      }),
+    );
+  }
+  await page.route('**/v1/workspaces/*/runs/*/node-runs/*/input', (route) =>
+    route.fulfill({ json: { input: { kind: 'none' } } }),
+  );
+  await page.route('**/v1/workspaces/*/runs/*/node-runs/*/output', (route) =>
+    route.fulfill({ json: { output: { kind: 'none' } } }),
+  );
+  await page.route('**/v1/workspaces/*/workflow-folders', (route) =>
+    route.fulfill({ json: { items: [] } }),
+  );
+  await page.route('**/v1/workspaces/*/workflow-tags?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
   );
   await page.route('**/v1/workspaces/*/notifications?**', (route) =>
     route.fulfill({ json: { items: [], nextCursor: null, revision: '0' } }),

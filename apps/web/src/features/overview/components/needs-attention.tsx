@@ -20,11 +20,19 @@ import {
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';
 
+const PHONE_ATTENTION_PREVIEW = 3;
+
 function ActionLink({
   action,
-  workspaceId,
-}: Readonly<{ action: AttentionAction; workspaceId: string }>) {
-  const className = buttonVariants({ size: 'sm', variant: 'outline' });
+  workspace,
+}: Readonly<{ action: AttentionAction; workspace: AccessibleWorkspace }>) {
+  const workspaceId = workspace.id;
+  const className = buttonVariants({
+    size: 'sm',
+    variant: 'outline',
+    className:
+      'h-auto max-w-40 py-2 text-center whitespace-normal wrap-anywhere',
+  });
   switch (action.kind) {
     case 'task':
       return (
@@ -43,7 +51,11 @@ function ActionLink({
           params={{ workspaceId, runId: action.runId }}
           className={className}
         >
-          Open run
+          {action.retryStep !== undefined &&
+          workspace.status === 'active' &&
+          workspace.capabilities.includes('run:replay')
+            ? `Review retry from ${action.retryStep}`
+            : 'Open run'}
         </Link>
       );
     case 'triggers':
@@ -61,6 +73,7 @@ function ActionLink({
         <Link
           to="/w/$workspaceId/connections"
           params={{ workspaceId }}
+          search={{ connection: action.connectionId }}
           className={className}
         >
           Reconnect
@@ -102,14 +115,7 @@ export function NeedsAttention({
   });
   // Nothing needs you: the block is gone, not an empty promise. Partial
   // evidence still shows, so its gap is said.
-  const loading = state.pending && !state.hasData;
-  if (
-    items.length === 0 &&
-    !state.failed &&
-    !loading &&
-    !moreWorkflows &&
-    !moreFailedRuns
-  )
+  if (!showAttention(items.length, state, moreWorkflows || moreFailedRuns))
     return null;
   const needle = search.trim().toLocaleLowerCase();
   const filtered =
@@ -132,7 +138,7 @@ export function NeedsAttention({
             to="/w/$workspaceId/runs"
             params={{ workspaceId: workspace.id }}
             search={{ status: 'failed' }}
-            className="text-xs text-subtle-foreground hover:text-foreground"
+            className="inline-flex items-center text-xs text-subtle-foreground hover:text-foreground pointer-coarse:min-h-10"
           >
             Failed runs
           </Link>
@@ -149,39 +155,14 @@ export function NeedsAttention({
         />
       ) : null}
       <ul id={listId} aria-label="Needs you" className="flex flex-col">
-        {shown.map((item) => (
-          <Row
-            frame="bare"
-            lift="none"
-            transition="none"
+        {shown.map((item, index) => (
+          <AttentionRow
             key={item.key}
-            className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 py-3"
-          >
-            <StatusMark display="mark" tone={item.tone} />
-            <div className="min-w-0">
-              <p className="line-clamp-2 text-sm font-semibold">{item.title}</p>
-              <p className="mt-0.5 line-clamp-2 text-xs text-subtle-foreground">
-                {item.detail}
-                {item.deadline === undefined ? null : (
-                  <>
-                    {' '}
-                    ·{' '}
-                    <time
-                      dateTime={item.deadline}
-                      title={formatDateTime(item.deadline)}
-                    >
-                      Expires {formatRelativeTime(item.deadline, now, 'long')}
-                    </time>
-                  </>
-                )}
-              </p>
-            </div>
-            {item.action === undefined ? (
-              <span />
-            ) : (
-              <ActionLink action={item.action} workspaceId={workspace.id} />
-            )}
-          </Row>
+            item={item}
+            workspace={workspace}
+            now={now}
+            hideOnPhone={!expanded && index >= PHONE_ATTENTION_PREVIEW}
+          />
         ))}
       </ul>
       {moreWorkflows ? (
@@ -204,6 +185,21 @@ export function NeedsAttention({
           No items match your search.
         </p>
       ) : null}
+      {!expanded &&
+      items.length > PHONE_ATTENTION_PREVIEW &&
+      items.length <= COLLAPSED_LIST_COUNT ? (
+        <button
+          type="button"
+          aria-controls={listId}
+          aria-expanded={false}
+          onClick={() => {
+            setExpanded(true);
+          }}
+          className="min-h-10 text-sm text-accent-foreground md:hidden"
+        >
+          Show all {items.length}
+        </button>
+      ) : null}
       <ShowAll
         count={items.length}
         controls={listId}
@@ -219,5 +215,55 @@ export function NeedsAttention({
         </p>
       ) : null}
     </HomeBlock>
+  );
+}
+
+function showAttention(count: number, state: HomeBlockState, more: boolean) {
+  return count > 0 || state.failed || (state.pending && !state.hasData) || more;
+}
+
+function AttentionRow({
+  item,
+  workspace,
+  now,
+  hideOnPhone,
+}: Readonly<{
+  item: AttentionItem;
+  workspace: AccessibleWorkspace;
+  now: number;
+  hideOnPhone: boolean;
+}>) {
+  return (
+    <Row
+      frame="bare"
+      lift="none"
+      transition="none"
+      className={`grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 py-3 ${hideOnPhone ? 'max-md:hidden' : ''}`}
+    >
+      <StatusMark display="mark" tone={item.tone} />
+      <div className="min-w-0">
+        <p className="line-clamp-2 text-sm font-semibold">{item.title}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-subtle-foreground">
+          {item.detail}
+          {item.deadline === undefined ? null : (
+            <>
+              {' '}
+              ·{' '}
+              <time
+                dateTime={item.deadline}
+                title={formatDateTime(item.deadline)}
+              >
+                Expires {formatRelativeTime(item.deadline, now, 'long')}
+              </time>
+            </>
+          )}
+        </p>
+      </div>
+      {item.action === undefined ? (
+        <span />
+      ) : (
+        <ActionLink action={item.action} workspace={workspace} />
+      )}
+    </Row>
   );
 }

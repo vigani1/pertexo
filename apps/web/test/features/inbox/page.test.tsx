@@ -47,7 +47,7 @@ describe('workspace inbox', () => {
       ],
       revision: '7',
     });
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=all`);
 
     const list = await screen.findByRole('list', { name: 'Notices' });
     const [first, second, ...rest] = within(list).getAllByRole('listitem');
@@ -78,7 +78,7 @@ describe('workspace inbox', () => {
       threads: [thread(importId), thread(billingId)],
       revision: '7',
     });
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=all`);
 
     await actor.click(
       await screen.findByRole('button', { name: 'Mark Nightly import read' }),
@@ -120,7 +120,9 @@ describe('workspace inbox', () => {
       revision: '7',
     };
     const { stream, unreadLists } = inboxApi(state);
-    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/inbox?filter=all`,
+    );
 
     await screen.findByRole('link', { name: 'Nightly import' });
     state.threads = [
@@ -165,7 +167,7 @@ describe('workspace inbox', () => {
       threads: [notice as unknown as ReturnType<typeof thread>],
       revision: '7',
     });
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=all`);
 
     const title = await screen.findByRole('link', {
       name: /Failure alerts aren’t reaching Slack/u,
@@ -209,15 +211,30 @@ describe('workspace inbox', () => {
       name: 'Inbox views',
     });
     expect(
-      within(views).getByRole('link', { name: 'Notices' }),
+      within(views).getByRole('link', { name: 'Approvals' }),
     ).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(views)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Approvals', 'Requests', 'Notices']);
+    await userEvent
+      .setup()
+      .click(within(views).getByRole('link', { name: 'Notices' }));
+    expect(
+      await screen.findByRole('link', { name: 'Notices', current: 'page' }),
+    ).toBeVisible();
     await waitFor(() => {
       expect(failureReads).toBeGreaterThan(0);
     });
 
     await userEvent
       .setup()
-      .click(within(views).getByRole('link', { name: 'Requests' }));
+      .click(
+        within(
+          screen.getByRole('navigation', { name: 'Inbox views' }),
+        ).getByRole('link', { name: 'Requests' }),
+      );
     expect(
       await screen.findByRole('heading', { name: 'Nothing is waiting' }),
     ).toBeVisible();
@@ -245,7 +262,7 @@ describe('workspace inbox', () => {
         }),
       ),
     );
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=all`);
 
     expect(
       await screen.findByRole('heading', { name: 'Everything finished' }),
@@ -258,7 +275,7 @@ describe('workspace inbox', () => {
     mockServer.use(
       ...identityHandlers({ ...destinationsWorkspace, capabilities: [] }),
     );
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=all`);
     expect(await screen.findByText('The inbox is unavailable')).toBeVisible();
     expect(screen.getByText(/can’t open the inbox\./u)).toBeVisible();
     expect(screen.queryByText(/get notified when workflows fail/u)).toBeNull();

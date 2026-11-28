@@ -1,3 +1,5 @@
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
+import { TodayRuns } from '../components/today-runs';
 import { useHomeRefresh } from '../data/home-refresh';
 import type {
   AccessibleWorkspace,
@@ -11,6 +13,7 @@ import {
 } from '@/components/patterns/states/empty';
 import { SkeletonLines } from '@/components/patterns/states/loading';
 import {
+  type RunStatistics,
   anyRunQueryOptions,
   runStatisticsQueryOptions,
 } from '@/features/workflow-runs/workflow-runs-queries.public';
@@ -18,7 +21,7 @@ import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-qu
 import type { ApiClient } from '@/lib/api/client';
 import { AttentionSection } from '../components/attention-section';
 import { FirstThreadSection } from '../components/first-thread-section';
-import { HomeHeader } from '../components/home-header';
+import { HomeHeader, HomeHeaderActions } from '../components/home-header';
 import { HomeLoom } from '../components/home-loom';
 import { RecentlyChanged } from '../components/recently-changed';
 import { isNewWorkspace, type FirstThreadFacts } from '../model/first-thread';
@@ -35,20 +38,18 @@ export function HomePage({
   apiClient,
   user,
   workspace,
-  onOpenSearch,
   onExampleCreated,
   onReviewExamples,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  /** Opens the workspace shell's command palette. */
-  onOpenSearch: () => void;
   /** Opens the first-run example in Build with its guide. */
   onExampleCreated: (workflowId: string) => void;
   /** The example can't start here as is: the workflow list explains why. */
   onReviewExamples: () => void;
 }>) {
+  const narrow = useMediaQuery('(max-width: 47.999rem)');
   const canReadRuns = workspace.capabilities.includes('run:read');
   const canReadWorkflows = workspace.capabilities.includes('workflow:read');
   const { refreshing, refresh } = useHomeRefresh(user.id, workspace.id, {
@@ -83,16 +84,21 @@ export function HomePage({
     onNeedsReview: onReviewExamples,
   });
 
+  const headerActions = (
+    <HomeHeaderActions
+      workspace={workspace}
+      refreshing={refreshing}
+      onRefresh={refresh}
+    />
+  );
+
   if (!canReadRuns && !canReadWorkflows)
     return (
       <div className="flex flex-col gap-10">
         <HomeHeader
-          workspace={workspace}
           name={user.displayName}
           statistics={undefined}
-          refreshing={false}
-          onRefresh={refresh}
-          onOpenSearch={onOpenSearch}
+          actions={headerActions}
         />
         <Empty>
           <EmptyTitle>Nothing to show for your role</EmptyTitle>
@@ -109,18 +115,17 @@ export function HomePage({
 
   const shownStatistics = shownData(statistics);
   const newWorkspace = isNewWorkspace(facts);
+  const showActivity = !newWorkspace && canReadRuns;
+
   const settled =
-    (!canReadRuns || anyRun.data !== undefined || anyRun.isError) &&
-    (!canReadWorkflows || workflows.data !== undefined || workflows.isError);
+    (!canReadRuns || readSettled(anyRun)) &&
+    (!canReadWorkflows || readSettled(workflows));
   return (
     <div className="flex flex-col gap-10">
       <HomeHeader
-        workspace={workspace}
         name={user.displayName}
         statistics={shownStatistics}
-        refreshing={refreshing}
-        onRefresh={refresh}
-        onOpenSearch={onOpenSearch}
+        actions={narrow ? null : headerActions}
       />
       {/* One block holds the place until Home knows which layout it has. */}
       {settled ? (
@@ -139,12 +144,13 @@ export function HomePage({
             userId={user.id}
             workspace={workspace}
           />
-          {!newWorkspace && canReadRuns ? (
-            <HomeLoom
+          {showActivity ? (
+            <HomeActivity
+              narrow={narrow}
               apiClient={apiClient}
               userId={user.id}
-              workspaceId={workspace.id}
-              currentRunning={shownStatistics?.current.running}
+              workspace={workspace}
+              statistics={shownStatistics}
             />
           ) : null}
           {newWorkspace ? null : (
@@ -156,7 +162,7 @@ export function HomePage({
               compact
             />
           )}
-          {canReadWorkflows ? (
+          {canReadWorkflows && (!narrow || newWorkspace) ? (
             <RecentlyChanged
               apiClient={apiClient}
               userId={user.id}
@@ -167,6 +173,38 @@ export function HomePage({
       ) : (
         <SkeletonLines label="Loading Home" lines={4} className="min-h-80" />
       )}
+      {narrow ? headerActions : null}
     </div>
+  );
+}
+
+function readSettled(query: Readonly<{ data: unknown; isError: boolean }>) {
+  return query.data !== undefined || query.isError;
+}
+
+function HomeActivity({
+  narrow,
+  apiClient,
+  userId,
+  workspace,
+  statistics,
+}: Readonly<{
+  narrow: boolean;
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  statistics: RunStatistics | undefined;
+}>) {
+  if (narrow)
+    return (
+      <TodayRuns apiClient={apiClient} userId={userId} workspace={workspace} />
+    );
+  return (
+    <HomeLoom
+      apiClient={apiClient}
+      userId={userId}
+      workspaceId={workspace.id}
+      current={statistics?.current}
+    />
   );
 }

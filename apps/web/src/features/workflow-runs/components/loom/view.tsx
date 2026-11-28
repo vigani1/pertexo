@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { cn } from '@/lib/class-names';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { useEffect, useMemo, useRef } from 'react';
@@ -34,6 +35,7 @@ export function RunLoom({
   workspaceId,
   laneTotals,
   currentRunning,
+  currentWaiting,
   converge = false,
 }: Readonly<{
   runs: readonly WorkflowRunReadSummary[];
@@ -43,6 +45,7 @@ export function RunLoom({
   workspaceId: string;
   /** Exact runs per workflow in the window, when the statistics read has them. */
   currentRunning?: number | undefined;
+  currentWaiting?: number | undefined;
   converge?: boolean;
   laneTotals?: ReadonlyMap<string, number> | undefined;
 }>) {
@@ -66,7 +69,8 @@ export function RunLoom({
   )} over ${windowLabel}.`;
 
   const running = currentRunning ?? model.liveCount;
-  const height = loomHeight(model.lanes.length);
+  const coarse = useMediaQuery('(pointer: coarse)');
+  const height = loomHeight(model.lanes.length, coarse);
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -98,6 +102,11 @@ export function RunLoom({
             )}
           >
             {String(running)} running
+            {currentWaiting === undefined ? null : (
+              <span className="ml-2 text-muted-foreground">
+                {currentWaiting} waiting
+              </span>
+            )}
           </p>
         </div>
         {model.runCount === 0 ? (

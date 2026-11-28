@@ -1,8 +1,16 @@
+import { StatusMark } from '@/components/patterns/status/status-mark';
+import { countWorkflowStates } from '../../model/list-view';
+import { StatusGuide } from '@/components/patterns/guidance/status-guide';
+import { WORKFLOW_LIST_GUIDE } from '../../model/guide';
+import {
+  COLLAPSED_LIST_COUNT,
+  ShowAll,
+} from '@/components/patterns/lists/show-all';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { Link } from '@tanstack/react-router';
 import { promotionSearch } from '@/features/workflow-promotions/public';
 import { XIcon } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
@@ -49,6 +57,7 @@ type WorkflowOrganizedResultsProps = Readonly<{
     | 'fetchNextPage'
   >;
   actions: WorkflowRowActions;
+  filtering: boolean;
 }>;
 
 export function WorkflowOrganizedResults({
@@ -58,7 +67,12 @@ export function WorkflowOrganizedResults({
   items,
   workflows,
   actions,
+  filtering,
 }: WorkflowOrganizedResultsProps) {
+  const listId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const preview = !expanded && !filtering;
+  const visible = preview ? items.slice(0, COLLAPSED_LIST_COUNT) : items;
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [editing, setEditing] =
     useState<readonly WorkflowOrganizationProjectionResponse[]>();
@@ -97,15 +111,6 @@ export function WorkflowOrganizedResults({
       />
     );
   }
-  function tags(id: string): ReactNode {
-    const item = byId.get(id);
-    if (item === undefined || item.organization.tags.length === 0) return null;
-    return (
-      <span className="text-xs text-muted-foreground">
-        {item.organization.tags.map((tag) => tag.key).join(' · ')}
-      </span>
-    );
-  }
   return (
     <section aria-label="Workspace workflows" className="flex flex-col gap-4">
       {/* Floats above the list instead of pushing it down, so picking the
@@ -139,45 +144,57 @@ export function WorkflowOrganizedResults({
           </EmptyDescription>
         </Empty>
       ) : (
-        <WorkflowRows
-          workspace={workspace}
-          workflows={items.map((item) => item.workflow)}
-          actions={actions}
-          {...(canEdit ? { rowSelection: selectionControl } : {})}
-          rowTags={tags}
-          rowMenu={(id, runnable) => {
-            const item = byId.get(id);
-            if (item === undefined) return null;
-            const allowed = canEditOrganization(workspace, [item], 'move');
-            return (
-              <WorkflowOrganizationRowMenu
-                apiClient={apiClient}
-                userId={userId}
-                workspace={workspace}
-                workflow={item}
-                actions={actions}
-                runnable={runnable}
-                disabled={editing !== undefined}
-                {...(allowed
-                  ? {
-                      onOrganize: () => {
-                        setEditing([item]);
-                      },
-                    }
-                  : {})}
-              />
-            );
-          }}
+        <div id={listId}>
+          <WorkflowRows
+            workspace={workspace}
+            workflows={visible.map((item) => item.workflow)}
+            actions={actions}
+            {...(canEdit ? { rowSelection: selectionControl } : {})}
+            rowTags={(id) => workflowTags(byId.get(id))}
+            rowMenu={(id, runnable) => {
+              const item = byId.get(id);
+              if (item === undefined) return null;
+              const allowed = canEditOrganization(workspace, [item], 'move');
+              return (
+                <WorkflowOrganizationRowMenu
+                  apiClient={apiClient}
+                  userId={userId}
+                  workspace={workspace}
+                  workflow={item}
+                  actions={actions}
+                  runnable={runnable}
+                  disabled={editing !== undefined}
+                  {...(allowed
+                    ? {
+                        onOrganize: () => {
+                          setEditing([item]);
+                        },
+                      }
+                    : {})}
+                />
+              );
+            }}
+          />
+        </div>
+      )}
+      {filtering ? null : (
+        <WorkflowPreview
+          count={items.length}
+          id={listId}
+          expanded={expanded}
+          change={setExpanded}
+          partial={workflows.hasNextPage}
         />
       )}
       <WorkflowListFooter
         hasNextPage={workflows.hasNextPage}
         loadingNextPage={workflows.isFetchingNextPage}
         nextPageError={workflows.isFetchNextPageError}
-        filtering={false}
+        filtering={filtering}
         loadedCount={items.length}
         onLoadMore={() => void workflows.fetchNextPage()}
       />
+      <WorkflowResultsGuide items={items} partial={workflows.hasNextPage} />
       {editing === undefined ? null : (
         <WorkflowOrganizationDialog
           apiClient={apiClient}
@@ -191,6 +208,78 @@ export function WorkflowOrganizedResults({
         />
       )}
     </section>
+  );
+}
+
+function workflowTags(
+  item: WorkflowOrganizedResultsProps['items'][number] | undefined,
+) {
+  if (item === undefined || item.organization.tags.length === 0) return null;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {item.organization.tags.map((tag) => tag.key).join(' · ')}
+    </span>
+  );
+}
+function WorkflowPreview({
+  count,
+  id,
+  expanded,
+  change,
+  partial,
+}: Readonly<{
+  count: number;
+  id: string;
+  expanded: boolean;
+  change: (expanded: boolean) => void;
+  partial: boolean;
+}>) {
+  if (!partial)
+    return (
+      <ShowAll
+        count={count}
+        controls={id}
+        expanded={expanded}
+        onExpandedChange={change}
+      />
+    );
+  if (expanded || count <= COLLAPSED_LIST_COUNT) return null;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      aria-controls={id}
+      aria-expanded={false}
+      onClick={() => {
+        change(true);
+      }}
+    >
+      Show more loaded workflows
+    </Button>
+  );
+}
+
+function WorkflowResultsGuide({
+  items,
+  partial,
+}: Readonly<{
+  items: WorkflowOrganizedResultsProps['items'];
+  partial: boolean;
+}>) {
+  if (items.length === 0) return null;
+  const counts = partial
+    ? []
+    : countWorkflowStates(items.map(({ workflow }) => workflow));
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {counts.map((state) => (
+        <StatusMark key={state.label} tone={state.tone} typography="metadata">
+          {state.count} {state.label}
+        </StatusMark>
+      ))}
+      <StatusGuide sections={WORKFLOW_LIST_GUIDE} />
+    </div>
   );
 }
 
