@@ -14,6 +14,7 @@ export function describeWorkflowState(
     | 'activationStatus'
     | 'publishedVersionId'
     | 'webhookSetupRequired'
+    | 'triggerPauseState'
   >,
 ): WorkflowState {
   if (workflow.lifecycleStatus === 'archived')
@@ -22,6 +23,8 @@ export function describeWorkflowState(
       : { tone: 'canceled', label: 'Archived' };
   if (workflow.publishedVersionId === null)
     return { tone: 'neutral', label: 'Draft' };
+  if (workflow.triggerPauseState === 'paused')
+    return { tone: 'waiting', label: 'Paused' };
   switch (workflow.activationStatus) {
     case 'active':
     case 'inactive':

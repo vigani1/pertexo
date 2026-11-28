@@ -32,6 +32,7 @@ type WorkflowEditorSessionProps = Readonly<{
   onPublished?: () => void;
   triggerNotice?: ReactNode;
   headerPresence?: ReactNode;
+  renderHeaderStatus?: ((status: ReactNode) => ReactNode) | undefined;
   renderEditingPresence?: (source: EditorPresenceSource) => ReactNode;
 }>;
 
@@ -42,6 +43,7 @@ export function WorkflowEditorSession({
   onPublished,
   triggerNotice,
   headerPresence,
+  renderHeaderStatus,
   renderEditingPresence,
 }: WorkflowEditorSessionProps) {
   const { apiClient, userId, workspace, workflowId } = scope;
@@ -104,6 +106,7 @@ export function WorkflowEditorSession({
                   setCompareOpen(true);
                 },
                 headerPresence,
+                renderHeaderStatus,
               }}
               publication={{
                 commandSession,

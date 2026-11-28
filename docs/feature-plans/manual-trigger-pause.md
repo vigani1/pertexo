@@ -1,6 +1,6 @@
 # Manual workflow trigger pause
 
-Status: Accepted for implementation.
+Status: Implemented.
 
 ## Scope
 
@@ -18,7 +18,8 @@ its effects.
   Repeating a transition at the current revision returns the current state
   without another state change or audit fact.
 - Paused schedules record skipped occurrences. Webhooks and forms refuse new
-  submissions, and polls stop. Run by hand and Test follow their existing
-  admission rules. Archive and restore preserve the pause.
+  submissions, polls stop, and failure triggers skip paused targets. Run by
+  hand and Test follow their existing admission rules. Archive and restore
+  preserve the pause.
 - Cover the commands and trigger behavior in core integration, API and web
   tests, with one live pause and resume journey.

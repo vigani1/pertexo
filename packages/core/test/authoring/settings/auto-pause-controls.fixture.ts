@@ -13,6 +13,7 @@ import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/w
 
 import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause/fold.store.js';
 
+import type { WorkflowAutoPauseScope } from '../../../src/authoring/settings/auto-pause/auto-pause-settings.types.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
@@ -82,10 +83,8 @@ export async function seed() {
   return { workspaceId, workflowId, actorId };
 }
 
-type Scope = Awaited<ReturnType<typeof seed>>;
-
 export async function outcome(
-  scope: Scope,
+  scope: WorkflowAutoPauseScope,
   endedAt = new Date(Date.now() - 60_000).toISOString(),
   failure = true,
 ) {
@@ -127,7 +126,7 @@ export async function outcome(
   return runId;
 }
 
-export async function pause(scope: Scope) {
+export async function pause(scope: WorkflowAutoPauseScope) {
   await controls().updateWorkflowSettings({
     ...scope,
     enabled: true,
@@ -142,7 +141,7 @@ export async function pause(scope: Scope) {
   );
 }
 
-export async function failures(scope: Scope) {
+export async function failures(scope: WorkflowAutoPauseScope) {
   const result = await admin.query<{ consecutive_failures: number }>(
     'select consecutive_failures from app.workflow_failure_streaks where workspace_id=$1 and workflow_id=$2',
     [scope.workspaceId, scope.workflowId],
@@ -150,7 +149,10 @@ export async function failures(scope: Scope) {
   return result.rows[0]?.consecutive_failures;
 }
 
-export async function auditCount(scope: Scope, action: string) {
+export async function auditCount(
+  scope: WorkflowAutoPauseScope,
+  action: string,
+) {
   const result = await admin.query<{ count: number }>(
     'select count(*)::int as count from app.audit_events where workspace_id=$1 and action=$2',
     [scope.workspaceId, action],
@@ -158,7 +160,7 @@ export async function auditCount(scope: Scope, action: string) {
   return result.rows[0]?.count;
 }
 
-export async function pausePeriodCount(scope: Scope) {
+export async function pausePeriodCount(scope: WorkflowAutoPauseScope) {
   const result = await admin.query<{ count: number }>(
     'select count(*)::int as count from app.workflow_trigger_pause_periods where workspace_id=$1 and workflow_id=$2',
     [scope.workspaceId, scope.workflowId],

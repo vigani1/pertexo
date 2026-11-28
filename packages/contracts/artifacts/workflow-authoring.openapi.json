@@ -2131,7 +2131,7 @@
         "x-pertexo-api-token-scopes": [
           "workflow:read"
         ],
-        "description": "Read automatic-trigger pause state and effective settings. Requires workflow:read.",
+        "description": "Read trigger pause state and effective automatic-pause settings. Requires workflow:read.",
         "security": [
           {
             "cookieSession": []
@@ -2166,7 +2166,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Read automatic-trigger pause state and effective settings. Requires workflow:read.",
+            "description": "Read trigger pause state and effective automatic-pause settings. Requires workflow:read.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2350,13 +2350,152 @@
         }
       }
     },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/pause": {
+      "post": {
+        "operationId": "pauseWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:publish"
+        ],
+        "description": "Pause triggers for a published workflow at the expected pause revision. Requires workflow:publish. An already-paused workflow is a no-op.",
+        "security": [
+          {
+            "cookieSession": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowPauseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command accepted; exact retries replay the original settings snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAutoPauseCommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Expected revision or idempotency conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkflowPauseConflictProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume": {
       "post": {
         "operationId": "resumeWorkflow",
         "x-pertexo-api-token-scopes": [
           "workflow:publish"
         ],
-        "description": "Explicitly clear automatic-trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.",
+        "description": "Clear manual or automatic trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.",
         "security": [
           {
             "cookieSession": []
@@ -8284,6 +8423,11 @@
                   "degraded",
                   "error"
                 ]
+              },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
               },
               "webhookSetupRequired": {
                 "type": "boolean"
@@ -15631,6 +15775,11 @@
                   "error"
                 ]
               },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
+              },
               "webhookSetupRequired": {
                 "type": "boolean"
               },
@@ -16011,6 +16160,11 @@
                   "degraded",
                   "error"
                 ]
+              },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
               },
               "webhookSetupRequired": {
                 "type": "boolean"
@@ -18863,7 +19017,10 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "consecutive_failures"
+                "enum": [
+                  "consecutive_failures",
+                  "manual"
+                ]
               },
               {
                 "type": "null"
@@ -18957,6 +19114,27 @@
                 "additionalProperties": true
               }
             ]
+          },
+          "pausedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "displayName"
+            ],
+            "additionalProperties": true
           },
           "pausedLastRunId": {
             "anyOf": [
@@ -19083,7 +19261,10 @@
                 "anyOf": [
                   {
                     "type": "string",
-                    "const": "consecutive_failures"
+                    "enum": [
+                      "consecutive_failures",
+                      "manual"
+                    ]
                   },
                   {
                     "type": "null"
@@ -19178,6 +19359,27 @@
                   }
                 ]
               },
+              "pausedBy": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "displayName"
+                ],
+                "additionalProperties": true
+              },
               "pausedLastRunId": {
                 "anyOf": [
                   {
@@ -19216,6 +19418,20 @@
           "replayed"
         ],
         "additionalProperties": true
+      },
+      "WorkflowPauseRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedPauseRevision": {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+          }
+        },
+        "required": [
+          "expectedPauseRevision"
+        ],
+        "additionalProperties": false
       },
       "WorkflowResumeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -29216,6 +29432,11 @@
                         "error"
                       ]
                     },
+                    "triggerPauseState": {
+                      "description": "Present in list summary projections while triggers are paused.",
+                      "type": "string",
+                      "const": "paused"
+                    },
                     "webhookSetupRequired": {
                       "type": "boolean"
                     },
@@ -29656,6 +29877,11 @@
                   "error"
                 ]
               },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
+              },
               "webhookSetupRequired": {
                 "type": "boolean"
               },
@@ -30075,6 +30301,11 @@
                   "degraded",
                   "error"
                 ]
+              },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
               },
               "webhookSetupRequired": {
                 "type": "boolean"
@@ -30652,6 +30883,11 @@
               "error"
             ]
           },
+          "triggerPauseState": {
+            "description": "Present in list summary projections while triggers are paused.",
+            "type": "string",
+            "const": "paused"
+          },
           "webhookSetupRequired": {
             "type": "boolean"
           },
@@ -31001,6 +31237,11 @@
                   "degraded",
                   "error"
                 ]
+              },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
               },
               "webhookSetupRequired": {
                 "type": "boolean"
@@ -31357,6 +31598,11 @@
                   "degraded",
                   "error"
                 ]
+              },
+              "triggerPauseState": {
+                "description": "Present in list summary projections while triggers are paused.",
+                "type": "string",
+                "const": "paused"
               },
               "webhookSetupRequired": {
                 "type": "boolean"
@@ -31763,6 +32009,11 @@
                     "degraded",
                     "error"
                   ]
+                },
+                "triggerPauseState": {
+                  "description": "Present in list summary projections while triggers are paused.",
+                  "type": "string",
+                  "const": "paused"
                 },
                 "webhookSetupRequired": {
                   "type": "boolean"

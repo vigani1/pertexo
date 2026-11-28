@@ -200,11 +200,11 @@ export const workflowSettingsRoutes = {
     access: { ...reading, auth: 'session_or_token' },
     rateLimit: 'authenticated_read',
     description:
-      'Read automatic-trigger pause state and effective settings. Requires workflow:read.',
+      'Read trigger pause state and effective automatic-pause settings. Requires workflow:read.',
     success: {
       status: 200,
       description:
-        'Read automatic-trigger pause state and effective settings. Requires workflow:read.',
+        'Read trigger pause state and effective automatic-pause settings. Requires workflow:read.',
       body: projected(
         'WorkflowAutoPauseSettings',
         autoPause.workflowAutoPauseSettingsSchema,
@@ -235,6 +235,29 @@ export const workflowSettingsRoutes = {
       },
     },
   }),
+  pause: defineRoute({
+    operationId: 'pauseWorkflow',
+    method: 'post',
+    path: `${WORKFLOW}/pause`,
+    access: { ...publishing, auth: 'session_or_token' },
+    params: workflowIdParamSchema,
+    rateLimit: 'ordinary_mutation',
+    idempotent: true,
+    description:
+      'Pause triggers for a published workflow at the expected pause revision. Requires workflow:publish. An already-paused workflow is a no-op.',
+    body: projected(
+      'WorkflowPauseRequest',
+      autoPause.workflowResumeRequestSchema,
+    ),
+    success: { status: 200, description: replayed, body: autoPauseCommand },
+    problems: {
+      ...readProblems,
+      '409': {
+        description: 'Expected revision or idempotency conflict',
+        ...conflictOf('WorkflowPauseConflictProblem'),
+      },
+    },
+  }),
   resume: defineRoute({
     operationId: 'resumeWorkflow',
     method: 'post',
@@ -244,7 +267,7 @@ export const workflowSettingsRoutes = {
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     description:
-      'Explicitly clear automatic-trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.',
+      'Clear manual or automatic trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.',
     body: projected(
       'WorkflowResumeRequest',
       autoPause.workflowResumeRequestSchema,

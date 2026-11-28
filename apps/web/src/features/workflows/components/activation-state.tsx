@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -9,13 +10,16 @@ export function WorkflowActivationState({
   workflowId,
   workflow,
   activeTab,
+  renderStatus,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   workflowId: string;
   workflow: WorkflowSummary | undefined;
   activeTab: string;
+  renderStatus?: ((status: ReactNode) => ReactNode) | undefined;
 }>) {
   const activating =
+    workflow?.triggerPauseState !== 'paused' &&
     workflow?.activationStatus === 'activating' &&
     workflow.lifecycleStatus === 'active';
   if (workflow === undefined) return null;
@@ -26,20 +30,24 @@ export function WorkflowActivationState({
       {state.label}
     </StatusMark>
   );
-  return activating && activeTab !== 'triggers' ? (
-    <Link
-      to="/w/$workspaceId/workflows/$workflowId/triggers"
-      params={{ workspaceId: workspace.id, workflowId }}
-      aria-label={
-        needsSetup
-          ? 'Trigger needs setup — open Triggers'
-          : 'Starting — check triggers'
-      }
-      className="inline-link rounded-sm focus-ring"
-    >
-      {word}
-    </Link>
-  ) : (
-    word
-  );
+  const status =
+    activating && activeTab !== 'triggers' ? (
+      <Link
+        to="/w/$workspaceId/workflows/$workflowId/triggers"
+        params={{ workspaceId: workspace.id, workflowId }}
+        aria-label={
+          needsSetup
+            ? 'Trigger needs setup — open Triggers'
+            : 'Starting — check triggers'
+        }
+        className="inline-link rounded-sm focus-ring"
+      >
+        {word}
+      </Link>
+    ) : (
+      word
+    );
+  return renderStatus === undefined || workflow.lifecycleStatus === 'archived'
+    ? status
+    : renderStatus(status);
 }

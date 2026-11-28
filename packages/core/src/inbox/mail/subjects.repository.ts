@@ -96,6 +96,7 @@ export async function readMailSubjects(
           and(
             eq(thread.noticeKind, 'workflow_auto_paused'),
             eq(workflow.triggerPauseState, 'paused'),
+            eq(workflow.triggerPauseReason, 'consecutive_failures'),
           ),
           and(
             eq(thread.noticeKind, 'connection_attention'),

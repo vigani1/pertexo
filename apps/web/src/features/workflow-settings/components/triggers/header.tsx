@@ -28,8 +28,9 @@ export function TriggersHeader({
           {published === undefined
             ? 'From the published version.'
             : `From the published version, v${String(published.versionNumber)}.`}{' '}
-          Turning a schedule off stops new runs from it right away; the draft is
-          not touched.
+          Pausing skips scheduled occurrences, refuses new webhook and form
+          submissions, and stops polling and runs triggered by workflow
+          failures. Run by hand and Test follow their usual availability.
         </p>
       </div>
       {runFromBuild === undefined || publishedVersionId == null ? null : (

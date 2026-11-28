@@ -3,8 +3,9 @@ import {
   lockAutoPauseWorkflow,
 } from '../../../triggers/pause/locks.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows, workspaces } from '@pertexo/database/schema';
+import { users, workflows, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
@@ -20,7 +21,12 @@ export const workflowProjection = {
   autoPauseSettingsRevision: workflows.autoPauseSettingsRevision,
   triggerPauseState: workflows.triggerPauseState,
   triggerPauseRevision: sql<string>`${workflows.triggerPauseRevision}::text`,
-  triggerPausedAt: workflows.triggerPausedAt,
+  publishedVersionId: workflows.publishedVersionId,
+  triggerPausedBy: workflows.triggerPausedBy,
+  pausedByName: sql<string | null>`(${new QueryBuilder()
+    .select({ name: users.displayName })
+    .from(users)
+    .where(eq(users.id, workflows.triggerPausedBy))})`,
   pausedAt: sql<
     string | null
   >`to_char(${workflows.triggerPausedAt} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
@@ -100,6 +106,14 @@ export function workflowSettingsOf(
     pauseRevision: workflow.triggerPauseRevision,
     pausedAt: workflow.pausedAt,
     pauseReason: workflow.triggerPauseReason,
+    ...(workflow.triggerPausedBy === null
+      ? {}
+      : {
+          pausedBy: {
+            id: workflow.triggerPausedBy,
+            displayName: workflow.pausedByName,
+          },
+        }),
     pausedFailures: workflow.triggerPauseFailures,
     pausedLastRunId: workflow.triggerPauseLastRunId,
     ...(workflow.triggerPausePollTriggerId === null ||

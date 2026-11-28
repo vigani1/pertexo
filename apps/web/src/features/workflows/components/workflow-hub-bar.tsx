@@ -59,14 +59,15 @@ export function WorkflowHubBar({
     glyph?: ReactNode;
     presence?: ReactNode;
     detail?: ReactNode;
+    renderStatus?: ((status: ReactNode) => ReactNode) | undefined;
     actions?: ReactNode;
     overflowActions?: ReactNode;
   }>;
 }>) {
   const { apiClient, userId, workspace, workflowId } = scope;
 
-  const { glyph, presence, detail, actions, overflowActions } = slots;
-
+  const { glyph, presence, detail, actions, overflowActions, renderStatus } =
+    slots;
   const secondaryActions =
     workflow === undefined ? null : (
       <HubSecondaryActions
@@ -131,6 +132,7 @@ export function WorkflowHubBar({
               workflowId={workflowId}
               workflow={workflow}
               activeTab={activeTab}
+              renderStatus={renderStatus}
             />
             {detail}
             {/* Appended to a line that already exists, so it moves nothing

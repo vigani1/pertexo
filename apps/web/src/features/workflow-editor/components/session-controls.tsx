@@ -32,6 +32,7 @@ type SessionCommandBarProps = Readonly<{
   header: Readonly<{
     onReviewConflict: () => void;
     headerPresence: ReactNode;
+    renderHeaderStatus?: ((status: ReactNode) => ReactNode) | undefined;
   }>;
   publication: Readonly<{
     commandSession: ReturnType<typeof useWorkflowCommandSession>;
@@ -52,7 +53,7 @@ export function SessionCommandBar({
   const { scope, editing } = useEditorSession();
   const { apiClient, userId, workspace, workflowId } = scope;
   const { workflow, paused, actions, flushSave, issues, effects } = editing;
-  const { onReviewConflict, headerPresence } = header;
+  const { onReviewConflict, headerPresence, renderHeaderStatus } = header;
   const {
     commandSession,
     graph,
@@ -75,6 +76,7 @@ export function SessionCommandBar({
     <>
       <EditorCommandBar
         presence={headerPresence}
+        renderStatus={renderHeaderStatus}
         moreRef={chrome.overflowRef}
         secondaryMenuItems={
           paused ? null : (

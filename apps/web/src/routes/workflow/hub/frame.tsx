@@ -9,7 +9,10 @@ import {
   type WorkflowHubTab,
 } from '@/features/workflows/workflows-views.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
-import { WorkflowPausedBanner } from '@/features/workflow-settings/workflow-settings-views.public';
+import {
+  WorkflowPausedBanner,
+  WorkflowTriggerStatus,
+} from '@/features/workflow-settings/workflow-settings-views.public';
 import { useWorkflowHubScope } from './scope';
 
 /** Layout for the scrolling hub tabs: the sticky bar, then the tab page. */
@@ -32,7 +35,20 @@ export function WorkflowHubTabFrame({
         <WorkflowHubBar
           workflow={summary.data}
           activeTab={tab}
-          slots={{ presence: <WorkflowPresenceSummary />, actions }}
+          slots={{
+            presence: <WorkflowPresenceSummary />,
+            actions,
+            renderStatus: (status) => (
+              <WorkflowTriggerStatus
+                apiClient={apiClient}
+                userId={user.id}
+                workspaceId={workspace.id}
+                workflowId={workflowId}
+              >
+                {status}
+              </WorkflowTriggerStatus>
+            ),
+          }}
           scope={{
             apiClient,
             userId: user.id,
@@ -49,6 +65,7 @@ export function WorkflowHubTabFrame({
           workspace={workspace}
           workflowId={workflowId}
           showReadError={tab !== 'settings'}
+          showResume={tab !== 'settings'}
           problemSide="above"
         />
         <WorkflowPresenceWarning />

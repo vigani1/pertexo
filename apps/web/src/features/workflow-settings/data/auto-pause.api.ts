@@ -61,7 +61,7 @@ export type AutoPauseCommand =
     }>
   | Readonly<{ kind: 'workspace'; body: WorkspaceAutoPauseSettingsRequest }>
   | Readonly<{
-      kind: 'resume';
+      kind: 'pause' | 'resume';
       workflowId: string;
       body: WorkflowResumeRequest;
     }>;
@@ -93,15 +93,15 @@ export async function commandAutoPause({
     return;
   }
   await apiClient.request({
-    path: `${workflowPath(workspaceId, command.workflowId)}/${command.kind === 'resume' ? 'resume' : 'auto-pause'}`,
-    method: command.kind === 'resume' ? 'POST' : 'PUT',
+    path: `${workflowPath(workspaceId, command.workflowId)}/${command.kind === 'workflow' ? 'auto-pause' : command.kind}`,
+    method: command.kind === 'workflow' ? 'PUT' : 'POST',
     headers: { 'Idempotency-Key': key },
     body:
-      command.kind === 'resume'
+      command.kind !== 'workflow'
         ? workflowResumeRequestSchema.parse(command.body)
         : workflowAutoPauseSettingsRequestSchema.parse(command.body),
     decodeProblem: (value) =>
-      command.kind === 'resume'
+      command.kind !== 'workflow'
         ? workflowPauseConflictProblemSchema.parse(value)
         : workflowAutoPauseSettingsConflictProblemSchema.parse(value),
     response: {
