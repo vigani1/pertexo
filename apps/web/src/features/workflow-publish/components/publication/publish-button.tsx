@@ -48,7 +48,7 @@ export function PublishButton({
         type="button"
         size="sm"
         variant="primary"
-        className="max-w-full sm:w-36"
+        className="w-24 max-w-full sm:w-36"
         aria-label={label}
         onClick={onClick}
       >
@@ -64,7 +64,7 @@ export function PublishButton({
               type="button"
               size="sm"
               variant="primary"
-              className="max-w-full sm:w-36"
+              className="w-24 max-w-full sm:w-36"
               aria-label={label}
               disabled
               focusableWhenDisabled
