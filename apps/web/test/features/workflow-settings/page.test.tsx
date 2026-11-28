@@ -212,8 +212,8 @@ describe('workflow settings tab', () => {
       )[0],
     ).toBeVisible();
     expect(
-      within(region('Identity')).getByRole('link', { name: 'Build' }),
-    ).toBeVisible();
+      within(region('Identity')).getByText('Build', { selector: 'a' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
     expect(
       screen.getByRole('heading', { name: 'Archive this workflow?' }),
     ).toBeVisible();
