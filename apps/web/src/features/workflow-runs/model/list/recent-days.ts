@@ -1,4 +1,3 @@
-import type { RecentDay } from '@/components/patterns/dates/recent-days';
 import { formatCalendarDay, formatWeekdayDate } from '@/lib/format/time';
 import {
   customRangeInputs,
@@ -7,6 +6,17 @@ import {
   withoutTimeRange,
   type RunSearch,
 } from './run-search';
+
+export type RecentDay = Readonly<{
+  /** The local day, `YYYY-MM-DD`. */
+  value: string;
+  /** "Today", or the short weekday and date: "Tue 24". */
+  label: string;
+  /** The date alone, where a phone has no room for the weekday. */
+  shortLabel: string;
+  /** The full date for assistive technology, after the button's own words: "Tue 24, Tuesday 24 November". */
+  name: string;
+}>;
 
 /** The Runs strip covers this many days, today last. */
 const RECENT_RUN_DAYS = 7;

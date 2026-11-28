@@ -1,4 +1,4 @@
-import { RecentDays } from '@/components/patterns/dates/recent-days';
+import { RecentDays } from './recent-days';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { localDateValue } from '../../model/list/run-search';
