@@ -47,6 +47,7 @@ export function WorkspaceTableActions({
       {editable ? (
         <Button
           type="button"
+          variant="primary"
           onClick={() => {
             onDialog('create');
           }}

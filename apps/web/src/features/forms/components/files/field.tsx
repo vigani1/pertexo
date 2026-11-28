@@ -81,21 +81,14 @@ export function FileFieldControl({
         aria-describedby={
           [summaryId, helpId, errorId].filter(Boolean).join(' ') || undefined
         }
-        className={cn(
-          'min-h-24 transition-[border-color,background-color,box-shadow] has-[[data-dragging=true]]:border-warning/80 has-[[data-dragging=true]]:bg-warn-soft has-[[data-dragging=true]]:ring-4 has-[[data-dragging=true]]:ring-warn-soft max-sm:min-h-28 motion-reduce:transition-none',
-          full && 'border-solid opacity-100',
-          settled && 'border-success/35 bg-select',
-          error !== undefined && 'border-destructive/60',
-        )}
+        appearance="attachment"
+        presentation={settled ? 'settled' : full ? 'full' : undefined}
         onChooseFiles={(files) => {
           setLeftOut(onAdd(files));
         }}
       >
         {({ dragging }) => (
-          <div
-            data-dragging={dragging}
-            className="flex w-full min-w-0 items-center gap-3.5"
-          >
+          <div className="flex w-full min-w-0 items-center gap-3.5">
             <span
               className={cn(
                 'grid size-11 shrink-0 place-items-center rounded-full border border-surface-ink/10 bg-select text-action transition-transform duration-300 ease-unspool motion-reduce:transition-none',

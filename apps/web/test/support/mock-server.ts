@@ -6,6 +6,9 @@ import { unpausedWorkflowSettings } from './fixtures/auto-pause';
 import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
+  http.get('http://pertexo.test/v1/auth/account-security/sessions', () =>
+    HttpResponse.json({ items: [] }),
+  ),
   http.get('http://pertexo.test/v1/node-definitions', async () => {
     const { browserDefinitions, browserConnectionDefinitions } =
       await import('./fixtures/node-catalog');

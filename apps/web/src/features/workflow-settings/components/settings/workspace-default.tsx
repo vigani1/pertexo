@@ -19,7 +19,7 @@ function WorkspaceDefaultForm({
   scope,
 }: Readonly<{
   settings: WorkspaceAutoPauseSettings;
-  scope: Scope;
+  scope: Omit<Scope, 'workflowId'>;
 }>) {
   const [draft, setDraft] = useState<
     Readonly<{
@@ -36,7 +36,6 @@ function WorkspaceDefaultForm({
     scope.apiClient,
     scope.userId,
     scope.workspace.id,
-    scope.workflowId,
   );
   const notifications = useNotifications();
   async function save() {
@@ -100,7 +99,7 @@ function WorkspaceDefaultForm({
           type="submit"
           pending={command.pending}
           pendingLabel="Saving…"
-          disabled={false}
+          variant="outline"
         >
           Save workspace default
         </ProgressButton>
@@ -112,7 +111,7 @@ function WorkspaceDefaultForm({
 export function WorkspaceDefault({
   scope,
 }: Readonly<{
-  scope: Scope;
+  scope: Omit<Scope, 'workflowId'>;
 }>) {
   const query = useQuery(
     workspaceAutoPauseQueryOptions(

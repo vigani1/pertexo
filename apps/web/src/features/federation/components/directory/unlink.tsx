@@ -1,3 +1,4 @@
+import { Row, RowList } from '@/components/patterns/lists/row';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import type {
@@ -45,7 +46,7 @@ export function DirectoryWorkspaceLinks({
       title="Workspace delegation"
       description="Either workspace owner can revoke a non-control link. Unlinking removes directory-managed grants in that workspace; manual memberships and accounts stay intact."
     >
-      <ul className="divide-y divide-border">
+      <RowList>
         {organization.workspaces.map((linked) => {
           const canUnlinkWorkspace =
             workspace.status === 'active' &&
@@ -54,9 +55,11 @@ export function DirectoryWorkspaceLinks({
               (linked.workspaceId === workspace.id &&
                 workspace.role === 'owner'));
           return (
-            <li
+            <Row
+              frame="bare"
+              lift="none"
               key={linked.workspaceId}
-              className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
             >
               <span className="min-w-0 break-words">
                 {linked.name}
@@ -80,10 +83,10 @@ export function DirectoryWorkspaceLinks({
                   Unlink {linked.name}
                 </Button>
               ) : null}
-            </li>
+            </Row>
           );
         })}
-      </ul>
+      </RowList>
       {review === undefined ? null : (
         <Dialog
           open

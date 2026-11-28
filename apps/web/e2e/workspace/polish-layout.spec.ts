@@ -185,7 +185,8 @@ for (const [width, height] of viewports)
         }
         await shot(name);
         if (name === 'settings-audit' || name === 'runs') {
-          await page.getByRole('button', { name: 'When: Any time' }).click();
+          if (name === 'runs')
+            await page.getByRole('button', { name: 'When: Any time' }).click();
           const day = page.locator('button[aria-current="date"]');
           await day.click();
           await expect(day).toHaveAttribute('aria-pressed', 'true');

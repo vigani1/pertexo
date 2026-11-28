@@ -1,7 +1,26 @@
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { UploadIcon } from 'lucide-react';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/class-names';
+
+const dropVariants = cva(
+  'relative flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-border-strong bg-select p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring motion-reduce:transition-none',
+  {
+    variants: {
+      appearance: {
+        standard: 'min-h-28 transition-colors',
+        attachment:
+          'min-h-24 transition-[border-color,background-color,box-shadow] max-sm:min-h-28',
+      },
+      presentation: {
+        full: 'border-solid',
+        settled: 'border-solid border-success/35',
+      },
+    },
+    defaultVariants: { appearance: 'standard' },
+  },
+);
 
 type FileDropState = Readonly<{
   file: File | undefined;
@@ -22,12 +41,15 @@ export function FileDrop({
   disabled,
   className,
   children,
+  appearance,
+  presentation,
   announces = true,
   onChoose,
   onChooseFiles,
   ...inputProps
 }: Omit<ComponentProps<'input'>, 'type' | 'onChange' | 'children' | 'value'> &
   Choice &
+  VariantProps<typeof dropVariants> &
   Readonly<{
     children?: (state: FileDropState) => ReactNode;
     /** Off when the consumer announces each file itself, so it's read once. */
@@ -62,10 +84,14 @@ export function FileDrop({
         choose(event.dataTransfer.files);
       }}
       className={cn(
-        'relative flex min-h-28 min-w-0 items-center gap-3 rounded-xl border border-dashed border-border-strong bg-select p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring motion-reduce:transition-none',
+        dropVariants({ appearance, presentation }),
         !disabled && 'hover:border-action/60 hover:bg-action-soft',
-        dragging && 'border-action bg-action-soft',
-        disabled && 'opacity-50',
+        dragging &&
+          (appearance === 'attachment'
+            ? 'border-warning/80 bg-warn-soft ring-4 ring-warn-soft'
+            : 'border-action bg-action-soft'),
+        disabled && presentation == null && 'opacity-50',
+        inputProps['aria-invalid'] === true && 'border-destructive/60',
         className,
       )}
     >

@@ -1,7 +1,11 @@
 import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { LockIcon } from 'lucide-react';
-import { Row, RowList } from '@/components/patterns/lists/row';
+import {
+  DetailRowControl,
+  Row,
+  RowList,
+} from '@/components/patterns/lists/row';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   describeConnectionHealth,
@@ -34,12 +38,11 @@ function ConnectionRow({
     ),
   );
   return (
-    <Row selected={selected} className="p-0">
-      <button
+    <Row selected={selected} frame="bare">
+      <DetailRowControl
         type="button"
         aria-current={selected ? 'true' : undefined}
         aria-label={`${connection.name}, ${status.label}`}
-        className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-3 rounded-lg px-3.5 py-3 text-left outline-none focus-ring"
         onClick={() => {
           onOpen(connection.id);
         }}
@@ -69,7 +72,7 @@ function ConnectionRow({
             </span>
           ) : null}
         </span>
-      </button>
+      </DetailRowControl>
     </Row>
   );
 }

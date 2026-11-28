@@ -46,7 +46,8 @@ export function FileFieldSetup({
             // At least one kind stays chosen; a field that takes nothing is no question.
             if (accept.length > 0) onChange({ accept });
           }}
-          className="flex w-full flex-wrap gap-1.5 border-0 bg-transparent p-0"
+          appearance="frameless"
+          className="w-full flex-wrap"
         >
           {FILE_GROUPS.map(({ group, label }) => (
             <AcceptPill key={group} group={group} label={label} />
@@ -141,10 +142,7 @@ function AcceptPill({
   label,
 }: Readonly<{ group: FormFileGroup; label: string }>) {
   return (
-    <ToggleGroupItem
-      value={group}
-      className="h-8 rounded-full border border-surface-ink/10 px-3 data-pressed:border-action/55 data-pressed:bg-action/12 data-pressed:text-foreground"
-    >
+    <ToggleGroupItem value={group} appearance="pill">
       <FileGroupGlyph group={group} />
       {label}
     </ToggleGroupItem>

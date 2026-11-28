@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
@@ -19,6 +19,44 @@ import {
 } from './general/fixture';
 
 describe('workspace settings', () => {
+  it('saves the automatic pause default from Workspace General', async () => {
+    const writes: unknown[] = [];
+    let settings = { threshold: 10, revision: 1 };
+    const endpoint = `http://pertexo.test/v1/workspaces/${workspaceId}/auto-pause`;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [workspace], nextCursor: null }),
+      ),
+      http.get(endpoint, () => HttpResponse.json(settings)),
+      http.put(endpoint, async ({ request }) => {
+        writes.push(await request.json());
+        settings = { threshold: 15, revision: 2 };
+        return HttpResponse.json({ settings, replayed: false });
+      }),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
+    const automaticPause = within(
+      await screen.findByRole('region', { name: 'Automatic pause' }),
+    );
+    const input = await automaticPause.findByRole('textbox', {
+      name: 'Workspace default',
+    });
+    expect(input).toHaveValue('10');
+    const actor = userEvent.setup();
+    await actor.clear(input);
+    await actor.type(input, '15');
+    await actor.click(
+      automaticPause.getByRole('button', { name: 'Save workspace default' }),
+    );
+    expect(
+      await screen.findByText('Workspace auto-pause default saved'),
+    ).toBeVisible();
+    expect(writes).toEqual([{ threshold: 15, expectedRevision: 1 }]);
+  });
+
   it('renames in place and refreshes the authoritative shell in StrictMode', async () => {
     let authoritative = workspace;
     const commands: {

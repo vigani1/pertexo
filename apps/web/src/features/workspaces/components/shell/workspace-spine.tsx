@@ -24,7 +24,7 @@ function formatBadge(count: number): string {
 }
 
 const spineLinkClass =
-  "relative grid size-10 shrink-0 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-select-raised hover:text-foreground focus-ring aria-[current=page]:bg-action-soft aria-[current=page]:text-nav-on aria-[current=page]:inset-ring aria-[current=page]:inset-ring-action-line [&_svg:not([class*='size-'])]:size-[1.15rem]";
+  "relative grid size-10 shrink-0 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-select-raised hover:text-foreground focus-ring aria-[current=page]:bg-select-raised aria-[current=page]:text-foreground [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,

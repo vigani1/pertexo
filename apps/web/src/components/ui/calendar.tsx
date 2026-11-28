@@ -222,7 +222,7 @@ function CalendarGrid({
     <table
       role="grid"
       aria-labelledby={headingId}
-      className="w-full border-separate border-spacing-y-1"
+      className="w-full table-fixed border-separate border-spacing-y-1 pointer-coarse:min-w-70"
       onKeyDown={onKeyDown}
     >
       <thead>

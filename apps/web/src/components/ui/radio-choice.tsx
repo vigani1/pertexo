@@ -1,32 +1,46 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 
-/** A small, labelled choice of two or three settings, as real radio buttons. */
+const layouts = cva('flex', {
+  variants: {
+    layout: {
+      inline: 'w-fit flex-wrap items-center gap-x-4 gap-y-1',
+      list: 'flex-col items-stretch gap-1',
+    },
+  },
+  defaultVariants: { layout: 'inline' },
+});
+
+/** A labelled set of settings as real radio buttons. */
 export function RadioChoice<Value extends string>({
   label,
   value,
   options,
   disabled = false,
+  layout,
   className,
   onChange,
 }: Readonly<{
   label: string;
   value: Value;
-  options: readonly Readonly<{ value: Value; label: string }>[];
+  options: readonly Readonly<{
+    value: Value;
+    label: string;
+    description?: string;
+  }>[];
   disabled?: boolean;
   className?: string;
   onChange: (value: Value) => void;
-}>) {
+}> &
+  VariantProps<typeof layouts>) {
   return (
     <RadioGroup
       aria-label={label}
       value={value}
       disabled={disabled}
-      className={cn(
-        'flex w-fit flex-wrap items-center gap-x-4 gap-y-1',
-        className,
-      )}
+      className={cn(layouts({ layout }), className)}
       onValueChange={(next) => {
         onChange(next);
       }}
@@ -39,11 +53,18 @@ export function RadioChoice<Value extends string>({
         >
           <span
             aria-hidden="true"
-            className="grid size-4 place-items-center rounded-full border border-border-strong group-data-checked:border-action"
+            className="grid size-4 shrink-0 place-items-center rounded-full border border-border-strong group-data-checked:border-action"
           >
             <Radio.Indicator className="size-2 rounded-full bg-action" />
           </span>
-          {option.label}
+          <span className="flex min-w-0 flex-col items-start text-left">
+            <span>{option.label}</span>
+            {option.description === undefined ? null : (
+              <span className="text-meta text-subtle-foreground">
+                {option.description}
+              </span>
+            )}
+          </span>
         </Radio.Root>
       ))}
     </RadioGroup>

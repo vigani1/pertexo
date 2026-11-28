@@ -8,13 +8,15 @@ import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionUsageQueryOptions } from '../../data/connections.queries';
 import type { ConnectionUsageResponse } from '@pertexo/contracts';
 import { pluralWord } from '@/lib/format/count';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Row, RowList } from '@/components/patterns/lists/row';
+import {
+  COLLAPSED_LIST_COUNT,
+  SEARCH_LIST_THRESHOLD,
+  ShowAll,
+} from '@/components/patterns/lists/show-all';
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { SearchInput } from '@/components/ui/input';
-
-/** How many workflows the thread drawing shows before "and N more". */
-const THREADED_WORKFLOWS = 5;
 
 /** Retained published versions, not drafts or an inferred current graph. */
 export function ConnectionUsage({
@@ -37,6 +39,8 @@ export function ConnectionUsage({
     ),
     enabled: canRead,
   });
+  const [expanded, setExpanded] = useState(false);
+  const usageId = useId();
   const workflows = usedByWorkflow(
     usage.data?.pages.flatMap((page) => page.items) ?? [],
   );
@@ -74,19 +78,31 @@ export function ConnectionUsage({
           >
             {() => (
               <>
-                <UsageThreads
-                  workspaceId={scope.workspaceId}
-                  connectionName={connectionName}
-                  workflows={workflows}
-                />
-                {workflows.length > THREADED_WORKFLOWS ? (
-                  <AllWorkflows
-                    workspaceId={scope.workspaceId}
-                    connectionName={connectionName}
-                    workflows={workflows}
-                    complete={!usage.hasNextPage}
+                <div id={usageId}>
+                  {expanded ? (
+                    <AllWorkflows
+                      workspaceId={scope.workspaceId}
+                      connectionName={connectionName}
+                      workflows={workflows}
+                      complete={!usage.hasNextPage}
+                    />
+                  ) : (
+                    <UsageThreads
+                      workspaceId={scope.workspaceId}
+                      connectionName={connectionName}
+                      workflows={workflows}
+                    />
+                  )}
+                </div>
+                <div>
+                  <ShowAll
+                    count={workflows.length}
+                    subject="workflows"
+                    controls={usageId}
+                    expanded={expanded}
+                    onExpandedChange={setExpanded}
                   />
-                ) : null}
+                </div>
               </>
             )}
           </QueryView>
@@ -120,7 +136,7 @@ function UsageThreads({
   connectionName: string;
   workflows: readonly WorkflowUsage[];
 }>) {
-  const shown = workflows.slice(0, THREADED_WORKFLOWS);
+  const shown = workflows.slice(0, COLLAPSED_LIST_COUNT);
   const more = workflows.length - shown.length;
   const ends = shown.length + (more > 0 ? 1 : 0);
   const height = ends * THREAD_ROW;
@@ -194,12 +210,9 @@ function UsageThreads({
         ))}
         {more > 0 ? (
           <li className="flex h-14 items-center">
-            <a
-              href="#all-workflows"
-              className="text-sm text-muted-foreground hover:text-foreground focus-ring"
-            >
+            <span className="text-sm text-muted-foreground">
               and {String(more)} more {pluralWord(more, 'workflow')}
-            </a>
+            </span>
           </li>
         ) : null}
       </ul>
@@ -262,7 +275,7 @@ function AllWorkflows({
     <section
       id="all-workflows"
       aria-labelledby="all-workflows-heading"
-      className="mt-8 flex flex-col gap-2"
+      className="mt-4 flex flex-col gap-3"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3
@@ -271,15 +284,19 @@ function AllWorkflows({
         >
           {heading}
         </h3>
-        <SearchInput
-          className="w-full sm:w-70"
-          placeholder="Find a workflow or step"
-          aria-label={`Find a workflow or step that uses ${connectionName}`}
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-          }}
-        />
+        {!complete ||
+        needle !== '' ||
+        workflows.length > SEARCH_LIST_THRESHOLD ? (
+          <SearchInput
+            className="w-full sm:w-70"
+            placeholder="Find a workflow or step"
+            aria-label={`Find a workflow or step that uses ${connectionName}`}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+          />
+        ) : null}
       </div>
       {matching.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
@@ -290,20 +307,50 @@ function AllWorkflows({
             : ' Load more published versions to continue searching.'}
         </p>
       ) : (
-        <RowList aria-label={`${heading} using ${connectionName}`}>
-          {matching.map((workflow) => (
-            <Row
-              key={workflow.workflowId}
-              className="grid-cols-[minmax(0,1fr)]"
-            >
-              <span className="min-w-0">
-                <WorkflowLink workspaceId={workspaceId} workflow={workflow} />
-              </span>
-            </Row>
-          ))}
-        </RowList>
+        <>
+          <WorkflowUsageGroup
+            label="Live"
+            workspaceId={workspaceId}
+            workflows={matching.filter(usesLiveVersion)}
+          />
+          <WorkflowUsageGroup
+            label="Older versions only"
+            workspaceId={workspaceId}
+            workflows={matching.filter(
+              (workflow) => !usesLiveVersion(workflow),
+            )}
+          />
+        </>
       )}
     </section>
+  );
+}
+
+function usesLiveVersion(workflow: WorkflowUsage): boolean {
+  return workflow.current !== undefined && !workflow.archived;
+}
+
+function WorkflowUsageGroup({
+  label,
+  workspaceId,
+  workflows,
+}: Readonly<{
+  label: string;
+  workspaceId: string;
+  workflows: readonly WorkflowUsage[];
+}>) {
+  if (workflows.length === 0) return null;
+  return (
+    <div>
+      <RuleHeading appearance="compact">{label}</RuleHeading>
+      <RowList aria-label={label}>
+        {workflows.map((workflow) => (
+          <Row key={workflow.workflowId} className="flex flex-col items-start">
+            <WorkflowLink workspaceId={workspaceId} workflow={workflow} />
+          </Row>
+        ))}
+      </RowList>
+    </div>
   );
 }
 

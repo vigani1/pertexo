@@ -22,7 +22,7 @@ function segments(day: UsageTrendsResponse['days'][number], scale: number) {
 }
 export function DailyChart({
   snapshot,
-}: Readonly<{ snapshot: UsageTrendsResponse }>) {
+}: Readonly<{ snapshot: Pick<UsageTrendsResponse, 'days' | 'byStatus'> }>) {
   const title = useId();
   const scale = 156 / Math.max(1, ...snapshot.days.map((day) => day.total));
   return (

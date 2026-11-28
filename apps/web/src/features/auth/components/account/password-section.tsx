@@ -121,7 +121,7 @@ export function AccountPasswordSection({
         )}
         <ProgressButton
           type="submit"
-          variant="primary"
+          variant="outline"
           className="w-fit"
           pending={pending}
           pendingLabel="Saving…"

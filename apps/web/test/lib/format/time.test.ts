@@ -25,6 +25,15 @@ describe('dates in an English interface', () => {
     ).toMatch(/ago/u);
   });
 
+  it('writes ledger times on a 24-hour clock and compact dates day first', async () => {
+    const { formatClock, formatShortTime, formatDayMonth } =
+      await formatIn('en-US');
+    const time = new Date(2026, 1, 2, 14, 12, 51).toISOString();
+    expect(formatClock(time)).toBe('14:12:51');
+    expect(formatShortTime(time)).toBe('14:12');
+    expect(formatDayMonth(time)).toBe('2 Feb');
+  });
+
   it('falls back to plain English for a language it can’t place', async () => {
     const { formatDate } = await formatIn('not a language');
     expect(formatDate('2026-10-20T15:09:00.000Z')).toContain('Oct');

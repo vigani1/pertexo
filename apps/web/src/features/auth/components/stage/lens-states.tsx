@@ -31,10 +31,16 @@ export function LensLoading({
           {[0, 1].map((field) => (
             <div key={field} className="flex flex-col gap-2">
               <Skeleton className="h-2.5 w-16" />
-              <Skeleton className="h-9 w-full rounded-md pointer-coarse:h-10" />
+              <Skeleton
+                shape="control"
+                className="h-9 w-full pointer-coarse:h-10"
+              />
             </div>
           ))}
-          <Skeleton className="mt-1 h-9 w-full rounded-md pointer-coarse:h-10" />
+          <Skeleton
+            shape="control"
+            className="mt-1 h-9 w-full pointer-coarse:h-10"
+          />
         </div>
         <Skeleton className="mx-auto mt-6 h-2.5 w-48" />
       </div>

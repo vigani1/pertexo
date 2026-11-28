@@ -70,7 +70,7 @@ function DestinationDetails({
   version,
 }: Readonly<{ destinationId: string; version: number }>) {
   return (
-    <Disclosure summary="Details" className="text-subtle-foreground">
+    <Disclosure summary="Details" contentClassName="text-subtle-foreground">
       <p className="flex items-center gap-2 font-mono text-xs">
         Version {version} · saving creates version {version + 1}
       </p>

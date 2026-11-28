@@ -151,7 +151,7 @@ it('keeps a lost input-case delete’s key while another case is deleted', async
 it('keeps a lost workflow auto-pause save’s key while workspace settings are saved', async () => {
   const { apiClient, sent } = lostAnswers();
   const result = render(() =>
-    useAutoPauseCommand(apiClient, userId, workspaceId, workflowId),
+    useAutoPauseCommand(apiClient, userId, workspaceId),
   );
   expectReplayed(
     await aThenBThenA(sent, (target) =>
@@ -159,6 +159,7 @@ it('keeps a lost workflow auto-pause save’s key while workspace settings are s
         target === 'a'
           ? {
               kind: 'workflow',
+              workflowId,
               body: {
                 enabled: true,
                 thresholdOverride: null,

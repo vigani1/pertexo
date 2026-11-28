@@ -71,7 +71,7 @@ export function UpcomingRuns({
     now,
   );
   return (
-    <section aria-labelledby="upcoming-runs" className="flex flex-col gap-3">
+    <section aria-labelledby="upcoming-runs" className="flex flex-col gap-2">
       <RuleHeading id="upcoming-runs">{windowLabel}</RuleHeading>
       <p className="text-meta text-subtle-foreground">
         Only schedules are known ahead. Webhooks and forms start runs when they
@@ -96,7 +96,7 @@ export function UpcomingRuns({
       ) : null}
       {runs.length === 0 ? null : (
         <>
-          <div aria-hidden="true" className="relative mt-4 mb-2 h-6">
+          <div aria-hidden="true" className="relative mt-2 mb-1 h-5">
             <span className="absolute inset-x-0 top-1/2 h-px bg-border-strong" />
             <span className="absolute top-1/2 left-0 size-1.75 -translate-y-1/2 rounded-full bg-muted-foreground" />
             {runs.map((run) => (

@@ -89,7 +89,12 @@ export function FormResponse({
           {intro}
         </ResponseIntro>
       )}
-      <div className="flex min-w-0 flex-col gap-5">
+      <div
+        className={cn(
+          'flex min-w-0 flex-col gap-5',
+          intro !== undefined && 'lg:pt-10',
+        )}
+      >
         <fieldset
           disabled={disabled || pending}
           className="flex min-w-0 flex-col gap-5"

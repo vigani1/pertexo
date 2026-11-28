@@ -196,10 +196,10 @@ test('keeps account security understandable and usable on a narrow screen', asyn
 
   await page.goto('/account/security');
   await expect(
-    page.getByRole('heading', { name: 'Account & security' }),
+    page.getByRole('heading', { name: user.displayName, level: 1 }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Name and email' }),
+    page.getByRole('button', { name: 'Edit your name' }),
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'This account' }),
@@ -209,7 +209,6 @@ test('keeps account security understandable and usable on a narrow screen', asyn
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
   await expect(
     page.getByRole('heading', { name: 'Sign-in methods' }),
   ).toBeVisible();
@@ -221,8 +220,9 @@ test('keeps account security understandable and usable on a narrow screen', asyn
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole('tab', { name: 'Sessions' }).click();
-  await expect(page.getByRole('heading', { name: 'Sessions' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Signed-in devices' }),
+  ).toBeVisible();
   await expect(page.getByText('This device')).toBeVisible();
   expect(
     await page.evaluate(

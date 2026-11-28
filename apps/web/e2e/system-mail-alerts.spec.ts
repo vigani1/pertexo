@@ -100,7 +100,16 @@ for (const width of [375, 1280]) {
     await expect(sheet).toHaveCount(0);
     expect(config).toEqual({ kind: 'system_mail', memberId });
     await expect(
-      page.getByText("Ada · ada@example.test via this server's mail"),
+      page.getByRole('heading', {
+        name: "Ada · ada@example.test via this server's mail",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: "Alerts now go to Ada · ada@example.test via this server's mail",
+        exact: true,
+      }),
     ).toBeVisible();
   });
 }

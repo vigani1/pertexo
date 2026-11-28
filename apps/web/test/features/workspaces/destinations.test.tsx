@@ -162,60 +162,58 @@ describe('workspace destinations by role', () => {
     },
   );
 
-  // product-ux-24: actions first, then every page in the spine's order,
-  // then help, each where the role can use it.
-  it('orders an admin’s palette as actions, places, help and account', async () => {
+  it('suggests a few workspace actions and keeps the full palette searchable', async () => {
     serveAs('admin');
-    const dialog = await openPalette();
-    const options = within(dialog)
-      .getAllByRole('option')
-      .map((option) => option.textContent.trim());
-    const at = (name: string) => options.indexOf(name);
-    expect(options.slice(0, 3)).toEqual([
+    const dialog = within(await openPalette());
+    expect(
+      dialog.getAllByRole('option').map((option) => option.textContent.trim()),
+    ).toEqual(['Invite people', 'Team', 'Workflows', 'Runs']);
+    expect(dialog.getByText('Paste a run ID to open that run.')).toBeVisible();
+    const actor = userEvent.setup();
+    const search = dialog.getByRole('combobox', {
+      name: 'Search pages, workflows and actions',
+    });
+    for (const name of [
       'New workflow',
       'Add a connection',
-      'Invite people',
-    ]);
-    const places = [
       'Home',
-      'Workflows',
-      'Runs',
       'Inbox',
       'Approvals',
       'Data tables',
       'Connections',
-      'Team',
       'Alerts',
       'Variables',
       'Usage',
       'Workspace settings',
       'Audit log',
       'API tokens',
-    ];
-    expect(places.map(at)).toEqual(
-      places.map((_, index) => at('Home') + index),
-    );
-    expect(at('Guide: your first workflow')).toBeGreaterThan(at('API tokens'));
-    // Review J6a P3-1: every entry carries an icon, so the labels line up.
-    expect(
-      within(dialog)
-        .getAllByRole('option')
-        .filter((option) => option.querySelector('svg') === null)
-        .map((option) => option.textContent.trim()),
-    ).toEqual([]);
-    expect(at('Glossary')).toBeLessThan(at('Switch theme'));
+      'Guide: your first workflow',
+      'Glossary',
+      'Switch theme',
+    ]) {
+      await actor.clear(search);
+      await actor.paste(name);
+      const option = dialog.getByRole('option', { name });
+      expect(option).toBeVisible();
+      expect(option.querySelector('svg')).not.toBeNull();
+    }
   });
 
-  it('offers a viewer no actions they can’t take', async () => {
+  it('offers a viewer no actions they can’t take even when searched', async () => {
     serveAs('viewer');
-    const dialog = await openPalette();
-    expect(
-      within(dialog).queryByRole('option', { name: 'New workflow' }),
-    ).toBeNull();
-    expect(
-      within(dialog).queryByRole('option', { name: 'Invite people' }),
-    ).toBeNull();
-    expect(within(dialog).getByRole('option', { name: 'Home' })).toBeVisible();
+    const dialog = within(await openPalette());
+    const actor = userEvent.setup();
+    const search = dialog.getByRole('combobox', {
+      name: 'Search pages, workflows and actions',
+    });
+    for (const name of ['New workflow', 'Invite people']) {
+      await actor.clear(search);
+      await actor.paste(name);
+      expect(dialog.queryByRole('option', { name })).toBeNull();
+    }
+    await actor.clear(search);
+    await actor.paste('Home');
+    expect(dialog.getByRole('option', { name: 'Home' })).toBeVisible();
   });
 });
 

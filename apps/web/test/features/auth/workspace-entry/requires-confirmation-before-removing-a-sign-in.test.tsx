@@ -70,9 +70,6 @@ describe('authentication and workspace entry', () => {
     );
     await renderLoadedApp('/account/security');
     const actor = userEvent.setup();
-    await actor.click(
-      await screen.findByRole('tab', { name: 'Sign-in & security' }),
-    );
     const removeSocial = () =>
       screen.getByRole('button', { name: 'Remove Google' });
     await screen.findByText('Google');

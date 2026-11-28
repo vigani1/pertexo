@@ -1,6 +1,6 @@
 import { SheetFooter } from '@/components/ui/sheet';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { encode } from 'uqr';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { QrCode } from '@/components/ui/qr-code';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { Button } from '@/components/ui/button';
@@ -30,28 +30,10 @@ type Stage =
   | Readonly<{ kind: 'codes'; codes: readonly string[] }>;
 
 function EnrollmentKey({ uri }: Readonly<{ uri: string }>) {
-  const { data, size } = useMemo(() => encode(uri), [uri]);
   const secret = new URL(uri).searchParams.get('secret') ?? '';
-  // Render only the encoder's boolean grid; the secret never enters markup as HTML or a remote image URL.
-  const path = data
-    .flatMap((row, y) =>
-      row.flatMap((dark, x) =>
-        dark ? [`M${String(x + 4)} ${String(y + 4)}h1v1h-1z`] : [],
-      ),
-    )
-    .join('');
   return (
     <div className="flex flex-col items-start gap-3">
-      <svg
-        role="img"
-        aria-label="Scan this QR code in your authenticator app"
-        viewBox={`0 0 ${String(size + 8)} ${String(size + 8)}`}
-        className="size-48 max-w-full"
-        shapeRendering="crispEdges"
-      >
-        <rect width="100%" height="100%" fill="white" />
-        <path d={path} fill="black" />
-      </svg>
+      <QrCode value={uri} label="Scan this QR code in your authenticator app" />
       <p className="text-sm text-muted-foreground">
         Can’t scan? Enter this key in your authenticator:
       </p>

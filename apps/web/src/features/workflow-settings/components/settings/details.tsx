@@ -20,7 +20,7 @@ export function SettingDetails({
       {rules === undefined ? null : (
         <Disclosure
           summary="How this works"
-          className="text-xs text-muted-foreground"
+          contentClassName="text-xs text-muted-foreground"
           appearance={{ size: 'xs' }}
         >
           <div className="mt-2 flex max-w-lg flex-col gap-1.5 leading-relaxed">
