@@ -1,5 +1,5 @@
 import { CanvasNote } from './notes/card';
-import { useNoteProjection } from './notes/use-projection';
+import { useNoteProjection } from '../../hooks/canvas/use-notes-projection';
 import {
   isNoteFlowId,
   type CanvasFlowNode,
@@ -30,7 +30,7 @@ import type { PortRef } from '../../model/graph/workflow-graph-commands';
 import { useEditorStoreApi } from '../../model/state/context';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
-import { useCanvasFraming } from './use-framing';
+import { useCanvasFraming } from '../../hooks/canvas/use-framing';
 import { CanvasZoomLens } from './zoom-lens';
 import { CanvasToolbar } from './canvas-toolbar';
 import { LaneBands } from './lane-bands';

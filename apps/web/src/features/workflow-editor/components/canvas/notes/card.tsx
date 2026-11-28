@@ -13,7 +13,7 @@ import { cn } from '@/lib/class-names';
 import { boundedNotePosition } from '../../../model/notes/note-commands';
 import { NoteForm } from './form';
 import { noteKeyDown } from './keyboard';
-import { useNoteActions } from './use-actions';
+import { useNoteActions } from '../../../hooks/canvas/use-notes-actions';
 import { noteElementId, type NoteFlowNode } from './canvas-note-identity';
 
 const NoteMarkdown = lazyPiece(() =>

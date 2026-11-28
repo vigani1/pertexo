@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
+import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
 import {
   inputMappingRowsFor,
   inputMappingSourceErrors,
@@ -7,7 +7,7 @@ import {
   validateInputMappingRows,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
-} from '../../../model/inspector/input-mappings/draft';
+} from '../../model/inspector/input-mappings/draft';
 
 type MappingDraft = Readonly<{
   rows: readonly InputMappingDraftRow[];

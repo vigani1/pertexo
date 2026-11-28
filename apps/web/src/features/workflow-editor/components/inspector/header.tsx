@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { describeStep, familyWord } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
-import { useInspectorDraftField } from './use-draft-field';
+import { useInspectorDraftField } from '../../hooks/inspector/use-draft-field';
 import type { NodeFormApi } from '../../model/inspector/node-form';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];

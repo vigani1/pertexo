@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useListenerClock } from './use-clock';
+import { useListenerClock } from '../../hooks/use-clock';
 import type { SampleScope } from '../../data/samples/step-samples.api';
 import { useWebhookListener } from '../../data/webhook-test-events/webhook-test-listener.mutations';
 import { ListenerAuthentication } from './authentication';

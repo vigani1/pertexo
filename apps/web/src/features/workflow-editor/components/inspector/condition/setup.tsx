@@ -6,10 +6,13 @@ import { upstreamStepIds } from '../../../model/graph/order';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { inputMappingSourceControlId } from '../../../model/inspector/input-mappings/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { ExpressionSource } from '../input-mappings/source-editor';
 import { ConditionRuleCard } from './rule';
-import { CONDITION_INPUT, useConditionDraft } from './use-draft';
+import {
+  CONDITION_INPUT,
+  useConditionDraft,
+} from '../../../hooks/inspector/use-condition-draft';
 
 const MAX_RULES = 20;
 

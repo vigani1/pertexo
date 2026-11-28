@@ -14,7 +14,7 @@ import {
   unionFields,
   unionPropertyCount,
 } from '../../../model/inspector/schema-union';
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import { SchemaFieldList } from './schema-list';
 import { SchemaFieldDescription } from './schema';

@@ -1,4 +1,4 @@
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import { CallbackSetup } from './callback';
 import {
   callbackWaitConfigSchema,

@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import type { FieldParseResult } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 
 /** One entry of a setup list: a numbered card with its own controls. */
 export function BuilderCard({

@@ -12,7 +12,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 
 type LookupItem = ConnectionLookupResponse['items'][number];
 type Feedback = Readonly<{

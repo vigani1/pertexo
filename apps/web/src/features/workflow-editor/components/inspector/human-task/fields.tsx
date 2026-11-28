@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import { FormFieldsEditor } from '@/features/forms/forms-views.public';
 import { Notice } from '@/components/patterns/notices/inline-notice';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 export function FormFields({
   fields,

@@ -28,7 +28,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { SchemaFieldList } from '../fields/schema-list';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { DataTableSetup } from './table-setup';
 import { ChoiceSelect } from '../fields/choice-select';
 import { Field, FieldLabel } from '@/components/ui/field';

@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { useState } from 'react';
 
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';

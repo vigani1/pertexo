@@ -13,9 +13,9 @@ import type { NodeTestHandle } from '@/features/workflow-testing/workflow-testin
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';
-import { useQuickAdd } from './add-step/use-quick';
+import { useQuickAdd } from '../hooks/add-step/use-quick';
 import type { LastRunOverlay } from '../model/canvas/last-run';
-import { useStepPlacement } from './add-step/use-placement';
+import { useStepPlacement } from '../hooks/add-step/use-placement';
 
 /** The add-step lens's fold and its search field, which "/" focuses. */
 function useAddStepFold({

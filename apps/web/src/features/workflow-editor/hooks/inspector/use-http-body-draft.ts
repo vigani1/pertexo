@@ -5,10 +5,10 @@ import {
   validateBodyDraft,
   type HttpBodyDraft,
   type HttpBodyValue,
-} from '../../../model/inspector/http-body';
-import type { GraphLevel } from '../../../model/graph/scopes';
-import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-draft-field';
+} from '../../model/inspector/http-body';
+import type { GraphLevel } from '../../model/graph/scopes';
+import type { NodeFormApi } from '../../model/inspector/node-form';
+import { useInspectorDraftField } from './use-draft-field';
 
 export function useHttpBodyDraft(
   value: HttpBodyValue,

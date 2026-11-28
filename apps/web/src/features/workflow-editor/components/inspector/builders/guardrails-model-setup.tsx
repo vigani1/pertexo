@@ -18,7 +18,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 
 const modes = [
   { value: 'injection', label: 'Prompt injection' },
