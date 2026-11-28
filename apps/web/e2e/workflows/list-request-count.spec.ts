@@ -49,7 +49,8 @@ test('renders 50 workflow summaries without row requests', async ({
   const rows = page.getByRole('list', { name: 'Workflows', exact: true });
   await expect(rows.getByRole('listitem')).toHaveCount(5);
   await expect(showAll).toHaveAttribute('aria-expanded', 'false');
-  await showAll.click();
+  await showAll.focus();
+  await showAll.press('Enter');
   await expect(
     page.getByRole('button', { name: 'Show fewer', exact: true }),
   ).toHaveAttribute('aria-expanded', 'true');

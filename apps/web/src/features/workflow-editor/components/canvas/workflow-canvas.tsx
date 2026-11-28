@@ -15,6 +15,7 @@ import {
 } from '@xyflow/react';
 import {
   useCallback,
+  useEffect,
   useMemo,
   type DragEvent,
   type ReactNode,
@@ -208,6 +209,20 @@ function useCanvasInteraction({
   // Timed by hand: a phone's double tap doesn't reliably fire dblclick.
   const { theme } = useAppearance();
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
+  useEffect(() => {
+    // A tap on a panel or its dismiss layer ends the step's tap sequence.
+    function endTapSequence(event: MouseEvent) {
+      const step =
+        event.target instanceof Element
+          ? event.target.closest('.react-flow__node')
+          : null;
+      if (!containerRef.current?.contains(step)) lastTap.current = undefined;
+    }
+    document.addEventListener('click', endTapSequence, true);
+    return () => {
+      document.removeEventListener('click', endTapSequence, true);
+    };
+  }, [containerRef]);
   const store = useEditorStoreApi();
   const { screenToFlowPosition } = useReactFlow();
   const fit = useCanvasFraming(containerRef, overlays.proposal !== undefined);
