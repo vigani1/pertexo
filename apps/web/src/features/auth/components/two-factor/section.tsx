@@ -3,24 +3,76 @@ import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
+import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { useAccountSecurityRefresh } from '../../data/account-security/account-security.mutations';
 import { TwoFactorSetupDialog } from './setup-dialog';
 import type { TwoFactorAction } from '../../data/two-factor/two-factor.mutations';
 import { pluralWord } from '@/lib/format/count';
 
+export type TwoFactorReadState = 'ready' | 'refreshing' | 'unavailable';
+
+function recoveryWarning(
+  security: AccountSecurityResponse,
+  readState: TwoFactorReadState,
+) {
+  if (readState === 'unavailable' || !security.twoFactor.enabled)
+    return undefined;
+  return recoveryCodeCopy(security.twoFactor.recoveryCodesRemaining).warning;
+}
+
+export function AccountRecoveryAttention({
+  security,
+  readState,
+  onRegenerate,
+}: Readonly<{
+  security: AccountSecurityResponse;
+  readState: TwoFactorReadState;
+  onRegenerate: () => void;
+}>) {
+  const warning = recoveryWarning(security, readState);
+  if (warning === undefined) return null;
+  return (
+    <section
+      aria-labelledby="account-needs-you"
+      className="flex flex-col gap-2"
+    >
+      <RuleHeading id="account-needs-you">Needs you</RuleHeading>
+      <Notice
+        tone="warning"
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={readState !== 'ready'}
+            onClick={onRegenerate}
+          >
+            Get new recovery codes
+          </Button>
+        }
+      >
+        {warning}
+      </Notice>
+    </section>
+  );
+}
+
 export function AccountTwoFactorSection({
   apiClient,
   userId,
   security,
   readState,
+  action,
+  onAction: setAction,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   security: AccountSecurityResponse;
-  readState: 'ready' | 'refreshing' | 'unavailable';
+  readState: TwoFactorReadState;
+  action: TwoFactorAction | undefined;
+  onAction: (action: TwoFactorAction | undefined) => void;
 }>) {
-  const [action, setAction] = useState<TwoFactorAction>();
   const refreshSecurity = useAccountSecurityRefresh(userId);
   const [closing, setClosing] = useState(false);
   async function refreshAndClose() {
@@ -51,24 +103,21 @@ export function AccountTwoFactorSection({
             ? 'Refresh your sign-in methods above to confirm the status.'
             : status}
         </p>
-        {readState !== 'unavailable' &&
-        enabled &&
-        codes.warning !== undefined ? (
-          <Notice tone="warning">{codes.warning}</Notice>
-        ) : null}
         <div className="flex flex-wrap gap-2">
           {enabled ? (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={readState !== 'ready'}
-                onClick={() => {
-                  setAction('regenerate');
-                }}
-              >
-                Get new recovery codes
-              </Button>
+              {recoveryWarning(security, readState) !== undefined ? null : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={readState !== 'ready'}
+                  onClick={() => {
+                    setAction('regenerate');
+                  }}
+                >
+                  Get new recovery codes
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
