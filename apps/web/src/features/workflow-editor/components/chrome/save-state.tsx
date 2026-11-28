@@ -26,7 +26,9 @@ export function SaveState({
       aria-live="polite"
       className="inline-flex h-9 w-44 min-w-0 max-w-full shrink-0 items-center gap-1 max-sm:h-10 max-sm:flex-1 pointer-coarse:h-10"
     >
-      <span aria-hidden="true">·</span>
+      <span aria-hidden="true" className="max-[380px]:hidden">
+        ·
+      </span>
       <Sentence
         status={scratch && save.status === 'clean' ? 'dirty' : save.status}
         online={online}
@@ -148,7 +150,7 @@ function InlineAction({
         tone === 'warning' ? 'text-warning' : 'text-destructive',
       )}
     >
-      <span className="min-w-0">{label} ·</span>
+      <span className="min-w-0 max-[380px]:sr-only">{label} ·</span>
       <button
         type="button"
         className="inline-flex shrink-0 items-center underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-ring pointer-coarse:min-h-10 pointer-coarse:min-w-10"
