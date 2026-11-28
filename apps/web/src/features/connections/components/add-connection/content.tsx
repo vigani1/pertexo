@@ -19,7 +19,10 @@ import type { SavedCredential } from '../../model/saved-credential';
 import type { useConnectionTest } from '../../data/connection-test.mutations';
 import type { ConnectionTest } from '../../data/connection-test.mutations';
 import { CredentialFields } from '../credential/fields';
-import { createHeaderRowId, type CredentialForm } from '../../hooks/credential/use-form';
+import {
+  createHeaderRowId,
+  type CredentialForm,
+} from '../../hooks/credential/use-form';
 import { OAuth2ConnectStep } from '../oauth2/connect';
 import { ProviderSockets } from '../provider-sockets';
 import { NameStep, TestStep, type AddStep } from './steps';
