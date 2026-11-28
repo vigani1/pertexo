@@ -8,6 +8,7 @@ import {
   liveRunId,
 } from '../../workspace/core-flow-layout-fixture';
 import { addCsrfCookie, editorUrl } from '../support';
+import { openAssistant } from '../actions';
 
 const screenshots = process.env.PERTEXO_CANVAS_SHOTS;
 const viewports = [
@@ -110,16 +111,7 @@ for (const viewport of screenshots === undefined
         await installCoreFlowRoutes(page);
         await installAssistantProposal(page);
         await page.goto(editorUrl);
-        if (viewport.width < 640) {
-          await page
-            .getByRole('button', { name: 'More workflow actions' })
-            .click();
-          await page
-            .getByRole('menuitem', { name: 'Ask the assistant' })
-            .click();
-        } else {
-          await page.getByRole('button', { name: 'Ask the assistant' }).click();
-        }
+        await openAssistant(page);
         const panel = page.getByRole('complementary', { name: 'Assistant' });
         await panel
           .getByLabel('What should the workflow do?')
