@@ -9,6 +9,7 @@ const disclosureVariants = cva('', {
     look: {
       plain: '',
       tree: '',
+      ruled: 'border-t border-border pt-3',
       framed: 'rounded-lg border border-border bg-select',
     },
   },
@@ -28,6 +29,7 @@ const summaryVariants = cva(
       },
       look: {
         plain: 'py-0.5',
+        ruled: 'py-0.5',
         tree: 'w-full cursor-default gap-1 py-0.5 hover:bg-surface-ink/4',
         framed: 'w-full px-3 py-2.5 text-muted-foreground',
       },
@@ -83,7 +85,11 @@ export function Disclosure({
           className={cn(
             look === 'framed' && 'border-t border-border px-3 py-3',
             look === 'tree' && 'ml-1.5 border-l border-border pl-1',
-            (look === undefined || look === null || look === 'plain') && 'mt-2',
+            (look === undefined ||
+              look === null ||
+              look === 'plain' ||
+              look === 'ruled') &&
+              'mt-2',
             contentClassName,
           )}
         >
