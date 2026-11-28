@@ -138,7 +138,7 @@ for (const width of [375, 1280]) {
     const retry = page.getByRole('button', { name: 'Retry', exact: true });
     await expect(retry).toBeVisible();
     await expect(
-      page.getByText('This version has no trigger', { exact: true }),
+      page.getByText('This version starts by hand', { exact: true }),
     ).toHaveCount(0);
     const previousReads = reads;
     await retry.click();

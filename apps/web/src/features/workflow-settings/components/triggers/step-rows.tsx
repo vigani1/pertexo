@@ -90,13 +90,13 @@ export function TriggerFootnotes({
       )}
       <p>
         Schedules can be switched off one by one. To stop webhooks and forms
-        too, pause the workflow in{' '}
+        too,{' '}
         <Link
           to="/w/$workspaceId/workflows/$workflowId/settings"
           params={{ workspaceId, workflowId }}
           className="inline-link"
         >
-          Settings
+          archive the workflow in Settings
         </Link>
         .
       </p>

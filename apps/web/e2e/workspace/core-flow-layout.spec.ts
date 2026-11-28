@@ -8,6 +8,7 @@ import {
 import { mockIdentity } from './auth/fixture';
 import { installAssistantProposal } from './core-flow-assistant-fixture';
 import { triageGraph } from './core-flow-invoice-graph';
+import { installEditorRoutes, remoteDraft } from '../workflow-editor/support';
 import {
   approvalId,
   failedRunId,
@@ -156,4 +157,41 @@ test('the canvas lays AI steps and their categories in lanes', async ({
     page.getByText('Sort the ticket · bug', { exact: true }),
   ).toBeVisible();
   await shot(page, 'build-ai-steps', '1440x900-dark');
+});
+
+test('the phone canvas can tidy a connected workflow into lanes', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await addCsrfCookie(context);
+  const draft = remoteDraft(triageGraph());
+  await installEditorRoutes(page, draft);
+  await page.goto(editorUrl);
+  const before = draft.graph.nodes.map(({ position }) => position);
+  await page.getByRole('button', { name: 'Tidy lanes', exact: true }).click();
+  await expect
+    .poll(() => draft.graph.nodes.map(({ position }) => position))
+    .not.toEqual(before);
+});
+
+test('the tablet canvas can zoom with the step inspector open', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await addCsrfCookie(context);
+  await installCoreFlowRoutes(page);
+  await page.goto(editorUrl);
+  const step = page.getByTestId('rf__node-intake');
+  await step.focus();
+  await step.press('Enter');
+  await expect(
+    page.getByRole('complementary', { name: 'Step panel' }),
+  ).toBeVisible();
+  const toolbar = page.getByRole('toolbar', { name: 'Canvas toolbar' });
+  const zoom = toolbar.getByLabel('Zoom', { exact: true });
+  const before = await zoom.innerText();
+  await toolbar.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(zoom).not.toHaveText(before);
 });

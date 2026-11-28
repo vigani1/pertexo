@@ -59,6 +59,9 @@ test('explains disabled webhook encryption to an owner at phone width', async ({
   await expect(
     page.getByRole('button', { name: 'Create endpoint' }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'archive the workflow in Settings' }),
+  ).toHaveAttribute('href', `${editorUrl}/settings`);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

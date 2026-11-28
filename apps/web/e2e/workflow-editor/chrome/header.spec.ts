@@ -33,7 +33,9 @@ async function measureHeader(page: Page) {
       name: 'More workflow actions',
       exact: true,
     }),
-    header.getByRole('button', { name: /^(Publish v|No changes since v)/u }),
+    header.getByRole('button', {
+      name: /^(Publish v|No publishable changes since v)/u,
+    }),
     header.getByRole('button', { name: 'Test and run actions' }),
   ];
   return Promise.all(
@@ -275,7 +277,10 @@ for (const width of [390, 1280]) {
       }),
     ).toBeFocused();
     await expect(
-      header.getByRole('button', { name: 'No changes since v1', exact: true }),
+      header.getByRole('button', {
+        name: 'No publishable changes since v1',
+        exact: true,
+      }),
     ).toBeDisabled();
     await openStep(page, width);
     const baseline = await measureHeader(page);

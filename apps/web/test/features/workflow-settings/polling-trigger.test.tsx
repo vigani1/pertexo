@@ -64,7 +64,7 @@ it('shows the published polling step waiting for its baseline and when it will c
   ).toBeVisible();
   expect(card.getByText('Waiting for its first check')).toBeVisible();
   expect(card.getByText(/^Next check/u)).toBeVisible();
-  expect(screen.queryByText('This version has no trigger')).toBeNull();
+  expect(screen.queryByText('This version starts by hand')).toBeNull();
 });
 
 it('shows a safe credential repair message and the retained position while paused', async () => {

@@ -79,7 +79,11 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
     );
     const lens = await screen.findByRole('dialog', { name: 'Publish v3' });
     await event.click(within(lens).getByRole('button', { name: 'Publish v3' }));
-    expect(await within(lens).findByText(/No changes since v1/u)).toBeVisible();
+    expect(
+      await within(lens).findByText(
+        'No publishable changes since v1. Step names and positions alone don’t create a new version.',
+      ),
+    ).toBeVisible();
     expect(
       within(lens).getByRole('button', { name: /Publish v3|Try again/u }),
     ).toBeDisabled();
@@ -91,7 +95,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     await findCanvas();
     const unchanged = await screen.findByRole('button', {
-      name: 'No changes since v1',
+      name: 'No publishable changes since v1',
     });
     expect(unchanged).toHaveAttribute('aria-disabled', 'true');
     await event.click(unchanged);
@@ -105,7 +109,9 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
     await event.type(input, '2');
     await waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: 'No changes since v1' }),
+        screen.queryByRole('button', {
+          name: 'No publishable changes since v1',
+        }),
       ).toBeNull();
     });
   });
@@ -122,7 +128,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
       screen.getByRole('button', { name: 'Publish v3' }),
     ).not.toHaveAttribute('aria-disabled', 'true');
     expect(
-      screen.queryByRole('button', { name: 'No changes since v1' }),
+      screen.queryByRole('button', { name: 'No publishable changes since v1' }),
     ).toBeNull();
   });
 
@@ -158,7 +164,9 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
       ).toBeVisible();
       expect(published).toBe(true);
       expect(
-        await screen.findByRole('button', { name: 'No changes since v1' }),
+        await screen.findByRole('button', {
+          name: 'No publishable changes since v1',
+        }),
       ).toHaveAttribute('aria-disabled', 'true');
     },
   );
