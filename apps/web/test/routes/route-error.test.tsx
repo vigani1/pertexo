@@ -61,6 +61,7 @@ describe('a page that fails to load says what went wrong', () => {
       await screen.findByRole('heading', { name: 'Pertexo can’t be reached' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+    expect(screen.getByText('Offline · Reaching for the server')).toBeVisible();
   });
 
   it('explains a refused page instead of blaming the server', async () => {
@@ -73,6 +74,7 @@ describe('a page that fails to load says what went wrong', () => {
       }),
     ).toBeVisible();
     expect(screen.getByRole('link', { name: 'Go to Pertexo' })).toBeVisible();
+    expect(screen.getByText('403 · Held at the door')).toBeVisible();
   });
 
   it('keeps the error ID for a real server failure', async () => {
