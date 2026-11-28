@@ -18,6 +18,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import type { readDirectoryPeople } from '../../data/directory.api';
 import { directoryPeopleQueryOptions } from '../../data/directory.queries';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { DirectoryAdoptionDialog } from './adoption-dialog';
@@ -123,47 +124,13 @@ export function DirectoryPeople({
         }
       >
         {() => (
-          <RowList aria-label="Directory people">
-            {rows.map((person) => {
-              const canUnbindPerson =
-                editable &&
-                person.active &&
-                !person.deleted &&
-                person.boundUserId !== null;
-              return (
-                <Row
-                  frame="bare"
-                  lift="none"
-                  key={person.id}
-                  className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <p className="break-words font-medium">{person.userName}</p>
-                    <p className="break-all text-xs text-muted-foreground">
-                      {person.email}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {personStatus(person)}
-                    </p>
-                  </div>
-                  {canUnbindPerson ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setReview({
-                          directoryUserId: person.id,
-                          targetWorkspaceId,
-                        });
-                      }}
-                    >
-                      Review membership for {person.userName}
-                    </Button>
-                  ) : null}
-                </Row>
-              );
-            })}
-          </RowList>
+          <DirectoryPeopleRows
+            rows={rows}
+            editable={editable}
+            onReview={(directoryUserId) => {
+              setReview({ directoryUserId, targetWorkspaceId });
+            }}
+          />
         )}
       </QueryView>
       <LoadMore
@@ -185,5 +152,56 @@ export function DirectoryPeople({
         />
       )}
     </SettingRow>
+  );
+}
+
+function DirectoryPeopleRows({
+  rows,
+  editable,
+  onReview,
+}: Readonly<{
+  rows: Awaited<ReturnType<typeof readDirectoryPeople>>['items'];
+  editable: boolean;
+  onReview: (directoryUserId: string) => void;
+}>) {
+  return (
+    <RowList aria-label="Directory people">
+      {rows.map((person) => {
+        const canUnbindPerson =
+          editable &&
+          person.active &&
+          !person.deleted &&
+          person.boundUserId !== null;
+        return (
+          <Row
+            frame="bare"
+            lift="none"
+            key={person.id}
+            className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
+          >
+            <div className="min-w-0">
+              <p className="break-words font-medium">{person.userName}</p>
+              <p className="break-all text-xs text-muted-foreground">
+                {person.email}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {personStatus(person)}
+              </p>
+            </div>
+            {canUnbindPerson ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onReview(person.id);
+                }}
+              >
+                Review membership for {person.userName}
+              </Button>
+            ) : null}
+          </Row>
+        );
+      })}
+    </RowList>
   );
 }

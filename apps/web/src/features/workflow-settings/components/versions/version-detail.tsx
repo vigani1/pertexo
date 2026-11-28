@@ -69,13 +69,7 @@ export function VersionDetail({
         </h2>
         {live === undefined ? null : (
           <StatusMark tone={isLive ? 'success' : 'off'}>
-            {isLive
-              ? liveLabel
-              : version.versionNumber < live.versionNumber
-                ? newer === undefined
-                  ? 'Retired'
-                  : `Retired when v${String(newer.versionNumber)} was published`
-                : 'Not live'}
+            {versionStatus({ version, live, newer, liveLabel })}
           </StatusMark>
         )}
       </div>
@@ -143,6 +137,24 @@ export function VersionDetail({
       </section>
     </article>
   );
+}
+
+function versionStatus({
+  version,
+  live,
+  newer,
+  liveLabel,
+}: Readonly<{
+  version: HistoryVersion;
+  live: HistoryVersion;
+  newer: HistoryVersion | undefined;
+  liveLabel: string;
+}>) {
+  if (version.id === live.id) return liveLabel;
+  if (version.versionNumber >= live.versionNumber) return 'Not live';
+  return newer === undefined
+    ? 'Retired'
+    : `Retired when v${String(newer.versionNumber)} was published`;
 }
 
 /** The rarer moves wait in one menu, so the actions read at a glance. */

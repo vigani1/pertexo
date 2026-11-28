@@ -1,16 +1,11 @@
-import {
-  PageHeader,
-  PageHeaderActions,
-  PageHeaderTitle,
-} from '@/components/patterns/page-header';
-import { Link } from '@tanstack/react-router';
-import { buttonVariants } from '@/components/ui/button-variants';
+import { TriggersHeader } from '../components/triggers/header';
 import type { ComponentProps } from 'react';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
+  WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { PollingRows } from '../components/triggers/polling-rows';
@@ -89,6 +84,7 @@ function TriggersSession({
     pollingTitle,
     publicationKnown,
   } = publication;
+  const runLink = publishedRunLink(workspace, shownData(summary));
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName: TriggerStepName = (trigger, fallback) =>
@@ -123,11 +119,7 @@ function TriggersSession({
       <TriggersHeader
         versions={versions.data?.items}
         publishedVersionId={summary.data?.publishedVersionId}
-        {...(workspace.capabilities.includes('run:start') &&
-        workspace.status === 'active' &&
-        shownData(summary)?.lifecycleStatus !== 'archived'
-          ? { runFromBuild: { workspaceId: workspace.id, workflowId } }
-          : {})}
+        {...(runLink === undefined ? {} : { runFromBuild: runLink })}
       />
       <PublicationDiscovery discovery={publication} />
       <TriggersSection
@@ -141,10 +133,7 @@ function TriggersSession({
           publishedVersionId: summary.data?.publishedVersionId,
           form,
           formsPaused,
-          ...(workspace.status === 'active' &&
-          workspace.capabilities.includes('run:start')
-            ? { formLink: { workspaceId: workspace.id, workflowId } }
-            : {}),
+          ...(runLink === undefined ? {} : { formLink: runLink }),
           onFailure,
         }}
       />
@@ -162,45 +151,21 @@ function TriggersSession({
   );
 }
 
-/** What the tab is, and which published version its triggers come from. */
-function TriggersHeader({
-  versions,
-  publishedVersionId,
-  runFromBuild,
-}: Readonly<{
-  versions:
-    readonly Readonly<{ id: string; versionNumber: number }>[] | undefined;
-  publishedVersionId: string | null | undefined;
-  runFromBuild?: Readonly<{ workspaceId: string; workflowId: string }>;
-}>) {
-  const published = versions?.find(
-    (version) => version.id === publishedVersionId,
-  );
-  return (
-    <PageHeader>
-      <div className="flex flex-col gap-2">
-        <PageHeaderTitle size="section">Ways a run can start</PageHeaderTitle>
-        <p className="text-meta text-subtle-foreground">
-          {published === undefined
-            ? 'From the published version.'
-            : `From the published version, v${String(published.versionNumber)}.`}{' '}
-          Turning a schedule off stops new runs from it right away; the draft is
-          not touched.
-        </p>
-      </div>
-      {runFromBuild === undefined || publishedVersionId == null ? null : (
-        <PageHeaderActions>
-          <Link
-            to="/w/$workspaceId/workflows/$workflowId"
-            params={runFromBuild}
-            className={buttonVariants({ variant: 'outline' })}
-          >
-            Run in Build
-          </Link>
-        </PageHeaderActions>
-      )}
-    </PageHeader>
-  );
+function publishedRunLink(
+  workspace: AccessibleWorkspace,
+  workflow: WorkflowSummary | undefined,
+) {
+  if (
+    workflow?.publishedVersionId == null ||
+    workflow.lifecycleStatus === 'archived'
+  )
+    return undefined;
+  if (
+    workspace.status !== 'active' ||
+    !workspace.capabilities.includes('run:start')
+  )
+    return undefined;
+  return { workspaceId: workspace.id, workflowId: workflow.id };
 }
 
 type TriggerStepName = (

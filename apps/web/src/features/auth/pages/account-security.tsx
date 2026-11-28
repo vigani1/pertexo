@@ -9,7 +9,7 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { TwoFactorAction } from '../data/two-factor/two-factor.mutations';
 import { SkeletonRows } from '@/components/patterns/states/loading';
 import { Link } from '@tanstack/react-router';
@@ -117,11 +117,13 @@ function AccountSignInSettings({
   readState: TwoFactorReadState;
 }>) {
   const [action, setAction] = useState<TwoFactorAction>();
+  const twoFactorControl = useRef<HTMLButtonElement>(null);
   return (
     <>
       <AccountRecoveryAttention
         security={snapshot}
         readState={readState}
+        controlRef={twoFactorControl}
         onRegenerate={() => {
           setAction('regenerate');
         }}
@@ -138,6 +140,7 @@ function AccountSignInSettings({
           userId={userId}
           security={snapshot}
           readState={readState}
+          controlRef={twoFactorControl}
           action={action}
           onAction={setAction}
         />

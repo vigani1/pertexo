@@ -142,17 +142,14 @@ describe('workflow versions tab', () => {
     );
     await event.click(await screen.findByRole('menuitem', { name: 'Preview' }));
     const preview = await screen.findByRole('dialog', { name: 'v2' });
-    // Listed once among the steps and once as added since v1.
     expect(within(preview).getAllByText('Call API')).toHaveLength(2);
     expect(within(preview).getByText('added')).toBeVisible();
     expect(within(preview).queryByText('changed')).not.toBeInTheDocument();
     expect(within(preview).getByText('removed')).toBeVisible();
     expect(within(preview).getByText('Tidy fields')).toBeVisible();
-    // A step named after its type says the type once.
     expect(within(preview).getByText('Trigger')).toBeVisible();
     expect(within(preview).queryByText('Trigger · Webhook')).toBeNull();
   });
-
   it('compares any two versions by the steps added, removed or changed', async () => {
     const third = '77777777-7777-4777-8777-777777777777';
     const call = stepNode('call', 'http.request', 'Call API');
@@ -222,7 +219,6 @@ describe('workflow versions tab', () => {
       ),
     ).toBeVisible();
   });
-
   it('warns about the recovery copy and links the preserved unpublished draft after restore', async () => {
     installQueries();
     const copyId = '88888888-8888-4888-8888-888888888888';
@@ -251,7 +247,6 @@ describe('workflow versions tab', () => {
       `/w/${workspaceId}/workflows/${copyId}`,
     );
   });
-
   it('restores a version with a freshly read draft ETag', async () => {
     installQueries();
     mockServer.use(
