@@ -61,8 +61,8 @@ for (const viewport of screenshots === undefined
           name: 'Step panel',
         });
         await expect(
-          inspector.getByRole('heading', { name: 'Over 5,000?', exact: true }),
-        ).toBeVisible();
+          inspector.getByRole('textbox', { name: 'Label', exact: true }),
+        ).toHaveValue('Over 5,000?');
         await expect(step).toBeInViewport();
         await checkCanvas(page, 'build-step', theme);
       });
