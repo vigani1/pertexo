@@ -61,11 +61,13 @@ export function WorkflowHubBar({
     detail?: ReactNode;
     actions?: ReactNode;
     overflowActions?: ReactNode;
+    phoneOverflowActions?: ReactNode;
   }>;
 }>) {
   const { apiClient, userId, workspace, workflowId } = scope;
 
   const { glyph, presence, detail, actions, overflowActions } = slots;
+  const build = activeTab === 'build';
 
   const secondaryActions =
     workflow === undefined ? null : (
@@ -78,6 +80,7 @@ export function WorkflowHubBar({
         blocked={duplicateBlocked}
         compact={activeTab === 'build'}
         overflowActions={overflowActions}
+        phoneOverflowActions={slots.phoneOverflowActions}
         overflowRef={overflowRef}
       />
     );
@@ -88,14 +91,14 @@ export function WorkflowHubBar({
       className={cn(
         'lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-0 rounded-xl px-2 py-1 sm:gap-y-1 sm:py-2',
         activeTab === 'build'
-          ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]'
+          ? 'max-sm:gap-x-1 max-sm:py-0.5 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]'
           : 'min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]',
       )}
     >
       <div
         className={cn(
           'flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0',
-          activeTab === 'build' && 'xl:min-w-0',
+          build && 'max-sm:min-w-0 max-sm:gap-1 xl:min-w-0',
         )}
       >
         <Link
@@ -173,6 +176,7 @@ export function WorkflowHubBar({
       <div
         className={cn(
           'flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end',
+          build && 'max-sm:w-auto max-sm:flex-none max-sm:gap-0.5',
           actions === undefined && 'hidden',
         )}
       >
@@ -192,6 +196,7 @@ function HubSecondaryActions({
   blocked,
   compact,
   overflowActions,
+  phoneOverflowActions,
   overflowRef,
 }: Readonly<{
   apiClient: ApiClient;
@@ -201,6 +206,7 @@ function HubSecondaryActions({
   blocked: boolean;
   compact: boolean;
   overflowActions: ReactNode;
+  phoneOverflowActions: ReactNode;
   overflowRef: RefObject<HTMLButtonElement | null> | undefined;
 }>) {
   const [dialog, setDialog] = useState<'export' | 'cases' | 'duplicate'>();
@@ -286,10 +292,14 @@ function HubSecondaryActions({
           </DropdownMenuGroup>
           {/* The page's own controls join the menu only on phones; hidden
               items would still take arrow-key turns, so they aren't rendered. */}
-          {overflowActions === undefined ? null : (
+          {overflowActions === undefined &&
+          (!phone || phoneOverflowActions === undefined) ? null : (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuGroup>{overflowActions}</DropdownMenuGroup>
+              <DropdownMenuGroup>
+                {phone ? phoneOverflowActions : null}
+                {overflowActions}
+              </DropdownMenuGroup>
             </>
           )}
         </DropdownMenuContent>

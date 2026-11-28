@@ -1,13 +1,15 @@
-import type { WorkflowRunSummary } from '@pertexo/contracts';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Link } from '@tanstack/react-router';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
+  canRequestRunCancellation,
   describeRunStatus,
   isActiveRunStatus,
 } from '@/features/workflow-runs/public';
-import { formatClock } from '@/lib/format/time';
+import { CancelRunDialog } from '@/features/workflow-runs/workflow-runs-views.public';
+import { formatShortTime } from '@/lib/format/time';
 import { useEditorSession } from '../../model/state/context';
 import type { useLastRun } from '../../hooks/use-last-run';
 import type { LastRunOverlay } from '../../model/canvas/last-run';
@@ -32,7 +34,18 @@ export function LastRunLine({
   return (
     <div className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 font-mono text-caption text-subtle-foreground">
       <StatusMark tone={look.tone}>
-        {runTimeLabel(run, look.label, live)}
+        {live ? (
+          run.startedAt === null ? (
+            look.label
+          ) : (
+            `Live run started ${formatShortTime(run.startedAt)}`
+          )
+        ) : (
+          <>
+            <span className="max-sm:sr-only">{look.label} · </span>
+            Last run {formatShortTime(run.createdAt)}
+          </>
+        )}
       </StatusMark>
       {!live && shown ? (
         <span className="max-xl:hidden">
@@ -57,20 +70,11 @@ export function LastRunLine({
           {shown ? 'Hide results' : 'Show results'}
         </Button>
       ) : null}
-      {live ? <LiveProgress overlay={overlay} look={look} /> : null}
+      {live ? (
+        <LiveProgress key={run.id} overlay={overlay} look={look} />
+      ) : null}
     </div>
   );
-}
-
-function runTimeLabel(
-  run: WorkflowRunSummary,
-  status: string,
-  live: boolean,
-): string {
-  if (!live) return `${status} · last run ${formatClock(run.createdAt)}`;
-  return run.startedAt === null
-    ? status
-    : `Live run started ${formatClock(run.startedAt)}`;
 }
 
 function LiveProgress({
@@ -80,20 +84,47 @@ function LiveProgress({
   overlay: LastRunOverlay;
   look: ReturnType<typeof describeRunStatus>;
 }>) {
+  const { scope, editing } = useEditorSession();
+  const { apiClient, userId, workspace } = scope;
+  const [stopOpen, setStopOpen] = useState(false);
   const [step, ...others] = overlay.currentSteps;
   const current = step === undefined ? look.label : `Now at ${step.title}`;
   let detail;
   if (others.length > 0) detail = `+${String(others.length)} parallel`;
   else if (step?.ordinal != null) detail = `Step ${String(step.ordinal)}`;
   return (
-    <div
-      role="status"
-      className="lens flex min-w-0 items-center gap-2 rounded-lg px-3 py-2"
-    >
-      <StatusMark tone={look.tone}>
-        {overlay.run.cancelRequestedAt === null ? current : 'Stopping…'}
-      </StatusMark>
-      {detail === undefined ? null : <span>{detail}</span>}
+    <div className="lens flex min-w-0 items-center gap-2 rounded-lg px-3 py-2">
+      <div
+        role="status"
+        className="flex min-w-0 flex-wrap items-center gap-x-2"
+      >
+        <StatusMark tone={look.tone}>
+          {overlay.run.cancelRequestedAt === null ? current : 'Stopping…'}
+        </StatusMark>
+        {detail === undefined ? null : <span>{detail}</span>}
+      </div>
+      {canRequestRunCancellation(workspace, overlay.run) ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setStopOpen(true)}
+        >
+          Stop
+        </Button>
+      ) : null}
+      {stopOpen ? (
+        <CancelRunDialog
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspace.id}
+          runId={overlay.run.id}
+          workflowName={editing.workflow?.name ?? 'This workflow'}
+          from="canvas"
+          open={stopOpen}
+          onOpenChange={setStopOpen}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import {
   csrfToken,
   firstRunId,
@@ -63,6 +64,8 @@ for (const initialRead of ['success', 'failure'] as const) {
     await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
     await page.getByRole('button', { name: 'Replay', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Replay this run' });
+    await expect(dialog).toHaveAttribute('data-side', 'right');
+    expect((await dialog.boundingBox())?.width).toBe(375);
     const editor = dialog.getByLabel('Replay input (JSON)');
     const submit = dialog.getByRole('button', { name: 'Replay run' });
     const replacement = '{"incident":"INC-42"}';
@@ -117,4 +120,50 @@ for (const initialRead of ['success', 'failure'] as const) {
       release();
     }
   });
+}
+
+const capture = process.env.PERTEXO_WEFT_SHOTS;
+if (capture !== undefined) {
+  for (const [width, height] of [
+    [390, 844],
+    [768, 1024],
+    [1024, 768],
+    [1280, 900],
+    [1440, 900],
+  ] as const) {
+    for (const colorScheme of ['dark', 'light'] as const) {
+      test(`Replay framing at ${String(width)}px in ${colorScheme}`, async ({
+        context,
+        page,
+        baseURL,
+      }) => {
+        await context.addCookies([
+          {
+            name: 'pertexo_csrf',
+            value: csrfToken,
+            url: baseURL ?? 'http://127.0.0.1:4173',
+          },
+        ]);
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ colorScheme });
+        await installRoutes(page);
+        await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+        await page.getByRole('button', { name: 'Replay', exact: true }).click();
+        const drawer = page.getByRole('dialog', { name: 'Replay this run' });
+        await expect(
+          drawer.getByRole('button', { name: 'Replay run' }),
+        ).toBeEnabled();
+        await expect(drawer).toHaveAttribute('data-side', 'right');
+        const frame = await drawer.boundingBox();
+        if (frame === null) throw new Error('Replay drawer must be visible');
+        if (width < 600) expect(frame.width).toBe(width);
+        else expect(width - (frame.x + frame.width)).toBeCloseTo(12);
+        await mkdir(capture, { recursive: true });
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({
+          path: `${capture}/replay-${String(width)}-${colorScheme}.png`,
+        });
+      });
+    }
+  }
 }

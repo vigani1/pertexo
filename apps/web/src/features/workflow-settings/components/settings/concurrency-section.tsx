@@ -21,6 +21,7 @@ import { concurrencyQueryOptions } from '../../data/concurrency.queries';
 import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
+import { shownData } from '@/lib/api/error-copy';
 import { formatCount } from '@/lib/format/count';
 type Scope = Readonly<{
   apiClient: ApiClient;
@@ -104,7 +105,7 @@ function ConcurrencyEditor({
   }
   return (
     <form
-      className="flex flex-col gap-5"
+      className="flex w-full min-w-0 flex-col items-start gap-2 sm:w-56"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -112,7 +113,7 @@ function ConcurrencyEditor({
     >
       <LabelledField
         id="workflow-concurrency-limit"
-        label="Runs at once"
+        label={<span className="sr-only">Runs at once</span>}
         description="Leave blank for no limit of its own."
         error={validation.error('limit')}
       >
@@ -193,14 +194,11 @@ function limitSummary(settings: WorkflowConcurrencySettings) {
 }
 function ConcurrencyPolicy({
   settings,
-  scope,
+  canUpdate,
 }: Readonly<{
   settings: WorkflowConcurrencySettings;
-  scope: Scope;
+  canUpdate: boolean;
 }>) {
-  const canUpdate =
-    scope.workspace.status === 'active' &&
-    scope.workspace.capabilities.includes('workflow:update');
   return (
     <div className="flex flex-col gap-5">
       <SettingDetails
@@ -212,11 +210,6 @@ function ConcurrencyPolicy({
               : ' Your role or the workspace’s state doesn’t allow changing it.'}
           </>
         }
-        {...(canUpdate
-          ? {
-              editor: <ConcurrencyEditor settings={settings} scope={scope} />,
-            }
-          : {})}
         rules={
           <>
             <p>
@@ -265,10 +258,19 @@ export function ConcurrencySection(scope: Scope) {
     ),
     enabled: canRead,
   });
+  const settings = shownData(query);
+  const canUpdate =
+    scope.workspace.status === 'active' &&
+    scope.workspace.capabilities.includes('workflow:update');
   return (
     <SettingRow
       title="Runs at once"
       description="How many runs of this workflow can go at once."
+      action={
+        settings !== undefined && canUpdate ? (
+          <ConcurrencyEditor settings={settings} scope={scope} />
+        ) : undefined
+      }
     >
       {canRead ? (
         <QueryView
@@ -277,7 +279,7 @@ export function ConcurrencySection(scope: Scope) {
           failure={settingsReadFailure}
         >
           {(settings) => (
-            <ConcurrencyPolicy settings={settings} scope={scope} />
+            <ConcurrencyPolicy settings={settings} canUpdate={canUpdate} />
           )}
         </QueryView>
       ) : (

@@ -10,6 +10,7 @@ import {
   formatDateTime,
   formatDayHeading,
   formatRelativeTime,
+  formatShortTime,
 } from '@/lib/format/time';
 
 /** The parts of a paged (infinite) query a recent-activity list reads. */
@@ -157,6 +158,7 @@ export function RecentLogEntry({
   action,
   at,
   meta,
+  timeStyle = 'relative',
 }: Readonly<{
   tone: StatusTone;
   label: ReactNode;
@@ -165,6 +167,7 @@ export function RecentLogEntry({
   action?: ReactNode;
   /** When it happened, as an ISO instant. */
   at: string;
+  timeStyle?: 'relative' | 'clock';
   /** One mono line under the time, e.g. "HTTP 202 · 321 B". */
   meta?: string;
 }>) {
@@ -182,7 +185,7 @@ export function RecentLogEntry({
       </div>
       <p className="flex flex-col items-end gap-0.5 text-right font-mono text-caption text-subtle-foreground">
         <time dateTime={at} title={formatDateTime(at)}>
-          {formatRelativeTime(at)}
+          {timeStyle === 'clock' ? formatShortTime(at) : formatRelativeTime(at)}
         </time>
         {meta === undefined ? null : <span>{meta}</span>}
       </p>

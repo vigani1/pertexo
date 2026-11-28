@@ -18,6 +18,7 @@ import { DeclarationDialog } from '../callable/declaration-dialog';
 export function EditorCommandBar({
   shortcuts,
   secondaryMenuItems,
+  phoneMenuItems,
   moreRef,
   onRetrySave,
   onReviewConflict,
@@ -28,6 +29,7 @@ export function EditorCommandBar({
 }: Readonly<{
   shortcuts: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
   secondaryMenuItems: ReactNode;
+  phoneMenuItems: ReactNode;
   moreRef: RefObject<HTMLButtonElement | null>;
   onRetrySave: () => void;
   onReviewConflict: () => void;
@@ -58,6 +60,7 @@ export function EditorCommandBar({
         overflowRef={moreRef}
         slots={{
           presence,
+          phoneOverflowActions: phoneMenuItems,
           overflowActions: (
             <>
               <DialogTrigger

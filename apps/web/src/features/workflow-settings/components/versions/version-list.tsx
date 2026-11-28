@@ -23,6 +23,7 @@ export function VersionList({
   selectedId,
   onSelect,
   draftLink,
+  draftSavedAt,
 }: Readonly<{
   versions: readonly HistoryVersion[];
   liveVersionId: string | null;
@@ -30,6 +31,7 @@ export function VersionList({
   selectedId: string | undefined;
   onSelect: (version: HistoryVersion) => void;
   draftLink: Readonly<{ workspaceId: string; workflowId: string }>;
+  draftSavedAt: string | undefined;
 }>) {
   return (
     <nav aria-label="Versions" className="flex flex-col">
@@ -52,7 +54,19 @@ export function VersionList({
                   : `Draft · candidate v${String(versions[0].versionNumber + 1)}`}
               </span>
               <span className="block text-meta text-subtle-foreground">
-                Edit it in Build, then publish
+                {draftSavedAt === undefined ? (
+                  'Edit it in Build, then publish'
+                ) : (
+                  <>
+                    Saved{' '}
+                    <time
+                      dateTime={draftSavedAt}
+                      title={formatDateTime(draftSavedAt)}
+                    >
+                      {formatMoment(draftSavedAt)}
+                    </time>
+                  </>
+                )}
               </span>
             </span>
           </DetailRowControl>

@@ -21,7 +21,7 @@ import {
 // screenshot shows the states the core-flow pages are designed around.
 
 export const failedRunId = '20000000-0000-4000-8000-000000000001';
-const liveRunId = '20000000-0000-4000-8000-000000000002';
+export const liveRunId = '20000000-0000-4000-8000-000000000002';
 export const approvalId = '20000000-0000-4000-8000-000000000003';
 const versionId = '20000000-0000-4000-8000-000000000004';
 const syncWorkflowId = '20000000-0000-4000-8000-000000000005';
@@ -140,6 +140,7 @@ export async function installCoreFlowRoutes(
   page: Page,
   options: Readonly<{
     live?: boolean;
+    canStop?: boolean;
     /** The draft on the canvas; the invoice workflow unless given. */
     graph?: ReturnType<typeof invoiceGraph>;
   }> = {},
@@ -160,7 +161,10 @@ export async function installCoreFlowRoutes(
         ...workspace,
         role: 'owner',
         capabilities: [
-          ...workspace.capabilities,
+          ...workspace.capabilities.filter(
+            (capability) =>
+              options.canStop !== false || capability !== 'run:cancel',
+          ),
           'workflow:create',
           'run:replay',
           'member:read',
@@ -209,9 +213,18 @@ export async function installCoreFlowRoutes(
   await page.route(`**/v1/workspaces/*/runs/${failedRunId}`, (route) =>
     route.fulfill({ json: { run: failedRun, nodes: failedNodes() } }),
   );
+  let cancelRequestedAt: string | null = null;
   await page.route(`**/v1/workspaces/*/runs/${liveRunId}`, (route) =>
-    route.fulfill({ json: { run: liveRun, nodes: liveNodes() } }),
+    route.fulfill({
+      json: { run: { ...liveRun, cancelRequestedAt }, nodes: liveNodes() },
+    }),
   );
+  await page.route(`**/v1/workspaces/*/runs/${liveRunId}/cancel`, (route) => {
+    cancelRequestedAt = new Date().toISOString();
+    return route.fulfill({
+      json: { run: { ...liveRun, cancelRequestedAt }, alreadyRequested: false },
+    });
+  });
   await page.route(`**/v1/workspaces/*/pending-tasks?**`, (route) => {
     const kind = new URL(route.request().url()).searchParams.get('kind');
     const items = kind === 'input_request' ? [] : tasks;

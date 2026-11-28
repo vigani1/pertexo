@@ -3,7 +3,10 @@ import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { expect, test, type Page } from '../../support/fixtures';
 import { installAssistantProposal } from '../../workspace/core-flow-assistant-fixture';
 import { installAgentRun, task } from './weft-agent-fixture';
-import { installCoreFlowRoutes } from '../../workspace/core-flow-layout-fixture';
+import {
+  installCoreFlowRoutes,
+  liveRunId,
+} from '../../workspace/core-flow-layout-fixture';
 import { addCsrfCookie, editorUrl } from '../support';
 
 const screenshots = process.env.PERTEXO_CANVAS_SHOTS;
@@ -75,6 +78,9 @@ for (const viewport of screenshots === undefined
         await expect(page.getByText('Now at Post to ERP')).toBeVisible();
         await expect(page.getByText('Step 4', { exact: true })).toBeVisible();
         await expect(page.getByText(/Live run started/u)).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Stop', exact: true }),
+        ).toBeVisible();
         if (viewport.width === 1024) {
           const receipt = page.getByTestId('rf__node-receipt');
           await expect
@@ -104,7 +110,16 @@ for (const viewport of screenshots === undefined
         await installCoreFlowRoutes(page);
         await installAssistantProposal(page);
         await page.goto(editorUrl);
-        await page.getByRole('button', { name: 'Ask the assistant' }).click();
+        if (viewport.width < 640) {
+          await page
+            .getByRole('button', { name: 'More workflow actions' })
+            .click();
+          await page
+            .getByRole('menuitem', { name: 'Ask the assistant' })
+            .click();
+        } else {
+          await page.getByRole('button', { name: 'Ask the assistant' }).click();
+        }
         const panel = page.getByRole('complementary', { name: 'Assistant' });
         await panel
           .getByLabel('What should the workflow do?')
@@ -162,3 +177,92 @@ for (const viewport of screenshots === undefined
     });
   }
 }
+
+test('the phone hub keeps identity and commands above the tabs and fits from the canvas top', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await addCsrfCookie(context);
+  await installCoreFlowRoutes(page);
+  await page.goto(editorUrl);
+
+  const back = page.getByRole('link', { name: 'Back to workflows' });
+  const run = page.getByRole('button', { name: 'Test and run actions' });
+  const tabs = page.getByRole('navigation', { name: 'Workflow sections' });
+  const fit = page.getByRole('button', { name: 'Fit workflow to screen' });
+  await expect(page.getByTestId('rf__node-intake')).toBeInViewport();
+  await expect(fit).toHaveCount(1);
+  const title = page.getByRole('heading', {
+    name: 'Invoice intake',
+    exact: true,
+  });
+  await expect(title).toBeVisible();
+  expect(
+    await title.evaluate(
+      (heading) => heading.scrollWidth <= heading.clientWidth,
+    ),
+  ).toBe(true);
+  const [identity, actions, navigation, fitButton] = await Promise.all(
+    [back, run, tabs, fit].map((control) => control.boundingBox()),
+  );
+  if (
+    identity == null ||
+    actions == null ||
+    navigation == null ||
+    fitButton == null
+  )
+    throw new Error('The two header rows and Fit must be visible');
+  expect(actions.y).toBeLessThan(identity.y + identity.height);
+  expect(navigation.y).toBeGreaterThan(actions.y);
+  expect(fitButton.y).toBeGreaterThanOrEqual(navigation.y + navigation.height);
+  expect(fitButton.y).toBeLessThan(navigation.y + navigation.height + 32);
+  expect(fitButton.x + fitButton.width).toBeGreaterThan(370);
+
+  const zoom = page.getByRole('status', { name: 'Zoom' });
+  const previous = await zoom.textContent();
+  await fit.click();
+  await expect(zoom).not.toHaveText(previous ?? '');
+});
+
+test('stops the current run through the standard cancellation command', async ({
+  page,
+  context,
+}) => {
+  await addCsrfCookie(context);
+  await installCoreFlowRoutes(page, { live: true });
+  await page.goto(editorUrl);
+  const stop = page.getByRole('button', { name: 'Stop', exact: true });
+  await stop.click();
+  const confirmation = page.getByRole('dialog', { name: 'Cancel this run?' });
+  await expect(
+    confirmation.getByText(/already finished aren’t undone/u),
+  ).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Keep running' }).click();
+  await expect(stop).toBeFocused();
+  await stop.click();
+  const sent = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().endsWith(`/runs/${liveRunId}/cancel`),
+  );
+  await confirmation.getByRole('button', { name: 'Cancel run' }).click();
+  expect((await sent).postDataJSON()).toEqual({
+    reason: 'Canceled from the canvas',
+  });
+  await expect(page.getByText('Stopping…', { exact: true })).toBeVisible();
+  await expect(stop).toHaveCount(0);
+});
+
+test('shows progress without Stop when run cancellation is unavailable', async ({
+  page,
+  context,
+}) => {
+  await addCsrfCookie(context);
+  await installCoreFlowRoutes(page, { live: true, canStop: false });
+  await page.goto(editorUrl);
+  await expect(page.getByText('Now at Post to ERP')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Stop', exact: true }),
+  ).toHaveCount(0);
+});

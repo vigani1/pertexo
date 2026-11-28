@@ -19,6 +19,7 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/patterns/states/empty';
+import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { ListDetail } from '@/components/patterns/lists/list-detail';
@@ -98,6 +99,11 @@ export function WorkflowVersionsPage({
   const [chosen, setChosen] = useState<
     Readonly<{ id: string | undefined; showing: 'list' | 'detail' }>
   >({ id: undefined, showing: 'list' });
+  const draft = useQuery({
+    ...workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
+    enabled: (shownData(versions)?.items.length ?? 0) > 0,
+    select: (snapshot) => snapshot.draft.updatedAt,
+  });
   const workflow = shownData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = shownData(versions)?.items;
@@ -143,6 +149,7 @@ export function WorkflowVersionsPage({
                     setChosen({ id: version.id, showing: 'detail' });
                   }}
                   draftLink={{ workspaceId: workspace.id, workflowId }}
+                  draftSavedAt={shownData(draft)}
                 />
               }
               detail={

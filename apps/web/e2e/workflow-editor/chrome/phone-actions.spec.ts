@@ -113,14 +113,11 @@ for (const screen of [
           (label) => label.scrollWidth <= label.clientWidth,
         ),
       ).toBe(true);
+      await expect(
+        page.getByRole('menuitem', { name: 'Ask the assistant', exact: true }),
+      ).toBeVisible();
       await page.keyboard.press('Escape');
-      const assistant = header.getByRole('button', {
-        name: 'Ask the assistant',
-        exact: true,
-      });
-      const boxes = await Promise.all(
-        [more, assistant, run, publish].map(bounds),
-      );
+      const boxes = await Promise.all([more, run, publish].map(bounds));
       const baseline = boxes[0];
       if (baseline === undefined) throw new Error('Missing command row');
       for (const box of boxes) {
@@ -129,12 +126,13 @@ for (const screen of [
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(screen.width);
       }
-      expect((await bounds(header)).height).toBeLessThanOrEqual(220);
+      expect((await bounds(header)).height).toBeLessThanOrEqual(120);
       for (const name of [
         'Export…',
         'Input cases',
         'Duplicate…',
         'Workflow contract',
+        'Ask the assistant',
       ])
         await expect(
           header.getByRole('button', { name, exact: true }),

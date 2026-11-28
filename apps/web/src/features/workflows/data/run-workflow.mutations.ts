@@ -15,10 +15,10 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 
 /**
- * Runs a workflow's published version from the list, with an empty input like
+ * Runs a workflow's published version with an empty input like
  * Build's "Run published version", then opens the new run. An unconfirmed
  * start keeps its idempotency key, so Try again can't start it twice. A start
- * confirmed after you left the list, or switched workspace, only says so: it
+ * confirmed after you left the page, or switched workspace, only says so: it
  * doesn't take you back.
  */
 export function useRunWorkflow({
@@ -37,7 +37,7 @@ export function useRunWorkflow({
   const [pendingId, setPendingId] = useState<string>();
   const busy = useRef(false);
   const unconfirmed = useRef(new Map<string, CommandKey>());
-  // The list, in one workspace, that a start's answer may still act on.
+  // The page, in one workspace, that a start's answer may still act on.
   const owner = useRef<symbol | undefined>(undefined);
 
   useEffect(() => {

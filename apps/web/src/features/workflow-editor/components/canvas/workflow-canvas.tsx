@@ -30,7 +30,6 @@ import type { PortRef } from '../../model/graph/workflow-graph-commands';
 import { useEditorStoreApi } from '../../model/state/context';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
-import { useCanvasFraming } from '../../hooks/canvas/use-framing';
 import { CanvasZoomLens } from './zoom-lens';
 import { CanvasToolbar } from './canvas-toolbar';
 import { LaneBands } from './lane-bands';
@@ -72,6 +71,7 @@ type WorkflowCanvasProps = Readonly<{
   overlays: CanvasOverlays;
   samples?: readonly StepSampleMetadata[] | undefined;
   containerRef: RefObject<HTMLDivElement | null>;
+  onFit: () => void;
   children?: ReactNode;
   actions: Readonly<{
     onSelectNodes: (nodeIds: readonly string[]) => void;
@@ -101,7 +101,6 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
     onCanvasNodesChange,
     onEdgesChange,
     linkGestures,
-    fit,
     children,
   } = useCanvasInteraction(props);
   return (
@@ -165,19 +164,12 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           className="!overflow-clip !bg-transparent workflow-canvas-colors"
         >
           <LaneBands proposal={props.overlays.proposal} />
-          <CanvasZoomLens
-            editable={editable}
-            onFit={() => {
-              fit({ animate: true });
-            }}
-          />
+          <CanvasZoomLens editable={editable} onFit={props.onFit} />
           <CanvasToolbar
             editable={editable}
             containerRef={containerRef}
             onAddStep={props.actions.onAddStep}
-            onFit={() => {
-              fit({ animate: true });
-            }}
+            onFit={props.onFit}
           />
         </ReactFlow>
       </CanvasActionsContext>
@@ -210,7 +202,6 @@ function useCanvasInteraction({
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
   const store = useEditorStoreApi();
   const { screenToFlowPosition } = useReactFlow();
-  const fit = useCanvasFraming(containerRef, overlays.proposal !== undefined);
   const { projection, onNodesChange } = useCanvasProjection({
     definitions,
     overlays,
@@ -316,7 +307,6 @@ function useCanvasInteraction({
     onCanvasNodesChange,
     onEdgesChange,
     linkGestures,
-    fit,
     children,
   } as const;
 }

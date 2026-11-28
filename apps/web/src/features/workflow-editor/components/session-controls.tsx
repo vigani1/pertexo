@@ -2,6 +2,7 @@ import { useEditorSession } from '../model/state/context';
 
 import type { ReactNode } from 'react';
 import { SparklesIcon } from 'lucide-react';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -75,6 +76,14 @@ export function SessionCommandBar({
       <EditorCommandBar
         presence={headerPresence}
         moreRef={chrome.overflowRef}
+        phoneMenuItems={
+          canPropose ? (
+            <DropdownMenuItem onClick={chrome.openProposal}>
+              <SparklesIcon aria-hidden="true" />
+              Ask the assistant
+            </DropdownMenuItem>
+          ) : undefined
+        }
         secondaryMenuItems={
           paused ? null : (
             <IssuesMenuItem
@@ -106,11 +115,12 @@ export function SessionCommandBar({
                   {...{ [ASSISTANT_TRIGGER_ATTRIBUTE]: '' }}
                   variant="outline"
                   size="sm"
+                  className="max-sm:hidden"
                   aria-label="Ask the assistant"
                   onClick={chrome.openProposal}
                 >
                   <SparklesIcon aria-hidden="true" />
-                  <span className="hidden sm:inline">Ask the assistant</span>
+                  Ask the assistant
                 </Button>
               ) : null}
               <WorkflowCommandActions

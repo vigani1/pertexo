@@ -8,7 +8,7 @@
   color-scheme:dark;
   --ground:#0b0d0f;--bg:#111316;--surface:#1a1c1f;--raised:#212428;--overlay:#282a2d;
   --line:rgba(255,255,255,.075);--line-2:rgba(255,255,255,.14);
-  --tx:#e2e2e6;--tx-2:#bac9cc;--tx-3:#7f8b8e;
+  --tx:#e2e2e6;--tx-2:#bac9cc;--tx-3:#849094;
   --cyan:#00e5ff;--ice:#c3f5ff;--lav:#d0bcff;--sal:#ffb4ab;--mint:#8fe3c0;--amb:#f3c677;--ink:#001f24;
   --display:"Bricolage Grotesque","Hanken Grotesk",ui-sans-serif,system-ui,sans-serif;
   --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -734,6 +734,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
     <div class="sw added"><i style="background:#8fe3c0"></i><div><b>Mint</b><span>#8fe3c0</span><em>Succeeded, healthy, enabled</em></div></div>
     <div class="sw added"><i style="background:#f3c677"></i><div><b>Amber</b><span>#f3c677</span><em>Needs attention: degraded, unknown outcome, reauthorize</em></div></div>
     <div class="sw added"><i style="background:#212428"></i><div><b>Raised</b><span>#212428</span><em>Selected rows, pressed controls</em></div></div>
+    <div class="sw added"><i aria-hidden="true" style="display:grid;place-items:center;background:var(--raised);color:var(--tx-3)">Aa</i><div><b>Tertiary ink</b><span>#849094</span><em>4.8:1 on raised surfaces</em></div></div>
   </div>
 
   <h4>Type</h4>
@@ -775,7 +776,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
 
   <h4 style="margin-top:34px">Tokens to add to <code>globals.css</code></h4>
 <pre class="code"><span class="c">/* keep every existing token; add: */</span>
-<span class="k">--surface-raised</span>: <span class="v">#212428</span>;   <span class="k">--overlay</span>: <span class="v">var(--popover)</span>;   <span class="k">--text-tertiary</span>: <span class="v">#7f8b8e</span>;
+<span class="k">--surface-raised</span>: <span class="v">#212428</span>;   <span class="k">--overlay</span>: <span class="v">var(--popover)</span>;   <span class="k">--text-tertiary</span>: <span class="v">#849094</span>; <span class="c">/* keeps at least 4.5:1 on raised surfaces */</span>
 <span class="k">--success</span>: <span class="v">#8fe3c0</span>;  <span class="k">--warning</span>: <span class="v">#f3c677</span>;  <span class="k">--danger</span>: <span class="v">var(--destructive)</span>;
 <span class="k">--live</span>: <span class="v">var(--primary)</span>;  <span class="k">--pending</span>: <span class="v">var(--secondary)</span>;
 <span class="k">--radius-sm</span>: <span class="v">6px</span>;  <span class="k">--radius-md</span>: <span class="v">10px</span>;  <span class="k">--radius-lg</span>: <span class="v">14px</span>;  <span class="k">--radius-xl</span>: <span class="v">18px</span>;   <span class="c">/* md ≠ lg any more */</span>
