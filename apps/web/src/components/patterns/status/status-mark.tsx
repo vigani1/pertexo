@@ -22,6 +22,7 @@ const statusVariants = cva(
   'inline-flex shrink-0 items-center gap-1.5 leading-none whitespace-nowrap',
   {
     variants: {
+      appearance: { track: 'size-3.5 bg-background' },
       typography: {
         default: 'text-meta',
         label: 'font-sans text-label',
@@ -51,6 +52,7 @@ export function StatusMark({
   still = false,
   display = 'word',
   label,
+  appearance,
   typography,
   emphasis,
   className,
@@ -75,7 +77,7 @@ export function StatusMark({
       role={named ? 'img' : undefined}
       aria-label={named ? label : undefined}
       aria-hidden={display === 'mark' && !named ? true : undefined}
-      className={cn(statusVariants({ typography, emphasis }), className)}
+      className={cn(statusVariants({ appearance, typography, emphasis }), className)}
       {...props}
     >
       <span
