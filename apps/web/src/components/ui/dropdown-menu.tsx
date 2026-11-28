@@ -91,13 +91,18 @@ export function DropdownMenuLinkItem({
 
 export function DropdownMenuLabel({
   className,
+  appearance = 'caption',
   ...props
-}: MenuPrimitive.GroupLabel.Props) {
+}: MenuPrimitive.GroupLabel.Props &
+  Readonly<{ appearance?: 'caption' | 'identity' }>) {
   return (
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       className={cn(
-        'px-2 py-1.5 font-mono text-caption tracking-wide text-subtle-foreground uppercase',
+        'px-2 py-1.5 text-caption text-subtle-foreground',
+        appearance === 'identity'
+          ? 'font-sans'
+          : 'font-mono tracking-wide uppercase',
         className,
       )}
       {...props}

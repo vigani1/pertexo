@@ -23,7 +23,7 @@ const titleVariants = cva('leading-tight', {
   variants: {
     size: {
       page: 'font-display text-4xl [--display-width:80%] sm:text-display',
-      hero: 'font-display text-4xl [--display-width:80%] sm:text-5xl',
+      hero: 'font-display text-4xl [--display-width:78%] font-bold sm:text-5xl',
       section: 'font-heading text-section font-semibold',
       detail: 'font-display text-3xl [--display-width:78%] sm:text-display',
     },
@@ -68,12 +68,17 @@ export function PageHeaderMeta({ className, ...props }: ComponentProps<'div'>) {
 
 export function PageHeaderActions({
   className,
+  appearance,
   ...props
-}: ComponentProps<'div'>) {
+}: ComponentProps<'div'> & Readonly<{ appearance?: 'floating' | undefined }>) {
   return (
     <div
       data-slot="page-header-actions"
-      className={cn('flex flex-wrap items-center gap-2', className)}
+      className={cn(
+        'flex flex-wrap items-center gap-2',
+        appearance === 'floating' && 'lens rounded-2xl',
+        className,
+      )}
       {...props}
     />
   );

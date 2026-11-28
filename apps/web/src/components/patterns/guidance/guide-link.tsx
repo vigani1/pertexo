@@ -7,14 +7,21 @@ export function GuideLink({
   href,
   children,
   className,
-}: Readonly<{ href: string; children: ReactNode; className?: string }>) {
+  size = 'default',
+}: Readonly<{
+  href: string;
+  children: ReactNode;
+  className?: string;
+  size?: 'default' | 'compact';
+}>) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-accent-foreground underline-offset-4 outline-none hover:underline focus-ring',
+        'inline-flex items-center gap-1.5 rounded-sm font-medium text-accent-foreground underline-offset-4 outline-none hover:underline focus-ring',
+        size === 'compact' ? 'text-xs' : 'text-sm',
         className,
       )}
     >

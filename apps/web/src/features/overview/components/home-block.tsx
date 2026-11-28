@@ -64,7 +64,8 @@ export function HomeBlockBody({
         <SkeletonLines
           label={`Loading ${title.toLowerCase()}`}
           lines={3}
-          className="border-t border-surface-ink/6 py-5"
+          divided
+          className="py-5"
         />
       }
       error={(failure) => (

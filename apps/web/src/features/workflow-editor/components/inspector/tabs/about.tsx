@@ -47,7 +47,7 @@ export function AboutTab({
           {familyWord(step.family)}
         </span>
         {guide === undefined ? null : (
-          <GuideLink href={guide} className="mt-1.5 text-xs">
+          <GuideLink href={guide} size="compact" className="mt-1.5">
             How {step.name} works
           </GuideLink>
         )}

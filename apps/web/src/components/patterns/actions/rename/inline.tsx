@@ -73,10 +73,9 @@ export function InlineRename({
           element.focus();
         }}
         type="button"
-        variant="ghost"
+        variant="quiet"
         size="icon-sm"
         aria-label={`Rename ${form.field.subject}`}
-        className="text-subtle-foreground hover:text-foreground"
         onClick={() => {
           setKnotted(false);
           setEditing(true);

@@ -1,5 +1,8 @@
 import { cva } from 'class-variance-authority';
 
+export const navigationTileClass =
+  "relative grid size-10 shrink-0 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-select-raised hover:text-foreground focus-ring aria-[current=page]:bg-select-raised aria-[current=page]:text-foreground [&_svg:not([class*='size-'])]:size-[1.15rem]";
+
 // `primary` is the one filled action per screen; `default` is the tinted
 // everyday action. Destructive intent keeps its own variant everywhere.
 export const buttonVariants = cva(
@@ -15,6 +18,20 @@ export const buttonVariants = cva(
           'border-border bg-select text-foreground hover:bg-select-raised aria-expanded:bg-select-raised',
         ghost:
           'text-muted-foreground hover:bg-select-raised hover:text-foreground aria-expanded:bg-select-raised aria-expanded:text-foreground aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground',
+        quiet:
+          'text-subtle-foreground hover:bg-select-raised hover:text-foreground aria-expanded:bg-select-raised aria-expanded:text-foreground aria-[current=page]:bg-select-strong aria-[current=page]:text-foreground',
+        'destructive-ghost':
+          'text-destructive hover:bg-select-raised hover:text-destructive aria-expanded:bg-select-raised aria-expanded:text-destructive',
+        'remove-icon':
+          'text-muted-foreground hover:bg-select-raised hover:text-destructive',
+        'calendar-today':
+          'text-accent-foreground hover:bg-select-raised hover:text-foreground',
+        provider:
+          'border-surface-ink/10 bg-select text-foreground hover:border-action/35 hover:bg-action-soft aria-expanded:bg-select-raised',
+        filter:
+          'border-border bg-select font-normal text-foreground hover:bg-select-raised aria-expanded:bg-select-raised',
+        'add-tile':
+          'border-dashed border-border-strong text-muted-foreground hover:bg-select-raised hover:text-foreground',
         destructive:
           'bg-fail-soft text-destructive hover:bg-fail-soft hover:underline [--focus-ring-color:var(--destructive)]',
         chip: 'h-auto min-h-6.5 max-w-full gap-1.5 border-border bg-select-raised px-2 text-meta whitespace-normal text-foreground hover:bg-select-strong',
@@ -36,6 +53,9 @@ export const buttonVariants = cva(
         'icon-xs':
           "size-6 rounded-sm pointer-coarse:size-10 [&_svg:not([class*='size-'])]:size-3",
         'icon-sm': 'size-7 rounded-sm pointer-coarse:size-10',
+        'icon-round': 'size-7 rounded-full pointer-coarse:size-10',
+        'calendar-today':
+          'h-7 gap-1.5 rounded-sm px-2.5 text-xs pointer-coarse:h-10',
         'icon-lg': 'size-11',
       },
     },

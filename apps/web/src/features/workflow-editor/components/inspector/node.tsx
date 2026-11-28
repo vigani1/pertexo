@@ -139,7 +139,7 @@ export function NodeInspector({
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="mt-3 shrink-0 border-b border-border px-4 pb-2">
+        <TabsList divided className="mt-3 shrink-0 px-4 pb-2">
           <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="inputs">Inputs</TabsTrigger>
           <TabsTrigger value="test">Test</TabsTrigger>

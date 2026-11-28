@@ -59,7 +59,8 @@ export function DirectoryWorkspaceLinks({
               frame="bare"
               lift="none"
               key={linked.workspaceId}
-              className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
+              typography="body"
+              className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3"
             >
               <span className="min-w-0 break-words">
                 {linked.name}

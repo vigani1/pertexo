@@ -194,7 +194,7 @@ function LinkStepForm({
     targetPort === null ||
     unavailable;
   return (
-    <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
+    <FieldGroup appearance="recessed" className="gap-3 p-3">
       <Field>
         <FieldLabel htmlFor={`link-source-${nodeId}`}>
           Link from step

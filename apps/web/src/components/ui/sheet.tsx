@@ -92,7 +92,8 @@ export function SheetFooter({ className, ...props }: ComponentProps<'div'>) {
   return (
     <DialogFooter
       data-slot="sheet-footer"
-      className={cn('border-t border-border px-5 py-4', className)}
+      appearance="sheet"
+      className={className}
       {...props}
     />
   );

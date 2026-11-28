@@ -10,13 +10,23 @@ const ROW_WIDTHS = [64, 40, 78, 52] as const;
 export function SkeletonLines({
   label,
   lines = 3,
+  divided = false,
   className,
-}: Readonly<{ label: string; lines?: number; className?: string }>) {
+}: Readonly<{
+  label: string;
+  lines?: number;
+  divided?: boolean;
+  className?: string;
+}>) {
   return (
     <div
       role="status"
       aria-label={label}
-      className={cn('flex flex-col gap-3 py-1.5', className)}
+      className={cn(
+        'flex flex-col gap-3 py-1.5',
+        divided && 'border-t border-surface-ink/6',
+        className,
+      )}
     >
       {ROW_WIDTHS.slice(0, lines).map((width, order) => (
         <SkeletonThread

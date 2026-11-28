@@ -47,7 +47,7 @@ export function FailureSetup({
   const target = graph.nodes.find((n) => n.id === edge?.target.nodeId);
   if (!canOwnFailureLink(graph, node.id)) return null;
   return (
-    <Field className="mt-2 border-t border-border pt-4">
+    <Field divided className="mt-2 pt-4">
       <FieldLabel>On failure</FieldLabel>
       <FieldDescription>
         After the last automatic retry,{' '}

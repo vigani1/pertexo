@@ -36,10 +36,7 @@ export function HomeHeader({
   return (
     <PageHeader>
       <div className="min-w-0 flex-1">
-        <PageHeaderTitle
-          size="hero"
-          className="break-words [--display-width:78%] font-bold"
-        >
+        <PageHeaderTitle size="hero" className="break-words">
           {homeGreeting(name, new Date().getHours())}
         </PageHeaderTitle>
         {/* Reserve the wrapped figures' height on a phone before the

@@ -30,9 +30,7 @@ export function InvitationHeading({
         {children}
       </AuthLensTitle>
       <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-label text-muted-foreground">
-        <Badge variant="secondary" className="font-semibold">
-          {copy.name}
-        </Badge>
+        <Badge variant="strong">{copy.name}</Badge>
         {copy.meaning}
       </p>
     </div>

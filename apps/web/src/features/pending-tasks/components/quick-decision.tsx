@@ -63,7 +63,7 @@ export function QuickDecision({
               type="button"
               variant="link"
               size="xs"
-              className="h-auto p-0 text-xs"
+              className="h-auto p-0"
               onClick={command.retry}
             >
               Retry same decision

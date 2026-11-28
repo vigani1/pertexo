@@ -4,22 +4,36 @@ import { cn } from '@/lib/class-names';
 // The small, presentational subset of the shadcn Field composition. The
 // caller owns validation and explicit control/description/error IDs, or uses
 // `LabelledField`, which links them.
-export function FieldGroup({ className, ...props }: ComponentProps<'div'>) {
+export function FieldGroup({
+  className,
+  appearance,
+  ...props
+}: ComponentProps<'div'> & Readonly<{ appearance?: 'recessed' }>) {
   return (
     <div
       data-slot="field-group"
-      className={cn('flex flex-col gap-5', className)}
+      className={cn(
+        'flex flex-col gap-5',
+        appearance === 'recessed' &&
+          'rounded-lg border border-surface-ink/7 bg-recess-ink/18',
+        className,
+      )}
       {...props}
     />
   );
 }
 
-export function Field({ className, ...props }: ComponentProps<'div'>) {
+export function Field({
+  className,
+  divided = false,
+  ...props
+}: ComponentProps<'div'> & Readonly<{ divided?: boolean }>) {
   return (
     <div
       data-slot="field"
       className={cn(
         'group/field flex min-w-0 flex-col gap-2 data-[invalid=true]:text-destructive',
+        divided && 'border-t border-border',
         className,
       )}
       {...props}
@@ -45,12 +59,17 @@ export function FieldLabel({
   );
 }
 
-export function FieldDescription({ className, ...props }: ComponentProps<'p'>) {
+export function FieldDescription({
+  className,
+  tone = 'muted',
+  ...props
+}: ComponentProps<'p'> & Readonly<{ tone?: 'muted' | 'warning' }>) {
   return (
     <p
       data-slot="field-description"
       className={cn(
-        'text-label leading-relaxed text-muted-foreground',
+        'text-label leading-relaxed',
+        tone === 'warning' ? 'text-warning' : 'text-muted-foreground',
         className,
       )}
       {...props}

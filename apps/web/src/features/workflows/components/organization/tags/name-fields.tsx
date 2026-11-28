@@ -62,8 +62,8 @@ export function TagNameActions({
           </Button>
           <Button
             type="button"
-            variant="ghost"
-            className="ml-auto text-destructive hover:text-destructive"
+            variant="destructive-ghost"
+            className="ml-auto"
             disabled={disabled}
             onClick={() => {
               onDelete();

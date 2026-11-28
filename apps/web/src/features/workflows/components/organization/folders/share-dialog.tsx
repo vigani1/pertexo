@@ -156,7 +156,8 @@ function FolderAudience({
                 >
                   <SelectTrigger
                     aria-label={`Access for ${label}`}
-                    className="h-8 w-auto min-w-28 text-xs"
+                    size="compact"
+                    className="h-8 w-auto min-w-28"
                   >
                     <SelectValue />
                   </SelectTrigger>

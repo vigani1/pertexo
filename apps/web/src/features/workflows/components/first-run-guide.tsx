@@ -45,7 +45,7 @@ export function FirstRunGuide({
           </h2>
           <p className="text-xs text-muted-foreground">
             This example needs nothing set up. Three steps to see it work.{' '}
-            <GuideLink href={HELP_LINKS.firstWorkflow} className="text-xs">
+            <GuideLink href={HELP_LINKS.firstWorkflow} size="compact">
               The full guide
             </GuideLink>
           </p>

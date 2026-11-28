@@ -24,6 +24,9 @@ const rowVariants = cva('row-divider', {
       standard:
         'grid min-w-0 items-center gap-x-4 gap-y-1 rounded-lg px-3.5 py-3',
     },
+    typography: {
+      body: 'text-sm',
+    },
     transition: {
       none: '',
       normal:
@@ -54,12 +57,13 @@ export function Row({
   selected,
   frame,
   transition,
+  typography,
   ...props
 }: ComponentProps<'li'> & VariantProps<typeof rowVariants>) {
   return (
     <li
       className={cn(
-        rowVariants({ lift, selected, frame, transition }),
+        rowVariants({ lift, selected, frame, transition, typography }),
         className,
       )}
       {...props}
