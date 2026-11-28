@@ -123,9 +123,7 @@ async function captureOrganizationDrawers(
   await page.goto(`${root}/workflows`);
   await page.getByRole('button', { name: 'New folder' }).click();
   const folder = page.getByRole('dialog', { name: 'New folder' });
-  await expect(
-    folder.getByRole('textbox', { name: 'Folder name' }),
-  ).toBeVisible();
+  await expect(folder.getByRole('textbox', { name: 'Name' })).toBeVisible();
   await assertDrawerWidth(folder, width);
   await shot(page, 'workflow-folder', size);
 
