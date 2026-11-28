@@ -150,9 +150,12 @@ export function WorkflowVersionsPage({
                   <VersionDetail
                     version={shown}
                     previous={previousVersion(listed.items, shown)}
-                    newer={listed.items.findLast(
-                      (version) => version.versionNumber > shown.versionNumber,
-                    )}
+                    newer={listed.items
+                      .filter(
+                        (version) =>
+                          version.versionNumber > shown.versionNumber,
+                      )
+                      .at(-1)}
                     live={live}
                     liveLabel={liveLabel}
                     actions={{

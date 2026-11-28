@@ -8,7 +8,11 @@ import { DayRangePicker } from '@/components/patterns/dates/day-range-picker';
 import { shiftDays, type LocalDate } from '@/components/ui/date-time-parts';
 import { useState } from 'react';
 import { formatCount } from '@/lib/format/count';
-import { usageInWindow, RECENT_USAGE_DAYS } from '../model/chart-window';
+import {
+  countFailureOutcomes,
+  usageInWindow,
+  RECENT_USAGE_DAYS,
+} from '../model/chart-window';
 import { useQuery } from '@tanstack/react-query';
 import { USAGE_TREND_PERIOD_DAYS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
@@ -179,17 +183,14 @@ export function UsagePage({
                 recent || dates !== undefined
                   ? usageInWindow(data, dates)
                   : data;
-              const failures =
-                window.byStatus.failed +
-                window.byStatus.timed_out +
-                window.byStatus.outcome_unknown;
+              const failures = countFailureOutcomes(window.byStatus);
               return (
                 <div className="flex flex-col gap-4">
                   <p className="font-mono text-meta text-muted-foreground">
                     {formatCount(window.total, 'run')} · {String(failures)}{' '}
                     failed
                   </p>
-                  <DailyChart snapshot={window} />
+                  <DailyChart snapshot={window} appearance="failure-share" />
                   <p className="text-meta text-subtle-foreground">
                     Red shows runs that failed, timed out or ended with an
                     unknown outcome.{' '}
