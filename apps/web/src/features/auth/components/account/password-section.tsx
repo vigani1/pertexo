@@ -1,5 +1,13 @@
 import type { AccountSecurityResponse } from '@pertexo/contracts';
-import type { SyntheticEvent } from 'react';
+import { useState, type SyntheticEvent } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
@@ -32,6 +40,7 @@ export function AccountPasswordSection({
   userId: string;
   security: AccountSecurityResponse;
 }>) {
+  const [open, setOpen] = useState(false);
   const hasPassword = security.methods.some(
     (method) => method.kind === 'password',
   );
@@ -64,71 +73,90 @@ export function AccountPasswordSection({
     });
   }
 
+  const title = hasPassword ? 'Change password' : 'Add password';
+  const description = hasPassword
+    ? 'Changing it signs you out on your other devices.'
+    : 'Sign in with an email and password as well as your provider.';
+
   return (
     <SettingRow
       layout="section"
-      title={hasPassword ? 'Password' : 'Add a password'}
-      description={
-        hasPassword
-          ? 'Changing it signs you out on your other devices.'
-          : 'Sign in with an email and password as well as your provider.'
-      }
-    >
-      <form
-        noValidate
-        className="flex max-w-md flex-col gap-4"
-        onSubmit={(event) => void submit(event)}
-      >
-        {hasPassword ? (
-          <PasswordField
-            id="account-current-password"
-            label="Current password"
-            autoComplete="current-password"
-            disabled={pending}
-            {...fields.field('current')}
-            {...fields.control('current')}
-          />
-        ) : null}
-        <PasswordField
-          id="account-new-password"
-          label="New password"
-          autoComplete="new-password"
-          minimumLength={MINIMUM_LENGTH}
-          disabled={pending}
-          {...fields.field('password')}
-          {...fields.control('password')}
-        />
-        <PasswordField
-          id="account-confirm-password"
-          label="Confirm new password"
-          autoComplete="new-password"
-          disabled={pending}
-          {...fields.field('confirmation')}
-          {...fields.control('confirmation')}
-        />
-        {failure === undefined ? null : (
-          <AccountCommandFailure
-            error={failure}
-            action={
-              hasPassword ? 'changing your password' : 'adding a password'
-            }
-            message={
-              hasPassword && isApiError(failure) && failure.status === 400
-                ? 'Your current password wasn’t accepted. Check it and try again.'
-                : undefined
-            }
-          />
-        )}
-        <ProgressButton
-          type="submit"
-          variant="outline"
-          className="w-fit"
-          pending={pending}
-          pendingLabel="Saving…"
+      title="Password"
+      description={description}
+      action={
+        <Sheet
+          open={open}
+          disablePointerDismissal={pending}
+          onOpenChange={(next) => {
+            if (pending) return;
+            if (!next) fields.reset();
+            setOpen(next);
+          }}
         >
-          {hasPassword ? 'Change password' : 'Add password'}
-        </ProgressButton>
-      </form>
-    </SettingRow>
+          <SheetTrigger render={<Button variant="outline" size="sm" />}>
+            {title}
+          </SheetTrigger>
+          <SheetContent variant="form">
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+            <form
+              noValidate
+              className="mt-5 flex max-w-md flex-col gap-4"
+              onSubmit={(event) => void submit(event)}
+            >
+              {hasPassword ? (
+                <PasswordField
+                  id="account-current-password"
+                  label="Current password"
+                  autoComplete="current-password"
+                  disabled={pending}
+                  {...fields.field('current')}
+                  {...fields.control('current')}
+                />
+              ) : null}
+              <PasswordField
+                id="account-new-password"
+                label="New password"
+                autoComplete="new-password"
+                minimumLength={MINIMUM_LENGTH}
+                disabled={pending}
+                {...fields.field('password')}
+                {...fields.control('password')}
+              />
+              <PasswordField
+                id="account-confirm-password"
+                label="Confirm new password"
+                autoComplete="new-password"
+                disabled={pending}
+                {...fields.field('confirmation')}
+                {...fields.control('confirmation')}
+              />
+              {failure === undefined ? null : (
+                <AccountCommandFailure
+                  error={failure}
+                  action={
+                    hasPassword ? 'changing your password' : 'adding a password'
+                  }
+                  message={
+                    hasPassword && isApiError(failure) && failure.status === 400
+                      ? 'Your current password wasn’t accepted. Check it and try again.'
+                      : undefined
+                  }
+                />
+              )}
+              <ProgressButton
+                type="submit"
+                variant="primary"
+                className="w-fit"
+                pending={pending}
+                pendingLabel="Saving…"
+              >
+                {title}
+              </ProgressButton>
+            </form>
+          </SheetContent>
+        </Sheet>
+      }
+    />
   );
 }
