@@ -6,6 +6,7 @@ import { Link } from '@tanstack/react-router';
 import type {
   AccessibleWorkspace,
   WorkflowAutoPauseSettings,
+  WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -19,6 +20,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
 import { isAccessLost, shownData } from '@/lib/api/error-copy';
 import { cn } from '@/lib/class-names';
+import { canControlWorkflowTriggers } from '../model/trigger-pause-access';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 function PausedStateNotice({
   workspaceId,
@@ -40,10 +42,7 @@ function PausedStateNotice({
   onResume: () => void;
 }>) {
   if (settings?.pauseState !== 'paused') return null;
-  const time =
-    settings.pausedAt === null
-      ? '.'
-      : ` on ${formatDateTime(settings.pausedAt)}.`;
+  const time = ` on ${formatDateTime(settings.pausedAt)}.`;
   const poll =
     settings.pauseEvidence?.kind === 'poll'
       ? settings.pauseEvidence
@@ -101,11 +100,11 @@ function PausedStateNotice({
   );
 }
 function describePause(
-  settings: WorkflowAutoPauseSettings,
+  settings: Extract<WorkflowAutoPauseSettings, { pauseState: 'paused' }>,
   poll: PollPauseEvidence | undefined,
 ) {
   if (settings.pauseReason === 'manual')
-    return `Paused by ${settings.pausedBy?.displayName ?? 'a workflow editor'}`;
+    return `Paused by ${settings.pausedBy.displayName ?? 'a workflow editor'}`;
   if (poll === undefined)
     return `Paused after ${String(settings.pausedFailures)} failed triggered runs in a row`;
   const source = poll.errorCode.startsWith('database.') ? 'database' : 'feed';
@@ -198,6 +197,7 @@ export function WorkflowPausedBanner({
   userId,
   workspace,
   workflowId,
+  workflow,
   showReadError = true,
   showResume = true,
   problemSide = 'below',
@@ -206,6 +206,7 @@ export function WorkflowPausedBanner({
   userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
+  workflow: WorkflowSummary | undefined;
   showReadError?: boolean;
   showResume?: boolean;
   /**
@@ -220,7 +221,7 @@ export function WorkflowPausedBanner({
   const settings = shownData(query);
   const command = useAutoPauseCommand(apiClient, userId, workspace.id);
   const notifications = useNotifications();
-  const canResume = workspace.capabilities.includes('workflow:publish');
+  const canResume = canControlWorkflowTriggers(workspace, workflow);
   async function resume() {
     let saved = false;
     if (settings !== undefined)

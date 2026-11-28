@@ -1,4 +1,4 @@
-import { unpausedWorkflowSettings } from '../../support/fixtures/auto-pause';
+import { paused } from './workflow-auto-pause/fixture';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -116,15 +116,7 @@ it('shows that submissions are paused while the workflow triggers are paused', a
         nextCursor: null,
       }),
     ),
-    http.get(`${workflowApi}/auto-pause`, () =>
-      HttpResponse.json({
-        ...unpausedWorkflowSettings,
-        pauseState: 'paused',
-        pauseReason: 'consecutive_failures',
-        pausedAt: '2026-09-15T12:00:00Z',
-        pausedFailures: 10,
-      }),
-    ),
+    http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(paused)),
   );
   await renderLoadedApp(triggersPath);
   const form = await screen.findByRole(

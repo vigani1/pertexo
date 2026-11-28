@@ -15,7 +15,7 @@ import {
 
 import type { PoolClient } from 'pg';
 
-import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
+import { workflowReadProjection } from '../workflows/representation/workflow-representations.repository.js';
 
 /**
  * The workflow with its folder and stored origin, undefined when it's gone, or
@@ -30,7 +30,7 @@ export async function readTemplateOriginRow(
   try {
     const result = await drizzle(client)
       .select({
-        workflow: workflowProjection,
+        workflow: workflowReadProjection,
         templateOrigin: workflowTemplateOrigins.origin,
         folderId: workflowOrganizationState.folderId,
       })

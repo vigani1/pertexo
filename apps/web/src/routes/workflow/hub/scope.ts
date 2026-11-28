@@ -1,3 +1,4 @@
+import { shownData } from '@/lib/api/error-copy';
 import { workflowWorkspaceAccess } from '@/features/workflows/public';
 import { useQuery } from '@tanstack/react-query';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
@@ -20,9 +21,12 @@ export function useWorkflowHubScope() {
     ),
     enabled: workflowId !== null,
   });
-  const access = summary.data?.resourceAccess;
-  const scopedWorkspace = workflowWorkspaceAccess(workspace, access);
+  const workflow = shownData(summary);
+  const scopedWorkspace = workflowWorkspaceAccess(
+    workspace,
+    summary.data?.resourceAccess,
+  );
   if (workflowId === null)
     throw new Error('Workflow hub tab rendered without a workflow');
-  return { apiClient, user, workspace: scopedWorkspace, workflowId };
+  return { apiClient, user, workspace: scopedWorkspace, workflowId, workflow };
 }

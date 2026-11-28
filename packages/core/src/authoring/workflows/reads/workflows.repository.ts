@@ -18,10 +18,7 @@ import {
   workflowAccessible,
   workflowActions,
 } from '../../../shared/resources/workflow-access.repository.js';
-import {
-  workflowProjection,
-  workflowReadProjection,
-} from '../representation/workflow-representations.repository.js';
+import { workflowReadProjection } from '../representation/workflow-representations.repository.js';
 
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';
 
@@ -35,7 +32,7 @@ const folder = new QueryBuilder()
     ),
   );
 const readProjection = {
-  workflow: workflowProjection,
+  workflow: workflowReadProjection,
   resource_folder_id: sql<string | null>`(${folder})`,
 };
 export async function readWorkflow(
@@ -147,7 +144,6 @@ function listRows(
   return db
     .select({
       ...readProjection,
-      workflow: workflowReadProjection,
       cursor_position_at: sql<string>`to_char(${position} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
     })
     .from(w)

@@ -9,6 +9,8 @@ import { users, workflows, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
+import { decodeStoredValue } from '../../../shared/stored-values.js';
+import { workflowSettings } from './auto-pause-receipts.schemas.js';
 import type { WorkflowAutoPauseSettings } from './auto-pause-settings.types.js';
 
 export const workspaceProjection = {
@@ -95,36 +97,38 @@ export function workflowSettingsOf(
   workflow: WorkflowRow,
   workspace: WorkspaceRow,
 ): WorkflowAutoPauseSettings {
-  return {
-    enabled: workflow.autoPauseEnabled,
-    thresholdOverride: workflow.autoPauseThreshold,
-    workspaceThreshold: workspace.autoPauseThreshold,
-    effectiveThreshold:
-      workflow.autoPauseThreshold ?? workspace.autoPauseThreshold,
-    settingsRevision: workflow.autoPauseSettingsRevision,
-    pauseState: workflow.triggerPauseState,
-    pauseRevision: workflow.triggerPauseRevision,
-    pausedAt: workflow.pausedAt,
-    pauseReason: workflow.triggerPauseReason,
-    ...(workflow.triggerPausedBy === null
-      ? {}
-      : {
-          pausedBy: {
-            id: workflow.triggerPausedBy,
-            displayName: workflow.pausedByName,
-          },
-        }),
-    pausedFailures: workflow.triggerPauseFailures,
-    pausedLastRunId: workflow.triggerPauseLastRunId,
-    ...(workflow.triggerPausePollTriggerId === null ||
-    workflow.triggerPausePollErrorCode === null
-      ? {}
-      : {
-          pauseEvidence: {
-            kind: 'poll',
-            triggerId: workflow.triggerPausePollTriggerId,
-            errorCode: workflow.triggerPausePollErrorCode,
-          },
-        }),
-  };
+  return decodeStoredValue(() =>
+    workflowSettings.parse({
+      enabled: workflow.autoPauseEnabled,
+      thresholdOverride: workflow.autoPauseThreshold,
+      workspaceThreshold: workspace.autoPauseThreshold,
+      effectiveThreshold:
+        workflow.autoPauseThreshold ?? workspace.autoPauseThreshold,
+      settingsRevision: workflow.autoPauseSettingsRevision,
+      pauseState: workflow.triggerPauseState,
+      pauseRevision: workflow.triggerPauseRevision,
+      pausedAt: workflow.pausedAt,
+      pauseReason: workflow.triggerPauseReason,
+      ...(workflow.triggerPausedBy === null
+        ? {}
+        : {
+            pausedBy: {
+              id: workflow.triggerPausedBy,
+              displayName: workflow.pausedByName,
+            },
+          }),
+      pausedFailures: workflow.triggerPauseFailures,
+      pausedLastRunId: workflow.triggerPauseLastRunId,
+      ...(workflow.triggerPausePollTriggerId === null ||
+      workflow.triggerPausePollErrorCode === null
+        ? {}
+        : {
+            pauseEvidence: {
+              kind: 'poll',
+              triggerId: workflow.triggerPausePollTriggerId,
+              errorCode: workflow.triggerPausePollErrorCode,
+            },
+          }),
+    }),
+  );
 }

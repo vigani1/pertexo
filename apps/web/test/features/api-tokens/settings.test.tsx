@@ -65,7 +65,7 @@ function fixtures(
         items,
         nextCursor: null,
         enabled: options.enabled ?? true,
-        availableScopes: ['workflow:read', 'run:read'],
+        availableScopes: ['workflow:read', 'workflow:publish', 'run:read'],
       }),
     ),
   );
@@ -75,6 +75,14 @@ function fixtures(
     },
   };
 }
+it('describes trigger pause and resume in the workflow publish scope', async () => {
+  fixtures();
+  await renderLoadedApp(path);
+  const create = await screen.findByRole('button', { name: 'Create token' });
+  await userEvent.setup().click(create);
+  expect(screen.getByText(/pause and resume workflow triggers/u)).toBeVisible();
+});
+
 async function fillCreation() {
   const user = userEvent.setup();
   const create = await screen.findByRole('button', { name: 'Create token' });

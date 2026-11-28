@@ -585,6 +585,11 @@ export {
   type PollPauseEvidence,
   type TriggerPauseEvidence,
 } from './triggers/pause-evidence.js';
+export {
+  autoPauseThresholdSchema,
+  triggerPauseSnapshotSchema,
+  workflowPauseRevisionSchema,
+} from './triggers/pause-snapshot.js';
 
 export {
   GUARDRAILS_STEP,

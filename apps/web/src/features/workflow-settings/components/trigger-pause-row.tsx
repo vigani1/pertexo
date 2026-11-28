@@ -10,6 +10,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowAutoPauseQueryOptions } from '../data/auto-pause.queries';
 import { useAutoPauseCommand } from '../data/mutations/use-auto-pause-command';
+import { canControlWorkflowTriggers } from '../model/trigger-pause-access';
 import { settingsReadFailure } from './settings-read-failure';
 
 export function TriggerPauseRow({
@@ -28,10 +29,7 @@ export function TriggerPauseRow({
   );
   const command = useAutoPauseCommand(apiClient, userId, workspace.id);
   const notifications = useNotifications();
-  const canPublish =
-    workspace.status === 'active' &&
-    workspace.capabilities.includes('workflow:publish') &&
-    (workflow.resourceAccess?.canPublish ?? true);
+  const canPublish = canControlWorkflowTriggers(workspace, workflow);
   async function changePause(paused: boolean, expectedPauseRevision: string) {
     const saved = await command.send({
       kind: paused ? 'resume' : 'pause',

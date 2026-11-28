@@ -6,7 +6,14 @@ import { expect, it } from 'vitest';
 import { unpausedWorkflowSettings } from '../../support/fixtures/auto-pause';
 import { mockServer } from '../../support/mock-server';
 import { renderLoadedApp } from '../../support/render-app';
-import { installQueries, userId, workflowApi } from './fixtures';
+import {
+  installQueries,
+  summary,
+  userId,
+  workflowApi,
+  workspaceId,
+} from './fixtures';
+import { workspaceWith } from '../workflows/list/fixtures';
 import { path } from './workflow-auto-pause/fixture';
 
 it('pauses and resumes from the workflow state row and shows who paused it in the header', async () => {
@@ -24,7 +31,7 @@ it('pauses and resumes from the workflow state row and shows who paused it in th
       settings =
         params.intent === 'pause'
           ? {
-              ...settings,
+              ...unpausedWorkflowSettings,
               pauseState: 'paused',
               pauseReason: 'manual',
               pauseRevision: '2',
@@ -69,3 +76,52 @@ it('pauses and resumes from the workflow state row and shows who paused it in th
   for (const request of requests) expect(request.key).toMatch(/.+/u);
   expect(requests[1]?.key).not.toBe(requests[0]?.key);
 });
+
+it.each([
+  { status: 'active', canPublish: false },
+  { status: 'suspended', canPublish: true },
+] as const)(
+  'shows a pause without Resume for a Builder in a $status workspace with folder publish access $canPublish',
+  async ({ status, canPublish }) => {
+    installQueries();
+    mockServer.use(
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...workspaceWith(['workflow:update', 'workflow:publish']),
+              role: 'builder',
+              status,
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get(workflowApi, () =>
+        HttpResponse.json({
+          workflow: {
+            ...summary,
+            resourceAccess: { canEdit: canPublish, canPublish },
+          },
+        }),
+      ),
+      http.get(`${workflowApi}/auto-pause`, () =>
+        HttpResponse.json({
+          ...unpausedWorkflowSettings,
+          pauseState: 'paused',
+          pauseReason: 'manual',
+          pauseRevision: '2',
+          pausedAt: '2026-11-28T14:02:00.000000Z',
+          pausedBy: { id: userId, displayName: 'Mara' },
+        }),
+      ),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/workflows/${summary.id}/triggers`);
+    expect(
+      await screen.findByText('Workflow triggers are paused'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Resume triggers' }),
+    ).not.toBeInTheDocument();
+  },
+);

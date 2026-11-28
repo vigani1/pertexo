@@ -26,7 +26,7 @@ export const SCOPE_COPY: Readonly<
   'workflow:publish': {
     label: 'Publish and control workflows',
     description:
-      'Publish a reviewed draft, archive or restore a workflow, and resume automatic triggers.',
+      'Publish a reviewed draft, archive or restore a workflow, and pause and resume workflow triggers.',
   },
   'run:read': {
     label: 'Read runs',

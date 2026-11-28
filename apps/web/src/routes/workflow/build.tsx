@@ -22,7 +22,8 @@ import { useWorkflowHubScope } from './hub/scope';
 
 /** The Build tab: the editor fills the immersive hub, bar included. */
 export function WorkflowBuildRoute() {
-  const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();
+  const { apiClient, user, workspace, workflowId, workflow } =
+    useWorkflowHubScope();
   const { found } = useLoaderData({
     from: '/w/$workspaceId/workflows/$workflowId/',
   });
@@ -88,6 +89,7 @@ export function WorkflowBuildRoute() {
             userId={user.id}
             workspace={workspace}
             workflowId={workflowId}
+            workflow={workflow}
           />
         </>
       }

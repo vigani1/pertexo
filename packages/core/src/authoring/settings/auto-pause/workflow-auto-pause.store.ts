@@ -46,11 +46,12 @@ export type WorkflowAutoPauseStore = ReturnType<
 >;
 
 /**
- * All operations share the authoring factory's pool, tracked transactions and
- * close, and stay off `withWorkspaceAccess`: `lockWorkspace` takes an advisory key
- * and the workspace row `NO KEY UPDATE` before authority. Behind the helper's share
- * lock, a reader would hold the row and wait on the key, while a threshold edit
- * holds the key and waits on the row: 40P01.
+ * Pause, resume and settings share the authoring factory's tenant transactions.
+ * They take the workspace advisory key and row lock through `lockWorkspace`,
+ * then check authority in the transaction before locking the workflow.
+ * `withWorkspaceAccess` would take the workspace row first. A threshold edit
+ * holding the advisory key could then wait on that row while the caller waits
+ * on the key (40P01).
  */
 export function createWorkflowAutoPauseStore(transact: Transact) {
   return Object.freeze({
