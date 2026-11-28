@@ -9,12 +9,11 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
-import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
+import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 
 import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause/fold.store.js';
 
 import type { WorkflowAutoPauseScope } from '../../../src/authoring/settings/auto-pause/auto-pause-settings.types.js';
-import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
@@ -38,7 +37,7 @@ export const maintenanceUrl = url('DATABASE_MAINTENANCE_URL');
 
 export let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
-export let authoring: ReturnType<typeof createWorkflowAuthoringStore>;
+export let authoring: ReturnType<typeof createWorkflowAuthoringFixtureDatabase>;
 
 export let fold: ReturnType<typeof createWorkflowTriggerPauseFoldStore>;
 
@@ -183,9 +182,8 @@ export async function beforeAllFixture1() {
   identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
-  authoring = createWorkflowAuthoringStore(
+  authoring = createWorkflowAuthoringFixtureDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 6 }),
-    { executableCompiler: testExecutableCompiler },
   );
   fold = createWorkflowTriggerPauseFoldStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 6 }),
