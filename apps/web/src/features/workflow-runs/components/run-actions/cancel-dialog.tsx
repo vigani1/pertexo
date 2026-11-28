@@ -16,6 +16,7 @@ export function CancelRunDialog({
   workspaceId,
   runId,
   workflowName,
+  from = 'run page',
   open,
   onOpenChange,
 }: Readonly<{
@@ -24,6 +25,7 @@ export function CancelRunDialog({
   workspaceId: string;
   runId: string;
   workflowName: string;
+  from?: 'run page' | 'canvas';
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }>) {
@@ -33,6 +35,7 @@ export function CancelRunDialog({
     userId,
     workspaceId,
     runId,
+    from,
   });
 
   async function stop() {

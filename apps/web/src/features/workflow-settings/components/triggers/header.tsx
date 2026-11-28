@@ -1,3 +1,5 @@
+import { PlayIcon } from 'lucide-react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Link } from '@tanstack/react-router';
 import {
   PageHeader,
@@ -11,11 +13,13 @@ export function TriggersHeader({
   versions,
   publishedVersionId,
   runFromBuild,
+  run,
 }: Readonly<{
   versions:
     readonly Readonly<{ id: string; versionNumber: number }>[] | undefined;
   publishedVersionId: string | null | undefined;
   runFromBuild?: Readonly<{ workspaceId: string; workflowId: string }>;
+  run: Readonly<{ pending: boolean; start: () => void }> | undefined;
 }>) {
   const published = versions?.find(
     (version) => version.id === publishedVersionId,
@@ -37,10 +41,24 @@ export function TriggersHeader({
           <Link
             to="/w/$workspaceId/workflows/$workflowId"
             params={runFromBuild}
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({
+              variant: run === undefined ? 'outline' : 'ghost',
+            })}
           >
-            Run in Build
+            {run === undefined ? 'Run in Build' : 'Run with input in Build'}
           </Link>
+          {run === undefined ? null : (
+            <ProgressButton
+              type="button"
+              variant="outline"
+              pending={run.pending}
+              pendingLabel="Starting…"
+              icon={<PlayIcon data-icon="inline-start" />}
+              onClick={run.start}
+            >
+              Run now
+            </ProgressButton>
+          )}
         </PageHeaderActions>
       )}
     </PageHeader>

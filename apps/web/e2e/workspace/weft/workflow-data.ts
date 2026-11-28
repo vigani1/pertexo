@@ -180,7 +180,18 @@ function nextRuns(url: string) {
 
 const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
 
-export async function installWorkflowTabRoutes(page: Page) {
+export async function installWorkflowTabRoutes(
+  page: Page,
+  { withForm = true }: Readonly<{ withForm?: boolean }> = {},
+) {
+  const listedVersions = withForm
+    ? versions
+    : versions.map((item) => ({
+        ...item,
+        graph: graph(
+          steps.filter((step) => step.definition.key !== 'core.form'),
+        ),
+      }));
   await page.route(`**/v1/workspaces/${workspaceId}/auto-pause`, (route) =>
     route.fulfill({ json: { threshold: 10, revision: 1 } }),
   );
@@ -196,13 +207,13 @@ export async function installWorkflowTabRoutes(page: Page) {
   );
   await page.route(`${workflowApi}/versions/*`, (route) => {
     const id = new URL(route.request().url()).pathname.split('/').at(-1);
-    const version = versions.find((item) => item.id === id);
+    const version = listedVersions.find((item) => item.id === id);
     return route.fulfill(
       version === undefined ? { status: 404 } : { json: version },
     );
   });
   await page.route(`${workflowApi}/versions?**`, (route) =>
-    route.fulfill({ json: { items: versions, nextCursor: null } }),
+    route.fulfill({ json: { items: listedVersions, nextCursor: null } }),
   );
   await page.route(`${workflowApi}/triggers`, (route) =>
     route.fulfill({ json: webhooks }),

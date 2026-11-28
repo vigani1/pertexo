@@ -2,7 +2,7 @@ export { workflowWorkspaceAccess } from './model/resource-access';
 export { diffWorkflowGraphs, isEmptyDiff } from './model/comparison';
 export type { VersionDiff, GraphChange } from './model/comparison';
 export { canDuplicateWorkflow } from './model/duplicate/allowed';
-export { describeWorkflowState } from './model/workflow-state';
+export { canRunWorkflow, describeWorkflowState } from './model/workflow-state';
 export { useInputCases } from './data/input-cases/workflow-input-cases.mutations';
 export {
   LIFECYCLE_CONSEQUENCES,
@@ -23,3 +23,5 @@ export {
   expectationDraft,
   evaluationExpectationRequest,
 } from './model/input-cases/expectations';
+
+export { useRunWorkflow } from './data/run-workflow.mutations';

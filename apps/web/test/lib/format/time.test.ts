@@ -25,6 +25,16 @@ describe('dates in an English interface', () => {
     ).toMatch(/ago/u);
   });
 
+  it('uses the regional clock for short and full timestamps', async () => {
+    const time = new Date(2026, 1, 2, 14, 12).toISOString();
+    const us = await formatIn('en-US');
+    expect(us.formatShortTime(time)).toBe('2:12 PM');
+    expect(us.formatDateTime(time)).toContain('2:12 PM');
+    const gb = await formatIn('en-GB');
+    expect(gb.formatShortTime(time)).toBe('14:12');
+    expect(gb.formatDateTime(time)).toContain('14:12');
+  });
+
   it('writes ledger times on a 24-hour clock and compact dates day first', async () => {
     const { formatClock, formatShortTime, formatDayMonth } =
       await formatIn('en-US');

@@ -10,6 +10,8 @@ import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
 import { LastRunContext } from '../model/canvas/last-run-context';
 import { useLastRun } from '../hooks/use-last-run';
+import { PhoneCanvasFit } from './canvas/phone-fit';
+import { useCanvasFraming } from '../hooks/canvas/use-framing';
 import { LastRunLine } from './canvas/last-run-line';
 import { useAssistantOpening } from '../hooks/use-assistant-opening';
 import { AddStepLens } from './add-step/lens';
@@ -97,6 +99,8 @@ export function EditorWorkspace({
     lastRun,
     proposal: assistant.open ? proposal : undefined,
   });
+  const fit = useCanvasFraming(canvasRef, overlays.proposal !== undefined);
+  const fitCanvas = () => fit({ animate: true });
   return (
     <EditorLayout
       addStep={
@@ -163,6 +167,7 @@ export function EditorWorkspace({
             navigation.setMobilePanel('inspector');
           }}
           onAddStep={addStep.focus}
+          onFit={fitCanvas}
         />
       }
       overlay={
@@ -188,7 +193,12 @@ export function EditorWorkspace({
       }}
       header={{
         bar: bar(chrome),
-        canvasTools: <LastRunLine lastRun={lastRun} />,
+        canvasTools: (
+          <div className="flex items-start justify-between gap-2">
+            <LastRunLine lastRun={lastRun} />
+            <PhoneCanvasFit onFit={fitCanvas} />
+          </div>
+        ),
         banner: <>{banner}</>,
       }}
     />

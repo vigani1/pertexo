@@ -1,6 +1,14 @@
 import { mkdir } from 'node:fs/promises';
 import { test, expect } from '../../support/fixtures';
-import { addCsrfCookie, workspaceId } from '../../workflow-editor/support';
+import { fixtureRun } from '../../../test/support/fixtures/run';
+import { succeededRunId } from './activity-data';
+import { installWorkflowTabRoutes, liveVersionId } from './workflow-data';
+import {
+  addCsrfCookie,
+  editorUrl,
+  workflowId,
+  workspaceId,
+} from '../../workflow-editor/support';
 import { mockIdentity } from '../auth/fixture';
 import { installPublicScreenRoutes, installWorkspaceRoutes } from './fixture';
 import { workspaceScreens } from './screens';
@@ -39,14 +47,6 @@ for (const [width, height] of viewports) {
           await page.goto(screen.path);
           await screen.open?.(page);
           await expect(screen.ready(page)).toBeVisible();
-          await page.evaluate(() => document.fonts.ready);
-          if (capture) {
-            await mkdir(capture, { recursive: true });
-            await page.screenshot({
-              path: `${capture}/${screen.name}-${String(width)}-${colorScheme}.png`,
-              fullPage: (await page.getByRole('dialog').count()) === 0,
-            });
-          }
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth),
             `${screen.name} fits without horizontal page scroll`,
@@ -84,6 +84,70 @@ for (const [width, height] of viewports) {
             expect(targets, 'Shared touch controls have 40px targets').toEqual(
               [],
             );
+          }
+          if (screen.name === 'workflow-settings') {
+            const concurrency = page.getByRole('region', {
+              name: 'Runs at once',
+            });
+            const limit = concurrency.getByRole('textbox', {
+              name: 'Runs at once',
+            });
+            await expect(limit).toBeVisible();
+            await expect(
+              concurrency.getByRole('combobox', {
+                name: 'When the limit is reached',
+              }),
+            ).toBeVisible();
+            if (width >= 768) {
+              const heading = await concurrency
+                .getByRole('heading', { name: 'Runs at once' })
+                .boundingBox();
+              const control = await limit.boundingBox();
+              expect(control?.x ?? 0).toBeGreaterThan(heading?.x ?? 0);
+              expect(
+                Math.abs((control?.y ?? 0) - (heading?.y ?? 0)),
+              ).toBeLessThan(24);
+            }
+            const errorSave = page.getByRole('button', {
+              name: 'Save error workflow',
+            });
+            const quietFill = await concurrency
+              .getByRole('button', { name: 'Save concurrency limit' })
+              .evaluate((button) => getComputedStyle(button).backgroundColor);
+            await expect(errorSave).toHaveCSS('background-color', quietFill);
+          }
+          if (screen.name === 'audit') {
+            const eventTime = page
+              .locator('time[datetime]')
+              .filter({ visible: true })
+              .first();
+            await expect(eventTime).toBeVisible();
+            const localClock = await eventTime.evaluate((time) =>
+              new Intl.DateTimeFormat(navigator.language, {
+                timeStyle: 'short',
+              }).format(new Date(time.getAttribute('datetime') ?? '')),
+            );
+            await expect(eventTime).toHaveText(localClock);
+          }
+          if (screen.name === 'versions') {
+            const draft = page.getByRole('link', {
+              name: /^Draft · candidate/u,
+            });
+            await expect(
+              draft.getByText('Saved', { exact: false }),
+            ).toBeVisible();
+            await expect(draft.locator('time')).toHaveAttribute(
+              'datetime',
+              /T/u,
+            );
+          }
+          await page.evaluate(() => document.fonts.ready);
+          if (capture) {
+            await mkdir(capture, { recursive: true });
+            await page.screenshot({
+              path: `${capture}/${screen.name}-${String(width)}-${colorScheme}.png`,
+              fullPage: (await page.getByRole('dialog').count()) === 0,
+            });
           }
           if (screen.name === 'versions-detail') {
             const back = page.getByRole('button', {
@@ -144,4 +208,41 @@ test('Home shows the same 24-hour failures in its header and Needs you', async (
     'href',
     `/w/${workspaceId}/runs/11000000-0000-4000-8000-000000000007`,
   );
+});
+
+test('starts the published workflow directly from Triggers', async ({
+  page,
+  context,
+}) => {
+  await installWorkspaceRoutes(page);
+  await installWorkflowTabRoutes(page, { withForm: false });
+  await addCsrfCookie(context);
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
+    (route) =>
+      route.fulfill({
+        status: 201,
+        json: {
+          run: fixtureRun(succeededRunId, 'succeeded', {
+            workspaceId,
+            workflowId,
+            workflowVersionId: liveVersionId,
+          }),
+          replayed: false,
+        },
+      }),
+  );
+  await page.goto(`${editorUrl}/triggers`);
+  const run = page.getByRole('button', { name: 'Run now' });
+  await expect(run).toBeVisible();
+  const sent = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().endsWith(`/workflows/${workflowId}/runs`),
+  );
+  await run.click();
+  const request = await sent;
+  expect(request.postDataJSON()).toEqual({ input: {} });
+  expect(request.headers()['idempotency-key']).toBeTruthy();
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${succeededRunId}`);
 });

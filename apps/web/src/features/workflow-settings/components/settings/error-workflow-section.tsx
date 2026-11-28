@@ -42,7 +42,7 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
   const model = useErrorWorkflowForm(props);
   return (
     <form
-      className="flex max-w-lg flex-col gap-4"
+      className="flex w-full min-w-0 flex-col gap-2 sm:w-56"
       onSubmit={(event) => {
         event.preventDefault();
         void model.submit();
@@ -51,7 +51,9 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
       <FieldGroup>
         <LabelledField
           id="error-workflow-target"
-          label="When this workflow fails, run …"
+          label={
+            <span className="sr-only">When this workflow fails, run …</span>
+          }
           description="Published workflows that start with When a workflow fails."
         >
           {(control) => (
@@ -109,6 +111,7 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
       )}
       <ProgressButton
         type="submit"
+        variant="outline"
         className="self-start"
         pending={model.command.pending}
         pendingLabel="Saving…"
@@ -199,10 +202,16 @@ export function ErrorWorkflowSection(scope: Scope) {
   const editable =
     scope.workspace.status === 'active' &&
     scope.workspace.capabilities.includes('workflow:update');
+  const settings = shownData(query);
   return (
     <SettingRow
       title="Error workflow"
       description="Another workflow to run when this one fails."
+      action={
+        editable && settings !== undefined ? (
+          <ErrorWorkflowEditor scope={scope} settings={settings} />
+        ) : undefined
+      }
     >
       {canRead ? (
         <QueryView
@@ -233,13 +242,6 @@ export function ErrorWorkflowSection(scope: Scope) {
                     : ' Changing it takes edit access to both workflows.'}
                 </>
               }
-              {...(editable
-                ? {
-                    editor: (
-                      <ErrorWorkflowEditor scope={scope} settings={settings} />
-                    ),
-                  }
-                : {})}
               rules={
                 <>
                   <p>

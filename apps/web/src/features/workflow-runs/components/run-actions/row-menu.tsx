@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowLabel } from '../../model/list/runs';
-import { isActiveRunStatus } from '../../model/presentation/run-status';
+import { canRequestRunCancellation } from '../../model/presentation/run-status';
 import { CancelRunDialog } from './cancel-dialog';
 import { ReplayRunDialog } from './replay-dialog';
 
@@ -42,10 +42,7 @@ export function RunRowMenu({
   const [dialog, setDialog] = useState<'replay' | 'cancel'>();
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
-  const canCancel =
-    can('run:cancel') &&
-    isActiveRunStatus(run.status) &&
-    run.cancelRequestedAt === null;
+  const canCancel = canRequestRunCancellation(workspace, run);
   const name = workflowLabel(run);
 
   return (

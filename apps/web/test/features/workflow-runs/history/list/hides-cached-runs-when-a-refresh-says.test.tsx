@@ -135,12 +135,13 @@ describe('workspace runs', () => {
       await screen.findByRole('button', { name: 'Copy run ID eeee…eeee' }),
     ).toBeVisible();
     expect(screen.queryByLabelText('Workflow name')).toBeNull();
-    // One start time per run, in 24-hour format, with the full timestamp on hover.
+    // One start time in the browser’s regional format, with its full date on hover.
     const run = screen.getByRole('link', { name: /^Run from /u });
-    expect(run).toHaveTextContent(/^(?:[01]\d|2[0-3]):[0-5]\d$/u);
-    expect(
-      within(run).getByText(/^(?:[01]\d|2[0-3]):[0-5]\d$/u),
-    ).toHaveAttribute('title');
+    expect(run).toHaveTextContent(/^12:00 PM$/u);
+    expect(within(run).getByText('12:00 PM', { exact: true })).toHaveAttribute(
+      'title',
+      'Sep 15, 2026, 12:00 PM',
+    );
     expect(latest(requests).get('workflowId')).toBe(workflowId);
     await chooseOption('Status', 'Failed');
     await waitFor(() => {

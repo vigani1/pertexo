@@ -16,6 +16,7 @@ export { useRunInput } from './hooks/use-run-input';
 // breadcrumb.
 export { shortRunId, workflowLabel } from './model/list/runs';
 export {
+  canRequestRunCancellation,
   describeRunStatus,
   describeNodeStatus,
   isActiveRunStatus,

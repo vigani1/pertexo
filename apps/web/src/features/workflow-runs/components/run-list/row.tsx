@@ -36,7 +36,7 @@ function StartedAt({
       title={formatDateTime(run.startedAt ?? run.createdAt)}
       className={cn('font-mono text-xs', className)}
     >
-      {formatShortTime(run.startedAt ?? run.createdAt, 'h23')}
+      {formatShortTime(run.startedAt ?? run.createdAt)}
     </time>
   );
 }

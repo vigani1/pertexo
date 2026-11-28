@@ -21,6 +21,7 @@ import {
 import { shortRunId, workflowLabel } from '../../model/list/runs';
 import {
   describeRunStatus,
+  canRequestRunCancellation,
   isActiveRunStatus,
   runCoreState,
 } from '../../model/presentation/run-status';
@@ -105,8 +106,7 @@ export function RunHeader({
   const active = isActiveRunStatus(run.status);
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
-  const canCancel =
-    can('run:cancel') && active && run.cancelRequestedAt === null;
+  const canCancel = canRequestRunCancellation(workspace, run);
   const name = workflowLabel(run);
   const versionLabel =
     versionNumber === undefined ? undefined : `v${String(versionNumber)}`;

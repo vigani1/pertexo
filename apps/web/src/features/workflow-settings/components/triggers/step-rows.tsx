@@ -1,6 +1,7 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { Link } from '@tanstack/react-router';
+import { CopyButton } from '@/components/ui/copy-button';
+import { Link, useRouter } from '@tanstack/react-router';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import { describeStep } from '@/features/catalog/public';
 import { StatusMark } from '@/components/patterns/status/status-mark';
@@ -26,6 +27,14 @@ export function StepTriggerRows({
   formLink?: Readonly<{ workspaceId: string; workflowId: string }>;
   onFailure: boolean;
 }>) {
+  const router = useRouter();
+  const formHref =
+    formLink === undefined
+      ? undefined
+      : router.buildLocation({
+          to: '/w/$workspaceId/forms/$workflowId',
+          params: formLink,
+        }).href;
   const steps = (key: string) =>
     publishedStepNames(versions, publishedVersionId, key);
   return (
@@ -39,14 +48,23 @@ export function StepTriggerRows({
               name={step.name}
               kind="Form · starts a run on submission"
               extra={
-                formLink === undefined ? null : (
-                  <Link
-                    to="/w/$workspaceId/forms/$workflowId"
-                    params={formLink}
-                    className={buttonVariants({ variant: 'link', size: 'sm' })}
-                  >
-                    Open form
-                  </Link>
+                formLink === undefined || formHref === undefined ? null : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      to="/w/$workspaceId/forms/$workflowId"
+                      params={formLink}
+                      className={buttonVariants({
+                        variant: 'link',
+                        size: 'sm',
+                      })}
+                    >
+                      Open form
+                    </Link>
+                    <CopyButton
+                      label="Copy form link"
+                      value={new URL(formHref, window.location.origin).href}
+                    />
+                  </div>
                 )
               }
               state={

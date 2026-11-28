@@ -1,3 +1,4 @@
+import { shownData } from '@/lib/api/error-copy';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
@@ -74,7 +75,7 @@ function WorkflowRule({
   }
   return (
     <form
-      className="flex max-w-lg flex-col gap-5"
+      className="flex w-full min-w-0 flex-col items-start gap-2 sm:w-56"
       onSubmit={(event) => {
         event.preventDefault();
         void save();
@@ -170,10 +171,16 @@ export function AutoPauseSection(scope: Scope) {
   const canManageWorkspace =
     scope.workspace.capabilities.includes('workspace:manage');
   const canUpdate = scope.workspace.capabilities.includes('workflow:update');
+  const settings = shownData(query);
   return (
     <SettingRow
       title="Automatic pause"
       description="When repeated failures should pause workflow triggers."
+      action={
+        canUpdate && settings !== undefined ? (
+          <WorkflowRule settings={settings} scope={scope} />
+        ) : undefined
+      }
     >
       <QueryView
         query={query}
@@ -189,11 +196,6 @@ export function AutoPauseSection(scope: Scope) {
                   {canUpdate ? null : ' Your role can’t change this rule.'}
                 </>
               }
-              {...(canUpdate
-                ? {
-                    editor: <WorkflowRule settings={settings} scope={scope} />,
-                  }
-                : {})}
               rules={
                 <>
                   <p>
