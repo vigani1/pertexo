@@ -77,7 +77,10 @@ export function StatusMark({
       role={named ? 'img' : undefined}
       aria-label={named ? label : undefined}
       aria-hidden={display === 'mark' && !named ? true : undefined}
-      className={cn(statusVariants({ appearance, typography, emphasis }), className)}
+      className={cn(
+        statusVariants({ appearance, typography, emphasis }),
+        className,
+      )}
       {...props}
     >
       <span
