@@ -1,9 +1,6 @@
 import {
-  MAX_AUTO_PAUSE_THRESHOLD,
-  MIN_AUTO_PAUSE_THRESHOLD,
-} from '@pertexo/policy';
-import {
-  pollPauseEvidenceSchema,
+  autoPauseThresholdSchema,
+  triggerPauseSnapshotSchema,
   STORED_INTEGER_MAX,
   STORED_TIMESTAMP_FRACTION_DIGITS,
 } from '@pertexo/workflow-model';
@@ -11,39 +8,12 @@ import { z } from 'zod';
 
 const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 
-const pauseRevision = z
-  .string()
-  .regex(/^[1-9][0-9]{0,18}$/u)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
-
-const threshold = z
-  .number()
-  .int()
-  .min(MIN_AUTO_PAUSE_THRESHOLD)
-  .max(MAX_AUTO_PAUSE_THRESHOLD);
-
 /** What an exact retry replays; a settings command writes these whole. */
-export const workflowSettings = z
-  .object({
-    enabled: z.boolean(),
-    thresholdOverride: threshold.nullable(),
-    workspaceThreshold: threshold,
-    effectiveThreshold: threshold,
-    settingsRevision: revision,
-    pauseState: z.enum(['none', 'paused']),
-    pauseRevision,
-    pausedAt: z.iso
-      .datetime({ precision: STORED_TIMESTAMP_FRACTION_DIGITS })
-      .nullable(),
-    pauseReason: z.enum(['consecutive_failures', 'manual']).nullable(),
-    pausedFailures: z.number().int().positive().nullable(),
-    pausedBy: z
-      .object({ id: z.uuid(), displayName: z.string().nullable() })
-      .strict()
-      .optional(),
-    pausedLastRunId: z.uuid().nullable(),
-    pauseEvidence: pollPauseEvidenceSchema.optional(),
-  })
-  .strict();
+export const workflowSettings = triggerPauseSnapshotSchema(
+  revision,
+  z.iso.datetime({ precision: STORED_TIMESTAMP_FRACTION_DIGITS }),
+);
 
-export const workspaceSettings = z.object({ threshold, revision }).strict();
+export const workspaceSettings = z
+  .object({ threshold: autoPauseThresholdSchema, revision })
+  .strict();

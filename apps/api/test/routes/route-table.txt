@@ -227,6 +227,7 @@ GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/input-cases/{caseId} 200
 PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/input-cases/{caseId} 200 session workflow:update csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp 200 session workflow:publish - authenticated_read
 PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp 200 session workflow:publish csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/pause 200 session_or_token workflow:publish csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/presence 200 session workflow:read - authenticated_read
 DELETE /v1/workspaces/{workspaceId}/workflows/{workflowId}/presence/{tabId} 204 session workflow:read csrf ordinary_mutation
 PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/presence/{tabId} 200 session workflow:read csrf ordinary_mutation

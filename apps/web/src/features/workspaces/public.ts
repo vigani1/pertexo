@@ -2,6 +2,7 @@
 export {
   refusalWhoCan,
   roleLimitSentence,
+  rolesAllowedTo,
   whoCan,
 } from './model/workspace-roles';
 export { ADMINISTRATORS, ANY_ADMINISTRATOR } from './model/role-words';

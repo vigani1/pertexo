@@ -6,6 +6,7 @@ import { lockWorkspace } from '../../../src/authoring/settings/auto-pause/lock-s
 import { withWorkspaceAccess } from '../../../src/shared/access/workspace-access.js';
 import {
   actorId,
+  currentRepresentationTag,
   apiUrl,
   authoring,
   emptyGraph,
@@ -37,6 +38,16 @@ beforeAll(async () => {
     emptyGraph,
     idempotencyKey: randomUUID(),
   }));
+  await authoring.publishWorkflow({
+    ...scope(),
+    workflowId,
+    idempotencyKey: randomUUID(),
+    representationTag: await currentRepresentationTag(authoring, workspaceId, {
+      scopedWorkflowId: workflowId,
+      scopedActorId: actorId,
+    }),
+    requestHash: 'a'.repeat(64),
+  });
 });
 
 function flow() {
@@ -107,22 +118,28 @@ const SHARED_KEY_FLOWS: Readonly<
         })
       ).settings.workspaceThreshold;
   },
-  "resuming a workflow's triggers": async () => {
-    const { pauseRevision } = await authoring.autoPause.readWorkflowSettings({
-      ...scope(),
-      workflowId,
-    });
-    return async (pause) =>
-      (
-        await pause.resumeWorkflow({
-          ...scope(),
-          workflowId,
-          expectedPauseRevision: pauseRevision,
-          idempotencyKey: randomUUID(),
-        })
-      ).settings.workspaceThreshold;
-  },
+  "resuming a workflow's triggers": () =>
+    prepareTriggerControl('resumeWorkflow'),
+  "pausing a workflow's triggers": () => prepareTriggerControl('pauseWorkflow'),
 };
+
+async function prepareTriggerControl(
+  command: 'resumeWorkflow' | 'pauseWorkflow',
+) {
+  const { pauseRevision } = await authoring.autoPause.readWorkflowSettings({
+    ...scope(),
+    workflowId,
+  });
+  return async (pause: Pause) =>
+    (
+      await pause[command]({
+        ...scope(),
+        workflowId,
+        expectedPauseRevision: pauseRevision,
+        idempotencyKey: randomUUID(),
+      })
+    ).settings.workspaceThreshold;
+}
 
 /** A threshold the workspace doesn't have yet, within what a threshold allows. */
 const nextThreshold = async () => {

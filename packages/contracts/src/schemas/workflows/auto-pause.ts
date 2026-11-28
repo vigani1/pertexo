@@ -1,111 +1,22 @@
 import { responseSchema } from '../shared/response-schema.js';
-import {
-  MAX_AUTO_PAUSE_THRESHOLD,
-  MIN_AUTO_PAUSE_THRESHOLD,
-} from '@pertexo/policy';
 import { z } from 'zod';
-import { triggerPauseEvidenceSchema } from '@pertexo/workflow-model';
+import {
+  autoPauseThresholdSchema,
+  triggerPauseSnapshotSchema,
+  workflowPauseRevisionSchema,
+} from '@pertexo/workflow-model';
 
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 
-export const autoPauseThresholdSchema = z
-  .number()
-  .int()
-  .min(MIN_AUTO_PAUSE_THRESHOLD)
-  .max(MAX_AUTO_PAUSE_THRESHOLD);
+export { autoPauseThresholdSchema, workflowPauseRevisionSchema };
 export const autoPauseSettingsRevisionSchema = z
   .number()
   .int()
   .positive()
   .max(Number.MAX_SAFE_INTEGER);
 
-// A decimal string retains PostgreSQL bigint precision in JSON. Encode the
-// upper bound in the regex as well, so generated clients enforce the same limit.
-const maxPauseRevision = '9223372036854775807';
-const boundedPrefixes = Array.from(maxPauseRevision).flatMap((digit, index) => {
-  const lower = index === 0 ? 1 : 0;
-  const upper = Number(digit) - 1;
-  if (upper < lower) return [];
-  const range = `[${String(lower)}-${String(upper)}]`;
-  const remaining = maxPauseRevision.length - index - 1;
-  return [
-    `${maxPauseRevision.slice(0, index)}${range}${remaining === 0 ? '' : `[0-9]{${String(remaining)}}`}`,
-  ];
-});
-export const workflowPauseRevisionSchema = z
-  .string()
-  .regex(
-    new RegExp(
-      `^(?:[1-9][0-9]{0,17}|${boundedPrefixes.join('|')}|${maxPauseRevision})$`,
-      'u',
-    ),
-  );
-
 export const workflowAutoPauseSettingsSchema = responseSchema(
-  z
-    .object({
-      enabled: z.boolean(),
-      thresholdOverride: autoPauseThresholdSchema.nullable(),
-      workspaceThreshold: autoPauseThresholdSchema,
-      effectiveThreshold: autoPauseThresholdSchema,
-      settingsRevision: autoPauseSettingsRevisionSchema,
-      pauseState: z.enum(['none', 'paused']),
-      pauseRevision: workflowPauseRevisionSchema,
-      pausedAt: z.iso.datetime().nullable(),
-      pauseReason: z.enum(['consecutive_failures', 'manual']).nullable(),
-      pausedFailures: z
-        .number()
-        .int()
-        .positive()
-        .max(Number.MAX_SAFE_INTEGER)
-        .nullable(),
-      pauseEvidence: triggerPauseEvidenceSchema
-        .optional()
-        .describe(
-          'Typed evidence for a paused trigger. Completed-run responses may carry only pausedLastRunId.',
-        ),
-      pausedBy: z
-        .object({ id: z.uuid(), displayName: z.string().nullable() })
-        .strict()
-        .optional(),
-      pausedLastRunId: z
-        .uuid()
-        .nullable()
-        .describe(
-          'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
-        ),
-    })
-    .strict()
-    .refine(
-      ({
-        pauseState,
-        pauseReason,
-        pausedAt,
-        pausedBy,
-        pausedFailures,
-        pausedLastRunId,
-        pauseEvidence,
-      }) => {
-        if (pauseReason === 'manual')
-          return (
-            pauseState === 'paused' &&
-            pausedAt !== null &&
-            pausedBy !== undefined &&
-            pausedFailures === null &&
-            pausedLastRunId === null &&
-            pauseEvidence === undefined
-          );
-        return (
-          pausedBy === undefined &&
-          (pauseEvidence === undefined ||
-            (pauseState === 'paused' &&
-              (pauseEvidence.kind === 'run'
-                ? pausedLastRunId === pauseEvidence.runId
-                : pausedLastRunId === null)))
-        );
-      },
-      'Pause evidence must match the workflow’s pause state.',
-    ),
+  triggerPauseSnapshotSchema(autoPauseSettingsRevisionSchema),
 );
 
 export const workspaceAutoPauseSettingsSchema = responseSchema(

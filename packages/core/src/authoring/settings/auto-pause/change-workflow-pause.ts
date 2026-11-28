@@ -1,4 +1,4 @@
-import { WORKFLOW_EDITOR_ROLES } from '@pertexo/policy';
+import { rolesForCapability } from '@pertexo/policy';
 import { writeTriggerPause } from '../../../triggers/pause/write-pause.repository.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import type {
@@ -20,6 +20,7 @@ export function changeWorkflowPause(
   intent: 'pause' | 'resume',
 ): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>> {
   const workflowId = input.workflowId;
+  const capability = 'workflow:publish';
   const request = {
     expectedPauseRevision: input.expectedPauseRevision,
   };
@@ -31,8 +32,8 @@ export function changeWorkflowPause(
     receipt: workflowSettings,
     resourceId: workflowId,
     workflowId,
-    roles: WORKFLOW_EDITOR_ROLES,
-    capability: 'workflow:publish',
+    roles: rolesForCapability(capability),
+    capability,
     request,
     exclusive: false,
     apply: async (client, workspace) => {

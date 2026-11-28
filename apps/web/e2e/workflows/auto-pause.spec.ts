@@ -57,7 +57,7 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
         ),
       }),
   );
-  let settings = paused;
+  let settings: WorkflowAutoPauseSettings = paused;
   const writes: { body: unknown; key: string | undefined }[] = [];
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/auto-pause`,
@@ -124,7 +124,6 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
         expectedPauseRevision: '9007199254740993',
       });
       settings = {
-        ...settings,
         ...unpausedWorkflowSettings,
         pauseRevision: '9007199254740994',
       };

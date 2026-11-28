@@ -1,6 +1,9 @@
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 
-export const unpausedWorkflowSettings: WorkflowAutoPauseSettings = {
+export const unpausedWorkflowSettings: Extract<
+  WorkflowAutoPauseSettings,
+  { pauseState: 'none' }
+> = {
   enabled: true,
   thresholdOverride: null,
   workspaceThreshold: 10,

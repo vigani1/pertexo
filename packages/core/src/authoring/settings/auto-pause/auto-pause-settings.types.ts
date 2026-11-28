@@ -1,21 +1,10 @@
-import type { PollPauseEvidence } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
+import type { z } from 'zod';
+import type { workflowSettings } from './auto-pause-receipts.schemas.js';
 
-export type WorkflowAutoPauseSettings = Readonly<{
-  enabled: boolean;
-  thresholdOverride: number | null;
-  workspaceThreshold: number;
-  effectiveThreshold: number;
-  settingsRevision: number;
-  pauseState: 'none' | 'paused';
-  pauseRevision: string;
-  pausedAt: string | null;
-  pauseReason: 'consecutive_failures' | 'manual' | null;
-  pausedBy?: Readonly<{ id: string; displayName: string | null }> | undefined;
-  pausedFailures: number | null;
-  pausedLastRunId: string | null;
-  pauseEvidence?: PollPauseEvidence | undefined;
-}>;
+export type WorkflowAutoPauseSettings = Readonly<
+  z.output<typeof workflowSettings>
+>;
 
 export type WorkspaceAutoPauseSettings = Readonly<{
   threshold: number;

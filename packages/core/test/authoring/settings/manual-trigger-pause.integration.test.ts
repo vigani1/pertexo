@@ -16,6 +16,7 @@ import {
   fold,
   identity,
   outcome,
+  pause,
   seed,
 } from './auto-pause-controls.fixture.js';
 
@@ -52,6 +53,31 @@ describe('manual workflow trigger pause', () => {
     await expect(
       controls().readWorkflowSettings(published),
     ).resolves.toMatchObject({ pauseState: 'none', pauseRevision: '1' });
+  });
+
+  it('preserves the automatic cause and evidence when asked to pause again', async () => {
+    const scope = await publication(await seed());
+    await pause(scope);
+    const settings = await controls().readWorkflowSettings(scope);
+    expect(settings).toMatchObject({
+      pauseState: 'paused',
+      pauseReason: 'consecutive_failures',
+      pausedFailures: 3,
+      pausedLastRunId: expect.any(String),
+      pausedAt: expect.any(String),
+      pauseRevision: '2',
+    });
+    const audits = await auditCount(scope, 'workflow.triggers_paused');
+    expect(audits).toBe(1);
+    await expect(
+      controls().pauseWorkflow({
+        ...scope,
+        expectedPauseRevision: settings.pauseRevision,
+        idempotencyKey: randomUUID(),
+      }),
+    ).resolves.toEqual({ settings, replayed: false });
+    expect(await controls().readWorkflowSettings(scope)).toEqual(settings);
+    expect(await auditCount(scope, 'workflow.triggers_paused')).toBe(audits);
   });
 
   it('preserves a manual cause through automatic outcomes, archive, restore and exact retry', async () => {

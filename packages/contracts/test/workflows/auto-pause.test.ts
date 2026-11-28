@@ -31,8 +31,11 @@ const settings = {
 describe('automatic workflow pause contracts', () => {
   it('documents current and historical pause evidence in the API schema', () => {
     expect(
-      workflowAutoPauseSettingsSchema.shape.pausedLastRunId.description,
-    ).toBe(
+      JSON.stringify(
+        workflowAuthoringOpenApiDocument.components.schemas
+          .WorkflowAutoPauseSettings,
+      ),
+    ).toContain(
       'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
     );
   });
@@ -229,4 +232,44 @@ it('carries tagged poll evidence without a run and rejects mixed pause evidence'
       pauseEvidence: pollEvidence,
     }).success,
   ).toBe(false);
+});
+
+it('rejects contradictory snapshots in the runtime contract and OpenAPI', () => {
+  const validate = new Ajv2020({ strict: false }).compile(
+    workflowAuthoringOpenApiDocument.components.schemas
+      .WorkflowAutoPauseSettings,
+  );
+  const manual = {
+    ...settings,
+    pauseState: 'paused',
+    pauseReason: 'manual',
+    pausedAt: '2026-11-28T08:00:00.000000Z',
+  };
+  for (const snapshot of [
+    { ...settings, pauseState: 'paused' },
+    { ...manual, pauseReason: 'consecutive_failures' },
+    { ...manual, pauseReason: 'consecutive_failures', pausedFailures: 3 },
+    manual,
+    {
+      ...manual,
+      pausedBy: {
+        id: '11111111-1111-4111-8111-111111111111',
+        displayName: null,
+      },
+      pausedFailures: 3,
+    },
+  ]) {
+    expect(workflowAutoPauseSettingsSchema.safeParse(snapshot).success).toBe(
+      false,
+    );
+    expect(validate(snapshot)).toBe(false);
+  }
+  const validManual = {
+    ...manual,
+    pausedBy: { id: '11111111-1111-4111-8111-111111111111', displayName: null },
+  };
+  expect(workflowAutoPauseSettingsSchema.parse(validManual)).toEqual(
+    validManual,
+  );
+  expect(validate(validManual)).toBe(true);
 });

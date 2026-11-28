@@ -19136,91 +19136,245 @@
       },
       "WorkflowAutoPauseSettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "thresholdOverride": {
-            "anyOf": [
-              {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "thresholdOverride": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "workspaceThreshold": {
                 "type": "integer",
                 "minimum": 3,
                 "maximum": 100
               },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "workspaceThreshold": {
-            "type": "integer",
-            "minimum": 3,
-            "maximum": 100
-          },
-          "effectiveThreshold": {
-            "type": "integer",
-            "minimum": 3,
-            "maximum": 100
-          },
-          "settingsRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          },
-          "pauseState": {
-            "type": "string",
-            "enum": [
-              "none",
-              "paused"
-            ]
-          },
-          "pauseRevision": {
-            "type": "string",
-            "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
-          },
-          "pausedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              "effectiveThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
               },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pauseReason": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "consecutive_failures",
-                  "manual"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pausedFailures": {
-            "anyOf": [
-              {
+              "settingsRevision": {
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
-              {
+              "pauseRevision": {
+                "type": "string",
+                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+              },
+              "pauseState": {
+                "type": "string",
+                "const": "none"
+              },
+              "pauseReason": {
                 "type": "null"
+              },
+              "pausedAt": {
+                "type": "null"
+              },
+              "pausedBy": {
+                "not": {}
+              },
+              "pausedFailures": {
+                "type": "null"
+              },
+              "pausedLastRunId": {
+                "type": "null"
+              },
+              "pauseEvidence": {
+                "not": {}
               }
-            ]
+            },
+            "required": [
+              "enabled",
+              "thresholdOverride",
+              "workspaceThreshold",
+              "effectiveThreshold",
+              "settingsRevision",
+              "pauseRevision",
+              "pauseState",
+              "pauseReason",
+              "pausedAt",
+              "pausedFailures",
+              "pausedLastRunId"
+            ],
+            "additionalProperties": true
           },
-          "pauseEvidence": {
-            "description": "Typed evidence for a paused trigger. Completed-run responses may carry only pausedLastRunId.",
-            "oneOf": [
-              {
+          {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "thresholdOverride": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "workspaceThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "effectiveThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "settingsRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pauseRevision": {
+                "type": "string",
+                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+              },
+              "pauseState": {
+                "type": "string",
+                "const": "paused"
+              },
+              "pauseReason": {
+                "type": "string",
+                "const": "manual"
+              },
+              "pausedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "pausedBy": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "displayName"
+                ],
+                "additionalProperties": true
+              },
+              "pausedFailures": {
+                "type": "null"
+              },
+              "pausedLastRunId": {
+                "type": "null"
+              },
+              "pauseEvidence": {
+                "not": {}
+              }
+            },
+            "required": [
+              "enabled",
+              "thresholdOverride",
+              "workspaceThreshold",
+              "effectiveThreshold",
+              "settingsRevision",
+              "pauseRevision",
+              "pauseState",
+              "pauseReason",
+              "pausedAt",
+              "pausedBy",
+              "pausedFailures",
+              "pausedLastRunId"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "thresholdOverride": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "workspaceThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "effectiveThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "settingsRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pauseRevision": {
+                "type": "string",
+                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+              },
+              "pauseState": {
+                "type": "string",
+                "const": "paused"
+              },
+              "pauseReason": {
+                "type": "string",
+                "const": "consecutive_failures"
+              },
+              "pausedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "pausedBy": {
+                "not": {}
+              },
+              "pausedFailures": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pausedLastRunId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
+              },
+              "pauseEvidence": {
+                "description": "Completed-run responses may carry only pausedLastRunId.",
                 "type": "object",
                 "properties": {
                   "kind": {
@@ -19238,8 +19392,85 @@
                   "runId"
                 ],
                 "additionalProperties": true
+              }
+            },
+            "required": [
+              "enabled",
+              "thresholdOverride",
+              "workspaceThreshold",
+              "effectiveThreshold",
+              "settingsRevision",
+              "pauseRevision",
+              "pauseState",
+              "pauseReason",
+              "pausedAt",
+              "pausedFailures",
+              "pausedLastRunId"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
               },
-              {
+              "thresholdOverride": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "workspaceThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "effectiveThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "settingsRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pauseRevision": {
+                "type": "string",
+                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+              },
+              "pauseState": {
+                "type": "string",
+                "const": "paused"
+              },
+              "pauseReason": {
+                "type": "string",
+                "const": "consecutive_failures"
+              },
+              "pausedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "pausedBy": {
+                "not": {}
+              },
+              "pausedFailures": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pausedLastRunId": {
+                "type": "null"
+              },
+              "pauseEvidence": {
                 "type": "object",
                 "properties": {
                   "kind": {
@@ -19291,57 +19522,24 @@
                 ],
                 "additionalProperties": true
               }
-            ]
-          },
-          "pausedBy": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "displayName": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
             },
             "required": [
-              "id",
-              "displayName"
+              "enabled",
+              "thresholdOverride",
+              "workspaceThreshold",
+              "effectiveThreshold",
+              "settingsRevision",
+              "pauseRevision",
+              "pauseState",
+              "pauseReason",
+              "pausedAt",
+              "pausedFailures",
+              "pausedLastRunId",
+              "pauseEvidence"
             ],
             "additionalProperties": true
-          },
-          "pausedLastRunId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
           }
-        },
-        "required": [
-          "enabled",
-          "thresholdOverride",
-          "workspaceThreshold",
-          "effectiveThreshold",
-          "settingsRevision",
-          "pauseState",
-          "pauseRevision",
-          "pausedAt",
-          "pauseReason",
-          "pausedFailures",
-          "pausedLastRunId"
-        ],
-        "additionalProperties": true
+        ]
       },
       "WorkflowAutoPauseSettingsRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -19380,91 +19578,245 @@
         "type": "object",
         "properties": {
           "settings": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "thresholdOverride": {
-                "anyOf": [
-                  {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "thresholdOverride": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "workspaceThreshold": {
                     "type": "integer",
                     "minimum": 3,
                     "maximum": 100
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "workspaceThreshold": {
-                "type": "integer",
-                "minimum": 3,
-                "maximum": 100
-              },
-              "effectiveThreshold": {
-                "type": "integer",
-                "minimum": 3,
-                "maximum": 100
-              },
-              "settingsRevision": {
-                "type": "integer",
-                "exclusiveMinimum": 0,
-                "maximum": 9007199254740991
-              },
-              "pauseState": {
-                "type": "string",
-                "enum": [
-                  "none",
-                  "paused"
-                ]
-              },
-              "pauseRevision": {
-                "type": "string",
-                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
-              },
-              "pausedAt": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  "effectiveThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "pauseReason": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "consecutive_failures",
-                      "manual"
-                    ]
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "pausedFailures": {
-                "anyOf": [
-                  {
+                  "settingsRevision": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
                     "maximum": 9007199254740991
                   },
-                  {
+                  "pauseRevision": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+                  },
+                  "pauseState": {
+                    "type": "string",
+                    "const": "none"
+                  },
+                  "pauseReason": {
                     "type": "null"
+                  },
+                  "pausedAt": {
+                    "type": "null"
+                  },
+                  "pausedBy": {
+                    "not": {}
+                  },
+                  "pausedFailures": {
+                    "type": "null"
+                  },
+                  "pausedLastRunId": {
+                    "type": "null"
+                  },
+                  "pauseEvidence": {
+                    "not": {}
                   }
-                ]
+                },
+                "required": [
+                  "enabled",
+                  "thresholdOverride",
+                  "workspaceThreshold",
+                  "effectiveThreshold",
+                  "settingsRevision",
+                  "pauseRevision",
+                  "pauseState",
+                  "pauseReason",
+                  "pausedAt",
+                  "pausedFailures",
+                  "pausedLastRunId"
+                ],
+                "additionalProperties": true
               },
-              "pauseEvidence": {
-                "description": "Typed evidence for a paused trigger. Completed-run responses may carry only pausedLastRunId.",
-                "oneOf": [
-                  {
+              {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "thresholdOverride": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "workspaceThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "effectiveThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "settingsRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pauseRevision": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+                  },
+                  "pauseState": {
+                    "type": "string",
+                    "const": "paused"
+                  },
+                  "pauseReason": {
+                    "type": "string",
+                    "const": "manual"
+                  },
+                  "pausedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "pausedBy": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "displayName"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "pausedFailures": {
+                    "type": "null"
+                  },
+                  "pausedLastRunId": {
+                    "type": "null"
+                  },
+                  "pauseEvidence": {
+                    "not": {}
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "thresholdOverride",
+                  "workspaceThreshold",
+                  "effectiveThreshold",
+                  "settingsRevision",
+                  "pauseRevision",
+                  "pauseState",
+                  "pauseReason",
+                  "pausedAt",
+                  "pausedBy",
+                  "pausedFailures",
+                  "pausedLastRunId"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "thresholdOverride": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "workspaceThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "effectiveThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "settingsRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pauseRevision": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+                  },
+                  "pauseState": {
+                    "type": "string",
+                    "const": "paused"
+                  },
+                  "pauseReason": {
+                    "type": "string",
+                    "const": "consecutive_failures"
+                  },
+                  "pausedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "pausedBy": {
+                    "not": {}
+                  },
+                  "pausedFailures": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pausedLastRunId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
+                  },
+                  "pauseEvidence": {
+                    "description": "Completed-run responses may carry only pausedLastRunId.",
                     "type": "object",
                     "properties": {
                       "kind": {
@@ -19482,8 +19834,85 @@
                       "runId"
                     ],
                     "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "thresholdOverride",
+                  "workspaceThreshold",
+                  "effectiveThreshold",
+                  "settingsRevision",
+                  "pauseRevision",
+                  "pauseState",
+                  "pauseReason",
+                  "pausedAt",
+                  "pausedFailures",
+                  "pausedLastRunId"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
                   },
-                  {
+                  "thresholdOverride": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "workspaceThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "effectiveThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  "settingsRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pauseRevision": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+                  },
+                  "pauseState": {
+                    "type": "string",
+                    "const": "paused"
+                  },
+                  "pauseReason": {
+                    "type": "string",
+                    "const": "consecutive_failures"
+                  },
+                  "pausedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "pausedBy": {
+                    "not": {}
+                  },
+                  "pausedFailures": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pausedLastRunId": {
+                    "type": "null"
+                  },
+                  "pauseEvidence": {
                     "type": "object",
                     "properties": {
                       "kind": {
@@ -19535,57 +19964,24 @@
                     ],
                     "additionalProperties": true
                   }
-                ]
-              },
-              "pausedBy": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "displayName": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
                 },
                 "required": [
-                  "id",
-                  "displayName"
+                  "enabled",
+                  "thresholdOverride",
+                  "workspaceThreshold",
+                  "effectiveThreshold",
+                  "settingsRevision",
+                  "pauseRevision",
+                  "pauseState",
+                  "pauseReason",
+                  "pausedAt",
+                  "pausedFailures",
+                  "pausedLastRunId",
+                  "pauseEvidence"
                 ],
                 "additionalProperties": true
-              },
-              "pausedLastRunId": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
               }
-            },
-            "required": [
-              "enabled",
-              "thresholdOverride",
-              "workspaceThreshold",
-              "effectiveThreshold",
-              "settingsRevision",
-              "pauseState",
-              "pauseRevision",
-              "pausedAt",
-              "pauseReason",
-              "pausedFailures",
-              "pausedLastRunId"
-            ],
-            "additionalProperties": true
+            ]
           },
           "replayed": {
             "type": "boolean"

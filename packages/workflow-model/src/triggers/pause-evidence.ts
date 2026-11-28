@@ -9,8 +9,13 @@ export const pollPauseEvidenceSchema = z.strictObject({
 
 export type PollPauseEvidence = z.output<typeof pollPauseEvidenceSchema>;
 
+export const runPauseEvidenceSchema = z.strictObject({
+  kind: z.literal('run'),
+  runId: z.uuid(),
+});
+
 export const triggerPauseEvidenceSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('run'), runId: z.uuid() }),
+  runPauseEvidenceSchema,
   pollPauseEvidenceSchema,
 ]);
 

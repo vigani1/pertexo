@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   workflowPauseConflictProblemSchema,
   workflowListResponseSchema,
+  workflowSummaryResponseSchema,
   workflowAutoPauseSettingsConflictProblemSchema,
   workspaceAutoPauseSettingsConflictProblemSchema,
   type WorkflowAutoPauseCommandResponse,
@@ -188,17 +189,6 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
     });
     expect(accepted.settings.pausedAt).toBeTypeOf('string');
     expect(accepted.settings.pausedBy?.id).toBeTypeOf('string');
-    const workflows = await fixture.application.inject({
-      method: 'GET',
-      url: `/v1/workspaces/${fixture.workspaceId}/workflows?include=listSummary`,
-      headers: { cookie: builder.cookieHeader },
-    });
-    expect(workflows.statusCode, workflows.payload).toBe(200);
-    const page = workflowListResponseSchema.parse(workflows.json());
-    expect(
-      page.items.find(({ id }) => id === fixture.ids.published)
-        ?.triggerPauseState,
-    ).toBe('paused');
     const replay = await send(headers);
     expect(replay.statusCode, replay.payload).toBe(200);
     expect(replay.json()).toEqual({ ...accepted, replayed: true });
@@ -218,6 +208,34 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
     expect(restored.json()).toMatchObject({
       settings: { pauseState: 'none', pauseRevision: '3' },
     });
+  });
+
+  it('reports paused triggers in standard workflow reads', async () => {
+    await pause();
+    const viewer = await fixture.login('viewer');
+    const headers = { cookie: viewer.cookieHeader };
+    for (const url of [
+      workflowPath(),
+      `${workflowPath()}?include=templateOrigin`,
+    ]) {
+      const detail = await fixture.application.inject({ url, headers });
+      expect(detail.statusCode, detail.payload).toBe(200);
+      expect(
+        workflowSummaryResponseSchema.parse(detail.json()).workflow
+          .triggerPauseState,
+      ).toBe('paused');
+    }
+
+    const listPath = `/v1/workspaces/${fixture.workspaceId}/workflows`;
+    for (const url of [listPath, `${listPath}?include=listSummary`]) {
+      const list = await fixture.application.inject({ url, headers });
+      expect(list.statusCode, list.payload).toBe(200);
+      const page = workflowListResponseSchema.parse(list.json());
+      expect(
+        page.items.find(({ id }) => id === fixture.ids.published)
+          ?.triggerPauseState,
+      ).toBe('paused');
+    }
   });
 
   it('lets a builder resume once and replay exactly without clearing a later pause', async () => {
