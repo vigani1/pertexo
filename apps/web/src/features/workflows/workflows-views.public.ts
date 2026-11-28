@@ -9,7 +9,6 @@ export {
   type LoadedInputCase,
 } from './components/input-cases/panel';
 export { WorkflowLifecycleDialog } from './components/workflow-lifecycle-dialog';
-export { WorkflowNameField } from './components/workflow-name-field';
 // Settings names a workflow's example origin beside its name and ID.
 export { WorkflowTemplateOrigin } from './components/templates/origin';
 export { PatternGlyph } from './components/pattern-glyph';

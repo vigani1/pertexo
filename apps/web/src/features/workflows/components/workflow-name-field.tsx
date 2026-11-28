@@ -1,12 +1,9 @@
 import { PencilIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { InlineRename } from '@/components/patterns/actions/rename/inline';
 import { Button } from '@/components/ui/button';
-import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { canRenameWorkflow, workflowNameError } from '../model/rename';
-import { useWorkflowRename } from '../data/workflows.mutations';
+import { canRenameWorkflow } from '../model/rename';
 import { WorkflowRenameDialog } from './workflow-rename-dialog';
 
 type WorkflowNameProps = Readonly<{
@@ -14,62 +11,9 @@ type WorkflowNameProps = Readonly<{
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
-  /** Layout of the editing form, e.g. a row in the hub bar. */
-  className?: string;
-  /** The name's type, kept while it is edited in place. */
-  textClassName?: string;
   /** How the name reads when not editing. */
   children: ReactNode;
 }>;
-
-function EditableWorkflowName({
-  apiClient,
-  userId,
-  workspace,
-  workflow,
-  className,
-  textClassName,
-  children,
-}: WorkflowNameProps) {
-  const notifications = useNotifications();
-  const command = useWorkflowRename({
-    apiClient,
-    userId,
-    workspaceId: workspace.id,
-    workflowId: workflow.id,
-    onRenamed: (name) => {
-      notifications.success({ title: `Renamed to ${name}` });
-    },
-  });
-  return (
-    <InlineRename
-      command={command}
-      onSave={command.start}
-      {...(className === undefined ? {} : { className })}
-      {...(textClassName === undefined ? {} : { textClassName })}
-      field={{
-        subject: 'workflow',
-        label: 'Workflow name',
-        validate: workflowNameError,
-      }}
-      value={{ name: workflow.name, revision: workflow.nameRevision }}
-    >
-      {children}
-    </InlineRename>
-  );
-}
-
-/**
- * The workflow's name, with a pencil for people who may rename it: editors
- * of an active workflow. Everyone else reads `children` as it is.
- */
-export function WorkflowNameField(props: WorkflowNameProps) {
-  return canRenameWorkflow(props.workspace, props.workflow) ? (
-    <EditableWorkflowName {...props} />
-  ) : (
-    props.children
-  );
-}
 
 /**
  * The name in a bar that can't grow: the pencil opens the rename dialog
@@ -81,7 +25,7 @@ export function WorkflowNameWithDialog({
   workspace,
   workflow,
   children,
-}: Omit<WorkflowNameProps, 'className'>) {
+}: WorkflowNameProps) {
   const [renaming, setRenaming] = useState(false);
   if (!canRenameWorkflow(workspace, workflow)) return children;
   return (
