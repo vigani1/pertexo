@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { UsersIcon } from 'lucide-react';
 import {
   Popover,
   PopoverTrigger,
@@ -64,10 +65,20 @@ export function WorkflowPresenceSummary() {
     return (
       <Popover>
         <PopoverTrigger
-          render={<Button type="button" variant="ghost" size="sm" />}
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="max-sm:px-0"
+            />
+          }
           aria-label="Presence unavailable"
         >
-          <StatusMark tone="neutral">Presence</StatusMark>
+          <UsersIcon aria-hidden="true" className="sm:hidden" />
+          <StatusMark tone="neutral" className="max-sm:hidden">
+            Presence
+          </StatusMark>
         </PopoverTrigger>
         <PopoverContent align="end">
           <PopoverTitle>Presence unavailable</PopoverTitle>
@@ -92,7 +103,7 @@ export function WorkflowPresenceSummary() {
             size="sm"
             // Only your own other tab: worth a word on a wide bar, not a
             // phone's, where it would wrap the title when it arrives.
-            className={people.length === 0 ? 'max-sm:hidden' : undefined}
+            className={people.length === 0 ? 'max-sm:hidden' : 'max-sm:px-0'}
           />
         }
         aria-label={
@@ -106,25 +117,31 @@ export function WorkflowPresenceSummary() {
             Also in another tab
           </span>
         ) : (
-          <span aria-hidden="true" className="flex items-center -space-x-1.5">
-            {people.slice(0, 3).map((person) => (
-              <span
-                key={person.userId}
-                title={person.displayName}
-                className={cn(
-                  'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-foreground ring-1',
-                  presencePresentation(person).ring,
-                )}
-              >
-                {formatInitials(person.displayName)}
-              </span>
-            ))}
-            {people.length > 3 ? (
-              <span className="grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-muted-foreground ring-1 ring-border-strong">
-                +{people.length - 3}
-              </span>
-            ) : null}
-          </span>
+          <>
+            <UsersIcon aria-hidden="true" className="sm:hidden" />
+            <span
+              aria-hidden="true"
+              className="hidden items-center -space-x-1.5 sm:flex"
+            >
+              {people.slice(0, 3).map((person) => (
+                <span
+                  key={person.userId}
+                  title={person.displayName}
+                  className={cn(
+                    'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-foreground ring-1',
+                    presencePresentation(person).ring,
+                  )}
+                >
+                  {formatInitials(person.displayName)}
+                </span>
+              ))}
+              {people.length > 3 ? (
+                <span className="grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-muted-foreground ring-1 ring-border-strong">
+                  +{people.length - 3}
+                </span>
+              ) : null}
+            </span>
+          </>
         )}
       </PopoverTrigger>
       <PopoverContent align="end">

@@ -58,10 +58,12 @@ export function WorkflowHubTabs({
   activeTab,
   workspace,
   workflowId,
+  className,
 }: Readonly<{
   activeTab: WorkflowHubTab;
   workspace: AccessibleWorkspace;
   workflowId: string;
+  className?: string | undefined;
 }>) {
   return (
     <nav
@@ -69,6 +71,7 @@ export function WorkflowHubTabs({
       className={cn(
         'order-last flex w-full items-center gap-1 overflow-x-auto p-0.5 min-[1728px]:order-none min-[1728px]:w-auto',
         activeTab === 'build' && 'xl:order-none xl:w-auto',
+        className,
       )}
     >
       {hubTabs(workspace).map((link) => (

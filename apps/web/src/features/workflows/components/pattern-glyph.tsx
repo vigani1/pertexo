@@ -43,7 +43,13 @@ export function PatternGlyph({
     [graph, size],
   );
   if (layout.nodes.length === 0)
-    return <PatternGlyphPlaceholder state="empty" size={size} />;
+    return (
+      <PatternGlyphPlaceholder
+        state="empty"
+        size={size}
+        className={className}
+      />
+    );
   return (
     <svg
       aria-hidden="true"
@@ -114,9 +120,11 @@ export function PatternGlyph({
 export function PatternGlyphPlaceholder({
   state,
   size = 'row',
+  className,
 }: Readonly<{
   state: 'loading' | 'unavailable' | 'empty';
   size?: GlyphSize;
+  className?: string | undefined;
 }>) {
   const { width, height } = SIZES[size];
   const middle = height / 2;
@@ -131,6 +139,7 @@ export function PatternGlyphPlaceholder({
       className={cn(
         'block shrink-0',
         state === 'loading' && 'motion-safe:animate-blink',
+        className,
       )}
     >
       <path

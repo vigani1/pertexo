@@ -91,14 +91,15 @@ export function WorkflowHubBar({
       className={cn(
         'lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-0 rounded-xl px-2 py-1 sm:gap-y-1 sm:py-2',
         activeTab === 'build'
-          ? 'max-sm:gap-x-1 max-sm:py-0.5 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]'
+          ? 'max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-1 max-sm:py-0.5 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]'
           : 'min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]',
       )}
     >
       <div
         className={cn(
           'flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0',
-          build && 'max-sm:min-w-0 max-sm:gap-1 xl:min-w-0',
+          build &&
+            'max-sm:min-w-0 max-sm:gap-1 max-[380px]:col-span-2 xl:min-w-0',
         )}
       >
         <Link
@@ -128,7 +129,7 @@ export function WorkflowHubBar({
               <h1 className={TITLE_CLASS}>{workflow.name}</h1>
             </WorkflowNameWithDialog>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-caption text-subtle-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:relative max-sm:z-10 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-caption text-subtle-foreground">
             <WorkflowActivationState
               workspace={workspace}
               workflowId={workflowId}
@@ -148,7 +149,15 @@ export function WorkflowHubBar({
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          {presence}
+          <div
+            className={
+              build
+                ? 'max-sm:absolute max-sm:right-2 max-sm:bottom-0.5'
+                : undefined
+            }
+          >
+            {presence}
+          </div>
           {/* The discussion sits beside who's here, not among the five
               tabs that build and run the workflow. */}
           <Link
@@ -172,11 +181,17 @@ export function WorkflowHubBar({
         activeTab={activeTab}
         workspace={workspace}
         workflowId={workflowId}
+        className={cn(
+          build &&
+            'max-sm:col-span-2 max-sm:row-start-2 max-[380px]:row-start-3',
+          build && presence !== undefined && 'max-sm:w-[calc(100%-2.75rem)]',
+        )}
       />
       <div
         className={cn(
           'flex max-w-full flex-wrap items-center gap-1.5 max-sm:w-full max-sm:flex-nowrap min-[1728px]:justify-self-end',
-          build && 'max-sm:w-auto max-sm:flex-none max-sm:gap-0.5',
+          build &&
+            'max-sm:col-start-2 max-sm:row-start-1 max-sm:w-auto max-sm:gap-0.5 max-[380px]:col-span-2 max-[380px]:col-start-1 max-[380px]:row-start-2 max-[380px]:justify-self-end',
           actions === undefined && 'hidden',
         )}
       >
