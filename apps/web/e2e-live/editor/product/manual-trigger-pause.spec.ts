@@ -30,39 +30,32 @@ test('pausing and resuming from Settings gates live webhooks, forms and schedule
     page,
     'Manual trigger pause',
   );
-  const formWorkflow = await publish(
-    page,
-    workspaceId,
-    'Request form',
-    'core.form',
-    {
+  const formWorkflow = await publish(page, workspaceId, 'Request form', {
+    key: 'core.form',
+    config: {
       title: 'Send a request',
       fields: [
         { id: 'message', name: 'message', label: 'Message', type: 'text' },
       ],
     },
-  );
-  const webhookWorkflow = await publish(
-    page,
-    workspaceId,
-    'Webhook intake',
-    'core.webhook',
-  );
-  const manualWorkflow = await publish(
-    page,
-    workspaceId,
-    'Manual intake',
-    'core.manual',
-  );
+  });
+  const webhookWorkflow = await publish(page, workspaceId, 'Webhook intake', {
+    key: 'core.webhook',
+  });
+  const manualWorkflow = await publish(page, workspaceId, 'Manual intake', {
+    key: 'core.manual',
+  });
   const scheduleWorkflow = await publish(
     page,
     workspaceId,
     'Scheduled intake',
-    'core.schedule',
     {
-      kind: 'interval',
-      intervalMinutes: 1,
-      misfirePolicy: 'catch_up_once',
+      key: 'core.schedule',
+      config: {
+        kind: 'interval',
+        intervalMinutes: 1,
+        misfirePolicy: 'catch_up_once',
+      },
     },
   );
   const csrf = await readCsrfToken(page);
@@ -209,8 +202,13 @@ async function publish(
   page: Page,
   workspaceId: string,
   name: string,
-  key: string,
-  config: WorkflowGraphContract['nodes'][number]['config'] = {},
+  {
+    key,
+    config = {},
+  }: Readonly<{
+    key: string;
+    config?: WorkflowGraphContract['nodes'][number]['config'];
+  }>,
 ) {
   const workflowPath = await createEditorWorkflow(page, workspaceId, name);
   const buildPath = new URL(page.url()).pathname.replace(/\/$/u, '');
