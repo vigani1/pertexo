@@ -8,21 +8,58 @@ import { statusToneText } from '@/components/patterns/status/status-tone';
 import { describeRunStatus } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { countFailureOutcomes } from '../../model/chart-window';
 import { Disclosure } from '@/components/ui/disclosure';
 
-function segments(day: UsageTrendsResponse['days'][number], scale: number) {
-  let bottom = 176;
+const BASELINE = 176;
+
+function segments(
+  day: UsageTrendsResponse['days'][number],
+  scale: number,
+  appearance: 'outcomes' | 'failure-share',
+) {
+  if (appearance === 'failure-share') {
+    const failed = countFailureOutcomes(day.byStatus);
+    const cap = BASELINE - (day.total - failed) * scale;
+    return [
+      ...(day.total === failed
+        ? []
+        : [
+            { key: 'other', tone: 'success' as const, from: BASELINE, to: cap },
+          ]),
+      ...(failed === 0
+        ? []
+        : [
+            {
+              key: 'failed',
+              tone: 'failure' as const,
+              from: cap,
+              to: cap - failed * scale,
+            },
+          ]),
+    ];
+  }
+  let bottom = BASELINE;
   return workflowRunStatusSchema.options.flatMap((status) => {
     const count = day.byStatus[status];
     const end = bottom - count * scale;
-    const segment = { status, from: bottom, to: end };
+    const segment = {
+      key: status,
+      tone: describeRunStatus({ status }).tone,
+      from: bottom,
+      to: end,
+    };
     bottom = end;
     return count === 0 ? [] : [segment];
   });
 }
 export function DailyChart({
   snapshot,
-}: Readonly<{ snapshot: Pick<UsageTrendsResponse, 'days' | 'byStatus'> }>) {
+  appearance = 'outcomes',
+}: Readonly<{
+  snapshot: Pick<UsageTrendsResponse, 'days' | 'byStatus'>;
+  appearance?: 'outcomes' | 'failure-share';
+}>) {
   const title = useId();
   const scale = 156 / Math.max(1, ...snapshot.days.map((day) => day.total));
   return (
@@ -61,19 +98,15 @@ export function DailyChart({
                 vectorEffect="non-scaling-stroke"
                 className="text-border"
               />
-              {segments(day, scale).map((segment) => (
+              {segments(day, scale, appearance).map((segment) => (
                 <path
-                  key={segment.status}
+                  key={segment.key}
                   d={`M6 ${String(segment.from)}V${String(segment.to)}`}
                   stroke="currentColor"
                   strokeWidth={2}
                   strokeLinecap="round"
                   vectorEffect="non-scaling-stroke"
-                  className={
-                    statusToneText[
-                      describeRunStatus({ status: segment.status }).tone
-                    ]
-                  }
+                  className={statusToneText[segment.tone]}
                 />
               ))}
             </svg>
@@ -95,15 +128,20 @@ export function DailyChart({
             ))}
         </div>
       </div>
-      <figcaption className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-        {workflowRunStatusSchema.options
-          .filter((status) => snapshot.byStatus[status] > 0)
-          .map((status) => (
-            <StatusMark key={status} tone={describeRunStatus({ status }).tone}>
-              {describeRunStatus({ status }).label}
-            </StatusMark>
-          ))}
-      </figcaption>
+      {appearance === 'outcomes' ? (
+        <figcaption className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+          {workflowRunStatusSchema.options
+            .filter((status) => snapshot.byStatus[status] > 0)
+            .map((status) => (
+              <StatusMark
+                key={status}
+                tone={describeRunStatus({ status }).tone}
+              >
+                {describeRunStatus({ status }).label}
+              </StatusMark>
+            ))}
+        </figcaption>
+      ) : null}
       <Disclosure summary="Daily data">
         <div
           className="max-h-96 min-w-0 max-w-full overflow-auto"

@@ -26,3 +26,7 @@ export function usageInWindow(
     total: days.reduce((total, day) => total + day.total, 0),
   };
 }
+
+export function countFailureOutcomes(counts: UsageTrendsResponse['byStatus']) {
+  return counts.failed + counts.timed_out + counts.outcome_unknown;
+}

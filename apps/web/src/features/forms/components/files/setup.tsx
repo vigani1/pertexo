@@ -47,7 +47,7 @@ export function FileFieldSetup({
             if (accept.length > 0) onChange({ accept });
           }}
           appearance="frameless"
-          className="w-full flex-wrap"
+          className="w-full flex-wrap gap-1.5"
         >
           {FILE_GROUPS.map(({ group, label }) => (
             <AcceptPill key={group} group={group} label={label} />
