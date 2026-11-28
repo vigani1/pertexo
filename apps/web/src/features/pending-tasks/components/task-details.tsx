@@ -9,7 +9,7 @@ export function TaskDetails({ details }: Readonly<{ details: Details }>) {
   return (
     <dl
       aria-label="Request details"
-      className="grid min-w-0 gap-x-8 gap-y-5 sm:grid-cols-2"
+      className="grid min-w-0 grid-cols-2 gap-x-5 gap-y-4 sm:gap-x-8 sm:gap-y-5"
     >
       {entries.map(([name, value]) => (
         <div key={name} className="min-w-0">
