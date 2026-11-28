@@ -19,6 +19,11 @@ const clockFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
 const shortTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   timeStyle: 'short',
 });
+const short24HourFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
 const dayHeadingFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   day: 'numeric',
   month: 'short',
@@ -73,9 +78,13 @@ export function formatMoment(value: string | null | undefined): string {
  */
 export function formatShortTime(
   value: string | number | null | undefined,
+  clock: 'regional' | '24-hour' = 'regional',
 ): string {
   const date = toDate(value);
-  return date === undefined ? MISSING : shortTimeFormatter.format(date);
+  if (date === undefined) return MISSING;
+  return (
+    clock === '24-hour' ? short24HourFormatter : shortTimeFormatter
+  ).format(date);
 }
 
 /** "Today", "Yesterday" or "24 Sep" for grouping lists by day. */
