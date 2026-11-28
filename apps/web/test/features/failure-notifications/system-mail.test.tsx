@@ -88,6 +88,11 @@ it('chooses a current member and saves server mail without a connection or free-
   await waitFor(() => {
     expect(body).toEqual({ kind: 'system_mail', memberId });
   });
+  expect(
+    await screen.findByText(
+      "Alerts now go to Ada · ada@example.test via this server's mail",
+    ),
+  ).toBeVisible();
 });
 it('shows the unavailable server-mail option and its reason', async () => {
   arrange(false);

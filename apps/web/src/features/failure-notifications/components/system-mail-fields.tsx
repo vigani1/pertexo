@@ -9,26 +9,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
-import { useAlertMembers } from '../hooks/use-alert-members';
+import type { AlertMembers } from '../hooks/use-alert-members';
 import type { DestinationField } from '../model/destination-copy';
 
 export function SystemMailFields({
-  scope,
+  alertMembers: { query, members },
   id,
   disabled,
   memberId,
   validation,
   onChange,
 }: Readonly<{
-  scope: DestinationMutationScope;
+  alertMembers: AlertMembers;
   id: string;
   disabled: boolean;
   memberId: string;
   validation: FieldValidation<DestinationField>;
   onChange(memberId: string): void;
 }>) {
-  const { query, members } = useAlertMembers(scope, true);
   const options = members.map((member) => ({
     value: member.userId,
     label: `${member.displayName} · ${member.email}`,
