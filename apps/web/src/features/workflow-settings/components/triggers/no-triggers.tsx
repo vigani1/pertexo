@@ -22,7 +22,7 @@ export function NoTriggers({
       <Empty spacing="flush">
         <EmptyTitle>
           {published
-            ? 'This version has no trigger'
+            ? 'This version starts by hand'
             : 'Nothing is published yet'}
         </EmptyTitle>
         <EmptyDescription>

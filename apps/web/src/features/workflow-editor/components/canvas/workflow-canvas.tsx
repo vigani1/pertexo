@@ -169,6 +169,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
         >
           <LaneBands />
           <CanvasZoomLens
+            editable={editable}
             onFit={() => {
               fit({ animate: true });
             }}

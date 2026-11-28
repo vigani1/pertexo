@@ -86,7 +86,9 @@ for (const width of [390, 1280]) {
       return route.fulfill({ json: { version, reused: true } });
     });
     await page.goto(editorUrl);
-    const unchanged = page.getByRole('button', { name: 'No changes since v1' });
+    const unchanged = page.getByRole('button', {
+      name: 'No publishable changes since v1',
+    });
     await expect(unchanged).toBeDisabled();
     await page.screenshot({
       path: temporaryTestPath(`pertexo-polish-5-${String(width)}.png`),
@@ -138,7 +140,7 @@ test('reports checksum reuse without pretending a new version was created', asyn
     .click();
   await expect(page.getByText('v1 is still live')).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'No changes since v1' }),
+    page.getByRole('button', { name: 'No publishable changes since v1' }),
   ).toBeDisabled();
   await expect(page.getByText('v2 is live')).toHaveCount(0);
 });

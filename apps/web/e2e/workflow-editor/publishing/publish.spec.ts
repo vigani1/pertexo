@@ -163,7 +163,7 @@ for (const width of [375, 1280]) {
         )
         .toBe(true);
       await expect(
-        page.getByRole('button', { name: 'No changes since v1' }),
+        page.getByRole('button', { name: 'No publishable changes since v1' }),
       ).toBeDisabled();
 
       await page.screenshot({

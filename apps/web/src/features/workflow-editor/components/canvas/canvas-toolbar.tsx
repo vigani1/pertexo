@@ -1,5 +1,5 @@
 import { Panel, useReactFlow, useStore } from '@xyflow/react';
-import { MinusIcon, PlusIcon } from 'lucide-react';
+import { ListTreeIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
@@ -21,26 +21,16 @@ export function CanvasToolbar({
   onAddStep: () => void;
   onFit: () => void;
 }>) {
-  const store = useEditorStoreApi();
   const { zoomIn, zoomOut } = useReactFlow();
   const zoom = useStore((state) => state.transform[2]);
   const duration = usePrefersReducedMotion() ? 0 : 200;
-
-  function tidy() {
-    const state = store.getState();
-    state.transact(
-      moveWorkflowNodes(state.graph, tidyLanePositions(state.graph)),
-    );
-    // Frame the tidied workflow once React Flow has drawn it.
-    requestAnimationFrame(onFit);
-  }
 
   return (
     <Panel
       position="bottom-center"
       aria-label="Canvas toolbar"
       role="toolbar"
-      className="lens !m-0 !mb-3 hidden items-center gap-1 rounded-xl p-1 lg:flex"
+      className="lens !left-[calc((100%_+_var(--editor-left-inset)_-_var(--editor-right-inset))/2)] !m-0 !mb-3 hidden items-center gap-1 rounded-xl p-1 lg:flex"
     >
       {editable ? (
         <>
@@ -48,9 +38,7 @@ export function CanvasToolbar({
             Add a step
             <Kbd>/</Kbd>
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={tidy}>
-            Tidy lanes
-          </Button>
+          <TidyLanesButton onFit={onFit} />
         </>
       ) : null}
       {/* The same name as the zoom lens's fit below 1024px. */}
@@ -88,5 +76,34 @@ export function CanvasToolbar({
         <PlusIcon />
       </Button>
     </Panel>
+  );
+}
+
+export function TidyLanesButton({
+  onFit,
+  compact = false,
+}: Readonly<{ onFit: () => void; compact?: boolean }>) {
+  const store = useEditorStoreApi();
+
+  function tidy() {
+    const state = store.getState();
+    state.transact(
+      moveWorkflowNodes(state.graph, tidyLanePositions(state.graph)),
+    );
+    // Frame the tidied workflow once React Flow has drawn it.
+    requestAnimationFrame(onFit);
+  }
+
+  return (
+    <Button
+      type="button"
+      size={compact ? 'icon-xs' : 'sm'}
+      variant="ghost"
+      aria-label={compact ? 'Tidy lanes' : undefined}
+      title={compact ? 'Tidy lanes' : undefined}
+      onClick={tidy}
+    >
+      {compact ? <ListTreeIcon /> : 'Tidy lanes'}
+    </Button>
   );
 }

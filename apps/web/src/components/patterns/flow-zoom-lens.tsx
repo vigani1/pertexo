@@ -1,4 +1,5 @@
 import { MiniMap, Panel, useReactFlow, type Node } from '@xyflow/react';
+import type { ReactNode } from 'react';
 import { MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
@@ -20,6 +21,7 @@ export function FlowZoomLens<NodeType extends Node>({
   onFit,
   className,
   controlsClassName,
+  children,
 }: Readonly<{
   /** Names the overview map: "Workflow overview". */
   mapLabel: string;
@@ -33,6 +35,8 @@ export function FlowZoomLens<NodeType extends Node>({
   className?: string;
   /** Hides the zoom buttons where the graph has its own toolbar. */
   controlsClassName?: string;
+  /** Graph-specific actions beside the compact zoom controls. */
+  children?: ReactNode;
 }>) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const reducedMotion = usePrefersReducedMotion();
@@ -92,6 +96,7 @@ export function FlowZoomLens<NodeType extends Node>({
         >
           <MaximizeIcon />
         </Button>
+        {children}
       </div>
     </Panel>
   );

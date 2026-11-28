@@ -1,5 +1,13 @@
 import type { PublicationReviewOverview } from '@pertexo/contracts';
 
+function unchangedLabel(versionNumber: number) {
+  return `No publishable changes since v${String(versionNumber)}`;
+}
+
+export function unchangedPublicationMessage(versionNumber: number) {
+  return `${unchangedLabel(versionNumber)}. Step names and positions alone don’t create a new version.`;
+}
+
 /** The action describes the saved draft; an uncertain command keeps its original mode. */
 export function publicationAction({
   policy,
@@ -24,7 +32,7 @@ export function publicationAction({
   const unchanged =
     unchangedVersionNumber === undefined
       ? undefined
-      : `No changes since v${String(unchangedVersionNumber)}`;
+      : unchangedLabel(unchangedVersionNumber);
   let label =
     versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`;
   if (reviewRequired) label = 'Request review';
@@ -35,7 +43,7 @@ export function publicationAction({
     pendingReviewId,
     compactLabel:
       unchanged !== undefined && pendingReviewId === undefined
-        ? 'No changes'
+        ? 'Already live'
         : undefined,
     blockedReason:
       pendingReviewId === undefined ? (unchanged ?? emptyReason) : undefined,

@@ -32,7 +32,7 @@ it('offers recovery for failed publication discovery without claiming there are 
   await renderLoadedApp(triggersPath);
   const retry = await screen.findByRole('button', { name: 'Retry' }, coldStart);
   expect(
-    screen.queryByText('This version has no trigger'),
+    screen.queryByText('This version starts by hand'),
   ).not.toBeInTheDocument();
   expect(
     screen.queryByText(/Runs start only when someone runs the workflow/u),
@@ -86,7 +86,7 @@ it.each([
       expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
     }
     expect(
-      screen.queryByText('This version has no trigger'),
+      screen.queryByText('This version starts by hand'),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Runs start only when someone runs the workflow/u),
@@ -96,7 +96,7 @@ it.each([
     expect(await screen.findByRole('heading', { name: 'Form' })).toBeVisible();
     expect(screen.getByText(/Add that trigger step in/u)).toBeVisible();
     expect(
-      screen.queryByText('This version has no trigger'),
+      screen.queryByText('This version starts by hand'),
     ).not.toBeInTheDocument();
   },
 );

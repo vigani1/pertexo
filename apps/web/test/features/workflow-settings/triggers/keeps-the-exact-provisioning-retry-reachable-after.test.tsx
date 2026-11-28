@@ -267,7 +267,7 @@ describe('workflow triggers tab', () => {
     );
     await renderLoadedApp(triggersPath);
     const heading = await screen.findByRole('heading', {
-      name: 'This version has no trigger',
+      name: 'This version starts by hand',
     });
     expect(heading).toBeVisible();
     expect(screen.getByRole('link', { name: 'Open Build' })).toHaveAttribute(
@@ -316,7 +316,7 @@ describe('workflow triggers tab', () => {
       within(form).getByText(/each time someone submits it/u),
     ).toBeVisible();
     expect(
-      screen.queryByRole('heading', { name: 'This version has no trigger' }),
+      screen.queryByRole('heading', { name: 'This version starts by hand' }),
     ).not.toBeInTheDocument();
   });
 });

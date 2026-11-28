@@ -4,6 +4,7 @@ import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialo
 import { unreachableStepIssues } from '../../model/validation/reachability';
 import { groupWorkflowFindings } from '../../model/validation/issues';
 import { publicationDialogCopy } from '../../model/publication/dialog-copy';
+import { unchangedPublicationMessage } from '../../model/publication/action';
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
@@ -140,8 +141,7 @@ export function PublishDialog({
                 {unchangedVersionNumber === undefined ||
                 error !== undefined ? null : (
                   <Notice>
-                    No changes since v{unchangedVersionNumber}. This version is
-                    already live.
+                    {unchangedPublicationMessage(unchangedVersionNumber)}
                   </Notice>
                 )}
                 {policyNotice}

@@ -98,7 +98,7 @@ for (const screen of [
         exact: true,
       });
       const publish = header.getByRole('button', {
-        name: 'No changes since v1',
+        name: 'No publishable changes since v1',
         exact: true,
       });
       await expect(publish).toBeDisabled();

@@ -18,6 +18,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
 import { invalidatePublishedWorkflow } from '../workflow-publish.queries';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
+import { unchangedPublicationMessage } from '../../model/publication/action';
 import {
   useWorkflowDraftValidation,
   type SavedDraft,
@@ -255,9 +256,7 @@ async function preparePublicationAttempt(
   if (!checked.report.valid) return 'blocked';
   const current = checked.report.currentPublication;
   if (current?.matchesDraft) {
-    setPublishError(
-      `No changes since v${String(current.versionNumber)}. This version is already live.`,
-    );
+    setPublishError(unchangedPublicationMessage(current.versionNumber));
     return 'blocked';
   }
   return { ...saved, ...newCommandKey(), command, report: checked.report };
