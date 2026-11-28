@@ -1,4 +1,5 @@
 import { MoonIcon, SunIcon } from 'lucide-react';
+import { navigationTileClass } from '@/components/ui/button-variants';
 import {
   Tooltip,
   TooltipContent,
@@ -26,9 +27,7 @@ function useNextTheme() {
 }
 
 /** An icon button for a rail, named by what it does. */
-export function ThemeSwitchButton({
-  className,
-}: Readonly<{ className?: string }>) {
+export function ThemeSwitchButton() {
   const { label, icon, switchTheme } = useNextTheme();
   return (
     <Tooltip>
@@ -37,7 +36,7 @@ export function ThemeSwitchButton({
           <button
             type="button"
             aria-label={label}
-            className={className}
+            className={navigationTileClass}
             onClick={switchTheme}
           />
         }

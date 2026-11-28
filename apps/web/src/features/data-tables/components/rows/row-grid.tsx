@@ -209,11 +209,10 @@ function DataRow({
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="remove-icon"
               size="icon-sm"
               aria-label="Delete"
               title="Delete row"
-              className="hover:text-destructive"
               disabled={locked}
               onClick={() => {
                 onDelete(row);

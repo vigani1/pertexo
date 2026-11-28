@@ -8,13 +8,15 @@ export const Select = SelectPrimitive.Root;
 export function SelectTrigger({
   className,
   children,
+  size = 'default',
   ...props
-}: SelectPrimitive.Trigger.Props) {
+}: SelectPrimitive.Trigger.Props & Readonly<{ size?: 'default' | 'compact' }>) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-8.5 pointer-coarse:min-h-10 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-select-raised px-3 text-label font-medium outline-none transition-colors hover:bg-select-strong focus-ring data-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:bg-fail-soft whitespace-nowrap select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex h-8.5 pointer-coarse:min-h-10 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-select-raised px-3 font-medium outline-none transition-colors hover:bg-select-strong focus-ring data-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:bg-fail-soft whitespace-nowrap select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        size === 'compact' ? 'text-xs' : 'text-label',
         className,
       )}
       {...props}

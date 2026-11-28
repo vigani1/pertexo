@@ -29,7 +29,6 @@ import {
 } from '@/components/patterns/states/empty';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/class-names';
 import {
   ROW_REVEAL_CLASS,
   type WorkflowRowActions,
@@ -90,12 +89,8 @@ export function WorkflowOrganizedResults({
     return (
       <Checkbox
         aria-label={`Select ${item.workflow.name}`}
-        className={cn(
-          // A bead: a hollow loop that ties into a knot when picked, with a
-          // 32px (44px on touch) hit area around it.
-          'relative size-4 rounded-full [&_svg]:size-2.5 after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5',
-          currentSelected.length === 0 && ROW_REVEAL_CLASS,
-        )}
+        shape="bead"
+        className={currentSelected.length === 0 ? ROW_REVEAL_CLASS : undefined}
         checked={selected.includes(id)}
         disabled={
           editing !== undefined ||

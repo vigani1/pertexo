@@ -21,11 +21,8 @@ export function SocialProviderButton({
     <Button
       type="button"
       aria-label={`${action} ${providerName(provider)}`}
-      variant="outline"
-      className={cn(
-        'w-full gap-2.5 border-surface-ink/10 bg-select text-label text-foreground hover:border-action/35 hover:bg-action-soft',
-        className,
-      )}
+      variant="provider"
+      className={cn('w-full gap-2.5', className)}
       {...props}
     >
       <ProviderMark provider={provider} />

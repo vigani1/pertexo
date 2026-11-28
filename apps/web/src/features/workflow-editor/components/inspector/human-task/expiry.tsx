@@ -201,7 +201,7 @@ export function TaskExpiry({
               kind === 'core.approval'
                 ? 'The run continues on Timed out. Link it to escalate, or to the Approved step to approve by default.'
                 : 'The run continues on Timed out. Link it to ask someone else or carry on without an answer.',
-            glyph: <TimedOutGlyph className="size-3.5 text-warning" />,
+            glyph: <TimedOutGlyph tone="warning" className="size-3.5" />,
           },
         ]}
       />

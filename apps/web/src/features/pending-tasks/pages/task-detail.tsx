@@ -216,7 +216,7 @@ function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
       </StatusMark>
       {task.status === 'pending' ? (
         <span className="inline-flex items-center gap-1.5">
-          <TimedOutGlyph className="size-3.5 text-subtle-foreground" />
+          <TimedOutGlyph tone="muted" className="size-3.5" />
           {due}
         </span>
       ) : (

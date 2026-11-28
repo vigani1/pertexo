@@ -18,7 +18,12 @@ type SharedProps = Pick<
 type ControlProps =
   | (Omit<InputProps, 'onChange'> & Readonly<{ multiline?: false }>)
   | (Omit<TextareaProps, 'onChange'> & Readonly<{ multiline: true }>)
-  | (SharedProps & Readonly<{ multiline: boolean; onBlur: () => void }>);
+  | (SharedProps &
+      Readonly<{
+        multiline: boolean;
+        typography?: 'mono' | undefined;
+        onBlur: () => void;
+      }>);
 
 export function SchemaTextControl({
   onTextChange,

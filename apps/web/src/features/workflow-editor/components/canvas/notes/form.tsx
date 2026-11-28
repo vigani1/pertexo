@@ -183,8 +183,8 @@ export function NoteForm({
             {onRemove === undefined ? null : (
               <Button
                 type="button"
-                variant="ghost"
-                className="mr-auto text-destructive"
+                variant="destructive-ghost"
+                className="mr-auto"
                 onClick={onRemove}
               >
                 Delete note

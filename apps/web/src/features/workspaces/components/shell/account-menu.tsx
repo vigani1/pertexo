@@ -32,7 +32,12 @@ export function AccountMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${user.displayName}`}
-        className="grid size-10 shrink-0 place-items-center rounded-md outline-none hover:bg-select-raised focus-ring"
+        render={
+          <button
+            type="button"
+            className="grid size-10 shrink-0 place-items-center rounded-md outline-none hover:bg-select-raised focus-ring"
+          />
+        }
       >
         <RingMonogram
           name={user.displayName || user.email}
@@ -41,7 +46,7 @@ export function AccountMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" className="w-64">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="normal-case">
+          <DropdownMenuLabel appearance="identity">
             <span className="block truncate font-sans text-sm font-semibold tracking-normal text-foreground">
               {user.displayName}
             </span>

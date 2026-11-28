@@ -4,12 +4,19 @@ import { cn } from '@/lib/class-names';
  * The Timed out path's mark: an hourglass whose sand has run through, drawn
  * in the thread glyphs' stroke. It takes the colour of its text.
  */
-export function TimedOutGlyph({ className }: Readonly<{ className?: string }>) {
+export function TimedOutGlyph({
+  className,
+  tone = 'inherit',
+}: Readonly<{ className?: string; tone?: 'inherit' | 'muted' | 'warning' }>) {
   return (
     <span
       aria-hidden="true"
       className={cn(
         'inline-grid size-4 shrink-0 place-items-center',
+        {
+          'text-subtle-foreground': tone === 'muted',
+          'text-warning': tone === 'warning',
+        },
         className,
       )}
     >

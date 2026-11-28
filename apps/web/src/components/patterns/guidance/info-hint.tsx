@@ -7,7 +7,6 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/class-names';
 
 /**
  * A small (i) beside a term that explains it. A popover rather than a
@@ -24,13 +23,10 @@ export function InfoHint({
         render={
           <Button
             type="button"
-            variant="ghost"
+            variant="quiet"
             size="icon-xs"
             aria-label={`About ${title}`}
-            className={cn(
-              'text-subtle-foreground hover:text-foreground',
-              className,
-            )}
+            className={className}
           />
         }
       >

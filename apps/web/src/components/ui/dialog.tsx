@@ -94,12 +94,17 @@ export function DialogDescription({
 }
 
 /** Cancel/Close first, supporting actions next, primary action last in DOM order. */
-export function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
+export function DialogFooter({
+  className,
+  appearance,
+  ...props
+}: ComponentProps<'div'> & Readonly<{ appearance?: 'sheet' }>) {
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
         'flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:[&>button]:min-h-11 max-sm:[&>button]:max-w-full max-sm:[&>button]:whitespace-normal',
+        appearance === 'sheet' && 'border-t border-border px-5 py-4',
         className,
       )}
       {...props}

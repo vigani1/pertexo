@@ -30,14 +30,22 @@ export function WorkspacePickerHeader({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`Account menu for ${user.displayName}`}
-          className="flex min-w-0 items-center gap-2.5 rounded-full py-1 pr-1 pl-1 text-sm text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring sm:pr-3"
+          render={
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-2.5 rounded-full py-1 pr-1 pl-1 text-sm text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring sm:pr-3"
+            />
+          }
         >
           <RingMonogram name={user.displayName || user.email} />
           <span className="max-w-48 truncate max-sm:hidden">{user.email}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuGroup>
-            <DropdownMenuLabel className="flex min-w-0 flex-col gap-0.5 font-sans tracking-normal normal-case">
+            <DropdownMenuLabel
+              appearance="identity"
+              className="flex min-w-0 flex-col gap-0.5"
+            >
               <span className="truncate text-sm font-semibold text-foreground">
                 {user.displayName}
               </span>

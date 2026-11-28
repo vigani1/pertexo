@@ -73,7 +73,8 @@ function WaysIn() {
         <Row
           key={way.name}
           lift="none"
-          className="grid-cols-[minmax(0,1fr)_auto] py-2.5 text-sm sm:grid-cols-[6rem_minmax(0,1fr)_auto]"
+          typography="body"
+          className="grid-cols-[minmax(0,1fr)_auto] py-2.5 sm:grid-cols-[6rem_minmax(0,1fr)_auto]"
         >
           <span className="font-medium">{way.name}</span>
           <span className="text-muted-foreground max-sm:col-start-1 max-sm:row-start-2 max-sm:text-xs">

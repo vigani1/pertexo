@@ -24,6 +24,7 @@ const itemVariants = cva(
         pill: 'h-8 gap-1.5 rounded-full border border-surface-ink/10 px-3 text-meta font-medium text-subtle-foreground transition-colors hover:bg-select data-pressed:border-action/55 data-pressed:bg-action/12',
         tile: 'group/tile relative flex h-[4.25rem] min-w-0 flex-col justify-center gap-1 rounded-lg border border-surface-ink/8 bg-select px-1 text-muted-foreground transition-[transform,box-shadow,border-color,background-color,color] duration-(--duration-move) ease-unspool motion-reduce:transition-none hover:border-surface-ink/16 data-pressed:-translate-y-px data-pressed:border-transparent data-pressed:bg-action-soft data-pressed:shadow-lens data-pressed:outline-2 data-pressed:outline-offset-0 data-pressed:outline-ring/70 motion-reduce:data-pressed:translate-y-0 max-sm:min-h-[4.25rem]',
       },
+      typography: { label: 'text-label' },
     },
     defaultVariants: { appearance: 'segmented' },
   },
@@ -46,13 +47,14 @@ export function ToggleGroup({
 
 export function ToggleGroupItem({
   appearance,
+  typography,
   className,
   ...props
 }: TogglePrimitive.Props & VariantProps<typeof itemVariants>) {
   return (
     <TogglePrimitive
       data-slot="toggle-group-item"
-      className={cn(itemVariants({ appearance }), className)}
+      className={cn(itemVariants({ appearance, typography }), className)}
       {...props}
     />
   );

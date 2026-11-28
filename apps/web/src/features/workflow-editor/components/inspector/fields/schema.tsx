@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import { Switch } from '@/components/ui/switch';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { cn } from '@/lib/class-names';
 import {
   describeAmount,
   toShownValue,
@@ -183,10 +182,10 @@ function ConfigTextField(props: LiveFieldProps) {
         name={`config.${fieldPath(field)}`}
         autoComplete="off"
         spellCheck={jsonObject ? false : undefined}
-        className={cn(
-          field.format === 'json-path' && 'font-mono',
-          jsonObject && 'min-h-32 font-mono',
-        )}
+        typography={
+          jsonObject || field.format === 'json-path' ? 'mono' : undefined
+        }
+        className={jsonObject ? 'min-h-32' : undefined}
         value={live.text}
         disabled={!form.editable}
         aria-invalid={live.error !== undefined}

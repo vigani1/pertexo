@@ -102,7 +102,14 @@ function SectionSwitcher({
     .find((destination) => isOpen(destination));
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger className="flex min-h-11 w-full items-center gap-3 rounded-sm px-1 py-2.5 text-left text-sm outline-none transition-colors hover:bg-select focus-ring @3xl:hidden">
+      <SheetTrigger
+        render={
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center gap-3 rounded-sm px-1 py-2.5 text-left text-sm outline-none transition-colors hover:bg-select focus-ring @3xl:hidden"
+          />
+        }
+      >
         <span
           aria-hidden="true"
           className="size-1.5 shrink-0 rounded-full bg-action"

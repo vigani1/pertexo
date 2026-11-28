@@ -3,12 +3,17 @@ import { cn } from '@/lib/class-names';
 
 export const Tabs = TabsPrimitive.Root;
 
-export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
+export function TabsList({
+  className,
+  divided = false,
+  ...props
+}: TabsPrimitive.List.Props & Readonly<{ divided?: boolean }>) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
         'flex min-w-0 items-center gap-1 overflow-x-auto p-0.5',
+        divided && 'border-b border-border',
         className,
       )}
       {...props}

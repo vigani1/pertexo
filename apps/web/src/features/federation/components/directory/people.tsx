@@ -177,7 +177,8 @@ function DirectoryPeopleRows({
             frame="bare"
             lift="none"
             key={person.id}
-            className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm"
+            typography="body"
+            className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3"
           >
             <div className="min-w-0">
               <p className="break-words font-medium">{person.userName}</p>

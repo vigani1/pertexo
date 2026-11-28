@@ -73,9 +73,10 @@ export function RunDetailActions({
   return (
     <PageHeaderActions
       {...(compact ? { role: 'group', 'aria-label': 'Run actions' } : {})}
+      appearance={compact ? 'floating' : undefined}
       className={
         compact
-          ? 'lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex-nowrap items-stretch rounded-2xl p-2'
+          ? 'fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex-nowrap items-stretch p-2'
           : 'md:self-start'
       }
     >

@@ -5,6 +5,7 @@ import { Link } from '@tanstack/react-router';
 import { SearchIcon } from 'lucide-react';
 import { CORE_IDLE_ENERGY, CoreOrb } from '@/components/patterns/core/orb';
 import { ThemeSwitchButton } from '@/components/patterns/appearance/theme-switch';
+import { navigationTileClass } from '@/components/ui/button-variants';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
@@ -22,9 +23,6 @@ import { shortcut } from '@/lib/shortcut-keys';
 function formatBadge(count: number): string {
   return count > 99 ? '99+' : String(count);
 }
-
-const spineLinkClass =
-  "relative grid size-10 shrink-0 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-select-raised hover:text-foreground focus-ring aria-[current=page]:bg-select-raised aria-[current=page]:text-foreground [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,
@@ -51,7 +49,7 @@ function SpineLink({
             activeOptions={{ exact: destination.exact ?? false }}
             inactiveProps={included ? { 'aria-current': 'page' } : {}}
             aria-label={label}
-            className={spineLinkClass}
+            className={navigationTileClass}
           />
         }
       >
@@ -152,8 +150,8 @@ export function WorkspaceSpine({
         />
       ))}
       <span className="flex-1" />
-      <HelpMenu className={spineLinkClass} />
-      <ThemeSwitchButton className={spineLinkClass} />
+      <HelpMenu className={navigationTileClass} />
+      <ThemeSwitchButton />
       <Tooltip>
         <TooltipTrigger
           render={
@@ -161,7 +159,7 @@ export function WorkspaceSpine({
               type="button"
               aria-label="Search"
               aria-keyshortcuts="Meta+K Control+K"
-              className={cn(spineLinkClass)}
+              className={cn(navigationTileClass)}
               onClick={onOpenSearch}
             />
           }

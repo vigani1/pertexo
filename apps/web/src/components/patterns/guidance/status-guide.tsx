@@ -10,7 +10,6 @@ import {
   StatusMark,
   type StatusTone,
 } from '@/components/patterns/status/status-mark';
-import { cn } from '@/lib/class-names';
 import { HELP_LINKS } from '@/lib/help/guides';
 import { GuideLink } from './guide-link';
 
@@ -48,12 +47,9 @@ export function StatusGuide({
         render={
           <Button
             type="button"
-            variant="ghost"
+            variant="quiet"
             size="xs"
-            className={cn(
-              'font-sans text-subtle-foreground hover:text-foreground',
-              className,
-            )}
+            className={className}
           />
         }
       >
@@ -91,7 +87,7 @@ export function StatusGuide({
             </dl>
           </section>
         ))}
-        <GuideLink href={HELP_LINKS.glossary} className="mt-5 text-xs">
+        <GuideLink href={HELP_LINKS.glossary} size="compact" className="mt-5">
           More words explained in the glossary
         </GuideLink>
       </PopoverContent>

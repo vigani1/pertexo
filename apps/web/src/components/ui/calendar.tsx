@@ -115,9 +115,8 @@ export function Calendar({
           outsideBounds(today, { min, max }) ? null : (
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="text-xs text-accent-foreground"
+              variant="calendar-today"
+              size="calendar-today"
               onClick={() => {
                 go(today);
               }}
@@ -128,8 +127,7 @@ export function Calendar({
           <Button
             type="button"
             variant="outline"
-            size="icon-sm"
-            className="rounded-full"
+            size="icon-round"
             aria-label="Previous month"
             disabled={min !== undefined && sameMonth(focused, min)}
             onClick={() => {
@@ -141,8 +139,7 @@ export function Calendar({
           <Button
             type="button"
             variant="outline"
-            size="icon-sm"
-            className="rounded-full"
+            size="icon-round"
             aria-label="Next month"
             disabled={max !== undefined && sameMonth(focused, max)}
             onClick={() => {

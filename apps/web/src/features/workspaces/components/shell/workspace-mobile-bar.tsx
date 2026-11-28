@@ -128,7 +128,10 @@ export function WorkspaceMobileBar(props: WorkspaceMobileBarProps) {
           </Link>
         ) : null}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-          <SheetTrigger className={barLinkClass} data-active={moreActive}>
+          <SheetTrigger
+            render={<button type="button" className={barLinkClass} />}
+            data-active={moreActive}
+          >
             <MoreHorizontalIcon aria-hidden="true" />
             More
           </SheetTrigger>

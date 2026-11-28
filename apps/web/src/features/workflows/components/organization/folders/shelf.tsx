@@ -74,8 +74,8 @@ export function FolderShelf({
             <li className="shrink-0 snap-start">
               <Button
                 type="button"
-                variant="ghost"
-                className="h-11 border border-dashed border-border-strong px-4 text-muted-foreground hover:text-foreground"
+                variant="add-tile"
+                className="h-11 px-4"
                 onClick={() => {
                   onAction({ kind: 'create', parent: current ?? null });
                 }}

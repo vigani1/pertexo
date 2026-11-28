@@ -77,7 +77,7 @@ export function MappingValueEditor({
         value={[row.kind]}
         disabled={disabled}
         // Wrap source choices within the inspector rather than narrowing the labels.
-        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-label"
+        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5"
         onValueChange={(values) => {
           const kind: unknown = values[0];
           if (!isEditableInputMappingKind(kind)) return;
@@ -100,7 +100,11 @@ export function MappingValueEditor({
               permittedKinds === undefined || permittedKinds.has(option.kind),
           )
           .map((option) => (
-            <ToggleGroupItem key={option.kind} value={option.kind}>
+            <ToggleGroupItem
+              key={option.kind}
+              value={option.kind}
+              typography="label"
+            >
               {option.label}
             </ToggleGroupItem>
           ))}

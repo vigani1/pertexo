@@ -115,7 +115,7 @@ export function ConnectionSlot({
         canManage={addScope !== null}
       />
       {missingId === undefined ? null : (
-        <FieldDescription className="text-warning">
+        <FieldDescription tone="warning">
           The chosen connection was revoked or needs reauthorizing. Choose
           another one.
         </FieldDescription>
