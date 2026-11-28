@@ -8425,7 +8425,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -15776,7 +15775,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -16162,7 +16160,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -29433,7 +29430,6 @@
                       ]
                     },
                     "triggerPauseState": {
-                      "description": "Present in list summary projections while triggers are paused.",
                       "type": "string",
                       "const": "paused"
                     },
@@ -29878,7 +29874,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -30303,7 +30298,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -30884,7 +30878,6 @@
             ]
           },
           "triggerPauseState": {
-            "description": "Present in list summary projections while triggers are paused.",
             "type": "string",
             "const": "paused"
           },
@@ -31239,7 +31232,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -31600,7 +31592,6 @@
                 ]
               },
               "triggerPauseState": {
-                "description": "Present in list summary projections while triggers are paused.",
                 "type": "string",
                 "const": "paused"
               },
@@ -32011,7 +32002,6 @@
                   ]
                 },
                 "triggerPauseState": {
-                  "description": "Present in list summary projections while triggers are paused.",
                   "type": "string",
                   "const": "paused"
                 },

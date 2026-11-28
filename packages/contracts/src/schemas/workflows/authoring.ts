@@ -159,12 +159,7 @@ export const workflowSummarySchema = z
     lifecycleStatus: workflowLifecycleStatusSchema,
     lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
-    triggerPauseState: z
-      .literal('paused')
-      .optional()
-      .describe(
-        'Present in list summary projections while triggers are paused.',
-      ),
+    triggerPauseState: z.literal('paused').optional(),
     webhookSetupRequired: z.boolean(),
     pollingTriggers: z.array(pollingTriggerHealthSchema).optional(),
     resourceAccess: z
