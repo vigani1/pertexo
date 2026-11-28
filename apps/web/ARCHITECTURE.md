@@ -1011,6 +1011,28 @@ unread.
   there are several, one per file in `data/mutations/`. Other code reaches a
   feature through its four entries (above).
 
+#### Weft lint rules
+
+The web ESLint policy runs these rules in the existing `pnpm lint` step. The
+TypeScript rules cover `src/`; the stylesheet check reads CSS declarations
+outside `styles/globals.css`.
+
+| Rule                                | What it checks                                                                                                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `weft/no-raw-colors`                | Use theme tokens in place of hex and literal CSS color functions. The canvas code that serializes token channels may build CSS color strings.               |
+| `weft/semantic-color-utilities`     | Use semantic Tailwind colors in place of built-in palette colors and arbitrary color values.                                                                |
+| `weft/shared-component-appearance`  | Pass layout in `className` on imported shared components. Use field typography and emphasis, Disclosure appearance, toggle appearances and Skeleton shapes. |
+| `weft/quick-duration-token`         | Use `duration-(--duration-quick)` for 150 ms transitions.                                                                                                   |
+| `weft/control-radius-token`         | Use the shared control radius in place of a literal 5 px radius.                                                                                            |
+| `weft/no-retired-component-imports` | Use current owners for known retired Weft modules and named exports.                                                                                        |
+| `weft/feature-hook-placement`       | Put feature `use-*.ts(x)` modules in `hooks/`. The command-hook rules cover `data/`.                                                                        |
+| `weft/tsx-requires-jsx`             | Use `.tsx` for modules with JSX.                                                                                                                            |
+| `weft/native-disclosure-owner`      | Use `Disclosure` for native `details` and `summary`.                                                                                                        |
+
+The appearance rule reads literal class values, local constants, conditional
+branches and class composition calls. Review computed class values and new
+duplicates in context, where the intent of the code is visible.
+
 #### Copy and feedback rules
 
 - Names over IDs: never show a full UUID in a list or header; short IDs live in
