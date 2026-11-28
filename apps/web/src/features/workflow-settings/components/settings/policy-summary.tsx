@@ -53,29 +53,31 @@ export function WorkflowPolicySummary({
   );
   const duration =
     live === undefined ? undefined : maxRunDurationOf(live.graph);
-  const lines = [
-    live === undefined
-      ? undefined
-      : duration === undefined
+  const lines: string[] = [];
+  if (live !== undefined)
+    lines.push(
+      duration === undefined
         ? 'The published version has no run time limit.'
         : `Runs stop after ${describeRunDuration(duration)}.`,
-    concurrency?.limit == null
-      ? undefined
-      : `Up to ${String(concurrency.limit)} runs at a time.`,
-    alerts === undefined
-      ? undefined
-      : alerts.destination?.status !== 'enabled'
-        ? 'Failure alerts are off.'
-        : 'Failure alerts are on.',
-    errorRoute?.targetWorkflowId == null
-      ? undefined
-      : `Failure starts ${errorRoute.targetWorkflowName ?? 'an error workflow'}.`,
-    pause === undefined
-      ? undefined
-      : pause.enabled
+    );
+  if (concurrency?.limit != null)
+    lines.push(`Up to ${String(concurrency.limit)} runs at a time.`);
+  if (alerts !== undefined)
+    lines.push(
+      alerts.destination?.status === 'enabled'
+        ? 'Failure alerts are on.'
+        : 'Failure alerts are off.',
+    );
+  if (errorRoute?.targetWorkflowId != null)
+    lines.push(
+      `Failure starts ${errorRoute.targetWorkflowName ?? 'an error workflow'}.`,
+    );
+  if (pause !== undefined)
+    lines.push(
+      pause.enabled
         ? `${String(pause.effectiveThreshold)} failures in a row pause triggers.`
         : 'Automatic pause is off.',
-  ].filter((line) => line !== undefined);
+    );
   if (lines.length === 0) return null;
   return <p className="text-meta text-muted-foreground">{lines.join(' ')}</p>;
 }

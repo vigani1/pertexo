@@ -54,6 +54,7 @@ export function FileFieldControl({
   const attached = taken.length;
   const full = availableUploadSlots(field.maxFiles, rows) === 0;
   const settled = full && taken.every((row) => row.phase === 'ready');
+  const presentation = settled ? 'settled' : undefined;
   const summaryId = `${id}-accepts`;
   const helpId = field.help === '' ? undefined : `${id}-help`;
   const errorId = error === undefined ? undefined : `${id}-error`;
@@ -82,7 +83,7 @@ export function FileFieldControl({
           [summaryId, helpId, errorId].filter(Boolean).join(' ') || undefined
         }
         appearance="attachment"
-        presentation={settled ? 'settled' : full ? 'full' : undefined}
+        presentation={full ? (presentation ?? 'full') : undefined}
         onChooseFiles={(files) => {
           setLeftOut(onAdd(files));
         }}

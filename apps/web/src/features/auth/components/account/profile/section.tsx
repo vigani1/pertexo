@@ -92,9 +92,10 @@ export function AccountProfileSection({
                   onChanged={onProfileChanged}
                 />
               </>
-            ) : security === undefined ? null : (
+            ) : null}
+            {edit === 'email' && security !== undefined ? (
               <AccountEmailSection apiClient={apiClient} security={security} />
-            )}
+            ) : null}
           </SheetContent>
         )}
       </Sheet>

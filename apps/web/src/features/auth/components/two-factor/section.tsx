@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
@@ -24,10 +24,12 @@ function recoveryWarning(
 export function AccountRecoveryAttention({
   security,
   readState,
+  controlRef,
   onRegenerate,
 }: Readonly<{
   security: AccountSecurityResponse;
   readState: TwoFactorReadState;
+  controlRef: RefObject<HTMLButtonElement | null>;
   onRegenerate: () => void;
 }>) {
   const warning = recoveryWarning(security, readState);
@@ -45,6 +47,7 @@ export function AccountRecoveryAttention({
             type="button"
             variant="outline"
             size="sm"
+            ref={controlRef}
             disabled={readState !== 'ready'}
             onClick={onRegenerate}
           >
@@ -63,6 +66,7 @@ export function AccountTwoFactorSection({
   userId,
   security,
   readState,
+  controlRef,
   action,
   onAction: setAction,
 }: Readonly<{
@@ -70,17 +74,28 @@ export function AccountTwoFactorSection({
   userId: string;
   security: AccountSecurityResponse;
   readState: TwoFactorReadState;
+  controlRef: RefObject<HTMLButtonElement | null>;
   action: TwoFactorAction | undefined;
   onAction: (action: TwoFactorAction | undefined) => void;
 }>) {
   const refreshSecurity = useAccountSecurityRefresh(userId);
   const [closing, setClosing] = useState(false);
+  const restoreFocus = useRef(false);
+  useEffect(() => {
+    if (action !== undefined || readState !== 'ready' || !restoreFocus.current)
+      return;
+    restoreFocus.current = false;
+    controlRef.current?.focus();
+  }, [action, controlRef, readState]);
+
   async function refreshAndClose() {
     if (closing) return;
     setClosing(true);
     try {
       await refreshSecurity();
     } finally {
+      // Completing enrollment can replace the button that opened the sheet.
+      restoreFocus.current = true;
       setAction(undefined);
       setClosing(false);
     }
@@ -110,6 +125,7 @@ export function AccountTwoFactorSection({
                 <Button
                   type="button"
                   variant="outline"
+                  ref={controlRef}
                   disabled={readState !== 'ready'}
                   onClick={() => {
                     setAction('regenerate');
@@ -133,6 +149,7 @@ export function AccountTwoFactorSection({
             <Button
               type="button"
               variant="outline"
+              ref={controlRef}
               disabled={!hasPassword || readState !== 'ready'}
               onClick={() => {
                 setAction('enable');

@@ -238,12 +238,10 @@ export function RunDurationSection({
   const archived = workflow?.lifecycleStatus === 'archived';
 
   const draft = shownData(stored.draft);
+  const savedMs =
+    draft === undefined ? undefined : maxRunDurationOf(draft.draft.graph);
   const draftMs =
-    choice.requested === undefined
-      ? draft === undefined
-        ? undefined
-        : maxRunDurationOf(draft.draft.graph)
-      : choice.requested.duration;
+    choice.requested === undefined ? savedMs : choice.requested.duration;
   return (
     <SettingRow
       title="Maximum run duration"
