@@ -25,7 +25,7 @@ import {
 import { isOAuth2Connection } from '../../model/oauth2-copy';
 import { draftFromSettings } from '../../model/oauth2-draft';
 import { CredentialFields } from '../credential/fields';
-import { createHeaderRowId, useCredentialForm } from '../credential/use-form';
+import { createHeaderRowId, useCredentialForm } from '../../hooks/credential/use-form';
 
 /**
  * Replaces a connection's stored credential. The command names the secret
