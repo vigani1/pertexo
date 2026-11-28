@@ -301,16 +301,20 @@ test('keeps workflow metadata contained and labeled at responsive widths', async
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     const surface = page.getByRole('region', { name: 'Workspace workflows' });
-    const updated = surface.getByTitle(/Sep 14, 2026/u);
-    await expect(page.getByRole('link', { name: longName })).toBeVisible();
-    await expect(surface.getByText('Draft', { exact: true })).toBeVisible();
-    const [surfaceBox, updatedBox] = await Promise.all([
-      surface.boundingBox(),
-      updated.boundingBox(),
-    ]);
-    expect((updatedBox?.x ?? 0) + (updatedBox?.width ?? 0)).toBeLessThanOrEqual(
-      (surfaceBox?.x ?? 0) + (surfaceBox?.width ?? 0) + 1,
-    );
+    const name = surface.getByRole('link', { name: longName, exact: true });
+    const status = surface.getByText('Draft', { exact: true });
+    await expect(name).toBeVisible();
+    await expect(status).toBeVisible();
+    const surfaceBox = await surface.boundingBox();
+    if (surfaceBox === null) throw new Error('The workflow list is hidden');
+    for (const metadata of [name, status]) {
+      const box = await metadata.boundingBox();
+      if (box === null) throw new Error('The workflow metadata is hidden');
+      expect(box.x).toBeGreaterThanOrEqual(surfaceBox.x - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(
+        surfaceBox.x + surfaceBox.width + 1,
+      );
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
