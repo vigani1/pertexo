@@ -15,7 +15,7 @@ import {
   type InboxArrivalData,
   type InboxArrivalSide,
 } from '../../model/inbox-arrival';
-import { useArrivalSwipe } from './use-swipe';
+import { useArrivalSwipe } from '../../hooks/arrivals/use-swipe';
 
 const strokeProps = {
   fill: 'none',

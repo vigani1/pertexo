@@ -12,8 +12,8 @@ import {
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { WorkflowOrganizationOutcomes } from './outcomes';
-import type { Props } from './use-edit';
-import { useOrganizationEdit } from './use-edit';
+import type { Props } from '../../hooks/organization/use-edit';
+import { useOrganizationEdit } from '../../hooks/organization/use-edit';
 import { OrganizationFields } from './fields';
 import { pluralWord } from '@/lib/format/count';
 const RECOVERY =
