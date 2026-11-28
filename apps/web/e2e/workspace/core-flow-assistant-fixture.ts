@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { Page } from '../support/fixtures';
 import {
   currentEtag,
@@ -14,8 +15,8 @@ const compatibility = {
 };
 
 /**
- * The assistant's one proposal for the invoice workflow: after Send receipt,
- * a Slack step posts to #finance. Answers the disclosure read and the
+ * The assistant's one proposal for the invoice workflow: a failure in Send
+ * receipt goes to a Slack step that posts to #finance. Answers the disclosure read and the
  * request with it.
  */
 export async function installAssistantProposal(page: Page) {
@@ -33,9 +34,9 @@ export async function installAssistantProposal(page: Page) {
       ...graph,
       nodes: [
         ...graph.nodes,
-        node('slack', 'slack.send_message', 'Post to #finance', [1800, 200]),
+        node('slack', 'slack.send_message', 'Post to #finance', [1800, 390]),
       ],
-      edges: [...graph.edges, edge('receipt', 'slack')],
+      edges: [...graph.edges, edge('receipt', 'slack', WORKFLOW_FAILURE_PORT)],
     },
   };
   await page.route(

@@ -1,6 +1,9 @@
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
+import {
+  nodeDefinitionListResponseSchema,
+  workflowGraphSchema,
+} from '@pertexo/contracts';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
-import { expect, test } from '../../support/fixtures';
+import { expect, test, type Page } from '../../support/fixtures';
 import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
@@ -129,4 +132,70 @@ test('keeps the step list the same length while it is scrolled through', async (
     }
   });
   expect(await list.evaluate((element) => element.scrollHeight)).toBe(before);
+});
+
+function draftSaved(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response.url().endsWith('/draft') &&
+      response.ok(),
+  );
+}
+
+test('inserts a step into an existing link and restores the link with one undo', async ({
+  context,
+  page,
+}) => {
+  const remote = remoteDraft(mappingGraph());
+  const before = workflowGraphSchema.parse(remote.graph);
+  const [original] = before.edges;
+  if (original === undefined) throw new Error('Expected a connected workflow');
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote, {
+    definitions: [manualDefinition, definition],
+  });
+  await page.goto(editorUrl);
+
+  await page.getByTestId(`rf__edge-${original.id}`).press('Enter');
+  await page
+    .getByRole('button', { name: /Insert step into link/ })
+    .press('Enter');
+  const picker = page.getByRole('dialog', {
+    name: 'Insert a step into this link',
+  });
+  await expect(
+    picker.getByRole('searchbox', { name: 'Search steps' }),
+  ).toBeFocused();
+  await expect(
+    picker.getByRole('button', { name: /Manual start/u }),
+  ).toHaveCount(0);
+  const addedSave = draftSaved(page);
+  await picker.getByRole('button', { name: /Set fields/u }).click();
+
+  await addedSave;
+  expect(remote.graph.edges).toHaveLength(2);
+  const added = workflowGraphSchema
+    .parse(remote.graph)
+    .nodes.find((node) => !before.nodes.some(({ id }) => id === node.id));
+  expect(added).toBeDefined();
+  expect(remote.graph.edges).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        source: original.source,
+        target: { nodeId: added?.id, port: 'in' },
+      }),
+      expect.objectContaining({
+        source: { nodeId: added?.id, port: 'out' },
+        target: original.target,
+      }),
+    ]),
+  );
+
+  await openWorkflowMenu(page);
+  const undoSave = draftSaved(page);
+  await page.getByRole('menuitem', { name: 'Undo' }).click();
+  await undoSave;
+  expect(remote.graph.edges).toEqual([original]);
+  expect(remote.graph.nodes).toHaveLength(2);
 });

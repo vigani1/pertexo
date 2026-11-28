@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { stepDepths } from './order';
 import type { GraphLevel, WorkflowEdge } from './scopes';
 
@@ -48,9 +49,12 @@ export function workflowLanes(level: GraphLevel): readonly WorkflowLane[] {
           Math.abs((positions.get(left.target.nodeId)?.y ?? 0) - y) -
           Math.abs((positions.get(right.target.nodeId)?.y ?? 0) - y),
       );
-    targets.forEach((edge, index) => {
+    const main = targets.find(
+      (edge) => edge.source.port !== WORKFLOW_FAILURE_PORT,
+    );
+    targets.forEach((edge) => {
       if (laneOf.has(edge.target.nodeId)) return;
-      if (index === 0) {
+      if (edge === main) {
         follow(edge.target.nodeId, lane);
         return;
       }

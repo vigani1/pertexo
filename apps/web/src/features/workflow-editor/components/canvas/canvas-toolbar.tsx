@@ -1,5 +1,8 @@
+import type { RefObject } from 'react';
+import { NoteTools } from './notes/tools';
 import { Panel, useReactFlow, useStore } from '@xyflow/react';
 import { ListTreeIcon, MinusIcon, PlusIcon } from 'lucide-react';
+import { cn } from '@/lib/class-names';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
@@ -14,10 +17,12 @@ import { moveWorkflowNodes } from '../../model/graph/workflow-graph-commands';
  */
 export function CanvasToolbar({
   editable,
+  containerRef,
   onAddStep,
   onFit,
 }: Readonly<{
   editable: boolean;
+  containerRef: RefObject<HTMLDivElement | null>;
   onAddStep: () => void;
   onFit: () => void;
 }>) {
@@ -30,51 +35,59 @@ export function CanvasToolbar({
       position="bottom-center"
       aria-label="Canvas toolbar"
       role="toolbar"
-      className="lens !left-[calc((100%_+_var(--editor-left-inset)_-_var(--editor-right-inset))/2)] !m-0 !mb-3 hidden items-center gap-1 rounded-xl p-1 lg:flex"
+      className={cn(
+        'lens !left-[calc((100%_+_var(--editor-left-inset)_-_var(--editor-right-inset))/2)] !m-0 !mb-3 flex items-center gap-1 rounded-xl p-1 max-lg:!right-3 max-lg:!bottom-16 max-lg:!left-auto max-lg:!translate-x-0',
+        !editable && 'max-lg:hidden',
+      )}
     >
+      <div className="hidden items-center gap-1 lg:flex">
+        {editable ? (
+          <>
+            <Button type="button" size="sm" onClick={onAddStep}>
+              Add a step
+              <Kbd>/</Kbd>
+            </Button>
+            <TidyLanesButton onFit={onFit} />
+          </>
+        ) : null}
+        {/* The same name as the zoom lens's fit below 1024px. */}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label="Fit workflow to screen"
+          onClick={onFit}
+        >
+          Fit
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Zoom out"
+          onClick={() => void zoomOut({ duration })}
+        >
+          <MinusIcon />
+        </Button>
+        <output
+          aria-label="Zoom"
+          className="w-11 text-center font-mono text-caption text-subtle-foreground"
+        >
+          {Math.round(zoom * 100)}%
+        </output>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Zoom in"
+          onClick={() => void zoomIn({ duration })}
+        >
+          <PlusIcon />
+        </Button>
+      </div>
       {editable ? (
-        <>
-          <Button type="button" size="sm" onClick={onAddStep}>
-            Add a step
-            <Kbd>/</Kbd>
-          </Button>
-          <TidyLanesButton onFit={onFit} />
-        </>
+        <NoteTools editable={editable} containerRef={containerRef} />
       ) : null}
-      {/* The same name as the zoom lens's fit below 1024px. */}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        aria-label="Fit workflow to screen"
-        onClick={onFit}
-      >
-        Fit
-      </Button>
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Zoom out"
-        onClick={() => void zoomOut({ duration })}
-      >
-        <MinusIcon />
-      </Button>
-      <output
-        aria-label="Zoom"
-        className="w-11 text-center font-mono text-caption text-subtle-foreground"
-      >
-        {Math.round(zoom * 100)}%
-      </output>
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Zoom in"
-        onClick={() => void zoomIn({ duration })}
-      >
-        <PlusIcon />
-      </Button>
     </Panel>
   );
 }

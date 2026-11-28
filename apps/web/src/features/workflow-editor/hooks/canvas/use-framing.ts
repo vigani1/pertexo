@@ -12,6 +12,7 @@ import {
   cleanEdgeZoom,
   EDGE_STEP_MIN_ZOOM,
   framedViewport,
+  INITIAL_FIT_MIN_ZOOM,
   inset,
   READABLE_ZOOM,
   revealedViewport,
@@ -37,7 +38,10 @@ const REVEAL_MARGIN = 24;
  * straight pans: the default "fly" zooms out and back in on the way, which
  * makes the steps look like they grow and shrink.
  */
-export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
+export function useCanvasFraming(
+  containerRef: RefObject<HTMLElement | null>,
+  proposalOpen: boolean,
+) {
   const flow = useReactFlow<WorkflowFlowNode, WorkflowFlowEdge>();
   const reducedMotion = usePrefersReducedMotion();
   const nodesInitialized = useNodesInitialized();
@@ -67,12 +71,14 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       if (area === undefined || nodes.length === 0) return;
       const bounds = flow.getNodesBounds(nodes);
       const frame = inset(area, FIT_PADDING);
+      const compact = (containerRef.current?.clientWidth ?? 0) < 640;
+      const openingMinZoom = compact ? READABLE_ZOOM : INITIAL_FIT_MIN_ZOOM;
       let viewport = framedViewport(bounds, frame, {
-        minZoom: readable ? READABLE_ZOOM : FIT_MIN_ZOOM,
+        minZoom: readable ? openingMinZoom : FIT_MIN_ZOOM,
         maxZoom: 1,
       });
       // Too wide to open whole: end the view between steps, not through one.
-      if (readable && bounds.width * viewport.zoom > frame.width) {
+      if (readable && compact && bounds.width * viewport.zoom > frame.width) {
         const zoom = cleanEdgeZoom({
           steps: nodes.map((node) => flow.getNodesBounds([node])),
           startX: bounds.x,
@@ -90,7 +96,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
         interpolate: 'linear',
       });
     },
-    [flow, reducedMotion, visibleArea],
+    [containerRef, flow, reducedMotion, visibleArea],
   );
 
   // Once, as soon as the steps have sizes; before paint, so the first
@@ -126,6 +132,8 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     },
     [flow, reducedMotion, visibleArea],
   );
+
+  useRevealProposal({ flow, nodesInitialized, proposalOpen, reveal });
 
   // Grabbing a step selects it, but the canvas mustn't move under the
   // pointer: the reveal waits for the release, and a step that was dragged
@@ -175,6 +183,33 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   );
 
   return fit;
+}
+
+function useRevealProposal({
+  flow,
+  nodesInitialized,
+  proposalOpen,
+  reveal,
+}: Readonly<{
+  flow: ReturnType<typeof useReactFlow<WorkflowFlowNode, WorkflowFlowEdge>>;
+  nodesInitialized: boolean;
+  proposalOpen: boolean;
+  reveal: (id: string) => void;
+}>) {
+  const shownProposal = useRef(false);
+  useLayoutEffect(() => {
+    if (!proposalOpen) {
+      shownProposal.current = false;
+      return;
+    }
+    if (!nodesInitialized || shownProposal.current) return;
+    const proposed = flow
+      .getNodes()
+      .find((node) => node.data.proposed === true);
+    if (proposed === undefined) return;
+    shownProposal.current = true;
+    reveal(proposed.id);
+  }, [flow, nodesInitialized, proposalOpen, reveal]);
 }
 
 function readCanvasArea(container: HTMLElement | null): Box | undefined {

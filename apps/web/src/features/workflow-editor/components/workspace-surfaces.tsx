@@ -58,6 +58,7 @@ export function WorkspaceSurface({
 
       actions={{
         onSelectNodes: selection.selectNodes,
+        onInsertIntoLink: adding.insertIntoLink,
         onRemoveEdge: selection.removeEdge,
         onDropStep: adding.placement.addAt,
         onPortDrop: adding.quickAdd.openAtDrop,

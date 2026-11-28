@@ -175,8 +175,7 @@ export function SetupControls({
         <Disclosure
           summary="Advanced: limits, error responses and paging"
           defaultOpen={httpAdvancedInUse(config)}
-          appearance={{ tone: 'strong' }}
-          className="border-t border-border pt-3"
+          appearance={{ tone: 'strong', look: 'ruled' }}
           contentClassName="flex flex-col gap-4"
         >
           <SchemaFieldList

@@ -39,7 +39,7 @@ export function AddStepBundle({
         <ChevronDownIcon
           aria-hidden="true"
           className={cn(
-            'size-3.5 shrink-0 text-subtle-foreground transition-transform duration-150 motion-reduce:transition-none',
+            'size-3.5 shrink-0 text-subtle-foreground transition-transform duration-(--duration-quick) motion-reduce:transition-none',
             open && 'rotate-180',
           )}
         />

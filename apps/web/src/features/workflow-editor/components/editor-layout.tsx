@@ -41,6 +41,7 @@ export function EditorLayout({
   history: ReactNode;
   panels: Readonly<{
     inspectorOpen: boolean;
+    assistantOpen: boolean;
     addStepCollapsed: boolean;
     onOpenAddStep: () => void;
     editable: boolean;
@@ -48,36 +49,35 @@ export function EditorLayout({
     onMobilePanelChange: (panel: MobilePanel) => void;
   }>;
 }>) {
-  const { bar, canvasTools, banner } = header;
   const {
     inspectorOpen,
+    assistantOpen,
     addStepCollapsed,
     onOpenAddStep,
     editable,
     mobilePanel,
     onMobilePanelChange,
   } = panels;
-  const leftInset = addStepInset({ editable, addStepCollapsed });
   return (
     <div className="flex h-[calc(100svh-5rem)] min-h-0 md:h-svh flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11 max-sm:[&_summary]:min-h-11 max-sm:[&_a]:min-h-11">
       <div
-        className="relative flex-1 min-h-0 overflow-hidden bg-background"
+        className="relative flex-1 min-h-0 overflow-hidden rounded-2xl bg-background"
         style={
           {
-            '--editor-left-inset': leftInset,
-            '--editor-right-inset': inspectorOpen ? '22.25rem' : '0.75rem',
+            '--editor-left-inset': addStepInset({ editable, addStepCollapsed }),
+            '--editor-right-inset': inspectorInset(panels),
           } as CSSProperties
         }
       >
         {canvas}
         <PanelScrim panel={mobilePanel} onChange={onMobilePanelChange} />
-        <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3">
+        <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 max-sm:gap-1.5 max-sm:p-2">
           {/* Above the dismiss layer: the bar stays usable with a panel open. */}
           <div className="pointer-events-auto relative z-40" {...covers}>
-            {bar}
+            {header.bar}
           </div>
-          <div {...covers}>{banner}</div>
-          {canvasTools}
+          <div {...covers}>{header.banner}</div>
+          <div {...covers}>{header.canvasTools}</div>
           <div className="relative min-h-0 flex-1">
             {editable ? (
               <aside
@@ -103,8 +103,10 @@ export function EditorLayout({
               data-open={inspectorOpen}
               {...covers}
               className={cn(
-                'lens pointer-events-auto absolute inset-x-0 top-0 bottom-16 z-40 flex-col rounded-xl md:left-auto md:w-96',
-                mobilePanel === 'inspector' ? 'flex' : 'hidden',
+                'lens pointer-events-auto absolute inset-x-0 top-[38%] bottom-16 z-40 flex-col rounded-xl md:top-0 md:left-auto md:w-96',
+                mobilePanel === 'inspector' && !assistantOpen
+                  ? 'flex'
+                  : 'hidden',
                 'lg:absolute lg:inset-x-auto lg:top-0 lg:right-0 lg:bottom-0 lg:z-10 lg:h-auto lg:w-86',
                 inspectorOpen ? 'lg:flex' : 'lg:invisible lg:flex',
               )}
@@ -226,4 +228,11 @@ function addStepInset({
 }: Readonly<{ editable: boolean; addStepCollapsed: boolean }>): string {
   if (!editable) return '0.75rem';
   return addStepCollapsed ? '4rem' : '17rem';
+}
+
+function inspectorInset(
+  panels: Readonly<{ assistantOpen: boolean; inspectorOpen: boolean }>,
+): string {
+  if (panels.assistantOpen) return '26.75rem';
+  return panels.inspectorOpen ? '22.25rem' : '0.75rem';
 }

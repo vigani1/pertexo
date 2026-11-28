@@ -51,10 +51,6 @@ export async function chooseTestAction(
   page: Page,
   action: 'Test workflow' | 'Run all tests' | 'Test history',
 ) {
-  if (action === 'Test workflow') {
-    await page.getByRole('button', { name: action, exact: true }).click();
-    return;
-  }
   await page
     .getByRole('button', { name: 'Test and run actions', exact: true })
     .click();

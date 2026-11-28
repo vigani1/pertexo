@@ -198,7 +198,7 @@ export function Mark({
   return (
     <span
       className={cn(
-        'inline-flex max-w-full shrink-0 items-center gap-1 truncate rounded-[0.3125rem] border px-1.5 py-[0.1875rem] font-mono text-label leading-none [&_svg]:size-3.5 [&_svg]:shrink-0',
+        'inline-flex max-w-full shrink-0 items-center gap-1 truncate rounded-xs border px-1.5 py-[0.1875rem] font-mono text-label leading-none [&_svg]:size-3.5 [&_svg]:shrink-0',
         markTones[tone],
       )}
     >

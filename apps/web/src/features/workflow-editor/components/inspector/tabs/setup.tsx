@@ -3,6 +3,8 @@ import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { GuardrailsSetup } from '../builders/guardrails-setup';
 import { RunValuesSetup } from '../run-values/setup';
 import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
+import { inputMappingRowsFor } from '../../../model/inspector/input-mappings/draft';
+import { describeMappingSource } from '../../../model/inspector/mapping-summary';
 import { StepRetrySetup } from '../retries/setup';
 
 import { CallTargetField } from '../fields/call-target';
@@ -112,6 +114,9 @@ function CatalogSetupTab({
     schemaPropertyCount(definition.configSchema) === 0;
   return (
     <FieldGroup className="gap-4">
+      {agent && !showJson ? (
+        <AgentTask node={node} graph={graph} onOpenInputs={onOpenInputs} />
+      ) : null}
       {agent && slots.length > 0 ? (
         <RuleHeading appearance="compact">Model</RuleHeading>
       ) : null}
@@ -159,6 +164,36 @@ function CatalogSetupTab({
         />
       )}
     </FieldGroup>
+  );
+}
+
+function AgentTask({
+  node,
+  graph,
+  onOpenInputs,
+}: Pick<SetupTabProps, 'node' | 'graph' | 'onOpenInputs'>) {
+  const prompt = node.inputMappings.prompt;
+  const row = inputMappingRowsFor(node.inputMappings).find(
+    ({ destinationKey }) => destinationKey === 'prompt',
+  );
+  const summary =
+    row === undefined ? undefined : describeMappingSource(row, graph);
+  const task =
+    prompt?.kind === 'literal' && typeof prompt.value === 'string'
+      ? prompt.value
+      : (summary?.code ?? summary?.label ?? 'Choose a task for this agent.');
+  return (
+    <section aria-label="Agent task" className="flex min-w-0 flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-medium">Task</h3>
+        <Button type="button" size="xs" variant="link" onClick={onOpenInputs}>
+          Edit in Inputs
+        </Button>
+      </div>
+      <p className="rounded-md bg-well px-3 py-2 text-meta break-words whitespace-pre-wrap text-muted-foreground">
+        {task}
+      </p>
+    </section>
   );
 }
 

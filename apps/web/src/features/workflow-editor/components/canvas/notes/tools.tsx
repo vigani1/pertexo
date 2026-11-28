@@ -80,7 +80,7 @@ export function NoteTools({ editable, containerRef }: NoteToolsProps) {
     <div
       role="toolbar"
       aria-label="Canvas tools"
-      className="lens pointer-events-auto relative z-20 flex w-fit items-center gap-1 rounded-lg p-1"
+      className="pointer-events-auto relative flex w-fit items-center"
       {...{ [CANVAS_COVER_ATTRIBUTE]: '' }}
     >
       <Tooltip>
@@ -89,15 +89,15 @@ export function NoteTools({ editable, containerRef }: NoteToolsProps) {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               aria-label="Add note"
               disabled={count >= limits.count}
               onClick={add}
             />
           }
         >
-          <StickyNoteIcon data-icon="inline-start" />
-          Add note
+          <StickyNoteIcon aria-hidden="true" />
+          <span className="sr-only">Add note</span>
         </TooltipTrigger>
         <TooltipContent>
           {count >= limits.count

@@ -63,9 +63,10 @@ export function useAssistantPanel({
       setAsked(request);
       void proposal
         .mutateAsync({ request, confirmation: destination.confirmation })
-        .then(() => {
+        .then((result) => {
           setRequest('');
-          requestAnimationFrame(() => requestRef.current?.focus());
+          if (proposalReview(result) === undefined)
+            requestAnimationFrame(() => requestRef.current?.focus());
         })
         .catch(() => undefined);
     },

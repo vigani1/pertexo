@@ -95,13 +95,16 @@ describe('workflow tests bar', () => {
   it('stays away until asked for, opens on Test history and closes again', async () => {
     const event = mount();
     expect(
-      await screen.findByRole('button', { name: 'Test workflow' }),
+      await screen.findByRole('button', { name: 'Test and run actions' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('region', { name: 'Workflow tests' }),
     ).not.toBeInTheDocument();
 
     const menu = await openTestMenu(event);
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Test workflow' }),
+    ).toBeVisible();
     await event.click(
       within(menu).getByRole('menuitem', { name: 'Test history' }),
     );

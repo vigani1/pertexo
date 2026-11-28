@@ -112,7 +112,10 @@ test('table writes require test consent, execute as real previews and are skippe
   expect(noConsent.status(), await noConsent.text()).toBe(422);
   expect((await readRows()).rows).toHaveLength(0);
   await page
-    .getByRole('button', { name: 'Test workflow', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test workflow', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
     name: 'Test workflow',

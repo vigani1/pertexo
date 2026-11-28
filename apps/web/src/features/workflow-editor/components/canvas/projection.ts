@@ -6,6 +6,7 @@ import { currentSampleState } from '@/features/workflow-testing/public';
 import type {
   StepSampleMetadata,
   NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { levelPositions } from '../../model/graph/for-each-body-layout';
 import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
@@ -14,6 +15,7 @@ import {
   type CanvasDecorations,
   type WorkflowFlowNode,
 } from '../../model/graph/adapter';
+import { showProposedChanges } from '../../model/canvas/proposed-changes';
 import { moveWorkflowNodes } from '../../model/graph/workflow-graph-commands';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 
@@ -29,7 +31,8 @@ export type CanvasOverlays = Pick<
   | 'testOutputBytes'
   | 'testStatuses'
   | 'lastRun'
->;
+> &
+  Readonly<{ proposal?: WorkflowGraphContract | undefined }>;
 
 /**
  * The graph as React Flow draws it, and the node changes React Flow reports
@@ -95,7 +98,19 @@ export function useCanvasProjection({
         if (unreachable.has(node.id) && !unreachable.has(node.parentId))
           node.style = { ...node.style, opacity: 0.55 };
       }
-      return projected;
+      return overlays.proposal === undefined
+        ? projected
+        : showProposedChanges(
+            projected,
+            projectWorkflowGraph(overlays.proposal, definitions, {
+              ...overlays,
+              selectedNodeIds: [],
+              selectedEdgeIds: [],
+              dragPositions,
+              bodyIssues: new Map(),
+              measuredSizes,
+            }),
+          );
     },
     // selectionResync only forces fresh node objects for React Flow.
     // oxlint-disable-next-line react/exhaustive-deps

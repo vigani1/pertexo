@@ -2,13 +2,15 @@ import {
   WorkflowTestHistory,
   type NodeTestHandle,
 } from '@/features/workflow-testing/workflow-testing-views.public';
-import { useRef, type ReactNode, type RefObject } from 'react';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { useState, useRef, type ReactNode, type RefObject } from 'react';
 import { DraftProposal } from './draft-proposal';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
+import { LastRunContext } from '../model/canvas/last-run-context';
 import { useLastRun } from '../hooks/use-last-run';
-import { CanvasTools } from './canvas/canvas-tools';
+import { LastRunLine } from './canvas/last-run-line';
 import { useAssistantOpening } from '../hooks/use-assistant-opening';
 import { AddStepLens } from './add-step/lens';
 import { TestResultBar } from './chrome/test-result-bar';
@@ -89,13 +91,12 @@ export function EditorWorkspace({
     onOpen: adding.quickAdd.close,
     canvasRef,
   });
+  const [proposal, setProposal] = useState<WorkflowGraphContract>();
   const chrome: EditorChrome = { ...workspaceChrome, ...assistant.chrome };
-  const overlays = useCanvasOverlays(
-    editing.issues,
-    effects,
-    testStatuses,
+  const overlays = useCanvasOverlays(editing.issues, effects, testStatuses, {
     lastRun,
-  );
+    proposal: assistant.open ? proposal : undefined,
+  });
   return (
     <EditorLayout
       addStep={
@@ -109,19 +110,25 @@ export function EditorWorkspace({
         />
       }
       inspector={
-        <WorkspaceInspector
-          editable={editable && !paused}
-          testing={{
-            tests,
-            testRef,
-            lastTest,
-            onTestPassed: effects.showTestPath,
-          }}
-          canvas={{ adding, selection }}
-        />
+        <LastRunContext value={lastRun.overlay}>
+          <WorkspaceInspector
+            editable={editable && !paused}
+            testing={{
+              tests,
+              testRef,
+              lastTest,
+              onTestPassed: effects.showTestPath,
+            }}
+            canvas={{ adding, selection }}
+          />
+        </LastRunContext>
       }
       assistant={
-        <DraftProposal open={assistant.open} onClose={assistant.close} />
+        <DraftProposal
+          open={assistant.open}
+          onClose={assistant.close}
+          onPreview={setProposal}
+        />
       }
       history={
         <WorkflowTestHistory
@@ -147,7 +154,7 @@ export function EditorWorkspace({
         <WorkspaceSurface
           definitions={definitions}
           placeable={placeable}
-          editable={editable}
+          editable={editable && proposal === undefined}
           overlays={overlays}
           canvas={{ canvasRef, adding, selection }}
           checking={editing.checking}
@@ -176,17 +183,12 @@ export function EditorWorkspace({
         onOpenAddStep: addStep.focus,
         mobilePanel: navigation.mobilePanel,
         onMobilePanelChange: navigation.setMobilePanel,
-        inspectorOpen: inspectorOpen,
+        inspectorOpen: inspectorOpen && !assistant.open,
+        assistantOpen: assistant.open,
       }}
       header={{
         bar: bar(chrome),
-        canvasTools: (
-          <CanvasTools
-            editable={editable}
-            canvasRef={canvasRef}
-            lastRun={lastRun}
-          />
-        ),
+        canvasTools: <LastRunLine lastRun={lastRun} />,
         banner: <>{banner}</>,
       }}
     />

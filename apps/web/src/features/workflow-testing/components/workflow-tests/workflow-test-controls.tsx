@@ -29,50 +29,34 @@ export function WorkflowTestButton({
 }>) {
   if (!tests.enabled && runItems === null) return null;
   return (
-    <div className="inline-flex">
-      {!tests.enabled ? null : (
-        <Button
-          variant="outline"
-          size="sm"
-          joined="start"
-          disabled={testBusy(tests)}
-          aria-label="Test workflow"
-          onClick={() => void tests.prepare()}
-        >
-          <PlayIcon aria-hidden="true" />
-          Test
-        </Button>
-      )}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={runPending ? 'Starting…' : 'Test and run actions'}
-          aria-busy={runPending || undefined}
-          disabled={runPending}
-          data-pending={runPending ? '' : undefined}
-          className={buttonVariants({
-            variant: 'outline',
-            size: tests.enabled && !runPending ? 'icon-sm' : 'sm',
-            joined: tests.enabled ? 'end' : undefined,
-          })}
-        >
-          {runPending ? (
-            <>
-              <LoadingOrb data-icon="inline-start" />
-              Starting…
-            </>
-          ) : (
-            <>
-              {tests.enabled ? null : 'Run'}
-              <ChevronDownIcon aria-hidden="true" />
-            </>
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {tests.enabled ? <WorkflowTestMenuItems tests={tests} /> : null}
-          {runItems}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={runPending ? 'Starting…' : 'Test and run actions'}
+        aria-busy={runPending || undefined}
+        disabled={runPending}
+        data-pending={runPending ? '' : undefined}
+        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+      >
+        {runPending ? (
+          <>
+            <LoadingOrb data-icon="inline-start" />
+            Starting…
+          </>
+        ) : (
+          <>
+            <PlayIcon aria-hidden="true" />
+            <span className="max-sm:sr-only">
+              {tests.enabled ? 'Test' : 'Run'}
+            </span>
+            <ChevronDownIcon aria-hidden="true" className="max-sm:hidden" />
+          </>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {tests.enabled ? <WorkflowTestMenuItems tests={tests} /> : null}
+        {runItems}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -84,6 +68,12 @@ function WorkflowTestMenuItems({ tests }: Readonly<{ tests: WorkflowTests }>) {
     tests.start.pending;
   return (
     <>
+      <DropdownMenuItem
+        disabled={testBusy(tests)}
+        onClick={() => void tests.prepare()}
+      >
+        Test workflow
+      </DropdownMenuItem>
       <DropdownMenuItem
         disabled={suiteActionsBlocked}
         onClick={() => void tests.suites.prepare()}

@@ -84,6 +84,10 @@ function QuickAddContent({
   const searchRef = useRef<HTMLInputElement>(null);
   const graph = useEditorStore((state) => state.graph);
   const choices = useMemo(() => {
+    const compatible =
+      request.kind === 'place'
+        ? definitions
+        : definitions.filter(({ ports }) => ports.outputs.length > 0);
     const inspection = inspectWorkflowFailureRoutes(graph);
     const handler =
       request.from?.port === WORKFLOW_FAILURE_PORT ||
@@ -91,14 +95,14 @@ function QuickAddContent({
         inspection.kind === 'routed' &&
         inspection.value.handlerOwners.has(request.from.nodeId));
     return handler
-      ? definitions.filter(
+      ? compatible.filter(
           (d) =>
             isWorkflowFailureSource(d.definition) ||
             (d.definition.key === 'core.terminate' &&
               d.definition.version === 1),
         )
-      : definitions;
-  }, [graph, request.from, definitions]);
+      : compatible;
+  }, [graph, request.kind, request.from, definitions]);
   const source =
     request.from === undefined
       ? undefined
@@ -130,7 +134,9 @@ function QuickAddContent({
       <PopoverTitle compact className="shrink-0 truncate">
         {title}
       </PopoverTitle>
-      {request.from !== undefined && request.outputs.length > 1 ? (
+      {request.kind === 'place' &&
+      request.from !== undefined &&
+      request.outputs.length > 1 ? (
         <div className="flex items-center gap-2">
           <FieldLabel htmlFor={portId} className="shrink-0">
             Link from
@@ -177,6 +183,7 @@ function lensTitle(
   graph: Parameters<typeof findStep>[0],
   request: QuickAddRequest,
 ): string {
+  if (request.kind === 'insert') return 'Insert a step into this link';
   const from =
     request.from === undefined
       ? undefined

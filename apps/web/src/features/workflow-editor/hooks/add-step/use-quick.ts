@@ -19,36 +19,42 @@ import {
 import { levelSinks } from '../../model/graph/order';
 import {
   findStep,
+  indexGraph,
   isForEach,
   loopOf,
   scopeOf,
   type GraphLevel,
+  type WorkflowEdge,
 } from '../../model/graph/scopes';
 import { openOutputPort } from '../../model/quick-add';
 import { shownPorts } from '../../model/step-card';
 
 type Point = Readonly<{ x: number; y: number }>;
 
-export type QuickAddRequest = Readonly<{
-  /** The step the new one follows, and the output it links from. */
+type Placement = Readonly<{
+  kind: 'place';
   from: PortRef | undefined;
-  /** That step's outputs, so people can still pick another one. */
-  outputs: readonly string[];
-  /** The For each whose body gets the step; otherwise `from`'s level. */
   loopId: string | undefined;
-  /** Where the new step goes, on its own level (its top left corner). */
   position: Point;
-  /** Where the lens opens, in viewport coordinates. */
-  anchor: Point;
-  /** What opened it, to return focus to if it's still there. */
-  returnFocus: HTMLElement | null;
 }>;
 
-/** What quick add hands on once a step is chosen. */
-export type QuickAddTarget = Pick<
-  QuickAddRequest,
-  'from' | 'loopId' | 'position'
->;
+type LinkInsertion = Readonly<{
+  kind: 'insert';
+  edgeId: string;
+  from: PortRef;
+}>;
+
+export type QuickAddTarget = Placement | LinkInsertion;
+
+export type QuickAddRequest = (
+  (Placement & Readonly<{ outputs: readonly string[] }>) | LinkInsertion
+) &
+  Readonly<{
+    /** Where the lens opens, in viewport coordinates. */
+    anchor: Point;
+    /** What opened it, to return focus to if it's still there. */
+    returnFocus: HTMLElement | null;
+  }>;
 
 /**
  * Quick add: which step a new one will follow, from which output, and where
@@ -84,6 +90,7 @@ export function useQuickAdd({
         ? undefined
         : getInternalNode(loopId)?.internals.positionAbsolute;
     setRequest({
+      kind: 'place',
       from,
       outputs: outputsOf({ store, definitions, nodeId: from.nodeId }),
       loopId: undefined,
@@ -113,6 +120,7 @@ export function useQuickAdd({
     const absolute =
       getInternalNode(nodeId)?.internals.positionAbsolute ?? step.node.position;
     setRequest({
+      kind: 'place',
       from: { nodeId, port },
       outputs,
       loopId: undefined,
@@ -137,6 +145,7 @@ export function useQuickAdd({
     const absolute =
       getInternalNode(nodeId)?.internals.positionAbsolute ?? step.node.position;
     setRequest({
+      kind: 'place',
       from: { nodeId, port: WORKFLOW_FAILURE_PORT },
       outputs: [WORKFLOW_FAILURE_PORT],
       loopId: undefined,
@@ -163,6 +172,7 @@ export function useQuickAdd({
         : afterLastStep({ body, store, definitions, getInternalNode });
     const rect = returnFocus.getBoundingClientRect();
     setRequest({
+      kind: 'place',
       from: after?.from,
       outputs: after?.outputs ?? [],
       loopId,
@@ -170,6 +180,11 @@ export function useQuickAdd({
       anchor: { x: rect.right, y: rect.top + rect.height / 2 },
       returnFocus,
     });
+  }
+
+  function openInLink(edgeId: string, returnFocus: HTMLElement) {
+    const edge = indexGraph(store.getState().graph).edges.get(edgeId)?.item;
+    if (edge !== undefined) setRequest(linkInsertionRequest(edge, returnFocus));
   }
 
   function choose(definition: NodeDefinitionCatalogItem) {
@@ -184,16 +199,12 @@ export function useQuickAdd({
     openAfter,
     openFailure,
     openInBody,
+    openInLink,
     choosePort: (port: string) => {
-      setRequest(
-        (current) =>
-          current && {
-            ...current,
-            from:
-              current.from === undefined
-                ? undefined
-                : { ...current.from, port },
-          },
+      setRequest((current) =>
+        current?.kind === 'place' && current.from !== undefined
+          ? { ...current, from: { ...current.from, port } }
+          : current,
       );
     },
     choose,
@@ -201,6 +212,20 @@ export function useQuickAdd({
       setRequest(undefined);
     },
   } as const;
+}
+
+function linkInsertionRequest(
+  edge: WorkflowEdge,
+  returnFocus: HTMLElement,
+): QuickAddRequest {
+  const rect = returnFocus.getBoundingClientRect();
+  return {
+    kind: 'insert',
+    edgeId: edge.id,
+    from: edge.source,
+    anchor: { x: rect.right, y: rect.top + rect.height / 2 },
+    returnFocus,
+  };
 }
 
 function outputsOf({

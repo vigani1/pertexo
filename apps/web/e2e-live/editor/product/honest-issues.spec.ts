@@ -63,7 +63,10 @@ test('a failed test says what’s wrong with the step', async ({ page }) => {
     )
     .toEqual({ condition: { kind: 'run_input', path: '$.condition' } });
   await page
-    .getByRole('button', { name: 'Test workflow', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test workflow', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
     name: 'Test workflow',

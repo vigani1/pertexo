@@ -174,14 +174,6 @@ export function addBodyStep({
       );
 }
 
-export function moveWorkflowNode(
-  graph: WorkflowGraphContract,
-  nodeId: string,
-  position: Position,
-): WorkflowGraphContract {
-  return moveWorkflowNodes(graph, new Map([[nodeId, position]]));
-}
-
 /** Moves steps to positions on their own level (body steps: body coordinates). */
 export function moveWorkflowNodes(
   graph: WorkflowGraphContract,

@@ -61,14 +61,17 @@ export function cardClassName(
   state: Readonly<{
     selected: boolean;
     disabled: boolean;
+    proposed?: boolean | undefined;
     /** The last run finished without reaching this step. */
     passedBy?: boolean;
   }>,
   className?: string,
 ): string {
   return cn(
-    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card px-3 py-2.5 text-card-foreground shadow-node transition-[background-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
+    'relative w-56 rounded-lg border border-surface-ink/9 border-t-surface-ink/15 bg-card px-3 py-2.5 text-card-foreground shadow-node transition-[background-color,box-shadow,opacity] duration-(--duration-quick) motion-reduce:transition-none',
     NODE_FOCUS_RING,
+    state.proposed === true &&
+      'border-dashed border-action-line bg-action-soft',
     state.selected && 'bg-select-raised ring-1 ring-action-line',
     (state.disabled || (state.passedBy ?? false)) && 'opacity-55',
     className,
