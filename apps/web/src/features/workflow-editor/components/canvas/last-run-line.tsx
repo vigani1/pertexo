@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Link } from '@tanstack/react-router';
+import { PhoneCanvasFit } from './phone-fit';
 import { StatusMark } from '@/components/patterns/status/status-mark';
 import {
   canRequestRunCancellation,
@@ -19,9 +20,21 @@ import type { LastRunOverlay } from '../../model/canvas/last-run';
  * steps come from, links to it and hides or shows them (from 640px; a
  * phone reads and runs). Nothing before a workflow's first run.
  */
-export function LastRunLine({
+type LastRun = ReturnType<typeof useLastRun>;
+
+export function CanvasTopTools({
   lastRun,
-}: Readonly<{ lastRun: ReturnType<typeof useLastRun> }>) {
+  onFit,
+}: Readonly<{ lastRun: LastRun; onFit: () => void }>) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <LastRunLine lastRun={lastRun} />
+      <PhoneCanvasFit onFit={onFit} />
+    </div>
+  );
+}
+
+function LastRunLine({ lastRun }: Readonly<{ lastRun: LastRun }>) {
   const { overlay, shown, toggle } = lastRun;
   const { scope } = useEditorSession();
   if (overlay === undefined) return null;
@@ -31,15 +44,15 @@ export function LastRunLine({
     stopRequested: run.cancelRequestedAt !== null,
   });
   const live = isActiveRunStatus(run.status);
+  const liveLabel =
+    run.startedAt === null
+      ? look.label
+      : `Live run started ${formatShortTime(run.startedAt)}`;
   return (
     <div className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 font-mono text-caption text-subtle-foreground">
       <StatusMark tone={look.tone}>
         {live ? (
-          run.startedAt === null ? (
-            look.label
-          ) : (
-            `Live run started ${formatShortTime(run.startedAt)}`
-          )
+          liveLabel
         ) : (
           <>
             <span className="max-sm:sr-only">{look.label} · </span>
@@ -108,7 +121,9 @@ function LiveProgress({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => setStopOpen(true)}
+          onClick={() => {
+            setStopOpen(true);
+          }}
         >
           Stop
         </Button>

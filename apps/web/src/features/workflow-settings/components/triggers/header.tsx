@@ -1,6 +1,9 @@
 import { PlayIcon } from 'lucide-react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Link } from '@tanstack/react-router';
+import type { WorkflowSummary } from '@pertexo/contracts';
+import type { ApiClient } from '@/lib/api/client';
+import { useRunWorkflow } from '@/features/workflows/public';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   PageHeader,
   PageHeaderActions,
@@ -13,13 +16,16 @@ export function TriggersHeader({
   versions,
   publishedVersionId,
   runFromBuild,
-  run,
+  manualRun,
+  commandScope,
 }: Readonly<{
   versions:
     readonly Readonly<{ id: string; versionNumber: number }>[] | undefined;
   publishedVersionId: string | null | undefined;
-  runFromBuild?: Readonly<{ workspaceId: string; workflowId: string }>;
-  run: Readonly<{ pending: boolean; start: () => void }> | undefined;
+  runFromBuild:
+    Readonly<{ workspaceId: string; workflowId: string }> | undefined;
+  manualRun: WorkflowSummary | undefined;
+  commandScope: RunCommandScope;
 }>) {
   const published = versions?.find(
     (version) => version.id === publishedVersionId,
@@ -42,25 +48,56 @@ export function TriggersHeader({
             to="/w/$workspaceId/workflows/$workflowId"
             params={runFromBuild}
             className={buttonVariants({
-              variant: run === undefined ? 'outline' : 'ghost',
+              variant: manualRun === undefined ? 'outline' : 'ghost',
             })}
           >
-            {run === undefined ? 'Run in Build' : 'Run with input in Build'}
+            {manualRun === undefined
+              ? 'Run in Build'
+              : 'Run with input in Build'}
           </Link>
-          {run === undefined ? null : (
-            <ProgressButton
-              type="button"
-              variant="outline"
-              pending={run.pending}
-              pendingLabel="Starting…"
-              icon={<PlayIcon data-icon="inline-start" />}
-              onClick={run.start}
-            >
-              Run now
-            </ProgressButton>
-          )}
+          <RunPublishedWorkflow workflow={manualRun} scope={commandScope} />
         </PageHeaderActions>
       )}
     </PageHeader>
+  );
+}
+
+type RunCommandScope = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+}>;
+
+function RunPublishedWorkflow({
+  workflow,
+  scope,
+}: Readonly<{
+  workflow: WorkflowSummary | undefined;
+  scope: RunCommandScope;
+}>) {
+  const navigate = useNavigate();
+  const runner = useRunWorkflow({
+    ...scope,
+    onRunStarted: (runId) => {
+      void navigate({
+        to: '/w/$workspaceId/runs/$runId',
+        params: { workspaceId: scope.workspaceId, runId },
+      });
+    },
+  });
+  if (workflow === undefined) return null;
+  return (
+    <ProgressButton
+      type="button"
+      variant="outline"
+      pending={runner.pendingId === workflow.id}
+      pendingLabel="Starting…"
+      icon={<PlayIcon data-icon="inline-start" />}
+      onClick={() => {
+        void runner.run(workflow);
+      }}
+    >
+      Run now
+    </ProgressButton>
   );
 }
