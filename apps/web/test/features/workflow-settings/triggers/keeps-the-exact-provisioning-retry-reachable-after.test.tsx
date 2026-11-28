@@ -11,6 +11,7 @@ import { mockServer } from '../../../support/mock-server';
 import { renderLoadedApp } from '../../../support/render-app';
 
 import {
+  defaultCapabilities,
   installQueries,
   publishedGraph,
   schedule,
@@ -279,9 +280,9 @@ describe('workflow triggers tab', () => {
     expect(empty).toHaveClass('border-t-0');
     expect(empty?.querySelector('[data-slot="status-glyph"]')).toBeNull();
   });
-  it('shows a Form trigger instead of claiming the version has none', async () => {
+  it('shows a Form trigger and links to its published form', async () => {
     const [step] = publishedGraph.nodes;
-    installQueries();
+    installQueries([...defaultCapabilities, 'run:start']);
     mockServer.use(
       http.get(`${workflowApi}/triggers/schedules`, () =>
         HttpResponse.json({ items: [] }),
@@ -313,8 +314,11 @@ describe('workflow triggers tab', () => {
       name: 'Form: Expense form',
     });
     expect(
-      within(form).getByText(/each time someone submits it/u),
+      within(form).getByText('Form · starts a run on submission'),
     ).toBeVisible();
+    expect(
+      within(form).getByRole('link', { name: 'Open form' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/forms/${workflowId}`);
     expect(
       screen.queryByRole('heading', { name: 'This version starts by hand' }),
     ).not.toBeInTheDocument();
