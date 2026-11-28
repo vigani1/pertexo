@@ -33,6 +33,7 @@ export function CanvasZoomLens({
       className="lg:!left-[var(--editor-left-inset,0.75rem)]"
       // From 1024px the canvas toolbar zooms and fits.
       controlsClassName="lg:hidden"
+      fitClassName="max-sm:hidden"
     >
       {editable ? <TidyLanesButton compact onFit={onFit} /> : null}
     </FlowZoomLens>

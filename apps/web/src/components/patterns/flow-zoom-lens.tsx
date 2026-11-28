@@ -21,6 +21,7 @@ export function FlowZoomLens<NodeType extends Node>({
   onFit,
   className,
   controlsClassName,
+  fitClassName,
   children,
 }: Readonly<{
   /** Names the overview map: "Workflow overview". */
@@ -35,6 +36,7 @@ export function FlowZoomLens<NodeType extends Node>({
   className?: string;
   /** Hides the zoom buttons where the graph has its own toolbar. */
   controlsClassName?: string;
+  fitClassName?: string;
   /** Graph-specific actions beside the compact zoom controls. */
   children?: ReactNode;
 }>) {
@@ -89,6 +91,7 @@ export function FlowZoomLens<NodeType extends Node>({
           size="icon-xs"
           variant="ghost"
           aria-label={fitLabel}
+          className={fitClassName}
           onClick={() => {
             if (onFit === undefined) void fitView({ padding: 0.12, duration });
             else onFit();

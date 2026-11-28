@@ -1,4 +1,5 @@
 import type {
+  AccessibleWorkspace,
   WorkflowNodeRunSummary,
   WorkflowRunSummary,
 } from '@pertexo/contracts';
@@ -103,6 +104,17 @@ export function describeTrigger(type: RunTriggerType): string {
 }
 
 /** Queued, running or waiting: work that can still change. */
+export function canRequestRunCancellation(
+  workspace: Pick<AccessibleWorkspace, 'capabilities'>,
+  run: Pick<WorkflowRunSummary, 'status' | 'cancelRequestedAt'>,
+): boolean {
+  return (
+    workspace.capabilities.includes('run:cancel') &&
+    isActiveRunStatus(run.status) &&
+    run.cancelRequestedAt === null
+  );
+}
+
 export function isActiveRunStatus(status: RunStatus): boolean {
   return activeRunStatuses.has(status);
 }

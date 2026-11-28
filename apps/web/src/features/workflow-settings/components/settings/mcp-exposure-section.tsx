@@ -133,6 +133,7 @@ function McpExposureEditor({
         {eligible ? (
           <ProgressButton
             type="submit"
+            variant="outline"
             pending={draft.pending}
             pendingLabel="Saving…"
             disabled={!draft.canExpose}

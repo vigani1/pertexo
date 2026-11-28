@@ -29,18 +29,19 @@ export function WorkflowNameWithDialog({
   const [renaming, setRenaming] = useState(false);
   if (!canRenameWorkflow(workspace, workflow)) return children;
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="relative flex min-w-0 items-center gap-1.5">
       {children}
       <Button
         type="button"
         variant="ghost"
         size="icon-xs"
         aria-label="Rename workflow"
+        className="max-sm:absolute max-sm:inset-0 max-sm:size-auto"
         onClick={() => {
           setRenaming(true);
         }}
       >
-        <PencilIcon aria-hidden="true" />
+        <PencilIcon aria-hidden="true" className="max-sm:hidden" />
       </Button>
       {renaming ? (
         <WorkflowRenameDialog

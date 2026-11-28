@@ -22,6 +22,7 @@ type SurfaceProps = Readonly<{
   showStartPicker: boolean;
   onOpenInspector: () => void;
   onAddStep: () => void;
+  onFit: () => void;
 }>;
 export function WorkspaceSurface({
   definitions,
@@ -33,6 +34,7 @@ export function WorkspaceSurface({
   showStartPicker,
   onOpenInspector,
   onAddStep,
+  onFit,
 }: SurfaceProps) {
   const { canvasRef, adding, selection } = canvas;
   const { scope, editing } = useEditorSession();
@@ -55,6 +57,7 @@ export function WorkspaceSurface({
       overlays={overlays}
       samples={samples.isError ? undefined : samples.data?.items}
       containerRef={canvasRef}
+      onFit={onFit}
 
       actions={{
         onSelectNodes: selection.selectNodes,

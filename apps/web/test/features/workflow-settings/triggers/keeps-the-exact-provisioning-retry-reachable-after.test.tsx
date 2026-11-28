@@ -320,6 +320,9 @@ describe('workflow triggers tab', () => {
       within(form).getByRole('link', { name: 'Open form' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/forms/${workflowId}`);
     expect(
+      within(form).getByRole('button', { name: 'Copy form link' }),
+    ).toBeVisible();
+    expect(
       screen.queryByRole('heading', { name: 'This version starts by hand' }),
     ).not.toBeInTheDocument();
   });

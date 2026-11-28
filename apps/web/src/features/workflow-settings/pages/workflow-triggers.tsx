@@ -1,3 +1,5 @@
+import { useNavigate } from '@tanstack/react-router';
+import { canRunWorkflow, useRunWorkflow } from '@/features/workflows/public';
 import { TriggersHeader } from '../components/triggers/header';
 import type { ComponentProps } from 'react';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
@@ -5,7 +7,6 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-  WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { PollingRows } from '../components/triggers/polling-rows';
@@ -84,7 +85,26 @@ function TriggersSession({
     pollingTitle,
     publicationKnown,
   } = publication;
-  const runLink = publishedRunLink(workspace, shownData(summary));
+  const workflow = shownData(summary);
+  const runnable =
+    workspace.status === 'active' &&
+    workflow !== undefined &&
+    canRunWorkflow(workspace, workflow);
+  const navigate = useNavigate();
+  const runner = useRunWorkflow({
+    apiClient,
+    userId: user.id,
+    workspaceId: workspace.id,
+    onRunStarted: (runId) => {
+      void navigate({
+        to: '/w/$workspaceId/runs/$runId',
+        params: { workspaceId: workspace.id, runId },
+      });
+    },
+  });
+  const runLink = runnable
+    ? { workspaceId: workspace.id, workflowId }
+    : undefined;
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName: TriggerStepName = (trigger, fallback) =>
@@ -119,6 +139,16 @@ function TriggersSession({
       <TriggersHeader
         versions={versions.data?.items}
         publishedVersionId={summary.data?.publishedVersionId}
+        run={
+          runnable && publicationKnown && !form
+            ? {
+                pending: runner.pendingId === workflow.id,
+                start: () => {
+                  void runner.run(workflow);
+                },
+              }
+            : undefined
+        }
         {...(runLink === undefined ? {} : { runFromBuild: runLink })}
       />
       <PublicationDiscovery discovery={publication} />
@@ -149,23 +179,6 @@ function TriggersSession({
       )}
     </div>
   );
-}
-
-function publishedRunLink(
-  workspace: AccessibleWorkspace,
-  workflow: WorkflowSummary | undefined,
-) {
-  if (
-    workflow?.publishedVersionId == null ||
-    workflow.lifecycleStatus === 'archived'
-  )
-    return undefined;
-  if (
-    workspace.status !== 'active' ||
-    !workspace.capabilities.includes('run:start')
-  )
-    return undefined;
-  return { workspaceId: workspace.id, workflowId: workflow.id };
 }
 
 type TriggerStepName = (

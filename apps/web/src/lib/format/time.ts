@@ -7,7 +7,6 @@ import { pluralWord } from '@/lib/format/count';
 const dateTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
   timeStyle: 'short',
-  hourCycle: 'h23',
 });
 const dateFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',

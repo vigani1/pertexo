@@ -7,11 +7,11 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import {
-  ConfirmDialog,
-  ConfirmationDetails,
-} from '@/components/patterns/actions/confirm-dialog';
+import { useId, useState } from 'react';
+import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
+import { ActionDialog } from '@/components/patterns/actions/dialog';
+import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useRunReplay } from '../../data/mutations/use-run-replay';
@@ -219,6 +219,7 @@ export function ReplayRunDialog({
   onOpenChange: (open: boolean) => void;
   onRunAccepted: (runId: string) => void;
 }>) {
+  const formId = useId();
   const { id: workspaceId } = workspace;
   const { id: sourceRunId, workflowId } = source;
   const notifications = useNotifications();
@@ -269,12 +270,10 @@ export function ReplayRunDialog({
     if (accepted) onOpenChange(false);
   }
 
-  function changeOpen(nextOpen: boolean) {
-    onOpenChange(nextOpen);
-    if (!nextOpen) {
-      replay.dismiss();
-      if (!replay.unconfirmed) runInput.reset();
-    }
+  function close() {
+    onOpenChange(false);
+    replay.dismiss();
+    if (!replay.unconfirmed) runInput.reset();
   }
 
   const inputMissing =
@@ -282,61 +281,77 @@ export function ReplayRunDialog({
     original.isPending ||
     (original.isError && !replay.unconfirmed);
   const cannotStart = replay.expired || version.pending || inputMissing;
+  if (!open) return null;
   return (
-    <ConfirmDialog
-      state={{ open: open, onOpenChange: changeOpen, locked: replay.pending }}
+    <ActionDialog
+      surface="drawer"
       title="Replay this run"
       description={
         formReplay
           ? 'Replay repeats the exact captured form response. Steps that call other services run again. Use the published form to send a new response.'
           : replayDescription(original.data, originalText, version.label)
       }
-      onSubmit={submit}
-      submitDisabled={replay.pending || cannotStart}
-      actions={{
-        cancel: {
-          kind: 'close',
-          label: 'Cancel',
-          variant: 'ghost',
-          disabled: replay.pending,
-        },
-        confirm: {
-          label: replay.retryAvailable ? 'Retry same replay' : 'Replay run',
-          type: 'submit',
-          variant: 'primary',
-          pending: replay.pending,
-          pendingLabel: 'Replaying…',
-          disabled: cannotStart,
-        },
-      }}
+      locked={replay.pending}
+      onClose={close}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={replay.pending}
+            onClick={close}
+          >
+            Cancel
+          </Button>
+          <ProgressButton
+            form={formId}
+            type="submit"
+            variant="primary"
+            pending={replay.pending}
+            pendingLabel="Replaying…"
+            disabled={cannotStart}
+          >
+            {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
+          </ProgressButton>
+        </>
+      }
     >
-      <ConfirmationDetails
-        error={replay.error}
-        tone={replay.retryAvailable ? 'warning' : 'destructive'}
+      <form
+        id={formId}
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!replay.pending && !cannotStart) void submit();
+        }}
       >
-        <ReplayVersionChoice
-          version={version}
-          disabled={
-            replay.pending ||
-            replay.unconfirmed ||
-            original.isPending ||
-            original.isError
-          }
-        />
-        <ReplayInputPanel
-          original={original}
-          runInput={runInput}
-          locked={
-            replay.pending ||
-            replay.unconfirmed ||
-            original.isPending ||
-            original.isError
-          }
-          formReplay={formReplay}
-          workspaceId={workspaceId}
-          workflowId={workflowId}
-        />
-      </ConfirmationDetails>
-    </ConfirmDialog>
+        <ConfirmationDetails
+          error={replay.error}
+          tone={replay.retryAvailable ? 'warning' : 'destructive'}
+        >
+          <ReplayVersionChoice
+            version={version}
+            disabled={
+              replay.pending ||
+              replay.unconfirmed ||
+              original.isPending ||
+              original.isError
+            }
+          />
+          <ReplayInputPanel
+            original={original}
+            runInput={runInput}
+            locked={
+              replay.pending ||
+              replay.unconfirmed ||
+              original.isPending ||
+              original.isError
+            }
+            formReplay={formReplay}
+            workspaceId={workspaceId}
+            workflowId={workflowId}
+          />
+        </ConfirmationDetails>
+      </form>
+    </ActionDialog>
   );
 }

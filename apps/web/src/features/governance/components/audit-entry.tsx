@@ -98,6 +98,7 @@ export function AuditEntry({
     <RecentLogEntry
       tone={sentence.tone}
       at={event.occurredAt}
+      timeStyle="clock"
       label={
         <span className="font-normal text-muted-foreground [overflow-wrap:anywhere]">
           <b className="font-medium text-foreground">{sentence.actor}</b>{' '}

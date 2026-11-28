@@ -10,11 +10,13 @@ export function useRunCancellation({
   userId,
   workspaceId,
   runId,
+  from,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   runId: string;
+  from: 'run page' | 'canvas';
 }>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -23,7 +25,7 @@ export function useRunCancellation({
         apiClient,
         workspaceId,
         runId,
-        'Canceled from the run page',
+        `Canceled from the ${from}`,
       ),
     onSettled: async () => {
       await queryClient.invalidateQueries({

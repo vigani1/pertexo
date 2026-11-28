@@ -8,3 +8,5 @@ export { ModelUsageDetails } from './components/model-usage';
 
 export { ApprovalRunThread } from './components/run-context/approval-thread';
 export { ActiveRunStep } from './components/run-context/active-step';
+
+export { CancelRunDialog } from './components/run-actions/cancel-dialog';
