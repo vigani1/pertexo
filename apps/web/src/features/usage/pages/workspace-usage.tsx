@@ -81,7 +81,8 @@ export function UsagePage({
               <>
                 {' '}
                 <span className="font-mono">
-                  as of <time dateTime={asOf}>{formatShortTime(asOf)}</time>
+                  as of{' '}
+                  <time dateTime={asOf}>{formatShortTime(asOf, 'h23')}</time>
                 </span>
               </>
             )}

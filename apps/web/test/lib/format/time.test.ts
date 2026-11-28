@@ -30,7 +30,7 @@ describe('dates in an English interface', () => {
       await formatIn('en-US');
     const time = new Date(2026, 1, 2, 14, 12, 51).toISOString();
     expect(formatClock(time)).toBe('14:12:51');
-    expect(formatShortTime(time)).toBe('14:12');
+    expect(formatShortTime(time, 'h23')).toBe('14:12');
     expect(formatDayMonth(time)).toBe('2 Feb');
   });
 
