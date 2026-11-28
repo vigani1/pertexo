@@ -10,7 +10,7 @@ import {
 import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Disclosure } from '@/components/ui/disclosure';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { ProgressIconButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import type { ApiClient } from '@/lib/api/client';
 import { apiTokensQueryOptions } from '../data/api-tokens.queries';
@@ -45,21 +45,15 @@ export function ApiTokensPage({
       <PageHeader>
         <PageHeaderTitle>API tokens</PageHeaderTitle>
         <PageHeaderActions>
-          <Button
+          <ProgressIconButton
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="Refresh"
-            title="Refresh"
-            disabled={query.isFetching}
+            label="Refresh"
+            pending={query.isFetching}
             onClick={refresh}
-          >
-            {query.isFetching ? (
-              <LoadingOrb />
-            ) : (
-              <RefreshCwIcon aria-hidden="true" />
-            )}
-          </Button>
+            icon={<RefreshCwIcon aria-hidden="true" />}
+          />
           <Button
             type="button"
             variant="primary"

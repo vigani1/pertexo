@@ -113,7 +113,7 @@ describe('account: display name', () => {
     expect(renames[1]?.key).not.toBe(renames[0]?.key);
   });
 
-  it('renames in place at the profile revision and confirms with a toast', async () => {
+  it('renames from the identity drawer at the profile revision and confirms with a toast', async () => {
     let profile = user;
     const renames: Rename[] = [];
     mockServer.use(
@@ -139,10 +139,12 @@ describe('account: display name', () => {
     expect(
       await screen.findByText('Your name is now Ada Lovelace'),
     ).toBeVisible();
-    const profileSection = within(
-      screen.getByRole('region', { name: 'Name and email' }),
-    );
-    expect(await profileSection.findByText('Ada Lovelace')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ada Lovelace' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('dialog', { name: 'Edit your name' }),
+    ).not.toBeInTheDocument();
     expect(renames).toEqual([
       {
         key: expect.any(String) as unknown,

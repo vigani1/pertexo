@@ -109,12 +109,14 @@ function FullScreenState({
   art,
   title,
   description,
+  label,
   action,
 }: Readonly<{
   art: ReactNode;
   title: string;
   description: string;
   action: ReactNode;
+  label?: string;
 }>) {
   return (
     <FullScreen>
@@ -125,6 +127,9 @@ function FullScreenState({
       </div>
       <SystemState className={CENTRED}>
         <SystemStateArt>{art}</SystemStateArt>
+        {label === undefined ? null : (
+          <p className="font-mono text-meta text-muted-foreground">{label}</p>
+        )}
         <SystemStateTitle>{title}</SystemStateTitle>
         <SystemStateDescription>{description}</SystemStateDescription>
         <SystemStateActions>{action}</SystemStateActions>
@@ -215,6 +220,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     return (
       <FullScreenState
         art={<BarredThread />}
+        label="403 · Held at the door"
         title="You don’t have access to this"
         description={`Your role here doesn’t include this page. A workspace ${ANY_ADMINISTRATOR} can change it.`}
         action={goHome}
@@ -233,6 +239,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     return (
       <Unreachable
         orb="idle"
+        label="Offline · Reaching for the server"
         title="Pertexo can’t be reached"
         description="Check your internet connection, then try again. Your work is safe."
         onRetry={() => void retry()}
@@ -277,9 +284,11 @@ function Unreachable({
   orb,
   title,
   description,
+  label,
   onRetry,
 }: Readonly<{
   orb: 'idle' | 'waiting';
+  label?: string;
   title: string;
   description: string;
   onRetry: () => void;
@@ -290,6 +299,9 @@ function Unreachable({
         <SystemStateArt>
           <CoreOrb state={orb} className="size-36" />
         </SystemStateArt>
+        {label === undefined ? null : (
+          <p className="font-mono text-meta text-muted-foreground">{label}</p>
+        )}
         <SystemStateTitle>{title}</SystemStateTitle>
         <SystemStateDescription>{description}</SystemStateDescription>
         <SystemStateActions>

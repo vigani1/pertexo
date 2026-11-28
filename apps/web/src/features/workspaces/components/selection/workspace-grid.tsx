@@ -23,7 +23,9 @@ export function WorkspaceGrid({
         <h1 className="font-display text-4xl leading-tight sm:text-hero">
           Pick up the thread.
         </h1>
-        <p className="text-muted-foreground">Choose a workspace to continue.</p>
+        <p className="text-muted-foreground">
+          Your workspaces and your role in each. Workspace admins set roles.
+        </p>
       </header>
       <section aria-labelledby="workspaces-title">
         <RuleHeading id="workspaces-title" count={workspaces.length}>

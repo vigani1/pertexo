@@ -149,6 +149,7 @@ function ConcurrencyEditor({
       <div>
         <ProgressButton
           type="submit"
+          variant="outline"
           pending={command.pending}
           pendingLabel="Saving…"
           disabled={false}

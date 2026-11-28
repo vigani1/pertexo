@@ -23,7 +23,7 @@ export function PagePending() {
             key={order}
             className="grid grid-cols-[1rem_minmax(0,14rem)_minmax(0,1fr)_3rem] items-center gap-4"
           >
-            <Skeleton className="size-3.5 rounded-full" />
+            <Skeleton shape="round" className="size-3.5" />
             <Skeleton className="h-2.5" />
             <SkeletonThread
               order={order}

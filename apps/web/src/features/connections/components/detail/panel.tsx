@@ -168,8 +168,7 @@ function DetailBody({
     setMode('overview');
   };
   return (
-    <div className="flex flex-col gap-6">
-      <ConnectionState connection={connection} />
+    <div className="flex flex-col gap-5">
       {mode === 'overview' ? (
         <>
           <OverviewActions
@@ -178,6 +177,7 @@ function DetailBody({
             permissions={permissions}
             onMode={setMode}
           />
+          <ConnectionState connection={connection} />
           <ConnectionFacts connection={connection} />
           <ConnectionUsage
             scope={scope}
@@ -213,6 +213,7 @@ function DetailBody({
           ) : null}
         </>
       ) : null}
+      {mode === 'overview' ? null : <ConnectionState connection={connection} />}
       {mode === 'test' &&
       permissions.canTest &&
       connection.status !== 'revoked' ? (

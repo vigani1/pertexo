@@ -4,6 +4,11 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
+import { DayRangePicker } from '@/components/patterns/dates/day-range-picker';
+import { shiftDays, type LocalDate } from '@/components/ui/date-time-parts';
+import { useState } from 'react';
+import { formatCount } from '@/lib/format/count';
+import { usageInWindow, RECENT_USAGE_DAYS } from '../model/chart-window';
 import { useQuery } from '@tanstack/react-query';
 import { USAGE_TREND_PERIOD_DAYS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
@@ -12,7 +17,6 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
 import { formatShortTime } from '@/lib/format/time';
-import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { CurrentCapacity } from '../components/current-capacity';
 import { DailyChart } from '../components/trends/daily-chart';
 import { WorkflowRankings } from '../components/trends/rankings';
@@ -49,6 +53,9 @@ export function UsagePage({
   search: UsageSearch;
   onSearchChange: (search: UsageSearch) => void;
 }>) {
+  const [recent, setRecent] = useState(false);
+  const [dates, setDates] =
+    useState<Readonly<{ from: LocalDate; to: LocalDate }>>();
   const canReadRuns = workspace.capabilities.includes('run:read');
   const canReadCapacity =
     canReadRuns &&
@@ -70,6 +77,12 @@ export function UsagePage({
   const trendData =
     canReadRuns && !isReadAccessLost(trends.error) ? trends.data : undefined;
   const asOf = olderOf(capacityData?.asOf, trendData?.asOf);
+  const firstDay = trendData?.days[0]?.day;
+  const lastDay = trendData?.days.at(-1)?.day;
+  const bounds =
+    firstDay === undefined || lastDay === undefined
+      ? undefined
+      : { from: firstDay, to: lastDay };
   return (
     <div className="flex max-w-190 flex-col gap-6">
       <PageHeader>
@@ -90,11 +103,7 @@ export function UsagePage({
       </PageHeader>
       <div className="flex flex-col">
         {canReadCapacity ? (
-          <UsageSnapshot
-            title="Room left"
-            description="What’s stored and running right now."
-            query={capacity}
-          >
+          <UsageSnapshot title="Room left" query={capacity}>
             {(snapshot) => <CurrentCapacity snapshot={snapshot} />}
           </UsageSnapshot>
         ) : (
@@ -109,48 +118,112 @@ export function UsagePage({
         {canReadRuns ? (
           <UsageSnapshot
             title="Runs per day"
-            description={`Over ${String(USAGE_TREND_PERIOD_DAYS[search.period])} UTC days. Today is partial; test runs are left out.`}
+            description={`Over ${String(recent ? RECENT_USAGE_DAYS : USAGE_TREND_PERIOD_DAYS[search.period])} UTC days. Today is partial; test runs are left out.`}
             controls={
-              <ToggleGroup
-                aria-label="Range"
-                value={[search.period]}
-                onValueChange={(values) => {
-                  if (values[0] !== undefined)
-                    onSearchChange(parseUsageSearch({ period: values[0] }));
-                }}
-              >
-                <ToggleGroupItem value="30d">
-                  {USAGE_TREND_PERIOD_DAYS['30d']} days
-                </ToggleGroupItem>
-                <ToggleGroupItem value="90d">
-                  {USAGE_TREND_PERIOD_DAYS['90d']} days
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <div className="flex flex-wrap items-center gap-2">
+                <ToggleGroup
+                  aria-label="Range"
+                  value={
+                    dates === undefined
+                      ? [recent ? 'recent' : search.period]
+                      : []
+                  }
+                  onValueChange={(values) => {
+                    const choice = values[0];
+                    if (choice === undefined) return;
+                    setDates(undefined);
+                    setRecent(choice === 'recent');
+                    if (choice !== 'recent')
+                      onSearchChange(parseUsageSearch({ period: choice }));
+                  }}
+                >
+                  <ToggleGroupItem value="recent">
+                    {RECENT_USAGE_DAYS} days
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="30d">
+                    {USAGE_TREND_PERIOD_DAYS['30d']} days
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="90d">
+                    {USAGE_TREND_PERIOD_DAYS['90d']} days
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                {bounds === undefined ? null : (
+                  <DayRangePicker
+                    title="Choose dates in UTC"
+                    label={
+                      dates === undefined
+                        ? 'Choose dates'
+                        : `${dates.from} – ${dates.to}`
+                    }
+                    initial={dates ?? bounds}
+                    bounds={bounds}
+                    presets={[]}
+                    onApply={(from, to) => {
+                      if (from < bounds.from || to > bounds.to)
+                        return 'Choose dates within the selected period.';
+                      setDates({ from, to });
+                      setRecent(false);
+                      return undefined;
+                    }}
+                    onClear={() => {
+                      setDates(undefined);
+                    }}
+                  />
+                )}
+              </div>
             }
             query={trends}
           >
-            {(data) => (
-              <div className="flex flex-col gap-5">
-                <p>
-                  <span className="font-mono text-xl">
-                    {data.total.toLocaleString(FORMAT_LOCALE)}
-                  </span>{' '}
-                  <span className="text-muted-foreground">runs</span>
-                </p>
-                <DailyChart snapshot={data} />
-                <p className="text-meta text-subtle-foreground">
-                  Red shows failed and timed-out runs.{' '}
-                  <Link
-                    to="/w/$workspaceId/settings/usage/trends"
-                    params={{ workspaceId: workspace.id }}
-                    search={{ period: search.period }}
-                    className="inline-link"
-                  >
-                    Durations and failures by workflow
-                  </Link>
-                </p>
-              </div>
-            )}
+            {(data) => {
+              const window =
+                recent || dates !== undefined
+                  ? usageInWindow(data, dates)
+                  : data;
+              const failures =
+                window.byStatus.failed +
+                window.byStatus.timed_out +
+                window.byStatus.outcome_unknown;
+              return (
+                <div className="flex flex-col gap-4">
+                  <p className="font-mono text-meta text-muted-foreground">
+                    {formatCount(window.total, 'run')} · {String(failures)}{' '}
+                    failed
+                  </p>
+                  <DailyChart snapshot={window} />
+                  <p className="text-meta text-subtle-foreground">
+                    Red shows runs that failed, timed out or ended with an
+                    unknown outcome.{' '}
+                    <Link
+                      to="/w/$workspaceId/settings/usage/trends"
+                      params={{ workspaceId: workspace.id }}
+                      search={{ period: search.period }}
+                      className="inline-link"
+                    >
+                      Durations and failures by workflow
+                    </Link>
+                    {window.byStatus.failed === 0 ||
+                    window.days.length === 0 ? null : (
+                      <>
+                        {' · '}
+                        <Link
+                          to="/w/$workspaceId/runs"
+                          params={{ workspaceId: workspace.id }}
+                          search={{
+                            status: 'failed',
+                            range: 'custom',
+                            createdAtFrom: `${window.days[0]?.day ?? ''}T00:00:00.000Z`,
+                            createdAtBefore: `${shiftDays(window.days.at(-1)?.day ?? '', 1)}T00:00:00.000Z`,
+                          }}
+                          className="inline-link"
+                        >
+                          View failed runs
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
+              );
+            }}
           </UsageSnapshot>
         ) : (
           <SettingRow layout="section" title="Runs per day">
@@ -158,7 +231,15 @@ export function UsagePage({
           </SettingRow>
         )}
         {trendData === undefined ? null : (
-          <SettingRow layout="section" title="By workflow">
+          <SettingRow
+            layout="section"
+            title="By workflow"
+            description={
+              recent || dates !== undefined
+                ? `Rankings cover the last ${String(USAGE_TREND_PERIOD_DAYS[search.period])} days.`
+                : undefined
+            }
+          >
             <WorkflowRankings
               items={trendData.busiest}
               metric="runs"

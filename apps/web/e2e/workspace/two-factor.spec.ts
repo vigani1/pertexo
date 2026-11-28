@@ -23,7 +23,6 @@ for (const width of [1280, 375]) {
       await page.setViewportSize({ width, height: 800 });
       const account = await mockTwoFactor(page);
       await page.goto('/account/security');
-      await page.getByRole('tab', { name: 'Sign-in & security' }).click();
       await page
         .getByRole('button', { name: 'Turn on two-factor sign-in' })
         .click();
@@ -183,11 +182,10 @@ test('a screen-reader user turns on two-factor sign-in from the keyboard', async
 }) => {
   await mockTwoFactor(page);
   await page.goto('/account/security');
-  const tab = page.getByRole('tab', { name: 'Sign-in & security' });
-  await expect(tab).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'How you sign in' }),
+  ).toBeVisible();
   await startScreenReader(page);
-  await tab.focus();
-  await page.keyboard.press('Enter');
   const turnOn = page.getByRole('button', {
     name: 'Turn on two-factor sign-in',
   });

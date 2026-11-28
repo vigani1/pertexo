@@ -20,7 +20,7 @@ export async function acknowledgeCredentials(event: UserEvent) {
   const done = within(dialog).getByRole('button', { name: 'Done' });
   expect(done).toBeDisabled();
   await event.click(
-    within(dialog).getByRole('switch', { name: 'I’ve stored these' }),
+    within(dialog).getByRole('checkbox', { name: 'I’ve stored these' }),
   );
   await event.click(done);
 }

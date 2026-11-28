@@ -9,7 +9,7 @@ const disclosureVariants = cva('', {
     look: {
       plain: '',
       tree: '',
-      ruled: 'border-t border-border pt-3',
+      'top-rule': 'border-t border-border pt-2',
       framed: 'rounded-lg border border-border bg-select',
     },
   },
@@ -29,7 +29,7 @@ const summaryVariants = cva(
       },
       look: {
         plain: 'py-0.5',
-        ruled: 'py-0.5',
+        'top-rule': 'py-0.5',
         tree: 'w-full cursor-default gap-1 py-0.5 hover:bg-surface-ink/4',
         framed: 'w-full px-3 py-2.5 text-muted-foreground',
       },
@@ -76,7 +76,7 @@ export function Disclosure({
         <ChevronRightIcon
           aria-hidden="true"
           // Only its own fold turns it, never an open fold around it.
-          className="size-3.5 shrink-0 transition-transform duration-150 ease-unspool motion-reduce:transition-none [details[open]>summary>&]:rotate-90"
+          className="size-3.5 shrink-0 transition-transform duration-(--duration-quick) ease-unspool motion-reduce:transition-none [details[open]>summary>&]:rotate-90"
         />
         {summary}
       </summary>
@@ -88,7 +88,7 @@ export function Disclosure({
             (look === undefined ||
               look === null ||
               look === 'plain' ||
-              look === 'ruled') &&
+              look === 'top-rule') &&
               'mt-2',
             contentClassName,
           )}

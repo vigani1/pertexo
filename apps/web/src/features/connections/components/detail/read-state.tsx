@@ -8,7 +8,7 @@ export function ConnectionLoading() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-3">
-        <Skeleton className="size-10 shrink-0 rounded-lg" />
+        <Skeleton shape="tile" className="size-10 shrink-0" />
         <div className="flex min-w-0 flex-col gap-2">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-3.5 w-32" />

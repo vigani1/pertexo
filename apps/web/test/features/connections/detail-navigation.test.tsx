@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
@@ -19,17 +19,17 @@ import {
 
 it('reports when searchable usage is partial and finds later workflows after loading them', async () => {
   const current = connection('Primary Slack');
-  const usage = (workflowName: string) => ({
+  const usage = (workflowName: string, live = true) => ({
     workflowId: crypto.randomUUID(),
     workflowName,
     workflowLifecycleStatus: 'active',
     workflowVersionId: crypto.randomUUID(),
     versionNumber: 1,
-    isCurrentPublication: true,
+    isCurrentPublication: live,
     operationKeys: ['slack.send_message'],
   });
   const earlier = Array.from({ length: 6 }, (_, i) =>
-    usage(`Workflow ${String(i + 1)}`),
+    usage(`Workflow ${String(i + 1)}`, i < 5),
   );
   const later = usage('Later workflow');
   mockServer.use(
@@ -47,8 +47,29 @@ it('reports when searchable usage is partial and finds later workflows after loa
   await renderLoadedApp(
     `/w/${workspaceId}/connections?connection=${connectionId}`,
   );
+  const showAll = await screen.findByRole('button', {
+    name: 'Show all 6 workflows',
+  });
   expect(
-    await screen.findByRole('heading', { name: '6 workflows loaded' }),
+    screen.queryByRole('heading', { name: '6 workflows loaded' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('link', { name: 'Workflow 6' }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(showAll);
+  expect(
+    screen.getByRole('heading', { name: '6 workflows loaded' }),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole('list', { name: 'Live' })).getByRole('link', {
+      name: 'Workflow 1',
+    }),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole('list', { name: 'Older versions only' })).getByRole(
+      'link',
+      { name: 'Workflow 6' },
+    ),
   ).toBeVisible();
   await userEvent.type(
     screen.getByRole('searchbox', { name: /Find a workflow or step/u }),

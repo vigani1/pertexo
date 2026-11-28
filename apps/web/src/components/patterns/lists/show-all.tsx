@@ -6,11 +6,13 @@ export const SEARCH_LIST_THRESHOLD = 20;
 
 export function ShowAll({
   count,
+  subject,
   controls,
   expanded,
   onExpandedChange,
 }: Readonly<{
   count: number;
+  subject?: string;
   controls: string;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
@@ -27,7 +29,9 @@ export function ShowAll({
         onExpandedChange(!expanded);
       }}
     >
-      {expanded ? 'Show fewer' : `Show all ${String(count)}`}
+      {expanded
+        ? 'Show fewer'
+        : `Show all ${String(count)}${subject === undefined ? '' : ` ${subject}`}`}
       <ChevronDownIcon
         aria-hidden="true"
         className="group-aria-expanded/button:rotate-180"

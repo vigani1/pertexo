@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import { SearchIcon } from 'lucide-react';
 import {
   SystemState,
@@ -33,6 +33,7 @@ export function ShellNotFound() {
 function PageNotFound() {
   const { workspace } = useWorkspaceScope();
   const openSearch = useOpenCommandPalette();
+  const path = useLocation({ select: (location) => location.pathname });
   return (
     <SystemState className="max-w-2xl">
       <SystemStateArt>
@@ -46,6 +47,9 @@ function PageNotFound() {
         This address doesn’t lead anywhere in {workspace.name}. Go home, or
         search for what you were looking for.
       </SystemStateDescription>
+      <code className="max-w-full text-meta wrap-anywhere text-muted-foreground">
+        {path}
+      </code>
       <SystemStateActions>
         <Link
           to="/w/$workspaceId"

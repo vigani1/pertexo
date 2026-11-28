@@ -61,9 +61,9 @@ it('applies an Audit date on the first tap and sends the sorted range on the sec
   );
   await renderLoadedApp(`/w/${workspaceId}/settings/audit`);
   const user = userEvent.setup();
-  await user.click(
-    await screen.findByRole('button', { name: 'When: Any time' }, coldStart),
-  );
+  expect(
+    await screen.findByRole('region', { name: 'When it happened' }, coldStart),
+  ).toBeVisible();
   const now = new Date();
   const date = (offset: number) =>
     new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);

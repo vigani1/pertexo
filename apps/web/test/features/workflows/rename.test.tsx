@@ -21,7 +21,6 @@ import {
 } from '../workflow-settings/fixtures';
 
 const versionsPath = `/w/${workspaceId}/workflows/${workflowId}/versions`;
-const settingsPath = `/w/${workspaceId}/workflows/${workflowId}/settings`;
 
 type Summary = typeof summary;
 
@@ -156,26 +155,21 @@ describe('workflow rename', () => {
         return nameConflict(2);
       }),
     );
-    await renderLoadedApp(settingsPath);
-    const identity = await screen.findByRole('region', { name: 'Identity' });
+    await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
     await event.click(
-      await within(identity).findByRole('button', { name: 'Rename workflow' }),
+      await screen.findByRole('button', { name: 'Rename workflow' }),
     );
-    const input = within(identity).getByLabelText('Workflow name');
+    const input = screen.getByLabelText('Workflow name');
     await event.clear(input);
     await event.type(input, 'Evening control');
-    await event.click(within(identity).getByRole('button', { name: 'Save' }));
+    await event.click(screen.getByRole('button', { name: 'Save' }));
     expect(
-      await within(identity).findByText('Renamed to “Daily checks” meanwhile.'),
+      await screen.findByText('Renamed to “Daily checks” meanwhile.'),
     ).toBeVisible();
-    await event.click(
-      within(identity).getByRole('button', { name: 'Use theirs' }),
-    );
-    expect(within(identity).getByText('Daily checks')).toBeVisible();
-    expect(
-      within(identity).queryByLabelText('Workflow name'),
-    ).not.toBeInTheDocument();
+    await event.click(screen.getByRole('button', { name: 'Use theirs' }));
+    expect(screen.getByRole('heading', { name: 'Daily checks' })).toBeVisible();
+    expect(screen.queryByLabelText('Workflow name')).not.toBeInTheDocument();
     expect(renames).toBe(1);
   });
 
@@ -184,10 +178,9 @@ describe('workflow rename', () => {
     mockServer.use(
       summaryHandler(() => ({ ...summary, lifecycleStatus: 'archived' })),
     );
-    const archived = await renderLoadedApp(settingsPath);
-    const identity = await screen.findByRole('region', { name: 'Identity' });
+    const archived = await renderLoadedApp(versionsPath);
     expect(
-      await within(identity).findByText('Restore the workflow to rename it.'),
+      await screen.findByRole('heading', { name: 'Daily control' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Rename workflow' }),
@@ -199,11 +192,9 @@ describe('workflow rename', () => {
         (capability) => capability !== 'workflow:update',
       ),
     );
-    await renderLoadedApp(settingsPath);
+    await renderLoadedApp(versionsPath);
     expect(
-      await within(
-        await screen.findByRole('region', { name: 'Identity' }),
-      ).findByText('Daily control'),
+      await screen.findByRole('heading', { name: 'Daily control' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Rename workflow' }),

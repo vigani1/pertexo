@@ -16,6 +16,9 @@ describe('workspace Usage', () => {
       await within(room).findByText('8 PB', { selector: 'span' }),
     ).toBeVisible();
     expect(room).toHaveTextContent('8 EB');
+    await userEvent.click(
+      within(room).getByText('Capacity details', { selector: 'summary' }),
+    );
     expect(room).toHaveTextContent(
       'One more place is held for a queued run about to start.',
     );
@@ -26,7 +29,9 @@ describe('workspace Usage', () => {
       within(room).getByRole('img', { name: /% of file storage used$/u }),
     ).toBeVisible();
     const perDay = screen.getByRole('region', { name: 'Runs per day' });
-    expect(await within(perDay).findByText('3')).toBeVisible();
+    expect(
+      await within(perDay).findByText(/^3 runs · \d+ failed$/u),
+    ).toBeVisible();
     expect(perDay).toHaveTextContent('Over 90 UTC days.');
     expect(
       within(perDay).getByRole('img', { name: /Daily runs by outcome, UTC/u }),
@@ -52,6 +57,13 @@ describe('workspace Usage', () => {
       },
     });
     await renderLoadedApp(path);
+    await userEvent.click(
+      await screen.findByText(
+        'Capacity details',
+        { selector: 'summary' },
+        coldStart,
+      ),
+    );
     expect(
       await screen.findByText(/^1,250 of 1,000 files/u, {}, coldStart),
     ).toBeVisible();
@@ -68,6 +80,40 @@ describe('workspace Usage', () => {
     await waitFor(() => {
       expect(seen.some((query) => query.get('period') === '90d')).toBe(true);
     });
+  });
+
+  it('shows the seven latest days and narrows the failure link to the chosen dates', async () => {
+    install();
+    await renderLoadedApp(path);
+    const perDay = within(
+      await screen.findByRole('region', { name: 'Runs per day' }),
+    );
+    const actor = userEvent.setup();
+    await actor.click(perDay.getByRole('button', { name: '7 days' }));
+    await actor.click(
+      await perDay.findByText('Daily data', { selector: 'summary' }),
+    );
+    expect(perDay.getAllByRole('row')).toHaveLength(8);
+    await actor.click(
+      perDay.getByRole('button', { name: 'When: Choose dates' }),
+    );
+    await actor.click(
+      screen.getByRole('button', { name: 'Saturday, October 17, 2026' }),
+    );
+    const failures = perDay.getByRole('link', { name: 'View failed runs' });
+    expect(failures).toHaveAttribute(
+      'href',
+      expect.stringContaining('status=failed'),
+    );
+    expect(failures).toHaveAttribute(
+      'href',
+      expect.stringContaining('2026-10-17'),
+    );
+    expect(failures).toHaveAttribute(
+      'href',
+      expect.stringContaining('2026-10-18'),
+    );
+    expect(perDay.getAllByRole('row')).toHaveLength(2);
   });
 
   it('does not read capacity in a workspace being deleted, while runs per day remain', async () => {

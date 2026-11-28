@@ -164,8 +164,14 @@ for (const width of [1280, 375])
       expect(csv.split('\r\n')).toHaveLength(121);
       expect(csv).toContain('row119');
       expect(exports[0]).toEqual({ filters: [] });
-      await page.getByLabel('Value', { exact: true }).fill('alpha');
+      await expect(page.getByLabel('Value', { exact: true })).toBeHidden();
       await page.getByRole('button', { name: 'Filter', exact: true }).click();
+      const filter = page.getByRole('dialog', { name: 'Filter rows' });
+      await filter.getByLabel('Value', { exact: true }).fill('alpha');
+      await filter
+        .getByRole('button', { name: 'Apply filter', exact: true })
+        .click();
+      await expect(filter).toBeHidden();
       const filteredDownload = page.waitForEvent('download');
       await page
         .getByRole('button', { name: 'Export filtered rows', exact: true })

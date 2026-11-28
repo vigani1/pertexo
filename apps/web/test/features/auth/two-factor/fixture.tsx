@@ -43,9 +43,6 @@ export function identity(read: () => ReturnType<typeof account>) {
 export async function openSecurity() {
   const view = await renderLoadedApp('/account/security', { strict: true });
   const actor = userEvent.setup();
-  await actor.click(
-    await screen.findByRole('tab', { name: 'Sign-in & security' }),
-  );
   return { ...view, actor };
 }
 

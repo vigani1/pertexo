@@ -50,8 +50,8 @@ function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {
         )}
       >
         <XIcon aria-hidden="true" />
-        <NoticeTimer timeout={timeout} />
       </Toast.Close>
+      <NoticeTimer timeout={timeout} appearance="thread" />
     </Toast.Root>
   );
 }
@@ -63,7 +63,7 @@ function ToastList() {
 
 /**
  * App-wide notification viewport: bottom-right lenses, at most three visible,
- * each with a ring that counts down its timeout and pauses on hover/focus.
+ * each with a countdown thread that pauses on hover and focus.
  * While a side sheet is open the stack steps aside (see `globals.css`).
  * Modal dialogs place it below their backdrop so actions stay unobstructed.
  * Errors never time out. Use `useNotifications` to raise one.

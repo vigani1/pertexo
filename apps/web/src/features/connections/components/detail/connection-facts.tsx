@@ -2,7 +2,7 @@ import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ReactNode } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
-import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
+import { formatDate, formatDateTime, formatMoment } from '@/lib/format/time';
 import { connectionPresentation } from '../../model/connection-providers';
 import {
   grantSentence,
@@ -40,9 +40,7 @@ function IdentifierFact({
 }
 
 function testedWhen(value: string | null | undefined): string {
-  return value == null
-    ? 'Never'
-    : `${formatRelativeTime(value)} · ${formatDateTime(value)}`;
+  return value == null ? 'Never' : formatMoment(value);
 }
 
 /** What Pertexo knows about a connection, without any of its secret. */
@@ -72,7 +70,6 @@ export function ConnectionFacts({
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm">
-        <Fact term="Service">{provider.name}</Fact>
         <Fact term="Credential">{credentialLabel}, stored encrypted</Fact>
         {isOAuth2Connection(connection) ? (
           <>
@@ -91,7 +88,6 @@ export function ConnectionFacts({
             ) : null}
           </>
         ) : null}
-        <Fact term="Works with">{provider.usedBy}</Fact>
         {anyHistory ? (
           <Fact term="Last tested">{testedWhen(health.lastTestedAt)}</Fact>
         ) : null}
@@ -120,18 +116,11 @@ export function ConnectionFacts({
             )}
           </Fact>
         )}
-        <Fact term="Added">{formatDateTime(connection.createdAt)}</Fact>
+        <Fact term="Added">{formatDate(connection.createdAt)}</Fact>
         {edited ? (
-          <Fact term="Updated">{formatDateTime(connection.updatedAt)}</Fact>
+          <Fact term="Updated">{formatMoment(connection.updatedAt)}</Fact>
         ) : null}
       </dl>
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {connection.providerKey === 'slack'
-          ? 'Runs that send Slack messages keep its health up to date. '
-          : 'Test it to check it still works. '}
-        A failed test means Pertexo couldn’t use this credential, not that the
-        service is down.
-      </p>
       <Disclosure summary="Details">
         <dl className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
           <IdentifierFact

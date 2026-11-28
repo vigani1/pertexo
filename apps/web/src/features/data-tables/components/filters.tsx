@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { dataTableCsvValue, type DataTableQuery } from '@pertexo/node-sdk';
-import { FilterIcon, XIcon } from 'lucide-react';
+import { FilterIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DismissibleFilterChip } from '@/components/patterns/lists/filter-chip';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { TableChoice } from './choice';
@@ -25,100 +32,114 @@ export function DataTableFilters({
   query: DataTableQuery;
   onChange: (query: DataTableQuery) => void;
 }>) {
+  const [open, setOpen] = useState(false);
   const [column, setColumn] = useState(table.columns[0]?.name ?? '');
   const [operator, setOperator] = useState('equals');
   const [value, setValue] = useState('');
   const [error, setError] = useState<string>();
   const active = query.filters[0];
   return (
-    <form
-      aria-label="Filter rows"
-      className="flex min-w-0 flex-wrap items-center gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const field = table.columns.find((item) => item.name === column);
-        if (field === undefined) return;
-        try {
-          const parsed = dataTableCsvValue(
-            field,
-            value,
-          ) as DataTableQuery['filters'][number]['value'];
-          onChange({
-            ...query,
-            offset: 0,
-            filters: [
-              {
-                column,
-                operator:
-                  operator as DataTableQuery['filters'][number]['operator'],
-                value: parsed,
-              },
-            ],
-          });
-          setError(undefined);
-        } catch (cause) {
-          setError(
-            cause instanceof Error ? cause.message : 'Check the filter value.',
-          );
-        }
-      }}
-    >
-      {/* One sentence to read: "colour · contains · red". */}
-      <TableChoice
-        label="Column"
-        value={column}
-        className="h-8 w-36"
-        choices={table.columns.map((item) => ({
-          value: item.name,
-          label: item.name,
-        }))}
-        onChange={setColumn}
-      />
-      <TableChoice
-        label="Match"
-        value={operator}
-        className="h-8 w-40"
-        choices={OPERATORS}
-        onChange={setOperator}
-      />
-      <Input
-        aria-label="Value"
-        placeholder="Value"
-        className="h-8 w-40"
-        value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          if (next) {
+            setColumn(active?.column ?? table.columns[0]?.name ?? '');
+            setOperator(active?.operator ?? 'equals');
+            setValue(
+              active === undefined ? '' : (tableCellText(active.value) ?? ''),
+            );
+            setError(undefined);
+          }
+          setOpen(next);
         }}
-      />
-      <Button type="submit" variant="outline" size="sm">
-        <FilterIcon aria-hidden="true" data-icon="inline-start" />
-        Filter
-      </Button>
+      >
+        <SheetTrigger render={<Button variant="outline" size="sm" />}>
+          <FilterIcon aria-hidden="true" data-icon="inline-start" />
+          Filter
+        </SheetTrigger>
+        <SheetContent variant="form">
+          <SheetTitle>Filter rows</SheetTitle>
+          <form
+            aria-label="Filter rows"
+            className="mt-5 flex min-w-0 flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const field = table.columns.find((item) => item.name === column);
+              if (field === undefined) return;
+              try {
+                const parsed = dataTableCsvValue(
+                  field,
+                  value,
+                ) as DataTableQuery['filters'][number]['value'];
+                onChange({
+                  ...query,
+                  offset: 0,
+                  filters: [
+                    {
+                      column,
+                      operator:
+                        operator as DataTableQuery['filters'][number]['operator'],
+                      value: parsed,
+                    },
+                  ],
+                });
+                setOpen(false);
+              } catch (cause) {
+                setError(
+                  cause instanceof Error
+                    ? cause.message
+                    : 'Check the filter value.',
+                );
+              }
+            }}
+          >
+            {/* One sentence to read: "colour · contains · red". */}
+            <TableChoice
+              label="Column"
+              value={column}
+              className="w-full"
+              choices={table.columns.map((item) => ({
+                value: item.name,
+                label: item.name,
+              }))}
+              onChange={setColumn}
+            />
+            <TableChoice
+              label="Match"
+              value={operator}
+              className="w-full"
+              choices={OPERATORS}
+              onChange={setOperator}
+            />
+            <Input
+              aria-label="Value"
+              placeholder="Value"
+              className="w-full"
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+              }}
+            />
+            {error === undefined ? null : (
+              <Notice tone="warning">{error}</Notice>
+            )}
+            <Button type="submit" variant="primary" className="self-end">
+              Apply filter
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
       {active === undefined ? null : (
-        <button
-          type="button"
-          aria-label="Clear filter"
-          className="inline-flex max-sm:min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-action/25 bg-action/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-action/50 focus-ring"
-          onClick={() => {
+        <DismissibleFilterChip
+          removeLabel="Clear filter"
+          label={`${active.column} ${OPERATORS.find((item) => item.value === active.operator)?.label.toLowerCase() ?? ''} ${tableCellText(active.value) ?? ''}`}
+          onRemove={() => {
             onChange({ ...query, filters: [], offset: 0 });
           }}
-        >
-          <span className="min-w-0 truncate">
-            {active.column}{' '}
-            {OPERATORS.find(
-              (item) => item.value === active.operator,
-            )?.label.toLowerCase()}{' '}
-            {tableCellText(active.value) ?? ''}
-          </span>
-          <XIcon aria-hidden="true" className="size-3 shrink-0" />
-        </button>
+        />
       )}
-      {error === undefined ? null : (
-        <Notice tone="warning" className="w-full">
-          {error}
-        </Notice>
-      )}
-    </form>
+    </div>
   );
 }
 

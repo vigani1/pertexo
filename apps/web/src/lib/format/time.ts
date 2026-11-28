@@ -7,12 +7,14 @@ import { pluralWord } from '@/lib/format/count';
 const dateTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
   timeStyle: 'short',
+  hourCycle: 'h23',
 });
 const dateFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
 });
 const clockFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
-  hour: 'numeric',
+  hour: '2-digit',
+  hourCycle: 'h23',
   minute: '2-digit',
   second: '2-digit',
 });
@@ -24,6 +26,16 @@ const short24HourFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+const wallClockFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
+  timeStyle: 'short',
+  timeZone: 'UTC',
+});
+
+/** Format a wall-clock hour without shifting it into the browser's time zone. */
+export function formatWallClock(hour: number, minute: number): string {
+  return wallClockFormatter.format(Date.UTC(2000, 0, 1, hour, minute));
+}
+
 const dayHeadingFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   day: 'numeric',
   month: 'short',
@@ -57,7 +69,7 @@ export function formatDate(value: string | null | undefined): string {
   return date === undefined ? MISSING : dateFormatter.format(date);
 }
 
-/** Wall-clock time with seconds, e.g. 14:31:02 or 2:31:02 PM: for logs. */
+/** Wall-clock time with seconds, e.g. 14:31:02, for logs. */
 export function formatClock(value: string | null | undefined): string {
   const date = toDate(value);
   return date === undefined ? MISSING : clockFormatter.format(date);
@@ -78,13 +90,23 @@ export function formatMoment(value: string | null | undefined): string {
  */
 export function formatShortTime(
   value: string | number | null | undefined,
-  clock: 'regional' | 'h23' = 'regional',
+  clock: 'regional' | 'h23' = 'h23',
 ): string {
   const date = toDate(value);
   if (date === undefined) return MISSING;
   return (clock === 'h23' ? short24HourFormatter : shortTimeFormatter).format(
     date,
   );
+}
+
+/** A compact date, e.g. "2 Feb". */
+export function formatDayMonth(value: string): string {
+  const date = toDate(value);
+  if (date === undefined) return MISSING;
+  const month = dayHeadingFormatter
+    .formatToParts(date)
+    .find((part) => part.type === 'month')?.value;
+  return `${String(date.getDate())} ${month ?? ''}`.trimEnd();
 }
 
 /** "Today", "Yesterday" or "24 Sep" for grouping lists by day. */

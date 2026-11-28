@@ -1,3 +1,4 @@
+import { NativeSelect } from '@/components/ui/native-select';
 import type { FormField } from '@pertexo/workflow-model';
 import {
   AlignLeftIcon,
@@ -236,13 +237,9 @@ function FieldTypeControl({
     <LabelledField id={`${id}-${field.id}-type`} label="Type">
       {(control) => (
         <>
-          <Glyph
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <select
+          <NativeSelect
             {...control}
-            className="h-9 w-full rounded-md border border-input bg-background pr-3 pl-9 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
+            icon={<Glyph />}
             value={field.type}
             onChange={(event) => {
               const type = event.target.value as FormField['type'];
@@ -254,7 +251,7 @@ function FieldTypeControl({
                 {type.label}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </>
       )}
     </LabelledField>

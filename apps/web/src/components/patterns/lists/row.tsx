@@ -1,3 +1,4 @@
+import { useRender } from '@base-ui/react/use-render';
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
@@ -64,4 +65,22 @@ export function Row({
       {...props}
     />
   );
+}
+
+export function DetailRowControl({
+  className,
+  render,
+  ...props
+}: useRender.ComponentProps<'button'>) {
+  return useRender({
+    defaultTagName: 'button',
+    render,
+    props: {
+      ...props,
+      className: cn(
+        'grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-3 rounded-lg px-3.5 py-3 text-left outline-none focus-ring',
+        className,
+      ),
+    },
+  });
 }

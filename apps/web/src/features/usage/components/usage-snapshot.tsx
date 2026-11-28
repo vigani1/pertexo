@@ -5,7 +5,7 @@ import {
   QueryView,
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
-import { ProgressButton } from '@/components/ui/progress-button';
+import { ProgressIconButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
@@ -24,7 +24,7 @@ export function UsageSnapshot<Data>({
   children,
 }: Readonly<{
   title: string;
-  description: string;
+  description?: string;
   /** Controls that stay usable even when the read fails, such as a window. */
   controls?: ReactNode;
   query: ReadQuery<Data>;
@@ -36,18 +36,14 @@ export function UsageSnapshot<Data>({
       title={title}
       description={description}
       action={
-        <ProgressButton
+        <ProgressIconButton
           variant="ghost"
-          size="sm"
-          aria-label={`Refresh ${title.toLowerCase()}`}
-          className="-ml-2.5"
+          size="icon-sm"
+          label={`Refresh ${title.toLowerCase()}`}
           pending={query.isFetching}
-          pendingLabel="Refreshing…"
           icon={<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />}
           onClick={() => void query.refetch()}
-        >
-          Refresh
-        </ProgressButton>
+        />
       }
     >
       {controls}

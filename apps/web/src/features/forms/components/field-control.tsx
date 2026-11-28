@@ -1,3 +1,4 @@
+import { NativeSelect } from '@/components/ui/native-select';
 import type { RefCallback } from 'react';
 import { MultipleChoices } from './multiple-choices';
 import type { FormField } from '@pertexo/workflow-model';
@@ -61,10 +62,10 @@ export function FormFieldControl({
         }
         if (field.type === 'select') {
           return (
-            <select
+            <NativeSelect
               {...control}
               ref={inputRef}
-              className="h-9 w-full rounded-md pointer-coarse:min-h-10 border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
+              disabled={disabled}
               value={text}
               onChange={(event) => {
                 onChange(event.target.value);
@@ -76,7 +77,7 @@ export function FormFieldControl({
                   {option}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           );
         }
         if (field.type === 'date') {

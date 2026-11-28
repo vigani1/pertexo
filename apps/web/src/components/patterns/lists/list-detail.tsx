@@ -46,7 +46,7 @@ export function ListDetail({
       className={cn(
         'grid min-w-0 items-start gap-10',
         detail !== undefined && [
-          'min-[56.25rem]:grid-cols-[18.75rem_minmax(0,1fr)] min-[56.25rem]:gap-14',
+          'min-[56.25rem]:grid-cols-[clamp(22.5rem,28vw,26.25rem)_minmax(0,1fr)] min-[56.25rem]:gap-14',
           className,
         ],
       )}

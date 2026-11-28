@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import type { AuditFilter } from '@pertexo/contracts';
+import { DismissibleFilterChip } from '@/components/patterns/lists/filter-chip';
 import { Button } from '@/components/ui/button';
 import {
   dateOf,
   localDateOf,
   shiftDays,
 } from '@/components/ui/date-time-parts';
-import { DayRangePicker } from '@/components/patterns/dates/day-range-picker';
+import { DayRangeOptions } from '@/components/patterns/dates/day-range-picker';
 import { SearchInput } from '@/components/ui/input';
 import {
   Select,
@@ -61,6 +62,7 @@ function TimeRange({
   filters: AuditFilter;
   onApply: (filters: AuditFilter) => void;
 }>) {
+  const [dayNavigation, setDayNavigation] = useState(0);
   const today = localDateOf(new Date());
   const from =
     filters.from === undefined ? '' : localDateOf(new Date(filters.from));
@@ -88,20 +90,39 @@ function TimeRange({
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-1 sm:ml-auto">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Previous day"
-        onClick={() => {
-          selectDay(shiftDays(currentDay, -1));
-        }}
-      >
-        <ChevronLeftIcon aria-hidden="true" />
-      </Button>
-      <DayRangePicker
-        title="When it happened"
+    <section
+      aria-label="When it happened"
+      className="flex w-full min-w-0 max-w-lg flex-col gap-2"
+    >
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Previous day"
+          onClick={() => {
+            selectDay(shiftDays(currentDay, -1));
+            setDayNavigation((revision) => revision + 1);
+          }}
+        >
+          <ChevronLeftIcon aria-hidden="true" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Next day"
+          disabled={currentDay >= today}
+          onClick={() => {
+            selectDay(shiftDays(currentDay, 1));
+            setDayNavigation((revision) => revision + 1);
+          }}
+        >
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+      </div>
+      <DayRangeOptions
+        key={dayNavigation}
         label={rangeLabel(filters)}
         presets={[
           {
@@ -134,19 +155,7 @@ function TimeRange({
           onApply(without(filters, 'from', 'until'));
         }}
       />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Next day"
-        disabled={currentDay >= today}
-        onClick={() => {
-          selectDay(shiftDays(currentDay, 1));
-        }}
-      >
-        <ChevronRightIcon aria-hidden="true" />
-      </Button>
-    </div>
+    </section>
   );
 }
 
@@ -220,42 +229,30 @@ export function AuditFilters({
             ))}
           </SelectContent>
         </Select>
-        <TimeRange filters={filters} onApply={onApply} />
       </div>
+      <TimeRange filters={filters} onApply={onApply} />
       {filters.action === undefined && filters.targetId === undefined ? null : (
         <ul aria-label="Narrowed to" className="flex min-w-0 flex-wrap gap-2">
           {filters.action === undefined ? null : (
             <li className="min-w-0">
-              <Button
-                type="button"
-                variant="chip"
-                size="sm"
-                className="text-left"
-                aria-label={`Show every kind of event, not only “${actionWords ?? filters.action}”`}
-                onClick={() => {
+              <DismissibleFilterChip
+                removeLabel={`Show every kind of event, not only “${actionWords ?? filters.action}”`}
+                onRemove={() => {
                   onApply(without(filters, 'action'));
                 }}
-              >
-                Only “{actionWords ?? filters.action}”
-                <XIcon aria-hidden="true" />
-              </Button>
+                label={`Only “${actionWords ?? filters.action}”`}
+              />
             </li>
           )}
           {filters.targetId === undefined ? null : (
             <li className="min-w-0">
-              <Button
-                type="button"
-                variant="chip"
-                size="sm"
-                className="text-left"
-                aria-label="Show events for everything, not only one item"
-                onClick={() => {
+              <DismissibleFilterChip
+                removeLabel="Show events for everything, not only one item"
+                onRemove={() => {
                   onApply(without(filters, 'targetId'));
                 }}
-              >
-                Only one item
-                <XIcon aria-hidden="true" />
-              </Button>
+                label="Only one item"
+              />
             </li>
           )}
         </ul>

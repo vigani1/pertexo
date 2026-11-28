@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
-import { FieldGroup, LabelledField } from '@/components/ui/field';
+import { FieldGroup } from '@/components/ui/field';
 import {
   Sheet,
   SheetBody,
@@ -16,7 +16,9 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { absorbAddresses } from '../../model/invite-addresses';
 import type { ManagedRole } from '../../model/workspace-roles';
 import type { InvitationCommand } from '../../data/mutations/use-invitation-command';
-import { RoleSelectWithSummaries } from '../members/role-select';
+import { RadioChoice } from '@/components/ui/radio-choice';
+import { ROLE_NAMES } from '../../model/role-words';
+import { ROLE_SUMMARIES } from '../../model/workspace-roles';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';
 import { useInviteBatch } from '../../hooks/invitations/use-invite-batch';
@@ -82,21 +84,24 @@ export function InvitePeopleSheet(props: InvitePeopleSheetProps) {
                     onCommit: model.commit,
                   }}
                 />
-                <LabelledField
-                  id={`${model.id}-role`}
-                  label="Role"
-                  description="You can change it later from the Members tab."
-                >
-                  {(control) => (
-                    <RoleSelectWithSummaries
-                      value={model.role}
-                      roles={model.roles}
-                      disabled={model.command.locked}
-                      onChange={model.setRole}
-                      triggerProps={control}
-                    />
-                  )}
-                </LabelledField>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-semibold">Role</p>
+                  <RadioChoice
+                    label="Role"
+                    layout="list"
+                    value={model.role}
+                    options={model.roles.map((role) => ({
+                      value: role,
+                      label: ROLE_NAMES[role],
+                      description: ROLE_SUMMARIES[role],
+                    }))}
+                    disabled={model.command.locked}
+                    onChange={model.setRole}
+                  />
+                  <p className="text-meta text-muted-foreground">
+                    You can change it later from the members list.
+                  </p>
+                </div>
               </FieldGroup>
             ) : (
               <InviteResults

@@ -113,8 +113,14 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('row').filter({ hasText: 'alpha' }),
     ).toContainText('30');
-    await page.getByLabel('Value', { exact: true }).fill('alpha');
+    await expect(page.getByLabel('Value', { exact: true })).toBeHidden();
     await page.getByRole('button', { name: 'Filter', exact: true }).click();
+    const filter = page.getByRole('dialog', { name: 'Filter rows' });
+    await filter.getByLabel('Value', { exact: true }).fill('alpha');
+    await filter
+      .getByRole('button', { name: 'Apply filter', exact: true })
+      .click();
+    await expect(filter).toBeHidden();
     await expect(
       page.getByRole('row').filter({ hasText: 'alpha' }),
     ).toBeVisible();

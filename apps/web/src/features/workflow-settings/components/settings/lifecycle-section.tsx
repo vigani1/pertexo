@@ -34,7 +34,7 @@ function LifecycleRow({
   const archived = workflow.lifecycleStatus === 'archived';
   return (
     <SettingRow
-      title={archived ? 'Restore workflow' : 'Archive workflow'}
+      title="Workflow availability"
       description={
         <>
           {LIFECYCLE_CONSEQUENCES[archived ? 'restore' : 'archive'].join(' ')}

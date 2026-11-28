@@ -217,12 +217,7 @@ export function WorkflowPausedBanner({
     workflowAutoPauseQueryOptions(apiClient, userId, workspace.id, workflowId),
   );
   const settings = shownData(query);
-  const command = useAutoPauseCommand(
-    apiClient,
-    userId,
-    workspace.id,
-    workflowId,
-  );
+  const command = useAutoPauseCommand(apiClient, userId, workspace.id);
   const notifications = useNotifications();
   const canResume = workspace.capabilities.includes('workflow:publish');
   async function resume() {
@@ -230,6 +225,7 @@ export function WorkflowPausedBanner({
     if (settings !== undefined)
       saved = await command.send({
         kind: 'resume',
+        workflowId,
         body: { expectedPauseRevision: settings.pauseRevision },
       });
     if (saved)

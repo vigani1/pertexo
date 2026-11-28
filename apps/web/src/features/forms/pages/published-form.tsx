@@ -169,7 +169,7 @@ function PublishedForm({
       <h1
         className={
           isPublic
-            ? 'font-display text-4xl leading-tight wrap-anywhere lg:text-hero'
+            ? 'font-display text-4xl leading-[0.98] wrap-anywhere lg:text-[length:clamp(3rem,5vw,5.75rem)]'
             : 'font-heading text-3xl font-semibold wrap-anywhere'
         }
       >

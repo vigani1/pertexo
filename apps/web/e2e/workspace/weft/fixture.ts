@@ -100,6 +100,9 @@ async function installWorkspaceDataRoutes(page: Page) {
   await page.route(`${workspaceApi}/data-tables/*/rows/query`, (route) =>
     route.fulfill({ json: tableRows }),
   );
+  await page.route(`${workspaceApi}/auto-pause`, (route) =>
+    route.fulfill({ json: { threshold: 10, revision: 1 } }),
+  );
   await page.route(`${workspaceApi}/assistant`, (route) =>
     route.fulfill({ json: { selection: null } }),
   );
