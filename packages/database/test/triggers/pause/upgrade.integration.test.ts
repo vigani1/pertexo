@@ -129,4 +129,4 @@ it('upgrades both automatic pause causes and enforces each pause-state branch', 
     },
     { migrate: false },
   );
-}, 60_000);
+});
