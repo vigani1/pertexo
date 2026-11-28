@@ -55,14 +55,7 @@ function rangeLabel(filters: AuditFilter): string | undefined {
   return `Until ${formatDate(lastDay)}`;
 }
 
-function TimeRange({
-  filters,
-  onApply,
-}: Readonly<{
-  filters: AuditFilter;
-  onApply: (filters: AuditFilter) => void;
-}>) {
-  const [dayNavigation, setDayNavigation] = useState(0);
+function auditDays(filters: AuditFilter) {
   const today = localDateOf(new Date());
   const from =
     filters.from === undefined ? '' : localDateOf(new Date(filters.from));
@@ -70,23 +63,72 @@ function TimeRange({
     filters.until === undefined
       ? ''
       : localDateOf(new Date(Date.parse(filters.until) - 1));
+  return { today, from, to };
+}
+
+function applyDays(
+  filters: AuditFilter,
+  onApply: (filters: AuditFilter) => void,
+  first: string,
+  last: string,
+) {
+  const start = dateOf(first);
+  const end = dateOf(shiftDays(last, 1));
+  if (start === undefined || end === undefined) return 'Pick both days again.';
+  onApply({ ...filters, from: start.toISOString(), until: end.toISOString() });
+  return undefined;
+}
+
+export function AuditDayNavigation({
+  filters,
+  onApply,
+}: Readonly<{
+  filters: AuditFilter;
+  onApply: (filters: AuditFilter) => void;
+}>) {
+  const { today, from, to } = auditDays(filters);
   const currentDay = from !== '' && from === to ? from : today;
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          const day = shiftDays(currentDay, -1);
+          applyDays(filters, onApply, day, day);
+        }}
+      >
+        <ChevronLeftIcon aria-hidden="true" data-icon="inline-start" />
+        Previous day
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={currentDay >= today}
+        onClick={() => {
+          const day = shiftDays(currentDay, 1);
+          applyDays(filters, onApply, day, day);
+        }}
+      >
+        Next day
+        <ChevronRightIcon aria-hidden="true" data-icon="inline-end" />
+      </Button>
+    </div>
+  );
+}
 
-  function applyDays(first: string, last: string) {
-    const start = dateOf(first);
-    const end = dateOf(shiftDays(last, 1));
-    if (start === undefined || end === undefined)
-      return 'Pick both days again.';
-    onApply({
-      ...filters,
-      from: start.toISOString(),
-      until: end.toISOString(),
-    });
-    return undefined;
-  }
-
+function TimeRange({
+  filters,
+  onApply,
+}: Readonly<{
+  filters: AuditFilter;
+  onApply: (filters: AuditFilter) => void;
+}>) {
+  const { today, from, to } = auditDays(filters);
   function selectDay(day: string) {
-    applyDays(day, day);
+    applyDays(filters, onApply, day, day);
   }
 
   return (
@@ -94,35 +136,7 @@ function TimeRange({
       aria-label="When it happened"
       className="flex w-full min-w-0 max-w-lg flex-col gap-2"
     >
-      <div className="flex items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Previous day"
-          onClick={() => {
-            selectDay(shiftDays(currentDay, -1));
-            setDayNavigation((revision) => revision + 1);
-          }}
-        >
-          <ChevronLeftIcon aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Next day"
-          disabled={currentDay >= today}
-          onClick={() => {
-            selectDay(shiftDays(currentDay, 1));
-            setDayNavigation((revision) => revision + 1);
-          }}
-        >
-          <ChevronRightIcon aria-hidden="true" />
-        </Button>
-      </div>
       <DayRangeOptions
-        key={dayNavigation}
         label={rangeLabel(filters)}
         presets={[
           {
@@ -150,7 +164,7 @@ function TimeRange({
           })),
         ]}
         initial={{ from, to }}
-        onApply={applyDays}
+        onApply={(first, last) => applyDays(filters, onApply, first, last)}
         onClear={() => {
           onApply(without(filters, 'from', 'until'));
         }}
@@ -166,11 +180,13 @@ function TimeRange({
 export function AuditFilters({
   filters,
   actionWords,
+  calendarRevision,
   onApply,
 }: Readonly<{
   filters: AuditFilter;
   /** The chosen action as the ledger says it, for its chip. */
   actionWords?: string;
+  calendarRevision?: number;
   onApply: (filters: AuditFilter) => void;
 }>) {
   const [person, setPerson] = useState(filters.person ?? '');
@@ -230,7 +246,7 @@ export function AuditFilters({
           </SelectContent>
         </Select>
       </div>
-      <TimeRange filters={filters} onApply={onApply} />
+      <TimeRange key={calendarRevision} filters={filters} onApply={onApply} />
       {filters.action === undefined && filters.targetId === undefined ? null : (
         <ul aria-label="Narrowed to" className="flex min-w-0 flex-wrap gap-2">
           {filters.action === undefined ? null : (

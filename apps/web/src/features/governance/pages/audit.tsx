@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { DownloadIcon } from 'lucide-react';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
@@ -13,7 +14,7 @@ import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/patterns/notices/inline-notice';
 import { GovernanceSettings } from '../components/governance-settings';
-import { AuditFilters } from '../components/audit-filters';
+import { AuditDayNavigation, AuditFilters } from '../components/audit-filters';
 import { AuditEntry } from '../components/audit-entry';
 import {
   auditQueryOptions,
@@ -36,6 +37,7 @@ export function AuditPage({
   filters: AuditFilter;
   onFilter: (filters: AuditFilter) => void;
 }>) {
+  const [calendarRevision, resetCalendar] = useState(0);
   const allowed = workspace.capabilities.includes('audit:read');
   const events = useInfiniteQuery({
     ...auditQueryOptions(scope, filters),
@@ -100,6 +102,7 @@ export function AuditPage({
       <AuditFilters
         key={filters.person ?? ''}
         filters={filters}
+        calendarRevision={calendarRevision}
         {...(actionWords === undefined ? {} : { actionWords })}
         onApply={onFilter}
       />
@@ -128,6 +131,13 @@ export function AuditPage({
           empty: narrowed
             ? 'Nothing matches. Widen the dates or clear a filter.'
             : 'Nothing has changed yet. Publishing, sign-ins and changes to people, connections and settings appear here.',
+        }}
+      />
+      <AuditDayNavigation
+        filters={filters}
+        onApply={(next) => {
+          onFilter(next);
+          resetCalendar((revision) => revision + 1);
         }}
       />
       {/* Below the log and only once it has loaded, so the settings never
