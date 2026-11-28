@@ -30,8 +30,7 @@ function ActionLink({
   const className = buttonVariants({
     size: 'sm',
     variant: 'outline',
-    className:
-      'h-auto max-w-40 py-2 text-center whitespace-normal wrap-anywhere',
+    className: 'h-auto max-w-40 py-2 text-center',
   });
   switch (action.kind) {
     case 'task':
@@ -51,7 +50,7 @@ function ActionLink({
           params={{ workspaceId, runId: action.runId }}
           className={className}
         >
-          <span className="min-w-0 wrap-anywhere">
+          <span className="min-w-0 wrap-anywhere whitespace-normal">
             {action.retryStep !== undefined &&
             workspace.status === 'active' &&
             workspace.capabilities.includes('run:replay')
