@@ -160,6 +160,10 @@ describe('authentication and workspace entry', () => {
       await screen.findByText('Signed out of Firefox on Windows'),
     ).toBeVisible();
 
+    expect(screen.queryByLabelText('Current password')).not.toBeInTheDocument();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Change password' }),
+    );
     await actor.type(
       await screen.findByLabelText('Current password'),
       'current secure password',
@@ -178,6 +182,12 @@ describe('authentication and workspace entry', () => {
     });
     expect(await screen.findByText('Password changed')).toBeVisible();
     expect(screen.getByLabelText('Current password')).toHaveValue('');
+    const passwordDrawer = within(
+      screen.getByRole('dialog', { name: 'Change password' }),
+    );
+    await actor.click(
+      passwordDrawer.getByRole('button', { name: 'Dismiss drawer' }),
+    );
 
     expect(await screen.findByText('Verified')).toBeVisible();
     expect(screen.queryByLabelText('New email')).not.toBeInTheDocument();

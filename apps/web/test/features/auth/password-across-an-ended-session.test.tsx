@@ -81,6 +81,9 @@ function server() {
 async function changeIntoEndedSession(state: ReturnType<typeof server>) {
   await renderLoadedApp('/account/security');
   const actor = userEvent.setup();
+  await actor.click(
+    await screen.findByRole('button', { name: 'Change password' }),
+  );
   await actor.type(
     await screen.findByLabelText('Current password'),
     'current secure password',
@@ -153,6 +156,9 @@ describe('changing a password when the session ends', () => {
     expect(
       screen.queryByDisplayValue('replacement secure password'),
     ).toBeNull();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Change password' }),
+    );
     expect(await screen.findByLabelText('Current password')).toHaveValue('');
     expect(screen.getByLabelText('New password')).toHaveValue('');
     expect(screen.getByLabelText('Confirm new password')).toHaveValue('');
