@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   Empty,
@@ -14,7 +15,13 @@ export function NoTriggers({
   workspaceId,
   workflowId,
   published,
-}: Readonly<{ workspaceId: string; workflowId: string; published: boolean }>) {
+  runNow,
+}: Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  published: boolean;
+  runNow: ReactNode;
+}>) {
   // The tab's first content sits right under the hub bar, like the Versions
   // tab's empty state: no divider above it.
   return (
@@ -38,6 +45,7 @@ export function NoTriggers({
           >
             Open Build
           </Link>
+          {runNow}
         </EmptyActions>
       </Empty>
       {published ? <WaysIn /> : null}

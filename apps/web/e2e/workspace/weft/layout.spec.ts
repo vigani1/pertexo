@@ -213,39 +213,48 @@ test('Home shows the same 24-hour failures in its header and Needs you', async (
   );
 });
 
-test('starts the published workflow directly from Triggers', async ({
-  page,
-  context,
-}) => {
-  await installWorkspaceRoutes(page);
-  await installWorkflowTabRoutes(page, { withForm: false });
-  await addCsrfCookie(context);
-  await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
-    (route) =>
-      route.fulfill({
-        status: 201,
-        json: {
-          run: fixtureRun(succeededRunId, 'succeeded', {
-            workspaceId,
-            workflowId,
-            workflowVersionId: liveVersionId,
-          }),
-          replayed: false,
-        },
-      }),
-  );
-  await page.goto(`${editorUrl}/triggers`);
-  const run = page.getByRole('button', { name: 'Run now' });
-  await expect(run).toBeVisible();
-  const sent = page.waitForRequest(
-    (request) =>
-      request.method() === 'POST' &&
-      request.url().endsWith(`/workflows/${workflowId}/runs`),
-  );
-  await run.click();
-  const request = await sent;
-  expect(request.postDataJSON()).toEqual({ input: {} });
-  expect(request.headers()['idempotency-key']).toBeTruthy();
-  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${succeededRunId}`);
-});
+for (const workflowType of ['without-form', 'manual-only'] as const) {
+  test(`starts the published ${workflowType} workflow directly from Triggers`, async ({
+    page,
+    context,
+  }) => {
+    await installWorkspaceRoutes(page);
+    await installWorkflowTabRoutes(page, workflowType);
+    await addCsrfCookie(context);
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
+      (route) =>
+        route.fulfill({
+          status: 201,
+          json: {
+            run: fixtureRun(succeededRunId, 'succeeded', {
+              workspaceId,
+              workflowId,
+              workflowVersionId: liveVersionId,
+            }),
+            replayed: false,
+          },
+        }),
+    );
+    await page.goto(`${editorUrl}/triggers`);
+    if (workflowType === 'manual-only')
+      await expect(
+        page.getByRole('heading', {
+          name: 'This version starts by hand',
+          exact: true,
+        }),
+      ).toBeVisible();
+    const run = page.getByRole('button', { name: 'Run now', exact: true });
+    await expect(run).toBeVisible();
+    const sent = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' &&
+        request.url().endsWith(`/workflows/${workflowId}/runs`),
+    );
+    await run.click();
+    const request = await sent;
+    expect(request.postDataJSON()).toEqual({ input: {} });
+    expect(request.headers()['idempotency-key']).toBeTruthy();
+    await expect(page).toHaveURL(`/w/${workspaceId}/runs/${succeededRunId}`);
+  });
+}

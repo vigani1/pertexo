@@ -1,5 +1,8 @@
 import { canRunWorkflow } from '@/features/workflows/public';
-import { TriggersHeader } from '../components/triggers/header';
+import {
+  RunPublishedWorkflow,
+  TriggersHeader,
+} from '../components/triggers/header';
 import type { ComponentProps } from 'react';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { Notice } from '@/components/patterns/notices/inline-notice';
@@ -102,6 +105,10 @@ function TriggersSession({
     workflowId,
     editable,
   };
+  const runNow =
+    action.manualRun === undefined ? undefined : (
+      <RunPublishedWorkflow workflow={action.manualRun} scope={common} />
+    );
 
   // Only someone who can read webhooks knows the version has none.
   const needsFirstTrigger = hasNoPublishedTriggers({
@@ -118,6 +125,7 @@ function TriggersSession({
         workspaceId={workspace.id}
         workflowId={workflowId}
         published={summary.data?.publishedVersionId !== null}
+        runNow={runNow}
       />
     );
   return (
@@ -125,8 +133,7 @@ function TriggersSession({
       <TriggersHeader
         versions={versions.data?.items}
         publishedVersionId={summary.data?.publishedVersionId}
-        commandScope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
-        manualRun={action.manualRun}
+        runNow={runNow}
         runFromBuild={action.link}
       />
       <PublicationDiscovery discovery={publication} />
