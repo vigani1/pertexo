@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { workflowGraphSchema } from '@pertexo/contracts';
 import { test, expect, type Page } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -168,11 +169,13 @@ test('the phone canvas can tidy a connected workflow into lanes', async ({
   const draft = remoteDraft(triageGraph());
   await installEditorRoutes(page, draft);
   await page.goto(editorUrl);
-  const before = draft.graph.nodes.map(({ position }) => position);
+  const positions = () =>
+    workflowGraphSchema
+      .parse(draft.graph)
+      .nodes.map(({ position }) => position);
+  const before = positions();
   await page.getByRole('button', { name: 'Tidy lanes', exact: true }).click();
-  await expect
-    .poll(() => draft.graph.nodes.map(({ position }) => position))
-    .not.toEqual(before);
+  await expect.poll(positions).not.toEqual(before);
 });
 
 test('the tablet canvas can zoom with the step inspector open', async ({
