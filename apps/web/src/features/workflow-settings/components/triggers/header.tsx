@@ -1,4 +1,5 @@
 import { PlayIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { WorkflowSummary } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
@@ -16,16 +17,14 @@ export function TriggersHeader({
   versions,
   publishedVersionId,
   runFromBuild,
-  manualRun,
-  commandScope,
+  runNow,
 }: Readonly<{
   versions:
     readonly Readonly<{ id: string; versionNumber: number }>[] | undefined;
   publishedVersionId: string | null | undefined;
   runFromBuild:
     Readonly<{ workspaceId: string; workflowId: string }> | undefined;
-  manualRun: WorkflowSummary | undefined;
-  commandScope: RunCommandScope;
+  runNow: ReactNode;
 }>) {
   const published = versions?.find(
     (version) => version.id === publishedVersionId,
@@ -48,14 +47,12 @@ export function TriggersHeader({
             to="/w/$workspaceId/workflows/$workflowId"
             params={runFromBuild}
             className={buttonVariants({
-              variant: manualRun === undefined ? 'outline' : 'ghost',
+              variant: runNow === undefined ? 'outline' : 'ghost',
             })}
           >
-            {manualRun === undefined
-              ? 'Run in Build'
-              : 'Run with input in Build'}
+            {runNow === undefined ? 'Run in Build' : 'Run with input in Build'}
           </Link>
-          <RunPublishedWorkflow workflow={manualRun} scope={commandScope} />
+          {runNow}
         </PageHeaderActions>
       )}
     </PageHeader>
@@ -68,11 +65,11 @@ type RunCommandScope = Readonly<{
   workspaceId: string;
 }>;
 
-function RunPublishedWorkflow({
+export function RunPublishedWorkflow({
   workflow,
   scope,
 }: Readonly<{
-  workflow: WorkflowSummary | undefined;
+  workflow: WorkflowSummary;
   scope: RunCommandScope;
 }>) {
   const navigate = useNavigate();
@@ -85,7 +82,6 @@ function RunPublishedWorkflow({
       });
     },
   });
-  if (workflow === undefined) return null;
   return (
     <ProgressButton
       type="button"

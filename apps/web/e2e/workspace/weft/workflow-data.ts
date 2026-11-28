@@ -182,16 +182,21 @@ const workflowApi = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
 
 export async function installWorkflowTabRoutes(
   page: Page,
-  { withForm = true }: Readonly<{ withForm?: boolean }> = {},
+  triggers: 'all' | 'without-form' | 'manual-only' = 'all',
 ) {
-  const listedVersions = withForm
-    ? versions
-    : versions.map((item) => ({
-        ...item,
-        graph: graph(
-          steps.filter((step) => step.definition.key !== 'core.form'),
-        ),
-      }));
+  const manualSteps = [
+    node('manual-node', 'core.manual', 'Manual input', 0),
+    ...steps.filter((step) => step.definition.key === 'core.set'),
+  ];
+  const listedVersions = versions.map((item) => ({
+    ...item,
+    graph:
+      triggers === 'all'
+        ? item.graph
+        : triggers === 'without-form'
+          ? graph(steps.filter((step) => step.definition.key !== 'core.form'))
+          : graph(manualSteps),
+  }));
   await page.route(`**/v1/workspaces/${workspaceId}/auto-pause`, (route) =>
     route.fulfill({ json: { threshold: 10, revision: 1 } }),
   );
@@ -216,10 +221,14 @@ export async function installWorkflowTabRoutes(
     route.fulfill({ json: { items: listedVersions, nextCursor: null } }),
   );
   await page.route(`${workflowApi}/triggers`, (route) =>
-    route.fulfill({ json: webhooks }),
+    route.fulfill({
+      json: triggers === 'manual-only' ? { items: [] } : webhooks,
+    }),
   );
   await page.route(`${workflowApi}/triggers/schedules`, (route) =>
-    route.fulfill({ json: schedules }),
+    route.fulfill({
+      json: triggers === 'manual-only' ? { items: [] } : schedules,
+    }),
   );
   await page.route(`${workflowApi}/triggers/*/schedule/next-runs?**`, (route) =>
     route.fulfill({ json: nextRuns(route.request().url()) }),
