@@ -64,7 +64,12 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
     await teammate.goto(editor + '/comments');
     // Leaving the editor with an unsaved step stops at the leave guard, and on a
     // fast machine this gets here before the autosave lands.
-    await expect(page.getByRole('status').getByText('Saved')).toBeVisible();
+    await expect(
+      page
+        .locator('header')
+        .getByRole('status')
+        .getByText(/^Saved(?:\s|$)/u),
+    ).toBeVisible();
     await page
       .getByRole('button', { name: 'Step actions', exact: true })
       .click();
@@ -87,7 +92,7 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
     await expect(
       page.getByText('Can you review this input?', { exact: true }),
     ).toBeVisible();
-    await teammate.goto(`/w/${workspaceId}/inbox`);
+    await teammate.goto(`/w/${workspaceId}/inbox?filter=all`);
     await teammate
       .getByRole('link', { name: 'Open discussion', exact: true })
       .click({ timeout: 30000 });

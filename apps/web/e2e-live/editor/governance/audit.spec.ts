@@ -24,6 +24,7 @@ for (const width of [1280, 375]) {
     await expect(
       page.getByRole('heading', { name: 'Audit log', exact: true }),
     ).toBeVisible();
+    await page.getByText('Governance settings', { exact: true }).click();
     await expect(page.getByLabel('Keep audit events (days)')).toHaveValue(
       '365',
     );
@@ -48,8 +49,11 @@ for (const width of [1280, 375]) {
     await expect(events.getByRole('listitem')).toHaveCount(1);
     await events.getByText('Details', { exact: true }).click();
     await expect(events.getByText('30', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'When: Any time' }).click();
-    const today = page.locator('button[aria-current="date"]');
+    const dates = page.getByRole('region', {
+      name: 'When it happened',
+      exact: true,
+    });
+    const today = dates.locator('button[aria-current="date"]');
     await today.click();
     await expect(today).toHaveAttribute('aria-pressed', 'true');
     await expect(page).toHaveURL(/[?&]from=/u);
@@ -76,6 +80,7 @@ for (const width of [1280, 375]) {
       fullPage: true,
     });
     await page.reload();
+    await page.getByText('Governance settings', { exact: true }).click();
     await expect(page.getByLabel('Keep audit events (days)')).toHaveValue('30');
   });
 }

@@ -34,6 +34,32 @@ export async function connectModel(page: Page, workspace: string) {
   ).toBeVisible();
 }
 
+export async function enableAssistant(
+  page: Page,
+  workspace: string,
+  model: string,
+) {
+  await page.goto(`/w/${workspace}/settings`);
+  const settings = page.getByRole('region', {
+    name: 'AI assistant',
+    exact: true,
+  });
+  await settings
+    .getByRole('combobox', { name: 'AI connection', exact: true })
+    .click();
+  await page.getByRole('option', { name: 'Order model', exact: true }).click();
+  await settings
+    .getByRole('textbox', { name: 'Model identifier', exact: true })
+    .fill(model);
+  const assistant = settings.getByRole('switch', {
+    name: 'Assistant',
+    exact: true,
+  });
+  await expect(assistant).not.toBeChecked();
+  await assistant.click();
+  await expect(assistant).toBeChecked();
+}
+
 export async function modelScreenshots(
   page: Page,
   info: TestInfo,

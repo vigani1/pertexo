@@ -3,10 +3,11 @@ import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-
 // The invoice workflow the core-flow screenshots are built around.
 
 const MINUTE_MS = 60_000;
+const SCENARIO_TIME = Date.now();
 
 /** A time this many minutes ago, as the API writes it. */
 export const at = (minutesAgo: number) =>
-  new Date(Date.now() - minutesAgo * MINUTE_MS).toISOString();
+  new Date(SCENARIO_TIME - minutesAgo * MINUTE_MS).toISOString();
 
 function latestVersions() {
   const byKey = new Map<string, number>();

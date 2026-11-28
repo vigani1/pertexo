@@ -103,7 +103,7 @@ export function EditorLayout({
               data-open={inspectorOpen}
               {...covers}
               className={cn(
-                'lens pointer-events-auto absolute inset-x-0 top-[38%] bottom-16 z-40 flex-col rounded-xl md:top-0 md:left-auto md:w-96',
+                'lens pointer-events-auto absolute inset-x-0 top-[20%] bottom-16 z-40 flex-col rounded-xl md:top-0 md:left-auto md:w-96',
                 mobilePanel === 'inspector' && !assistantOpen
                   ? 'flex'
                   : 'hidden',

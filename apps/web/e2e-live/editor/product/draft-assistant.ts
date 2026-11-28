@@ -11,7 +11,7 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-import { connectModel } from './model-editor';
+import { connectModel, enableAssistant } from './model-editor';
 import type { openModelProvider } from './model-provider';
 
 const manual = {
@@ -147,14 +147,7 @@ export async function connectAssistant(
   modelName: string,
 ) {
   await connectModel(page, workspace);
-  await page.goto(`/w/${workspace}/settings`);
-  await page.getByLabel('AI connection', { exact: true }).click();
-  await page.getByRole('option', { name: 'Order model', exact: true }).click();
-  await page.getByLabel('Model identifier', { exact: true }).fill(modelName);
-  await page.getByRole('button', { name: 'Save assistant settings' }).click();
-  await expect(
-    page.getByText('Assistant is on.', { exact: true }),
-  ).toBeVisible();
+  await enableAssistant(page, workspace, modelName);
 }
 
 export async function openProposal(page: Page, description: string) {

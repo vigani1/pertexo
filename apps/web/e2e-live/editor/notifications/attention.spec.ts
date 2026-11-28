@@ -169,7 +169,7 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
         ).items.length,
     )
     .toBe(1);
-  await page.goto(`/w/${workspaceId}/inbox`);
+  await page.goto(`/w/${workspaceId}/inbox?filter=all`);
   const notices = page.getByRole('list', { name: 'Notices', exact: true });
   await expect(
     notices.getByRole('link', { name: `${workflowName}, unread`, exact: true }),
@@ -223,7 +223,7 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
     choices.getByText('Notification choices saved', { exact: true }),
   ).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.goto(`/w/${workspaceId}/inbox`);
+  await page.goto(`/w/${workspaceId}/inbox?filter=all`);
   await expect(
     page.getByRole('heading', { name: 'Everything finished', exact: true }),
   ).toBeVisible();

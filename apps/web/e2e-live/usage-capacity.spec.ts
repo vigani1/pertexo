@@ -139,7 +139,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
       path: temporaryTestPath(`pertexo-f12-trends-live-${String(width)}.png`),
       fullPage: true,
     });
-    await page.goto(`/w/${seed.workspaceId}/inbox`);
+    await page.goto(`/w/${seed.workspaceId}/inbox?filter=all`);
     await expect(
       page.getByText('Workspace nearing a limit', { exact: true }),
     ).toBeVisible();

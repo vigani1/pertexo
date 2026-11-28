@@ -89,7 +89,9 @@ test('coordinates all three real signed webhook policies with visible history', 
       secret = keys.at(-1);
     if (endpoint === undefined || secret === undefined)
       throw new Error('Reveal missing');
-    await dialog.getByRole('switch', { name: 'I’ve stored these' }).click();
+    await dialog
+      .getByRole('checkbox', { name: 'I’ve stored these', exact: true })
+      .check();
     await dialog.getByRole('button', { name: 'Done', exact: true }).click();
     const key = randomUUID(),
       payload = { orderId: 'order-42', message: 'first' };

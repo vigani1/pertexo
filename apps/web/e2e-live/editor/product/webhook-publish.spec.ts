@@ -87,7 +87,9 @@ async function closeReveal(page: Page) {
     name: 'Store these now',
     exact: true,
   });
-  await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
+  await reveal
+    .getByRole('checkbox', { name: 'I’ve stored these', exact: true })
+    .check();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(reveal).toBeHidden();
 }

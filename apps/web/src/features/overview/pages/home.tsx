@@ -173,7 +173,7 @@ export function HomePage({
       ) : (
         <SkeletonLines label="Loading Home" lines={4} className="min-h-80" />
       )}
-      {narrow ? headerActions : null}
+      {narrow && settled ? headerActions : null}
     </div>
   );
 }

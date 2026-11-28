@@ -85,6 +85,10 @@ test('inspects a real failed Condition, replays its version and cancels a waitin
   // Real phone keyboard/focus behavior, not only overflow assertions. No live
   // screenshots/traces containing authentication data are persisted.
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByText(/^See all \d+ steps? and the error$/u).click();
+  await expect(
+    page.getByRole('tab', { name: 'Timeline', exact: true }),
+  ).toBeVisible();
   const step = page.getByRole('button', {
     name: 'Replay gate: Failed',
     exact: true,

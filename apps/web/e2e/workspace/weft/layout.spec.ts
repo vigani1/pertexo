@@ -123,11 +123,20 @@ test('Home shows the same 24-hour failures in its header and Needs you', async (
   );
   const attention = page.getByRole('region', { name: 'Needs you' });
   const incidents = attention.getByRole('listitem');
-  await expect(incidents).toHaveCount(3);
+  await expect(incidents).toHaveCount(4);
   await expect(incidents.nth(0)).toContainText('Invoice intake failed');
   await expect(incidents.nth(1)).toContainText('Invoice intake timed out');
   await expect(incidents.nth(2)).toContainText(
     'Invoice intake has an unknown outcome',
+  );
+  await expect(incidents.nth(3)).toContainText(
+    'Slack finance needs reconnecting',
+  );
+  await expect(
+    incidents.nth(3).getByRole('link', { name: 'Reconnect', exact: true }),
+  ).toHaveAttribute(
+    'href',
+    `/w/${workspaceId}/connections?connection=66666666-0000-4000-8000-000000000002`,
   );
   await expect(
     incidents.nth(0).getByRole('link', { name: 'Open run' }),

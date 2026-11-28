@@ -270,7 +270,9 @@ test('changes authentication through settings and answers a real browser caller 
     (code) => /^[\w-]{43}$/u.test(code),
   );
   if (firstEndpoint === undefined) throw new Error('Endpoint reveal missing');
-  await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
+  await reveal
+    .getByRole('checkbox', { name: 'I’ve stored these', exact: true })
+    .check();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
   await page.setViewportSize({ width: 375, height: 768 });
   await card
@@ -315,7 +317,9 @@ test('changes authentication through settings and answers a real browser caller 
   await expect(reveal.getByText('Signing secret', { exact: true })).toHaveCount(
     0,
   );
-  await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
+  await reveal
+    .getByRole('checkbox', { name: 'I’ve stored these', exact: true })
+    .check();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(
     card.getByText('Webhook · secret address', { exact: true }),

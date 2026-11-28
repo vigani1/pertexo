@@ -42,21 +42,26 @@ export function HomeHeader({
         >
           {homeGreeting(name, new Date().getHours())}
         </PageHeaderTitle>
-        {/* The figures' line is held while they load, so the actions under
-            it on a phone don't drop when they arrive. */}
-        {statistics === undefined ? (
-          <PageHeaderMeta aria-hidden="true">&nbsp;</PageHeaderMeta>
-        ) : (
-          <PageHeaderMeta>
-            <LiveRunCounts current={statistics.current} />
-            <RunCount
-              tone="failure"
-              count={statistics.window.byStatus.failed}
-              label="failed in 24 h"
-            />
-            <span>as of {formatShortTime(statistics.asOf, 'h23')}</span>
-          </PageHeaderMeta>
-        )}
+        {/* Reserve the wrapped figures' height on a phone before the
+            statistics arrive. */}
+        <PageHeaderMeta
+          className="max-md:min-h-14 max-md:content-start"
+          aria-hidden={statistics === undefined ? true : undefined}
+        >
+          {statistics === undefined ? (
+            '\u00a0'
+          ) : (
+            <>
+              <LiveRunCounts current={statistics.current} />
+              <RunCount
+                tone="failure"
+                count={statistics.window.byStatus.failed}
+                label="failed in 24 h"
+              />
+              <span>as of {formatShortTime(statistics.asOf, 'h23')}</span>
+            </>
+          )}
+        </PageHeaderMeta>
       </div>
       <CoreOrb
         state={(statistics?.current.running ?? 0) > 0 ? 'live' : 'idle'}
