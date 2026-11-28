@@ -90,7 +90,7 @@ export function formatMoment(value: string | null | undefined): string {
  */
 export function formatShortTime(
   value: string | number | null | undefined,
-  clock: 'regional' | 'h23' = 'h23',
+  clock: 'regional' | 'h23' = 'regional',
 ): string {
   const date = toDate(value);
   if (date === undefined) return MISSING;
