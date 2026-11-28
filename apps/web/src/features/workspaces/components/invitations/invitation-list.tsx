@@ -32,7 +32,11 @@ function InvitationRow({
   onAction: (invitation: WorkspaceInvitation, action: InvitationAction) => void;
 }>) {
   const status = describeInvitationStatus(invitation.status);
-  const delivery = describeInvitationDelivery(invitation.deliveryStatus);
+  // Acceptance cancels delivery work, even after the email reached its recipient.
+  const delivery =
+    invitation.status === 'accepted'
+      ? undefined
+      : describeInvitationDelivery(invitation.deliveryStatus);
   const expiry = describeInvitationExpiry(invitation);
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 border-t border-border py-3 first:border-t-0 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_minmax(0,11rem)_2rem]">
@@ -41,7 +45,7 @@ function InvitationRow({
           {invitation.email}
         </p>
         <MembershipThread state={invitationThreadState(invitation.status)} />
-        {delivery.guidance === undefined ? null : (
+        {delivery?.guidance === undefined ? null : (
           <p className="mt-1 text-xs text-warning">{delivery.guidance}</p>
         )}
         <p className="text-xs text-muted-foreground sm:hidden">
@@ -54,15 +58,17 @@ function InvitationRow({
       <StatusMark tone={status.tone} className="max-sm:hidden">
         {status.label}
       </StatusMark>
-      <span
-        className={cn(
-          'col-start-1 font-mono text-caption sm:col-start-auto',
-          delivery.problem ? 'text-warning' : 'text-subtle-foreground',
-        )}
-      >
-        {delivery.label}
-        {expiry === undefined ? null : ` · ${expiry}`}
-      </span>
+      {delivery === undefined ? null : (
+        <span
+          className={cn(
+            'col-start-1 font-mono text-caption sm:col-start-auto',
+            delivery.problem ? 'text-warning' : 'text-subtle-foreground',
+          )}
+        >
+          {delivery.label}
+          {expiry === undefined ? null : ` · ${expiry}`}
+        </span>
+      )}
       {invitation.status === 'pending' ? (
         <DropdownMenu>
           <DropdownMenuTrigger
