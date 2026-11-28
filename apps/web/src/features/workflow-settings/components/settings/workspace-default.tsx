@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WorkspaceAutoPauseSettings } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { SettingDetails } from '@/components/patterns/settings/details';
+import { SettingDetails } from './details';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';

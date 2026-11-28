@@ -4,7 +4,7 @@ import type {
   InvitationCommand,
   InvitationOutcome,
 } from '../../data/mutations/use-invitation-command';
-import type { InviteRow } from './invite-results';
+import type { InviteRow } from '../../components/invitations/invite-results';
 
 type Batch = Readonly<{ rows: readonly InviteRow[]; role: ManagedRole }>;
 

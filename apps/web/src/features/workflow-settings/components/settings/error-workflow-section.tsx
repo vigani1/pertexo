@@ -4,7 +4,7 @@ import type {
   AccessibleWorkspace,
   WorkflowErrorSettings,
 } from '@pertexo/contracts';
-import { SettingDetails } from '@/components/patterns/settings/details';
+import { SettingDetails } from './details';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import {

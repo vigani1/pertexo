@@ -19,7 +19,7 @@ import type { InvitationCommand } from '../../data/mutations/use-invitation-comm
 import { RoleSelectWithSummaries } from '../members/role-select';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';
-import { useInviteBatch } from './use-invite-batch';
+import { useInviteBatch } from '../../hooks/invitations/use-invite-batch';
 import { pluralWord } from '@/lib/format/count';
 
 /**

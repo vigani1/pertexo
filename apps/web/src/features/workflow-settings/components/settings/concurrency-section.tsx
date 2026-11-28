@@ -7,7 +7,7 @@ import type {
   AccessibleWorkspace,
   WorkflowConcurrencySettings,
 } from '@pertexo/contracts';
-import { SettingDetails } from '@/components/patterns/settings/details';
+import { SettingDetails } from './details';
 import { SettingRow } from '@/components/patterns/settings/row';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
