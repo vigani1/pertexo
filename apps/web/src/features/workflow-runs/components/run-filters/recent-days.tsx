@@ -2,16 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/class-names';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-export type RecentDay = Readonly<{
-  /** The local day, `YYYY-MM-DD`. */
-  value: string;
-  /** "Today", or the short weekday and date: "Tue 24". */
-  label: string;
-  /** The date alone, where a phone has no room for the weekday. */
-  shortLabel: string;
-  /** The full date for assistive technology, after the button's own words: "Tue 24, Tuesday 24 November". */
-  name: string;
-}>;
+import type { RecentDay } from '../../model/list/recent-days';
 
 /**
  * The last few days as one strip: one click picks a day, a second click on
