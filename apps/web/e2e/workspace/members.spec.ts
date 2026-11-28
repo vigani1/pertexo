@@ -256,6 +256,17 @@ for (const width of [390, 1280]) {
                 createdAt: timestamp,
                 updatedAt: timestamp,
               },
+              {
+                id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+                email: 'joined@example.test',
+                role: 'viewer',
+                status: 'accepted',
+                revision: 1,
+                deliveryStatus: 'canceled',
+                expiresAt: '2026-10-22T10:00:00.000Z',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
             ],
             nextCursor: null,
           },
@@ -271,6 +282,12 @@ for (const width of [390, 1280]) {
       page.getByRole('button', { name: 'Invite people' }),
     ).toBeDisabled();
     await expect(page.locator('[data-slot="sheet-content"]')).toHaveCount(0);
+    const joined = page
+      .getByRole('list', { name: 'Invitations' })
+      .getByRole('listitem')
+      .filter({ hasText: 'joined@example.test' });
+    await expect(joined).toContainText('Accepted');
+    await expect(joined).not.toContainText('Not sent');
     await page
       .getByRole('button', { name: 'Actions for existing@example.test' })
       .click();
