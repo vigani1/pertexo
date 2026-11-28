@@ -2,6 +2,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 
+export type AlertMembers = ReturnType<typeof useAlertMembers>;
+
 export function useAlertMembers(
   scope: DestinationMutationScope,
   enabled: boolean,

@@ -1,11 +1,11 @@
 import { useSystemMailAvailability } from '../hooks/use-system-mail-availability';
+import { useAlertMembers } from '../hooks/use-alert-members';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import {
   isUnconfirmedCommand,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { canAddAlert } from '../model/destination-copy';
 import { useId, useState } from 'react';
 import type {
   ConnectionResponse,
@@ -42,6 +42,7 @@ import {
   type ChannelNames,
 } from '../model/channel-names';
 import {
+  canAddAlert,
   describeDestination,
   destinationErrors,
   destinationServerErrors,
@@ -60,7 +61,6 @@ export type ListRefresh = Readonly<{
   pending: boolean;
   /** When the list on screen was fetched, in epoch milliseconds. */
   updatedAt: number;
-  /** Refetches the list and resolves with the latest destinations. */
   reload: () => Promise<readonly FailureNotificationDestinationResponse[]>;
 }>;
 
@@ -164,10 +164,6 @@ function SaveFailure({
   );
 }
 
-/**
- * Add or edit one destination. Editing appends a new version on top of the
- * version the form opened with, so a concurrent edit is refused, not lost.
- */
 type DestinationFormProps = Readonly<{
   scope: DestinationMutationScope;
   destination: FailureNotificationDestinationResponse | undefined;
@@ -211,8 +207,8 @@ export function DestinationForm(props: DestinationFormProps) {
         <FieldGroup>
           <DestinationFields
             id={model.id}
-            workspaceId={model.scope.workspaceId}
-            scope={model.scope}
+            workspaceId={props.scope.workspaceId}
+            alertMembers={model.alertMembers}
             systemMail={model.systemMail}
             editing={model.editing}
             disabled={model.mutation.isPending}
@@ -295,6 +291,7 @@ function useDestinationForm({
   const notifications = useNotifications();
   const editing = destination !== undefined;
   const [values, setValues] = useState(() => initialValues(destination));
+  const alertMembers = useAlertMembers(scope, values.kind === 'system_mail');
   const [expectedVersion, setExpectedVersion] = useState(
     destination?.currentVersion,
   );
@@ -310,7 +307,12 @@ function useDestinationForm({
 
   function succeed(saved: FailureNotificationDestinationResponse) {
     attempt.clear();
-    const { label } = describeDestination(saved, connections, channelNames);
+    const { label } = describeDestination(
+      saved,
+      connections,
+      channelNames,
+      alertMembers.members,
+    );
     notifications.success({
       title: editing ? `Saved alerts to ${label}` : `Alerts now go to ${label}`,
     });
@@ -382,7 +384,7 @@ function useDestinationForm({
     editing,
     listRefresh,
     id,
-    scope,
+    alertMembers,
     values,
     mutation,
     destination,

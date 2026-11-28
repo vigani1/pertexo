@@ -1,5 +1,5 @@
 import { SystemMailFields } from './system-mail-fields';
-import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
+import type { AlertMembers } from '../hooks/use-alert-members';
 import type { FailureNotificationDestinationList } from '../data/failure-notifications.api';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
@@ -44,7 +44,7 @@ const KIND_WORDS: Readonly<Record<DestinationKind, string>> = {
 type DestinationFieldsProps = Readonly<{
   id: string;
   workspaceId: string;
-  scope: DestinationMutationScope;
+  alertMembers: AlertMembers;
   systemMail: FailureNotificationDestinationList['systemMail'];
   editing: boolean;
   disabled: boolean;
@@ -64,7 +64,7 @@ type DestinationFieldsProps = Readonly<{
 export function DestinationFields({
   id,
   workspaceId,
-  scope,
+  alertMembers,
   systemMail,
   editing,
   disabled,
@@ -98,7 +98,7 @@ export function DestinationFields({
       <>
         {kindField}
         <SystemMailFields
-          scope={scope}
+          alertMembers={alertMembers}
           id={id}
           disabled={disabled}
           memberId={values.target}
