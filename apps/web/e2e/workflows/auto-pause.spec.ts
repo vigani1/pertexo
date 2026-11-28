@@ -145,10 +145,7 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
       name: 'Run that triggered the pause',
       exact: true,
     }),
-  ).toHaveAttribute(
-    'href',
-    `/w/${workspaceId}/runs/${String(paused.pausedLastRunId)}`,
-  );
+  ).toHaveAttribute('href', `/w/${workspaceId}/runs/${paused.pausedLastRunId}`);
 
   await expect(page.getByText('Workflow triggers are paused')).toBeVisible();
   const autoPause = page.getByRole('region', { name: 'Automatic pause' });
