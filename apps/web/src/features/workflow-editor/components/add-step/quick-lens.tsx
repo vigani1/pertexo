@@ -20,7 +20,7 @@ import { useEditorStore } from '../../model/state/context';
 import { stepTitle } from '../../model/graph/step-title';
 import { findStep } from '../../model/graph/scopes';
 import { followingSteps } from '../../model/quick-add';
-import type { QuickAddRequest } from './use-quick';
+import type { QuickAddRequest } from '../../hooks/add-step/use-quick';
 import { ChoiceSelect } from '../inspector/fields/choice-select';
 import { portName } from '@/features/catalog/public';
 import { firstStepChoice } from '../../model/step-catalog';

@@ -16,7 +16,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 
 const UNITS = [
   { value: 'days', label: 'days', seconds: 86_400 },

@@ -1,6 +1,6 @@
 import { nestedConfigForm } from '../../../model/inspector/nested-config-form';
 import { useMemo } from 'react';
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import { isRecord } from '@pertexo/workflow-model';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Disclosure } from '@/components/ui/disclosure';

@@ -1,4 +1,4 @@
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
@@ -19,7 +19,7 @@ import {
   type HttpBodyValue,
 } from '../../../model/inspector/http-body';
 import { useEditorStoreApi } from '../../../model/state/context';
-import { useHttpBodyDraft } from './use-draft';
+import { useHttpBodyDraft } from '../../../hooks/inspector/use-http-body-draft';
 import { MultipartParts } from './parts';
 import { formPartFocusId } from './focus';
 import { useBodyConfirmation } from './confirmation';

@@ -1,4 +1,4 @@
-import { useInspectorSession } from './use-session';
+import { useInspectorSession } from '../../hooks/inspector/use-session';
 import { findDefinition } from '../../model/graph/adapter';
 
 import type { Connection } from '@xyflow/react';
@@ -18,7 +18,7 @@ import {
   type WorkflowNode,
 } from '../../model/graph/scopes';
 import { isSlackStep } from '../../model/inspector/slack-channel';
-import { createScratchTracker } from './use-draft-field';
+import { createScratchTracker } from '../../hooks/inspector/use-draft-field';
 import { AboutTab } from './tabs/about';
 import { InputsTab } from './tabs/inputs';
 import { InspectorHeader, type StepMenuActions } from './header';

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { ChoiceSelect } from '../fields/choice-select';
 import { SchemaField } from '../fields/schema';
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import {
   fieldControlId,
   type NodeFormApi,

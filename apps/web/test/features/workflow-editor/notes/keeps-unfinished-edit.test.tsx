@@ -2,7 +2,7 @@ import { Toast } from '@base-ui/react/toast';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { expect, it } from 'vitest';
-import { useNoteActions } from '@/features/workflow-editor/components/canvas/notes/use-actions';
+import { useNoteActions } from '@/features/workflow-editor/hooks/canvas/use-notes-actions';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 

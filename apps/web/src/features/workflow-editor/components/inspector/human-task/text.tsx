@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { formatCount } from '@/lib/format/count';
 import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 const TEXT_FIELDS = {
   title: {

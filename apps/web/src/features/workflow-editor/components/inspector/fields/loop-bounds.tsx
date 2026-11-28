@@ -13,7 +13,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 
 type LoopStructure = NonNullable<WorkflowNode['structured']>;
 type Limits = Pick<LoopStructure, 'maxIterations' | 'maxConcurrency'>;

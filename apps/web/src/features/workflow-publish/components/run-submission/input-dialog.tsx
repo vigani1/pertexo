@@ -1,5 +1,5 @@
 import { RunPublicationReview } from './publication-review';
-import { usePublicationReview } from './use-publication-review';
+import { usePublicationReview } from '../../hooks/use-publication-review';
 import { RunInputUpload } from './file-input';
 import {
   ConfirmDialog,

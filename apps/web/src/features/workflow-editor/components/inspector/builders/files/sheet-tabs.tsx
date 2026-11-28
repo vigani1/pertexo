@@ -6,7 +6,7 @@ import { FieldError } from '@/components/ui/field';
 import { cn } from '@/lib/class-names';
 import type { FieldParseResult } from '../../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../../use-draft-field';
+import { useInspectorDraftField } from '../../../../hooks/inspector/use-draft-field';
 
 /**
  * The sheet as Excel shows it, a tab under the grid: the chosen name is the

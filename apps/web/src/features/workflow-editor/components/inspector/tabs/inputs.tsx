@@ -1,4 +1,4 @@
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
 import { EmailInputs } from '../attachments/email-inputs';
@@ -22,7 +22,7 @@ import {
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
 import { inputKeySuggestions } from '../../../model/inspector/input-mappings/schema';
-import { useInputMappingDraft } from '../input-mappings/use-draft';
+import { useInputMappingDraft } from '../../../hooks/inspector/use-input-mappings-draft';
 import { IncomingLinks } from '../incoming-links';
 import { InsertDataPicker } from '../input-mappings/insert-data/picker';
 import {

@@ -1,8 +1,8 @@
 import { agentDraftTools, hasSlackAgentTool } from '../../../model/agent-tool';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { GuardrailsSetup } from '../builders/guardrails-setup';
 import { RunValuesSetup } from '../run-values/setup';
-import { useScratchForm } from '../use-draft-field';
+import { useScratchForm } from '../../../hooks/inspector/use-draft-field';
 import { StepRetrySetup } from '../retries/setup';
 
 import { CallTargetField } from '../fields/call-target';
