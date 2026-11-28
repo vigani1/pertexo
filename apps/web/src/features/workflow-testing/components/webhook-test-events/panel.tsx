@@ -43,11 +43,10 @@ export function WebhookTestEventPanel({
   useEffect(() => {
     if (listenerId !== undefined) {
       heading.current?.focus({ preventScroll: true });
-      // A short inspector can clip the full credentials block. Bring its
-      // URL row into view so the copy control can be used immediately.
-      (credentials.current ?? heading.current)?.scrollIntoView({
-        block: 'nearest',
-      });
+      heading.current?.scrollIntoView({ block: 'start' });
+      // Bring just the URL row into view if the full credentials block
+      // is taller than the phone inspector.
+      credentials.current?.scrollIntoView({ block: 'nearest' });
     }
   }, [listenerId]);
   const { now, expiresAt } = useListenerClock({
