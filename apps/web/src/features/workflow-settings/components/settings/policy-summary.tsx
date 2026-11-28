@@ -64,7 +64,7 @@ export function WorkflowPolicySummary({
       : `Up to ${String(concurrency.limit)} runs at a time.`,
     alerts === undefined
       ? undefined
-      : alerts.destination === null
+      : alerts.destination?.status !== 'enabled'
         ? 'Failure alerts are off.'
         : 'Failure alerts are on.',
     errorRoute?.targetWorkflowId == null
