@@ -44,8 +44,10 @@ export function WorkflowNodeCard({
   return (
     <article
       data-selected={selected}
+      data-proposed={data.proposed === true || undefined}
       className={cardClassName({
         selected,
+        proposed: data.proposed,
         disabled: data.disabled,
         passedBy: data.lastRun?.kind === 'not-taken',
       })}
@@ -107,6 +109,11 @@ export function WorkflowNodeCard({
             Failure
           </span>
         </>
+      ) : null}
+      {data.proposed === true ? (
+        <span className="mt-2 block font-mono text-caption text-glint">
+          Proposed step
+        </span>
       ) : null}
       <IssueBadge count={data.issueCount} />
       <StepRunLine result={data.lastRun} />

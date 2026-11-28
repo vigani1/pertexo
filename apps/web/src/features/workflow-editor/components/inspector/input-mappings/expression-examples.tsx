@@ -12,7 +12,7 @@ export function ExpressionExamples({
   return (
     <Disclosure
       summary="Expression examples"
-      className="text-xs"
+      contentClassName="text-xs"
       appearance={{ size: 'xs' }}
     >
       <p className="mb-3 text-muted-foreground">

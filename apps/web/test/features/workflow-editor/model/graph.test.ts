@@ -7,6 +7,7 @@ import {
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
+import { insertStepIntoLink } from '@/features/workflow-editor/model/graph/insert-step-into-link';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 
 import {
@@ -39,6 +40,37 @@ import {
 } from './graph/fixture';
 
 describe('editor graph commands', () => {
+  it('splits only the chosen branch and leaves an incompatible link unchanged', () => {
+    const graph = branchingGraph();
+    const args = {
+      graph,
+      edgeId: 'e2',
+      nodeId: 'inserted',
+      nextEdgeId: 'next',
+    };
+    const inserted = insertStepIntoLink({ ...args, definition });
+    expect(inserted?.edges).toEqual([
+      graph.edges[0],
+      edge('e2', 'inserted', 'finance'),
+      graph.edges[2],
+      edge('next', 'check', 'inserted', 'true'),
+    ]);
+    expect(inserted?.nodes.map(({ id }) => id)).toEqual([
+      'trigger',
+      'check',
+      'finance',
+      'post',
+      'inserted',
+    ]);
+    expect(
+      insertStepIntoLink({
+        ...args,
+        definition: { ...definition, ports: { inputs: ['in'], outputs: [] } },
+      }),
+    ).toBeNull();
+    expect(graph.edges).toHaveLength(3);
+  });
+
   it('removes connections alone and restores removed steps with their connections', () => {
     const graph = branchingGraph();
     const edgeOnly = removeWorkflowElements(graph, {

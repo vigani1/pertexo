@@ -27,6 +27,12 @@ export const CANVAS_COVER_ATTRIBUTE = 'data-canvas-cover';
  */
 export const READABLE_ZOOM = 0.75;
 
+/** On tablets and wider canvases, fit more of a branched graph on opening. */
+export const INITIAL_FIT_MIN_ZOOM = 0.5;
+
+/** A sheet covering most of the width is a tray even if it is tall. */
+const TRAY_WIDTH_FRACTION = 0.8;
+
 /**
  * The canvas area no lens covers, in canvas coordinates. A lens taller than
  * half the canvas covers the side it sits on (the add-step and inspector
@@ -46,7 +52,7 @@ export function uncoveredArea(canvas: Edges, covers: readonly Edges[]): Box {
     if (coverWidth <= 0 || coverHeight <= 0) continue;
     const middleX = (cover.left + cover.right) / 2 - canvas.left;
     const middleY = (cover.top + cover.bottom) / 2 - canvas.top;
-    if (coverHeight >= height / 2) {
+    if (coverHeight >= height / 2 && coverWidth < width * TRAY_WIDTH_FRACTION) {
       if (middleX < width / 2) left = Math.max(left, cover.right - canvas.left);
       else right = Math.max(right, canvas.right - cover.left);
     } else if (coverWidth >= width / 2) {

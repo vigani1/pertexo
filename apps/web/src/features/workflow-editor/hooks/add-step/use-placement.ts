@@ -17,6 +17,7 @@ import {
   positionAfter,
 } from '../../model/graph/workflow-graph-commands';
 import { loopOf, scopeOf, type ScopePath } from '../../model/graph/scopes';
+import { insertStepIntoLink } from '../../model/graph/insert-step-into-link';
 import { findDefinition } from '../../model/graph/adapter';
 import { openOutputPort } from '../../model/quick-add';
 import { shownPorts } from '../../model/step-card';
@@ -70,6 +71,27 @@ export function useStepPlacement({
     const state = store.getState();
     if (state.save.status === 'conflict') return;
     const { graph } = state;
+    if (target.kind === 'insert') {
+      const nodeId = crypto.randomUUID();
+      const next = insertStepIntoLink({
+        graph,
+        edgeId: target.edgeId,
+        definition,
+        nodeId,
+        nextEdgeId: crypto.randomUUID(),
+      });
+      if (next === null) {
+        notifications.error({
+          title: 'Cannot insert this step',
+          description:
+            'Choose a step that can connect to both ends of this link.',
+        });
+        return;
+      }
+      state.transact(next);
+      onPlaced(nodeId);
+      return;
+    }
     const { from, loopId } = target;
     let scope: ScopePath = [];
     if (loopId !== undefined)
@@ -108,7 +130,12 @@ export function useStepPlacement({
     definition: NodeDefinitionCatalogItem,
     position: Position,
   ) {
-    place(definition, { from: undefined, loopId: undefined, position });
+    place(definition, {
+      kind: 'place',
+      from: undefined,
+      loopId: undefined,
+      position,
+    });
   }
 
   function afterSelection(
@@ -129,6 +156,7 @@ export function useStepPlacement({
     );
     if (port === undefined) return undefined;
     return {
+      kind: 'place',
       from: { nodeId: source.id, port },
       loopId: loopOf(scope),
       position: positionAfter(

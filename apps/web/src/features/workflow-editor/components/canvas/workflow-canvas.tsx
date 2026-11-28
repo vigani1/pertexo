@@ -75,6 +75,7 @@ type WorkflowCanvasProps = Readonly<{
   children?: ReactNode;
   actions: Readonly<{
     onSelectNodes: (nodeIds: readonly string[]) => void;
+    onInsertIntoLink: (edgeId: string, opener: HTMLElement) => void;
     onRemoveEdge: (edgeId: string) => void;
     onDropStep: (identity: string, position: Position) => void;
     /** A link from `from` ended over empty canvas at `point`. */
@@ -110,7 +111,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
       tabIndex={0}
       aria-label="Workflow canvas"
       role="region"
-      className="weave absolute inset-0 overflow-clip -outline-offset-2"
+      className="editor-grid absolute inset-0 overflow-clip -outline-offset-2"
       onKeyDown={(event) => {
         // React Flow blurs a step on Escape, which would leave focus on the
         // page; keep it on the canvas, as a click on empty canvas does.
@@ -129,10 +130,6 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
       }}
       onDrop={onDrop}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 canvas-shade"
-      />
       <CanvasActionsContext value={actions}>
         <ReactFlow<CanvasFlowNode, WorkflowFlowEdge>
           colorMode={theme}
@@ -167,7 +164,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           // a press that began on one step ended on another.
           className="!overflow-clip !bg-transparent workflow-canvas-colors"
         >
-          <LaneBands />
+          <LaneBands proposal={props.overlays.proposal} />
           <CanvasZoomLens
             editable={editable}
             onFit={() => {
@@ -176,6 +173,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           />
           <CanvasToolbar
             editable={editable}
+            containerRef={containerRef}
             onAddStep={props.actions.onAddStep}
             onFit={() => {
               fit({ animate: true });
@@ -203,6 +201,7 @@ function useCanvasInteraction({
     onDropStep,
     onPortDrop,
     onAddToBody,
+    onInsertIntoLink,
     onOpenStep,
   } = commands;
 
@@ -211,7 +210,7 @@ function useCanvasInteraction({
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
   const store = useEditorStoreApi();
   const { screenToFlowPosition } = useReactFlow();
-  const fit = useCanvasFraming(containerRef);
+  const fit = useCanvasFraming(containerRef, overlays.proposal !== undefined);
   const { projection, onNodesChange } = useCanvasProjection({
     definitions,
     overlays,
@@ -276,8 +275,13 @@ function useCanvasInteraction({
   });
 
   const actions = useMemo(
-    () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),
-    [editable, onAddToBody, onRemoveEdge],
+    () => ({
+      editable,
+      insertIntoLink: onInsertIntoLink,
+      removeEdge: onRemoveEdge,
+      addToBody: onAddToBody,
+    }),
+    [editable, onAddToBody, onInsertIntoLink, onRemoveEdge],
   );
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -291,7 +295,7 @@ function useCanvasInteraction({
   }
 
   const onNodeClick: NodeMouseHandler<CanvasFlowNode> = (event, node) => {
-    if (node.type === 'note') return;
+    if (node.type === 'note' || node.data.proposed === true) return;
     const previous = lastTap.current;
     const now = event.timeStamp;
     lastTap.current = { id: node.id, at: now };

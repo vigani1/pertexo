@@ -5,6 +5,7 @@ import {
 import { SparklesIcon, XIcon } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, type RefObject } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
+import { Disclosure } from '@/components/ui/disclosure';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -14,6 +15,7 @@ import {
   useEscapeFromPanel,
 } from '../hooks/use-assistant-panel';
 import { DraftProposalReview } from './draft-proposal-review';
+import { CANVAS_COVER_ATTRIBUTE } from '../model/canvas/framing';
 import { useEditorSession, useEditorStore } from '../model/state/context';
 
 const outcomeCopy = {
@@ -31,17 +33,16 @@ const outcomeCopy = {
   provider_failure: 'The AI provider could not complete the request.',
 } as const;
 
-/**
- * The assistant, as a panel beside the canvas: one request, one proposal.
- * The proposal lists the draft changes and their publication check; Discard
- * drops it and Apply to draft saves it. A new request replaces the proposal,
- * since the assistant keeps no conversation. Escape or ✕ puts it away. Only
- * people who can change the draft, while it isn't paused, have it.
- */
+/** The assistant reviews one proposal and saves it only on Apply. */
 export function DraftProposal({
   open,
   onClose,
-}: Readonly<{ open: boolean; onClose: () => void }>) {
+  onPreview,
+}: Readonly<{
+  open: boolean;
+  onClose: () => void;
+  onPreview: (graph: WorkflowGraphContract | undefined) => void;
+}>) {
   const { editing } = useEditorSession();
   const graph = useEditorStore((state) => state.graph);
   if (!open || !editing.canUpdate || editing.paused) return null;
@@ -49,6 +50,7 @@ export function DraftProposal({
     <AssistantPanel
       onClose={onClose}
       graph={graph}
+      onPreview={onPreview}
       onFix={editing.actions.navigation.fix}
     />
   );
@@ -57,17 +59,39 @@ export function DraftProposal({
 function AssistantPanel({
   onClose,
   graph,
+  onPreview,
   onFix,
 }: Readonly<{
   onClose: () => void;
   graph: WorkflowGraphContract;
+  onPreview: (graph: WorkflowGraphContract | undefined) => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const requestRef = useRef<HTMLTextAreaElement>(null);
+  const reviewRef = useRef<HTMLElement>(null);
   const panel = useAssistantPanel({ requestRef, onApplied: onClose });
   const { destination, review, pending, stale } = panel;
+  const preview =
+    review?.kind === 'inspected' && !stale ? review.draft.graph : undefined;
+  useLayoutEffect(() => {
+    onPreview(preview);
+    return () => {
+      onPreview(undefined);
+    };
+  }, [onPreview, preview]);
+  const disclosure =
+    destination?.kind === 'ready' ? (
+      <AssistantDisclosure destination={destination} inDialog={false}>
+        The request includes your description, draft structure, step settings
+        and input mappings, and relevant catalog definitions. Protected settings
+        and connections are masked.
+      </AssistantDisclosure>
+    ) : null;
+  useLayoutEffect(() => {
+    if (review !== undefined) reviewRef.current?.focus();
+  }, [review]);
   const canRequest = destination?.kind === 'ready' && !stale;
   useLayoutEffect(() => {
     panelRef.current?.focus();
@@ -90,17 +114,12 @@ function AssistantPanel({
       tabIndex={-1}
       aria-labelledby={titleId}
       data-slot="assistant-panel"
-      className="lens pointer-events-auto absolute inset-x-0 top-0 bottom-16 z-50 flex flex-col overflow-hidden rounded-xl md:left-auto md:w-[min(26rem,100%)] lg:bottom-0"
+      {...{ [CANVAS_COVER_ATTRIBUTE]: '' }}
+      className="lens pointer-events-auto absolute inset-x-0 top-[22%] bottom-16 z-50 flex flex-col overflow-hidden rounded-xl md:top-0 md:left-auto md:w-[min(26rem,100%)] lg:bottom-0"
     >
       <AssistantHeader titleId={titleId} pending={pending} onClose={close} />
       <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto overscroll-contain px-4.5 pt-2 pb-4.5">
-        {destination?.kind === 'ready' ? (
-          <AssistantDisclosure destination={destination} inDialog={false}>
-            The request includes your description, draft structure, step
-            settings and input mappings, and relevant catalog definitions.
-            Protected settings and connections are masked.
-          </AssistantDisclosure>
-        ) : null}
+        {review === undefined ? disclosure : null}
         {panel.asked === undefined ? null : (
           <AskedRequest
             asked={panel.asked}
@@ -116,7 +135,12 @@ function AssistantPanel({
           />
         )}
         {review === undefined ? null : (
-          <section aria-label="Proposal" className="grid gap-4">
+          <section
+            ref={reviewRef}
+            tabIndex={-1}
+            aria-label="Proposal"
+            className="grid gap-4 focus:outline-none"
+          >
             <DraftProposalReview
               result={review}
               graph={graph}
@@ -125,16 +149,12 @@ function AssistantPanel({
                 onFix(target);
               }}
             />
-            {review.kind === 'inspected' && !stale ? (
-              <ProposalActions
-                pending={pending}
-                onDiscard={panel.discard}
-                onApply={() => {
-                  panel.apply(review);
-                }}
-              />
-            ) : null}
           </section>
+        )}
+        {review === undefined || disclosure === null ? null : (
+          <Disclosure summary="What the assistant receives">
+            {disclosure}
+          </Disclosure>
         )}
         <ProposalFeedback
           activity={panel.activity}
@@ -154,6 +174,17 @@ function AssistantPanel({
           </Button>
         ) : null}
       </div>
+      {review?.kind === 'inspected' && !stale ? (
+        <div className="border-t border-border px-4.5 py-3">
+          <ProposalActions
+            pending={pending}
+            onDiscard={panel.discard}
+            onApply={() => {
+              panel.apply(review);
+            }}
+          />
+        </div>
+      ) : null}
       {canRequest ? (
         <RequestForm
           requestRef={requestRef}
@@ -291,6 +322,7 @@ function RequestForm({
         What should the workflow do?
         <Textarea
           ref={requestRef}
+          className={replacing ? 'min-h-12' : undefined}
           value={request}
           placeholder={
             replacing

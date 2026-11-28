@@ -2,6 +2,7 @@ import { placeableDefinitions } from '@pertexo/workflow-model';
 import type { CodeSettings } from '@pertexo/node-sdk';
 import type {
   NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
   WorkflowNodeRunSummary,
 } from '@pertexo/contracts';
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
@@ -54,8 +55,12 @@ export function useCanvasOverlays(
   effects: ReturnType<typeof useCanvasEffects>,
   testStatuses:
     ReadonlyMap<string, WorkflowNodeRunSummary['status']> | undefined,
-  lastRun: Readonly<{ overlay: LastRunOverlay | undefined; shown: boolean }>,
+  canvas: Readonly<{
+    lastRun: Readonly<{ overlay: LastRunOverlay | undefined; shown: boolean }>;
+    proposal: WorkflowGraphContract | undefined;
+  }>,
 ) {
+  const { lastRun, proposal } = canvas;
   const lastRunShown = lastRun.shown ? lastRun.overlay : undefined;
   return useMemo(
     () => ({
@@ -65,9 +70,11 @@ export function useCanvasOverlays(
       testOutputBytes: effects.testOutputBytes,
       testStatuses,
       lastRun: lastRunShown,
+      proposal,
     }),
     [
       lastRunShown,
+      proposal,
       testStatuses,
       effects.flowingEdgeIds,
       effects.testOutputBytes,
@@ -112,6 +119,9 @@ export function useStepAdding({
     quickAdd,
     addAfter: (nodeId: string, returnFocus: HTMLElement | null) => {
       if (editable) quickAdd.openAfter(nodeId, returnFocus);
+    },
+    insertIntoLink: (edgeId: string, opener: HTMLElement) => {
+      if (editable) quickAdd.openInLink(edgeId, opener);
     },
     addToBody: (loopId: string, opener: HTMLElement) => {
       if (editable) quickAdd.openInBody(loopId, opener);

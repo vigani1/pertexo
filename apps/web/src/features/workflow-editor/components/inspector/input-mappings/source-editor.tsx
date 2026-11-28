@@ -17,10 +17,7 @@ import { ChoiceSelect } from '../fields/choice-select';
 import { LiteralEditor } from './literal-editor';
 import { ExpressionExamples } from './expression-examples';
 
-/**
- * The editor for a row's source: a value, a path, a step's output, code, or
- * inside a For each body the item (or its position) being worked on.
- */
+/** Edit the value a step reads for one input. */
 export function MappingSourceEditor({
   nodeId,
   row,
@@ -371,7 +368,9 @@ export function ExpressionSource({
             ? 'loop.item.amount > 5000'
             : 'runInput.amount > 5000'
         }
-        className="min-h-16 border-primary/30 font-mono text-base md:text-label"
+        className="min-h-16"
+        typography="code"
+        emphasis="active"
         value={row.expression}
         disabled={disabled}
         aria-invalid={error !== undefined}
