@@ -49,7 +49,6 @@ export function WorkflowRowsSkeleton({
           </div>
           <Skeleton className="hidden h-2.5 w-8 lg:block" />
           <SkeletonThread order={order + 2} className="hidden lg:block" />
-          <Skeleton className="hidden h-2.5 w-12 lg:block" />
           <span />
         </div>
       ))}
@@ -92,7 +91,6 @@ export function WorkflowRows({
             ? `Last ${String(FAILURE_STRIP_DAYS)} days`
             : ''}
         </span>
-        <span>Updated</span>
         <span />
       </div>
       <ul aria-label="Workflows" className="flex flex-col">

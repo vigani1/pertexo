@@ -11,6 +11,7 @@ export type WorkflowListOrder = NonNullable<WorkflowListQuery['order']>;
 /** URL state for the list: every key is optional and defaults are omitted. */
 export type WorkflowListSearch = Readonly<{
   create?: true;
+  publication?: 'live' | 'drafts';
   view?: Exclude<WorkflowView, 'active'>;
   sort?: Exclude<WorkflowSort, 'updated'>;
   query?: string;
@@ -35,6 +36,7 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
       : undefined;
   const create = read('create');
   const view = read('view');
+
   const sort = read('sort');
   const filters: Record<string, unknown> = {};
   for (const key of ['query', 'tagId', 'folderId', 'favoritesOnly'] as const) {
@@ -56,10 +58,19 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
     create === true || create === 'true' || create === 1 || create === '1';
   return {
     ...(opensCreation ? { create: true as const } : {}),
+    ...publicationFilter(read('publication')),
     ...(view === 'archived' || view === 'all' ? { view } : {}),
     ...(sort === 'created' ? { sort } : {}),
     ...filters,
   };
+}
+
+function publicationFilter(
+  publication: unknown,
+): Pick<WorkflowListSearch, 'publication'> {
+  return publication === 'live' || publication === 'drafts'
+    ? { publication }
+    : {};
 }
 
 /** Applies a change to the list's URL state, omitting default values. */
@@ -67,6 +78,7 @@ export function updateWorkflowListSearch(
   current: WorkflowListSearch,
   change: Readonly<{
     create?: boolean;
+    publication?: WorkflowListSearch['publication'] | null;
     view?: WorkflowView;
     sort?: WorkflowSort;
     query?: string | null;
@@ -90,6 +102,7 @@ export function updateWorkflowListSearch(
 export function isUnfilteredWorkflowList(search: WorkflowListSearch): boolean {
   return (
     search.view === undefined &&
+    search.publication === undefined &&
     search.query === undefined &&
     search.tagId === undefined &&
     search.folderId === undefined &&

@@ -1,10 +1,6 @@
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import {
-  StatusMark,
-  type StatusTone,
-} from '@/components/patterns/status/status-mark';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { RunLoom } from '@/features/workflow-runs/workflow-runs-views.public';
 import {
@@ -45,13 +41,6 @@ const windows = {
 
 type LoomWindow = keyof typeof windows;
 
-const legend: readonly (readonly [StatusTone, string])[] = [
-  ['live', 'running'],
-  ['success', 'succeeded'],
-  ['failure', 'failed'],
-  ['waiting', 'waiting'],
-];
-
 function isLoomWindow(value: string | undefined): value is LoomWindow {
   return value !== undefined && Object.hasOwn(windows, value);
 }
@@ -65,12 +54,12 @@ export function HomeLoom({
   apiClient,
   userId,
   workspaceId,
-  currentRunning,
+  current,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
-  currentRunning?: number | undefined;
+  current?: Readonly<{ running: number; waiting: number }> | undefined;
 }>) {
   const [windowKey, setWindowKey] = useState<LoomWindow>('1h');
   const selected = windows[windowKey];
@@ -121,20 +110,10 @@ export function HomeLoom({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <ul
-          aria-label="Legend"
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-subtle-foreground"
-        >
-          {legend.map(([tone, label]) => (
-            <li key={tone} className="inline-flex items-center gap-1.5">
-              {/* Each glyph in its status colour, as the Loom draws it; a key
-                  names a status, so it doesn't play one. */}
-              <StatusMark display="mark" tone={tone} still />
-              {label}
-            </li>
-          ))}
-        </ul>
       </div>
+      <p className="text-sm text-muted-foreground">
+        One lane per workflow. Live work runs into the Core.
+      </p>
       <HomeBlockBody
         title="Recent runs"
         state={mergedBlockState(loom, [statistics])}
@@ -145,7 +124,8 @@ export function HomeLoom({
           windowLabel={selected.phrase}
           workspaceId={workspaceId}
           laneTotals={laneTotals}
-          currentRunning={currentRunning}
+          currentRunning={current?.running}
+          currentWaiting={current?.waiting}
           converge={windowKey === '1h'}
         />
         {caption === undefined ? null : (

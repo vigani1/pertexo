@@ -86,7 +86,7 @@ export function WorkflowImportContents({
       </ol>
       <Disclosure
         summary="Everything in the file"
-        className="text-xs text-muted-foreground"
+        contentClassName="text-xs text-muted-foreground"
         appearance={{ size: 'xs' }}
       >
         <div className="mt-2">

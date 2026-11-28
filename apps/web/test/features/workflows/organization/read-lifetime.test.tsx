@@ -117,12 +117,6 @@ describe('organization reads without a command dialog', () => {
     const event = userEvent.setup();
     await event.type(screen.getByLabelText('Search workflows'), 'Alpha');
 
-    if (
-      screen
-        .getByRole('button', { name: /^Filters/u })
-        .getAttribute('aria-expanded') !== 'true'
-    )
-      await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('combobox', { name: 'Filter by tag' }));
     await event.click(
       await screen.findByRole('option', { name: 'private-tag' }),
@@ -133,6 +127,7 @@ describe('organization reads without a command dialog', () => {
     await event.click(
       await screen.findByRole('option', { name: 'Private folder' }),
     );
+    await event.click(screen.getByRole('button', { name: /^Filters/u }));
     await event.click(screen.getByRole('button', { name: 'My favorites' }));
     expect(current).toEqual({
       view: 'all',

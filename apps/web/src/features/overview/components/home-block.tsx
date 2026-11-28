@@ -1,9 +1,10 @@
+import {
+  InlineFailedRead,
+  QueryView,
+} from '@/components/patterns/states/query-view';
+import { SkeletonLines } from '@/components/patterns/states/loading';
 import { RuleHeading } from '@/components/patterns/lists/rule-heading';
 import type { ReactNode } from 'react';
-import { StaleLine } from '@/components/patterns/states/stale-line';
-import { Button } from '@/components/ui/button';
-import { SkeletonThread } from '@/components/ui/skeleton';
-import { StatusMark } from '@/components/patterns/status/status-mark';
 import { describeReadError } from '@/lib/api/error-copy';
 import type { HomeBlockState } from '../model/home-block-state';
 
@@ -47,49 +48,35 @@ export function HomeBlockBody({
   state,
   children,
 }: Readonly<{ title: string; state: HomeBlockState; children: ReactNode }>) {
-  if (state.pending && !state.hasData)
-    return (
-      <div
-        role="status"
-        aria-label={`Loading ${title.toLocaleLowerCase()}`}
-        className="flex flex-col gap-5 border-t border-surface-ink/6 py-5"
-      >
-        {[0, 1, 2].map((order) => (
-          <SkeletonThread key={order} order={order} />
-        ))}
-      </div>
-    );
-  if (state.failed && !state.hasData)
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-ink/6 py-4">
-        <p
-          role="alert"
-          className="flex items-center gap-2 text-sm text-destructive"
-        >
-          <StatusMark display="mark" tone="failure" />
-          {describeReadError(state.error, title)}
-        </p>
-        <Button
-          type="button"
-          size="sm"
-          disabled={state.retrying}
-          onClick={state.onRetry}
-        >
-          {state.retrying ? 'Trying again…' : 'Try again'}
-        </Button>
-      </div>
-    );
   return (
-    <>
-      {state.failed ? (
-        <StaleLine
-          className="mb-2"
-          updatedAt={state.updatedAt}
-          retrying={state.retrying}
-          onRetry={state.onRetry}
+    <QueryView
+      query={{
+        data: state.hasData ? children : undefined,
+        isPending: state.pending,
+        isError: state.failed,
+        isFetching: state.retrying,
+        error: state.error,
+        dataUpdatedAt: state.updatedAt,
+        refetch: state.onRetry,
+      }}
+      resource={title}
+      loading={
+        <SkeletonLines
+          label={`Loading ${title.toLowerCase()}`}
+          lines={3}
+          className="border-t border-surface-ink/6 py-5"
         />
-      ) : null}
-      {children}
-    </>
+      }
+      error={(failure) => (
+        <div className="border-t border-surface-ink/6 py-4">
+          <InlineFailedRead
+            {...failure}
+            text={describeReadError(failure.error, title)}
+          />
+        </div>
+      )}
+    >
+      {(content) => content}
+    </QueryView>
   );
 }

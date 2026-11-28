@@ -90,6 +90,16 @@ export function AttentionSection({
     }),
     ...destinationAttentionItems(destinations.data?.items ?? []),
   ];
+  const samples =
+    problemRuns === undefined
+      ? []
+      : [problemRuns.failed, problemRuns.timedOut, problemRuns.outcomeUnknown];
+  const listedFailures = new Set(
+    samples
+      .flatMap(({ runs }) => runs)
+      .filter((run) => run.failedStep != null || run.failureReasonCode != null)
+      .map((run) => run.id),
+  );
   const failures = useRunFailures({
     apiClient,
     userId,
@@ -97,16 +107,14 @@ export function AttentionSection({
     runIds: items
       .slice(0, COLLAPSED_LIST_COUNT)
       .flatMap((item) =>
-        item.action?.kind === 'run' ? [item.action.runId] : [],
+        item.action?.kind === 'run' && !listedFailures.has(item.action.runId)
+          ? [item.action.runId]
+          : [],
       ),
   });
   const [main, ...others] = reads;
   if (main === undefined) return null;
-  const hasMoreFailedRuns =
-    problemRuns !== undefined &&
-    (problemRuns.failed.more ||
-      problemRuns.timedOut.more ||
-      problemRuns.outcomeUnknown.more);
+  const hasMoreFailedRuns = samples.some((sample) => sample.more);
   return (
     <NeedsAttention
       workspace={workspace}

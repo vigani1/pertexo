@@ -17,11 +17,6 @@ type StepSource = Pick<WorkflowNode, 'definition' | 'label'>;
 
 export type TriggerKind = (typeof WORKFLOW_TRIGGER_DEFINITIONS)[number]['key'];
 
-/** A definition's readable name: the catalog's, as the editor shows it. */
-export function definitionName(key: string): string {
-  return describeStep(key).name;
-}
-
 /** The name a person gave the step, else its definition's readable name. */
 export function stepLabel(
   node: StepSource,

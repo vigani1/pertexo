@@ -103,7 +103,8 @@ export function RunTimelineTrack({
               <StatusMark
                 display="mark"
                 tone="waiting"
-                className="absolute top-1/2 right-0 size-3.5 translate-x-1/2 -translate-y-1/2 bg-background"
+                appearance="track"
+                className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2"
               />
             ) : null}
             <SegmentEnd segment={segment} />

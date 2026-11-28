@@ -22,9 +22,11 @@ export function RequestsRoute() {
     <ListDetail
       key={`${user.id}:${workspace.id}`}
       showing={selectedTaskId === undefined ? 'list' : 'detail'}
-      backLabel="Back to requests"
+      backLabel={
+        filters.kind === 'approval' ? 'Back to approvals' : 'Back to requests'
+      }
       onBack={() => void navigate({ to: '.', search: filters })}
-      className="min-[56.25rem]:grid-cols-[minmax(16rem,1fr)_minmax(0,1.65fr)] min-[56.25rem]:gap-8 xl:gap-12"
+      className="min-[56.25rem]:grid-cols-[minmax(16rem,1fr)_minmax(0,1.65fr)] min-[56.25rem]:gap-8 xl:grid-cols-[minmax(22.5rem,1fr)_minmax(0,1.65fr)] xl:gap-10"
       list={
         <TasksPage
           scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
@@ -33,7 +35,7 @@ export function RequestsRoute() {
               apiClient={apiClient}
               userId={user.id}
               workspace={workspace}
-              current="requests"
+              current={filters.kind === 'approval' ? 'approvals' : 'requests'}
             />
           }
           filters={filters}

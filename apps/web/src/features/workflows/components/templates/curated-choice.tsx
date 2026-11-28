@@ -120,7 +120,7 @@ export function CuratedTemplateChoice({
               ))}
               <Disclosure
                 summary="Details"
-                className="text-xs text-muted-foreground"
+                contentClassName="text-xs text-muted-foreground"
                 appearance={{ size: 'xs' }}
               >
                 <dl className="mt-1.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">

@@ -3,12 +3,13 @@ import type {
   PendingTaskSummary,
   FailureNotificationDestinationResponse,
   WorkflowSummary,
-  WorkflowRunReadSummary,
+  WorkflowRunListItem,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/patterns/status/status-mark';
 import { bySoonestDeadline } from '@/features/pending-tasks/public';
 import { needsReconnecting } from '@/features/connections/public';
-import { formatElapsedTime } from '@/lib/format/time';
+import { describeListedFailure } from '@/features/workflow-runs/public';
+import { formatDateTime, formatElapsedTime } from '@/lib/format/time';
 import { formatCount, pluralWord } from '@/lib/format/count';
 import { ATTENTION_WINDOW_HOURS } from '@/features/workflow-runs/workflow-runs-queries.public';
 
@@ -20,9 +21,9 @@ export const ATTENTION_WINDOW = `the last ${formatCount(ATTENTION_WINDOW_HOURS, 
 
 export type AttentionAction =
   | Readonly<{ kind: 'task'; taskId: string }>
-  | Readonly<{ kind: 'run'; runId: string }>
+  | Readonly<{ kind: 'run'; runId: string; retryStep?: string }>
   | Readonly<{ kind: 'triggers'; workflowId: string }>
-  | Readonly<{ kind: 'connections' }>
+  | Readonly<{ kind: 'connections'; connectionId: string }>
   | Readonly<{ kind: 'alerts' }>;
 
 export type AttentionItem = Readonly<{
@@ -51,109 +52,68 @@ export function taskAttentionItems(
 }
 
 export type ProblemRuns = Readonly<{
-  failed: readonly WorkflowRunReadSummary[];
-  timedOut: readonly WorkflowRunReadSummary[];
-  outcomeUnknown: readonly WorkflowRunReadSummary[];
+  failed: readonly WorkflowRunListItem[];
+  timedOut: readonly WorkflowRunListItem[];
+  outcomeUnknown: readonly WorkflowRunListItem[];
 }>;
 
-function times(count: number): string {
-  if (count === 1) return 'once';
-  if (count === 2) return 'twice';
-  return `${String(count)} times`;
-}
-
-interface RunGroup {
-  workflowId: string;
-  name: string;
-  failed: number;
-  timedOut: number;
-  unknown: number;
-  latest: WorkflowRunReadSummary;
-}
-
-function groupTitle(group: RunGroup): string {
-  const total = group.failed + group.timedOut + group.unknown;
-  if (group.failed === total)
-    return `${group.name} failed ${times(total)} in ${ATTENTION_WINDOW}`;
-  if (group.timedOut === total)
-    return `${group.name} timed out ${times(total)} in ${ATTENTION_WINDOW}`;
-  if (group.unknown === total)
-    return pluralWord(
-      total,
-      `${group.name} has a run with an unknown outcome`,
-      `${group.name} has ${String(total)} runs with an unknown outcome`,
-    );
-  return `${group.name} had ${String(total)} runs go wrong in ${ATTENTION_WINDOW}`;
-}
-
-function groupDetail(group: RunGroup, nowMs: number): string {
-  const parts = [
-    group.failed > 0 ? `${String(group.failed)} failed` : undefined,
-    group.timedOut > 0 ? `${String(group.timedOut)} timed out` : undefined,
-    group.unknown > 0 ? `${String(group.unknown)} unknown` : undefined,
-  ].filter((part): part is string => part !== undefined);
-  const latest = `latest ${formatElapsedTime(group.latest.createdAt, nowMs)}`;
-  return parts.length > 1 ? `${parts.join(', ')} · ${latest}` : latest;
-}
-
-function groupTone(group: RunGroup): StatusTone {
-  if (group.unknown > 0) return 'attention';
-  return group.failed > 0 ? 'failure' : 'timeout';
-}
-
-/** Problem runs from the last day, one item per workflow, newest first. */
+/** Each incident keeps its own status and recovery destination. */
 export function runAttentionItems(
   runs: ProblemRuns,
   nowMs: number,
 ): readonly AttentionItem[] {
-  const groups = new Map<string, RunGroup>();
-  const add = (
-    run: WorkflowRunReadSummary,
-    kind: 'failed' | 'timedOut' | 'unknown',
-  ) => {
-    const group = groups.get(run.workflowId) ?? {
-      workflowId: run.workflowId,
-      name: run.workflowName ?? 'A workflow',
-      failed: 0,
-      timedOut: 0,
-      unknown: 0,
-      latest: run,
-    };
-    group[kind] += 1;
-    if (run.createdAt > group.latest.createdAt) group.latest = run;
-    groups.set(run.workflowId, group);
-  };
-  for (const run of runs.failed) add(run, 'failed');
-  for (const run of runs.timedOut) add(run, 'timedOut');
-  for (const run of runs.outcomeUnknown) add(run, 'unknown');
-  return [...groups.values()]
+  return [
+    ...runs.failed.map(
+      (run) => ({ run, tone: 'failure', outcome: 'failed' }) as const,
+    ),
+    ...runs.timedOut.map(
+      (run) => ({ run, tone: 'timeout', outcome: 'timed out' }) as const,
+    ),
+    ...runs.outcomeUnknown.map(
+      (run) =>
+        ({
+          run,
+          tone: 'attention',
+          outcome: 'has an unknown outcome',
+        }) as const,
+    ),
+  ]
     .sort((left, right) =>
-      right.latest.createdAt.localeCompare(left.latest.createdAt),
+      right.run.createdAt.localeCompare(left.run.createdAt),
     )
-    .map((group) => ({
-      key: `runs:${group.workflowId}`,
-      tone: groupTone(group),
-      title: groupTitle(group),
-      detail: groupDetail(group, nowMs),
-      action: { kind: 'run', runId: group.latest.id },
-    }));
+    .map(({ run, tone, outcome }) =>
+      withRunFailure(
+        {
+          key: `run:${run.id}`,
+          tone,
+          title: `${run.workflowName ?? 'A workflow'} ${outcome}`,
+          detail: formatElapsedTime(run.completedAt ?? run.updatedAt, nowMs),
+          action: { kind: 'run', runId: run.id },
+        },
+        describeListedFailure(run.failedStep, run.failureReasonCode),
+      ),
+    );
 }
 
-/**
- * A run item that names where and why its latest run failed, when the run's
- * reads say: "Send receipt · service unavailable · latest 14:12".
- */
 export function withRunFailure(
   item: AttentionItem,
   failure: Readonly<{ step?: string; reason?: string }> | undefined,
 ): AttentionItem {
   if (failure === undefined) return item;
-  const facts = [failure.step, failure.reason].filter(
-    (fact): fact is string => fact !== undefined,
-  );
-  return facts.length === 0
-    ? item
-    : { ...item, detail: [...facts, item.detail].join(' · ') };
+  const step = failure.step;
+  return {
+    ...item,
+    title: step === undefined ? item.title : `${item.title} at ${step}`,
+    detail:
+      failure.reason === undefined
+        ? item.detail
+        : `${failure.reason} · ${item.detail}`,
+    ...(item.action?.kind === 'run' &&
+    item.tone === 'failure' &&
+    step !== undefined
+      ? { action: { ...item.action, retryStep: step } }
+      : {}),
+  };
 }
 
 /** Workflows whose triggers are degraded or stopped with an error. */
@@ -195,15 +155,29 @@ export function connectionAttentionItems({
   connections: readonly ConnectionResponse[];
   canManage: boolean;
 }>): readonly AttentionItem[] {
-  return connections.filter(needsReconnecting).map((connection) => ({
-    key: `connection:${connection.id}`,
-    tone: 'attention',
-    title: `${connection.name} needs reconnecting`,
-    detail: canManage
+  return connections.filter(needsReconnecting).map((connection) => {
+    const observed = connection.health.lastRunObservedAt;
+    const impact = canManage
       ? 'Steps that use it fail until it’s reconnected.'
-      : 'Steps that use it fail until an admin reconnects it.',
-    ...(canManage ? { action: { kind: 'connections' } as const } : {}),
-  }));
+      : 'Steps that use it fail until an admin reconnects it.';
+    return {
+      key: `connection:${connection.id}`,
+      tone: 'attention',
+      title: `${connection.name} needs reconnecting`,
+      detail:
+        observed == null
+          ? impact
+          : `Last observed in a run ${formatDateTime(observed)}. ${impact}`,
+      ...(canManage
+        ? {
+            action: {
+              kind: 'connections',
+              connectionId: connection.id,
+            } as const,
+          }
+        : {}),
+    };
+  });
 }
 
 /** Failure alert destinations that are switched off. */

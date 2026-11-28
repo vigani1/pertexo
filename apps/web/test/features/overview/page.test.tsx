@@ -54,9 +54,7 @@ describe('workspace home', () => {
       coldStart,
     );
     expect(
-      await within(attention).findByText(
-        'Daily intake failed once in the last 24 hours',
-      ),
+      await within(attention).findByText('Daily intake failed'),
     ).toBeVisible();
     expect(
       within(attention).getByRole('link', { name: 'Open run' }),
@@ -165,9 +163,7 @@ describe('workspace home', () => {
       coldStart,
     );
     expect(
-      await within(attention).findByText(
-        'Daily intake timed out once in the last 24 hours',
-      ),
+      await within(attention).findByText('Daily intake timed out'),
     ).toBeVisible();
     expect(
       within(attention).getByRole('link', { name: 'Open run' }),
@@ -280,7 +276,7 @@ describe('workspace home', () => {
       .sort((left, right) => left - right)[0];
     expect(Date.now() - (weekStart ?? 0)).toBeGreaterThan(6.9 * 86_400_000);
   });
-  it('opens the command palette and a new workflow from the header', async () => {
+  it('opens a new workflow from the header and search from workspace navigation', async () => {
     mockServer.use(
       ...identityHandlers([...readerCapabilities, 'workflow:create']),
       workflowHandlers(),
@@ -292,9 +288,7 @@ describe('workspace home', () => {
     expect(
       await within(main).findByRole('link', { name: 'New workflow' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows?create=true`);
-    await userEvent
-      .setup()
-      .click(within(main).getByRole('button', { name: 'Search' }));
+    await userEvent.setup().click(await workspaceSearch());
     expect(
       await screen.findByRole('dialog', { name: 'Search Pertexo' }),
     ).toBeVisible();
@@ -322,11 +316,8 @@ describe('workspace home', () => {
       ...runHandlers(),
     );
     await renderLoadedApp(`/w/${workspaceId}`);
-    const main = await screen.findByRole('main', undefined, coldStart);
     const event = userEvent.setup();
-    await event.click(
-      await within(main).findByRole('button', { name: 'Search' }),
-    );
+    await event.click(await workspaceSearch());
     const palette = await screen.findByRole('dialog', {
       name: 'Search Pertexo',
     });
@@ -345,3 +336,14 @@ describe('workspace home', () => {
     ).toBeVisible();
   });
 });
+
+async function workspaceSearch() {
+  await screen.findByRole('main', undefined, coldStart);
+  const search = screen
+    .getAllByRole('navigation', { name: 'Workspace' })
+    .map((nav) => within(nav).queryByRole('button', { name: /^Search$/u }))
+    .find((button) => button !== null);
+  if (search === undefined)
+    throw new Error('Expected Search in the workspace navigation');
+  return search;
+}

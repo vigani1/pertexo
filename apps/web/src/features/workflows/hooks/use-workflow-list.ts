@@ -36,7 +36,16 @@ export function useWorkflowList(
     workspace.id,
     search,
   );
-  const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
+  const organizations = (
+    workflows.data?.pages.flatMap((page) => page.organizations) ?? []
+  ).filter(
+    ({ workflow }) =>
+      search.publication === undefined ||
+      (search.publication === 'drafts'
+        ? workflow.publishedVersionId === null
+        : workflow.publishedVersionId !== null),
+  );
+  const items = organizations.map(({ workflow }) => workflow);
   const empty = workflows.data !== undefined && items.length === 0;
   return {
     workflows,
@@ -47,7 +56,6 @@ export function useWorkflowList(
       loaded: workflows.data !== undefined,
       empty,
     }),
-    organizations:
-      workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
+    organizations,
   } as const;
 }

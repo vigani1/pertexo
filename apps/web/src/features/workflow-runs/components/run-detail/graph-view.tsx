@@ -250,7 +250,7 @@ export function RunGraphView({
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
         className={cn(
-          'transition-opacity duration-150 motion-reduce:transition-none',
+          'transition-opacity duration-(--duration-quick) motion-reduce:transition-none',
           !fitted && 'opacity-0',
         )}
       >

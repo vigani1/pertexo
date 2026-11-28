@@ -173,7 +173,7 @@ test('shows the unread count and marks a failing workflow read', async ({
 test('keeps the inbox usable on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockInbox(page);
-  await page.goto(`/w/${workspaceId}/inbox`);
+  await page.goto(`/w/${workspaceId}/inbox?filter=all`);
 
   const bar = page.getByRole('navigation', { name: 'Workspace' }).last();
   await expect(
@@ -191,7 +191,7 @@ test('keeps the inbox usable on a phone', async ({ page }) => {
 test('fits the inbox and its row actions at 360px', async ({ page }, info) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await mockInbox(page);
-  await page.goto(`/w/${workspaceId}/inbox`);
+  await page.goto(`/w/${workspaceId}/inbox?filter=all`);
   const row = page.getByRole('link', { name: 'Billing sync, unread' });
   await expect(row).toBeVisible();
   await expectFitsAndTappable(page);
@@ -224,7 +224,7 @@ for (const width of [1280, 390])
           json: { items: [], nextCursor: null, pendingCount: 0 },
         }),
     );
-    await page.goto(`/w/${workspaceId}/inbox`);
+    await page.goto(`/w/${workspaceId}/inbox?filter=all`);
     const views = page.getByRole('navigation', { name: 'Inbox views' });
     await expect(
       views.getByRole('link', { name: 'Notices, 2 unread' }),
@@ -278,7 +278,7 @@ for (const width of [375, 1280])
           },
         }),
     );
-    await page.goto(`/w/${workspaceId}/inbox`);
+    await page.goto(`/w/${workspaceId}/inbox?filter=all`);
     for (const name of names) {
       const title = page.getByRole('link', {
         name: `Failure alerts aren’t reaching ${name}`,

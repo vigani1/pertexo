@@ -1,3 +1,6 @@
+import { LiveRunCounts } from '../components/run-count';
+import { runStatisticsQueryOptions } from '../data/statistics.queries';
+import { Disclosure } from '@/components/ui/disclosure';
 import type {
   WorkflowSummary,
   AccessibleWorkspace,
@@ -7,7 +10,6 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   PageHeader,
-  PageHeaderActions,
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
@@ -16,7 +18,6 @@ import {
   workflowSummaryQueryOptions,
 } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { LiveRunCounts } from '../components/run-count';
 import { RunFilters } from '../components/run-filters/controls';
 import { WorkflowPicker } from '../components/run-filters/workflow-picker';
 import { NoRunsYet, RunsForbidden } from '../components/run-list/states';
@@ -29,7 +30,6 @@ import {
   type RunSearch,
 } from '../model/list/run-search';
 import { useRunHistory } from '../hooks/use-run-history';
-import { runStatisticsQueryOptions } from '../data/statistics.queries';
 
 /** Pick one workflow, or filter by the start of a name. */
 function WorkflowFilter({
@@ -117,30 +117,15 @@ export function RunHistoryPage({
         <div className="min-w-0">
           <PageHeaderTitle>Runs</PageHeaderTitle>
           <PageHeaderMeta>
-            {statistics.data === undefined ? (
-              <span>Every run in {workspace.name}</span>
-            ) : (
-              <LiveRunCounts current={statistics.data.current} />
-            )}
+            Every workflow in {workspace.name}, newest first
           </PageHeaderMeta>
         </div>
-        {canRead ? (
-          <PageHeaderActions>
-            <RunsToolbar
-              live={live}
-              onLiveChange={setLive}
-              view={search.view ?? 'list'}
-              onViewChange={(view) => {
-                onSearchChange(withRunView(search, view));
-              }}
-            />
-          </PageHeaderActions>
-        ) : null}
       </PageHeader>
       {canRead ? (
         <>
           <RunFilters
             runs={runs}
+            partial={query.hasNextPage}
             search={search}
             onSearchChange={onSearchChange}
             {...(workflowName === undefined ? {} : { workflowName })}
@@ -157,6 +142,21 @@ export function RunHistoryPage({
               ) : undefined
             }
           />
+          <Disclosure summary="History options">
+            <div className="flex flex-wrap items-center gap-3">
+              {statistics.data === undefined ? null : (
+                <LiveRunCounts current={statistics.data.current} />
+              )}
+              <RunsToolbar
+                live={live}
+                onLiveChange={setLive}
+                view={search.view ?? 'list'}
+                onViewChange={(view) => {
+                  onSearchChange(withRunView(search, view));
+                }}
+              />
+            </div>
+          </Disclosure>
           <RunResults
             search={search}
             onSearchChange={onSearchChange}

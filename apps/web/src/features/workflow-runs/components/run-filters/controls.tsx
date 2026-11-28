@@ -1,14 +1,16 @@
 import { RecentDays } from '@/components/patterns/dates/recent-days';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
+import type { WorkflowRunReadSummary } from '@pertexo/contracts';
+import { localDateValue } from '../../model/list/run-search';
+import { BusinessValueFilter } from './business-value';
+import { DismissibleFilterChip } from '@/components/patterns/lists/filter-chip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   daySearch,
   pickedDay,
   recentRunDays,
 } from '../../model/list/recent-days';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts';
-import { localDateValue } from '../../model/list/run-search';
-import { BusinessValueFilter } from './business-value';
-import { XIcon } from 'lucide-react';
+import { presetRangeSearch } from '../../model/list/run-search';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusMark } from '@/components/patterns/status/status-mark';
-import { runFilterChips } from '../../model/list/run-filter-labels';
+import {
+  presetRangeLabel,
+  runFilterChips,
+} from '../../model/list/run-filter-labels';
 import {
   clearedRunSearch,
   withoutRunFilter,
@@ -63,21 +68,46 @@ export function RunFilters({
   workflowFilter,
   workflowName,
   runs,
+  partial = true,
 }: Readonly<{
   search: RunSearch;
   onSearchChange: (search: RunSearch) => void;
   workflowFilter?: ReactNode;
   workflowName?: string;
   runs: readonly WorkflowRunReadSummary[];
+  partial?: boolean;
 }>) {
   const now = useNow({ intervalMs: CLOCK_TICK.relativeTime });
-  const markedDays = new Set(
-    runs.map((run) => localDateValue(Date.parse(run.createdAt))),
-  );
+  const counts = new Map<string, number>();
+  const markedDays = new Set<ReturnType<typeof localDateValue>>();
+  for (const run of runs) {
+    const day = localDateValue(Date.parse(run.createdAt));
+    markedDays.add(day);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  const oldest = runs.at(-1);
+  const oldestDay =
+    oldest === undefined
+      ? undefined
+      : localDateValue(Date.parse(oldest.createdAt));
+  const triggerFiltered = search.trigger !== undefined;
   const chips = runFilterChips(search, workflowName);
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <RunDatePresets
+          search={search}
+          now={now}
+          onSearchChange={onSearchChange}
+        />
+        <TimeRangeFilter
+          search={search}
+          onSearchChange={onSearchChange}
+          markedDays={markedDays}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
         {workflowFilter}
         <Select
           items={statusItems}
@@ -104,11 +134,6 @@ export function RunFilters({
             ))}
           </SelectContent>
         </Select>
-        <TimeRangeFilter
-          search={search}
-          onSearchChange={onSearchChange}
-          markedDays={markedDays}
-        />
         <Select
           items={triggerItems}
           value={search.trigger ?? null}
@@ -131,58 +156,112 @@ export function RunFilters({
             ))}
           </SelectContent>
         </Select>
-        <BusinessValueFilter search={search} onSearchChange={onSearchChange} />
       </div>
       <RecentDays
         days={recentRunDays(now)}
         selected={pickedDay(search)}
+        renderDetail={(day) => {
+          const count = counts.get(day.value);
+          if (
+            count === undefined ||
+            triggerFiltered ||
+            (partial && (oldestDay === undefined || day.value <= oldestDay))
+          )
+            return null;
+          return (
+            <span className="font-mono text-caption text-subtle-foreground">
+              {count}
+            </span>
+          );
+        }}
         onPick={(day) => {
           onSearchChange(daySearch(search, day));
         }}
       />
-      {chips.length === 0 ? null : (
-        <div
-          role="group"
-          aria-label="Applied run filters"
-          className="flex min-w-0 flex-wrap items-center gap-1.5"
-        >
-          {chips.map((chip) => (
-            <Button
-              variant="chip"
-              size="sm"
-              key={chip.key}
-              type="button"
-              title={chip.label}
-              aria-label={`Remove filter ${chip.label}`}
-              className="min-w-0"
-              onClick={() => {
-                onSearchChange(
-                  chip.key === 'time'
-                    ? withoutTimeRange(search)
-                    : withoutRunFilter(search, chip.key),
-                );
-              }}
-            >
-              <span className="min-w-0 truncate">{chip.label}</span>
-              <XIcon aria-hidden="true" className="size-3 shrink-0" />
-            </Button>
-          ))}
-          {/* One chip clears with its ×; several also clear at once, here
+      <AppliedRunFilters
+        chips={chips}
+        search={search}
+        onSearchChange={onSearchChange}
+      />
+    </div>
+  );
+}
+
+function RunDatePresets({
+  search,
+  now,
+  onSearchChange,
+}: Readonly<{
+  search: RunSearch;
+  now: number;
+  onSearchChange: (search: RunSearch) => void;
+}>) {
+  const today = localDateValue(now);
+  const activePreset = pickedDay(search) === today ? 'today' : search.range;
+  return (
+    <ToggleGroup
+      aria-label="Run date presets"
+      value={activePreset === undefined ? [] : [activePreset]}
+      onValueChange={([value]) => {
+        if (value === 'today') onSearchChange(daySearch(search, today));
+        else if (value === '7d' || value === '30d')
+          onSearchChange(presetRangeSearch(search, value, now));
+        else onSearchChange(withoutTimeRange(search));
+      }}
+    >
+      <ToggleGroupItem value="today">Today</ToggleGroupItem>
+      {(['7d', '30d'] as const).map((preset) => (
+        <ToggleGroupItem key={preset} value={preset}>
+          {presetRangeLabel(preset).replace(/^Last /u, '')}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+function AppliedRunFilters({
+  chips,
+  search,
+  onSearchChange,
+}: Readonly<{
+  chips: ReturnType<typeof runFilterChips>;
+  search: RunSearch;
+  onSearchChange: (search: RunSearch) => void;
+}>) {
+  return chips.length === 0 ? null : (
+    <div
+      role="group"
+      aria-label="Applied run filters"
+      className="flex min-w-0 flex-wrap items-center gap-1.5"
+    >
+      {chips.map((chip) => (
+        <DismissibleFilterChip
+          key={chip.key}
+          label={chip.label}
+          removeLabel={`Remove filter ${chip.label}`}
+          onRemove={() => {
+            onSearchChange(
+              chip.key === 'time'
+                ? withoutTimeRange(search)
+                : withoutRunFilter(search, chip.key),
+            );
+          }}
+        />
+      ))}
+      {/* One chip clears with its ×; several also clear at once, here
               beside them rather than as another row in the toolbar. */}
-          {chips.length > 1 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onSearchChange(clearedRunSearch(search));
-              }}
-            >
-              Clear filters
-            </Button>
-          ) : null}
-        </div>
-      )}
+      {chips.length > 1 ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            onSearchChange(clearedRunSearch(search));
+          }}
+        >
+          Clear filters
+        </Button>
+      ) : null}
     </div>
   );
 }

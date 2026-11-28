@@ -23,7 +23,7 @@ const KNOT_PULSE_MS = 900;
 
 const MONO_FONT = '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
 
-const LABEL_FONT = '500 12px "Inter Variable", system-ui, sans-serif';
+const LABEL_FONT = '600 14px "Inter Variable", system-ui, sans-serif';
 
 export class LoomRenderer extends CanvasScene {
   readonly #palette: Palette;

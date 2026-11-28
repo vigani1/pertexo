@@ -29,6 +29,7 @@ export function WorkflowTagsDialog(props: Props) {
   )
     return (
       <ActionDialog
+        surface="drawer"
         title="Tags"
         description={`Only ${ADMINISTRATORS} in an active workspace can manage tags.`}
         locked={false}
@@ -73,6 +74,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
   const items = tags.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <ActionDialog
+      surface="drawer"
       className="max-w-xl"
       title={
         cleanup === undefined ? 'Tags' : `Workflows tagged #${cleanup.key}`

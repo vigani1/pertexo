@@ -94,6 +94,7 @@ export function FolderNameDialog({
   };
   return (
     <ActionDialog
+      surface="drawer"
       title={
         target.kind === 'create' ? 'New folder' : `Rename ${target.folder.name}`
       }

@@ -132,9 +132,10 @@ describe('home details', () => {
       coldStart,
     );
     expect(
-      await within(attention).findByText(
-        /^Send receipt · service unavailable · latest/u,
-      ),
+      await within(attention).findByText(/^service unavailable · /u),
+    ).toBeVisible();
+    expect(
+      within(attention).getByText('Daily intake failed at Send receipt'),
     ).toBeVisible();
   });
 

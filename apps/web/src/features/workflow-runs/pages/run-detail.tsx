@@ -1,3 +1,5 @@
+import { Disclosure } from '@/components/ui/disclosure';
+import { formatCount } from '@/lib/format/count';
 import { useRunDetail } from '../hooks/use-run-detail';
 import { RunFailureNotice } from '../components/run-detail/failure-notice';
 import { FailedStepNotice } from '../components/run-detail/execution-history';
@@ -9,7 +11,6 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import type { ReactNode } from 'react';
 import {
   Sheet,
   SheetBody,
@@ -39,6 +40,7 @@ export type RunDetailPageProps = Readonly<{
 
 export function RunDetailPage(props: RunDetailPageProps) {
   const { apiClient, user, workspace, runId, onRunAccepted } = props;
+  const detail = useRunDetail(props);
   const {
     run,
     view,
@@ -56,40 +58,68 @@ export function RunDetailPage(props: RunDetailPageProps) {
     selectStep,
     graphState,
     stepLabel,
-    lensRef,
-    upstream,
-    sheetOpen,
-    setSheetOpen,
-  } = useRunDetail(props);
+  } = detail;
+
+  const failed = run.status === 'failed' || run.status === 'timed_out';
+  const header = (
+    <RunHeader
+      run={run}
+      failedSteps={failed ? view.rows : undefined}
+      sentence={describeRunSentence(
+        run,
+        view.rows,
+        nowMs,
+        runEnding(view.rows, version.data?.graph),
+      )}
+      nowMs={nowMs}
+      versionNumber={version.data?.versionNumber}
+      compact={compact}
+      live={{
+        liveStatus: events.connectionStatus,
+        onReconnect: events.reconnect,
+      }}
+      replay={{
+        replayOpen,
+        onReplayOpenChange: setReplayOpen,
+        onRunAccepted,
+      }}
+      scope={{ apiClient, userId: user.id, workspace }}
+    />
+  );
+
+  const details = (
+    <RunDetailTabs
+      scope={dataScope}
+      compact={compact}
+      replay={{
+        canReplay: workspace.capabilities.includes('run:replay'),
+        onReplay: () => {
+          setReplayOpen(true);
+        },
+      }}
+      eventStream={{
+        events: events.timeline,
+        truncatedCount: events.truncatedCount,
+        recoveryMessage: events.recoveryMessage,
+        stepLabel,
+        runStartMs: view.startMs,
+      }}
+      graphSource={{ graph: version.data?.graph, graphState }}
+      thread={{
+        view,
+        nowMs,
+        active,
+        selectedKey: selected?.key,
+        onSelectStep: selectStep,
+      }}
+    />
+  );
 
   return (
-    // The lens stands beside the steps whenever the page has room for both
-    // (a container query): the spine and the in-app browser take their share.
-    <div className="@container">
+    <div className="@container flex flex-col gap-7">
+      {header}
       <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1fr)_19rem] @3xl:gap-7 @5xl:grid-cols-[minmax(0,1fr)_22rem] @5xl:gap-8">
         <div className="flex min-w-0 flex-col gap-7">
-          <RunHeader
-            run={run}
-            sentence={describeRunSentence(
-              run,
-              view.rows,
-              nowMs,
-              runEnding(view.rows, version.data?.graph),
-            )}
-            nowMs={nowMs}
-            versionNumber={version.data?.versionNumber}
-            compact={compact}
-            live={{
-              liveStatus: events.connectionStatus,
-              onReconnect: events.reconnect,
-            }}
-            replay={{
-              replayOpen,
-              onReplayOpenChange: setReplayOpen,
-              onRunAccepted,
-            }}
-            scope={{ apiClient, userId: user.id, workspace }}
-          />
           {run.hasHumanTasks ? (
             <PendingTasks
               scope={{
@@ -131,69 +161,52 @@ export function RunDetailPage(props: RunDetailPageProps) {
               }
             />
           ) : null}
-          <RunDetailTabs
-            scope={dataScope}
-            compact={compact}
-            replay={{
-              canReplay: workspace.capabilities.includes('run:replay'),
-              onReplay: () => {
-                setReplayOpen(true);
-              },
-            }}
-            eventStream={{
-              events: events.timeline,
-              truncatedCount: events.truncatedCount,
-              recoveryMessage: events.recoveryMessage,
-              stepLabel,
-              runStartMs: view.startMs,
-            }}
-            graphSource={{ graph: version.data?.graph, graphState }}
-            thread={{
-              view,
-              nowMs,
-              active,
-              selectedKey: selected?.key,
-              onSelectStep: selectStep,
-            }}
-          />
+          {failed && compact ? (
+            <Disclosure
+              summary={`See all ${formatCount(view.rows.length, 'step')} and the error`}
+              appearance={{ tone: 'strong', look: 'framed' }}
+            >
+              {details}
+            </Disclosure>
+          ) : (
+            details
+          )}
           {/* Room for the phone's action bar above the bottom navigation. */}
           {compact ? <div aria-hidden="true" className="h-14" /> : null}
         </div>
-        <RunInspection
-          selected={selected}
-          lensRef={lensRef}
-          lens={
-            <RunStepDetails
-              onSelectStep={selectStep}
-              row={selected}
-              calls={snapshot.calls}
-              rows={view.rows}
-              upstream={upstream}
-              nowMs={nowMs}
-              scope={dataScope}
-            />
-          }
-          sheetOpen={sheetOpen}
-          setSheetOpen={setSheetOpen}
-          compact={compact}
-        />
+        <RunInspection runDetail={detail} />
       </div>
     </div>
   );
 }
 
 function RunInspection({
-  selected,
-  lensRef,
-  lens,
-  sheetOpen,
-  setSheetOpen,
-  compact,
-}: Pick<
-  ReturnType<typeof useRunDetail>,
-  'selected' | 'lensRef' | 'sheetOpen' | 'setSheetOpen' | 'compact'
-> &
-  Readonly<{ lens: ReactNode }>) {
+  runDetail,
+}: Readonly<{ runDetail: ReturnType<typeof useRunDetail> }>) {
+  const {
+    selected,
+    lensRef,
+    sheetOpen,
+    setSheetOpen,
+    compact,
+    selectStep,
+    snapshot,
+    view,
+    upstream,
+    nowMs,
+    dataScope,
+  } = runDetail;
+  const lens = (
+    <RunStepDetails
+      onSelectStep={selectStep}
+      row={selected}
+      calls={snapshot.calls}
+      rows={view.rows}
+      upstream={upstream}
+      nowMs={nowMs}
+      scope={dataScope}
+    />
+  );
   return (
     <>
       <aside

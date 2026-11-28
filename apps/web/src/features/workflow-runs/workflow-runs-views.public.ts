@@ -5,3 +5,6 @@ export { LiveRunCounts, RunCount } from './components/run-count';
 export { StepHealthList } from './components/step-history/health-list';
 export { StepHistoryPanel } from './components/step-history/panel';
 export { ModelUsageDetails } from './components/model-usage';
+
+export { ApprovalRunThread } from './components/run-context/approval-thread';
+export { ActiveRunStep } from './components/run-context/active-step';

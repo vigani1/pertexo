@@ -76,6 +76,13 @@ export function TaskList({
           filters.status === 'pending' ? items.sort(bySoonestDeadline) : items;
         return (
           <div>
+            {!compact && filters.status === 'pending' && items.length > 0 ? (
+              <p className="mb-3 text-sm text-muted-foreground">
+                {query.hasNextPage
+                  ? 'Loaded requests, soonest deadline first'
+                  : 'Pending, soonest deadline first'}
+              </p>
+            ) : null}
             {items.length === 0 ? (
               <NoTasks
                 compact={compact}

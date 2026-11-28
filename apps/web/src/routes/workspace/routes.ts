@@ -230,10 +230,22 @@ export const inboxRoute = createRoute({
   ...workspacePage('Inbox'),
   validateSearch: (search) => parseInboxSearch(search),
   loaderDeps: ({ search }) => ({
-    filter: search.filter ?? ('all' as const),
+    filter: search.filter,
     noticeKind: search.noticeKind,
   }),
-  loader: async ({ context, deps }) => {
+  loader: async ({ context, deps, params }) => {
+    if (
+      deps.filter === undefined &&
+      deps.noticeKind === undefined &&
+      context.workspace.capabilities.includes('run:read')
+    ) {
+      redirect({
+        to: '/w/$workspaceId/requests',
+        params,
+        search: { kind: 'approval', view: 'mine', status: 'pending' },
+        throw: true,
+      });
+    }
     return warmWorkspacePage(context, 'workspace:read', async () => {
       const { inboxSummaryQueryOptions, inboxThreadsInfiniteQueryOptions } =
         await import('@/features/inbox/inbox-queries.public');
@@ -246,7 +258,7 @@ export const inboxRoute = createRoute({
             apiClient,
             userId: user.id,
             workspaceId: workspace.id,
-            filter: deps.filter,
+            filter: deps.filter ?? 'all',
             noticeKind: deps.noticeKind,
           }),
         ),
@@ -307,17 +319,30 @@ export const approvalsRoute = createRoute({
   ...workspacePage('Approvals'),
   validateSearch: (search) => parseTaskSearch(search, 'approval'),
 
-  component: lazyRoute(() => import('./approvals/list'), 'ApprovalsRoute'),
+  beforeLoad: ({ params, search }) => {
+    redirect({
+      to: '/w/$workspaceId/requests',
+      params,
+      search,
+      replace: true,
+      throw: true,
+    });
+  },
 });
 
 export const approvalDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals/$taskId',
   staticData: { crumb: 'Approval' },
-  component: lazyRoute(
-    () => import('./approvals/detail'),
-    'ApprovalDetailRoute',
-  ),
+  beforeLoad: ({ params }) => {
+    redirect({
+      throw: true,
+      to: '/w/$workspaceId/requests/$taskId',
+      params,
+      search: { kind: 'approval', view: 'mine', status: 'pending' },
+      replace: true,
+    });
+  },
 });
 
 export const memberFormRoute = createRoute({
