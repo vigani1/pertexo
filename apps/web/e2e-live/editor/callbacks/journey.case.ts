@@ -74,7 +74,10 @@ test('callback Wait is authored in the editor and resumes a whole-draft test thr
       response.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Test workflow', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test workflow', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
     name: 'Test workflow',

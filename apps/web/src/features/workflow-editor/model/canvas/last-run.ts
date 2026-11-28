@@ -4,7 +4,8 @@ import type {
 } from '@pertexo/contracts';
 import { formatDurationMs } from '@/lib/format/time';
 import { formatCount } from '@/lib/format/count';
-import type { GraphLevel } from '../graph/scopes';
+import { findStep, type GraphLevel } from '../graph/scopes';
+import { stepTitle } from '../graph/step-title';
 
 type NodeRun = WorkflowNodeRunSummary;
 
@@ -27,6 +28,8 @@ export type StepRunResult =
 export type LastRunOverlay = Readonly<{
   run: WorkflowRunSummary;
   results: ReadonlyMap<string, StepRunResult>;
+  nodeRuns: ReadonlyMap<string, NodeRun>;
+  currentSteps: readonly Readonly<{ title: string; ordinal: number | null }>[];
   /** Steps working right now, which breathe. */
   runningNodeIds: ReadonlySet<string>;
   /** Links from a finished step into one that is working: they flow. */
@@ -64,6 +67,17 @@ export function lastRunOverlay(
       .filter((nodeRun) => WORKING.has(nodeRun.status))
       .map((nodeRun) => nodeRun.nodeId),
   );
+  const started = [...nodeRuns]
+    .filter(({ startedAt }) => startedAt !== null)
+    .sort((left, right) => startOf(left) - startOf(right));
+  const ordinals = new Map(started.map(({ id }, index) => [id, index + 1]));
+  const currentSteps = [...runningNodeIds].flatMap((id) => {
+    const step = findStep(level, id);
+    const run = latest.get(id);
+    return step === undefined || run === undefined
+      ? []
+      : [{ title: stepTitle(step), ordinal: ordinals.get(run.id) ?? null }];
+  });
   const liveEdgeIds = new Set(
     level.edges
       .filter(
@@ -73,7 +87,14 @@ export function lastRunOverlay(
       )
       .map((edge) => edge.id),
   );
-  return { run, results, runningNodeIds, liveEdgeIds };
+  return {
+    run,
+    results,
+    nodeRuns: latest,
+    currentSteps,
+    runningNodeIds,
+    liveEdgeIds,
+  };
 }
 
 function stepResult(nodeRun: NodeRun): StepRunResult {

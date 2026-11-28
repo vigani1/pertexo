@@ -17,14 +17,6 @@ export type RemovedElements = Readonly<{
   scopes: Readonly<Record<string, ScopePath>>;
 }>;
 
-export function removeWorkflowNode(
-  graph: WorkflowGraphContract,
-  nodeId: string,
-): WorkflowGraphContract {
-  return removeWorkflowElements(graph, { nodeIds: [nodeId], edgeIds: [] })
-    .graph;
-}
-
 interface RemovalCollector {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];

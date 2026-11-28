@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { cn } from '@/lib/class-names';
 
 export type FileFormat = 'json' | 'csv' | 'xlsx' | 'text';
 
@@ -46,20 +45,15 @@ export function FormatTiles({
           const next = formats.find((format) => values.includes(format));
           if (next !== undefined && next !== value) onChange(next);
         }}
-        className="grid w-full auto-cols-fr grid-flow-col gap-1.5 border-0 bg-transparent p-0"
+        className="grid w-full auto-cols-fr grid-flow-col gap-1.5"
+        appearance="frameless"
       >
         {formats.map((format) => (
           <ToggleGroupItem
             key={format}
             value={format}
             aria-label={TILES[format].label}
-            className={cn(
-              'group/tile relative flex h-[4.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-surface-ink/8 bg-select px-1 text-muted-foreground',
-              'transition-[transform,box-shadow,border-color,background-color,color] duration-200 ease-unspool motion-reduce:transition-none',
-              'hover:border-surface-ink/16 hover:text-foreground',
-              'data-pressed:-translate-y-px data-pressed:border-transparent data-pressed:bg-action-soft data-pressed:text-foreground data-pressed:shadow-lens data-pressed:outline-2 data-pressed:outline-offset-0 data-pressed:outline-ring/70 motion-reduce:data-pressed:translate-y-0',
-              'max-sm:min-h-[4.25rem]',
-            )}
+            appearance="tile"
           >
             <FormatGlyph format={format} />
             <span className="flex items-baseline gap-1 text-label leading-none font-medium">

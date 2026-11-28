@@ -4,11 +4,11 @@ import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/ada
 import {
   addDefinitionNode,
   linkWorkflowNodes,
-  moveWorkflowNode,
+  moveWorkflowNodes,
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
-import { removeWorkflowNode } from '@/features/workflow-editor/model/graph/removal';
+import { removeWorkflowElements } from '@/features/workflow-editor/model/graph/removal';
 
 import {
   parseNumberField,
@@ -205,12 +205,19 @@ describe('workflow editor graph transitions', () => {
       { x: 12, y: 24 },
       'node-a',
     );
-    expect(moveWorkflowNode(graph, 'node-a', { x: 12, y: 24 })).toBe(graph);
-    expect(moveWorkflowNode(graph, 'missing', { x: 1, y: 2 })).toBe(graph);
+    expect(
+      moveWorkflowNodes(graph, new Map([['node-a', { x: 12, y: 24 }]])),
+    ).toBe(graph);
+    expect(
+      moveWorkflowNodes(graph, new Map([['missing', { x: 1, y: 2 }]])),
+    ).toBe(graph);
     expect(updateWorkflowNode(graph, 'missing', { label: 'ignored' })).toBe(
       graph,
     );
-    expect(removeWorkflowNode(graph, 'missing')).toBe(graph);
+    expect(
+      removeWorkflowElements(graph, { nodeIds: ['missing'], edgeIds: [] })
+        .graph,
+    ).toBe(graph);
   });
   it('adds, connects and removes nodes as one domain graph', () => {
     const first = addDefinitionNode(
@@ -227,7 +234,12 @@ describe('workflow editor graph transitions', () => {
       'edge-a-b',
     );
     expect(connected?.edges).toHaveLength(1);
-    expect(removeWorkflowNode(connected ?? second, 'a')).toEqual({
+    expect(
+      removeWorkflowElements(connected ?? second, {
+        nodeIds: ['a'],
+        edgeIds: [],
+      }).graph,
+    ).toEqual({
       ...second,
       nodes: [second.nodes[1]],
       edges: [],

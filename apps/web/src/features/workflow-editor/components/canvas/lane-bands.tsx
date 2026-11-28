@@ -1,6 +1,10 @@
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { useNodes, ViewportPortal } from '@xyflow/react';
 import { useMemo } from 'react';
-import { isClassifyDefinition } from '@pertexo/workflow-model';
+import {
+  isClassifyDefinition,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import { portName } from '@/features/catalog/public';
 import { useEditorStore } from '../../model/state/context';
 import { workflowLanes } from '../../model/graph/lanes';
@@ -20,8 +24,11 @@ type Box = Readonly<{ x: number; y: number; width: number; height: number }>;
  * and port it leaves from, and the name of the lane the workflow starts in.
  * A drawing that isn't in rows gets no bands rather than crooked ones.
  */
-export function LaneBands() {
-  const graph = useEditorStore((state) => state.graph);
+export function LaneBands({
+  proposal,
+}: Readonly<{ proposal?: WorkflowGraphContract | undefined }>) {
+  const draft = useEditorStore((state) => state.graph);
+  const graph = proposal ?? draft;
   const flowNodes = useNodes();
   const bands = useMemo(() => {
     const boxes = new Map<string, Box>();
@@ -92,10 +99,7 @@ function laneBands(
     bands.push({
       key: lane.nodeIds[0] ?? String(lane.rank),
       branch: lane.opener !== null,
-      label:
-        lane.opener === null || opener === undefined
-          ? 'main'
-          : `${opener.label ?? opener.definition.key} · ${branchName(opener, lane.opener.port)}`,
+      label: laneName(opener, lane.opener?.port),
       x: left,
       labelX: start - left,
       y: top - BAND_PADDING.top,
@@ -104,6 +108,15 @@ function laneBands(
     });
   }
   return bands;
+}
+
+function laneName(
+  node: WorkflowNode | undefined,
+  port: string | undefined,
+): string {
+  if (node === undefined || port === undefined) return 'main';
+  if (port === WORKFLOW_FAILURE_PORT) return 'on failure';
+  return `${node.label ?? node.definition.key} · ${branchName(node, port)}`;
 }
 
 function branchName(node: WorkflowNode, port: string): string {

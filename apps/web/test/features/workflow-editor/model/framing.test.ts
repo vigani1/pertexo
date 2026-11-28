@@ -30,6 +30,15 @@ describe('editor canvas framing', () => {
     ).toEqual({ x: 0, y: 0, width: 1440, height: 900 });
   });
 
+  it('keeps the area above a tall phone tray available for the graph', () => {
+    expect(
+      uncoveredArea({ left: 0, top: 0, right: 390, bottom: 750 }, [
+        { left: 8, top: 8, right: 382, bottom: 172 },
+        { left: 8, top: 303, right: 382, bottom: 682 },
+      ]),
+    ).toEqual({ x: 0, y: 172, width: 390, height: 131 });
+  });
+
   it('fits a workflow into the area, but never below a readable zoom', () => {
     const area = { x: 264, y: 74, width: 1176, height: 826 };
     const small = framedViewport(

@@ -40,9 +40,11 @@ export function ForEachNodeCard({
   return (
     <article
       data-selected={selected}
+      data-proposed={data.proposed === true || undefined}
       className={cardClassName(
         {
           selected,
+          proposed: data.proposed,
           disabled: data.disabled,
         },
         'w-auto p-0',
@@ -124,7 +126,7 @@ export function ForEachNodeCard({
               <Mark>{data.loop.maxConcurrency} at a time</Mark>
             </>
           )}
-          {editable ? (
+          {editable && data.proposed !== true ? (
             <button
               type="button"
               aria-label={`Add a step to ${title}’s body`}

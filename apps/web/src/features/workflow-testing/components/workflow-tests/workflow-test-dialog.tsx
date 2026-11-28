@@ -111,7 +111,8 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
                       disabled={model.locked}
                       autoComplete="off"
                       spellCheck={false}
-                      className="min-h-28 font-mono"
+                      className="min-h-28"
+                      typography="mono"
                     />
                   )}
                 </LabelledField>

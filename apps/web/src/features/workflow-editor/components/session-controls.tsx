@@ -3,6 +3,7 @@ import { useEditorSession } from '../model/state/context';
 import type { ReactNode } from 'react';
 import { SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatusMark } from '@/components/patterns/status/status-mark';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import {
@@ -61,6 +62,13 @@ export function SessionCommandBar({
     triggersAvailable,
   } = publication;
   const canPropose = !paused && editing.canUpdate;
+  const emptyHint = emptyDraftHint({ graph, triggersAvailable });
+  const hasCleanCheck =
+    !issues.checking &&
+    !issues.stale &&
+    issues.error === undefined &&
+    issues.groups?.length === 0 &&
+    emptyHint === undefined;
 
   return (
     <>
@@ -71,7 +79,7 @@ export function SessionCommandBar({
           paused ? null : (
             <IssuesMenuItem
               state={issues}
-              emptyHint={emptyDraftHint({ graph, triggersAvailable })}
+              emptyHint={emptyHint}
               open={chrome.issuesOpen}
               onOpenChange={chrome.onIssuesOpenChange}
             />
@@ -88,6 +96,11 @@ export function SessionCommandBar({
         commands={
           paused ? null : (
             <>
+              {hasCleanCheck ? (
+                <StatusMark tone="success" className="max-xl:hidden">
+                  No issues
+                </StatusMark>
+              ) : null}
               {canPropose ? (
                 <Button
                   {...{ [ASSISTANT_TRIGGER_ATTRIBUTE]: '' }}

@@ -8,6 +8,7 @@ import {
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
+import { insertStepIntoLink } from '@/features/workflow-editor/model/graph/insert-step-into-link';
 import { displayPositions } from '@/features/workflow-editor/model/graph/for-each-body-layout';
 
 import {
@@ -85,6 +86,23 @@ describe('the nested graph layer', () => {
 });
 
 describe('body graph commands', () => {
+  it('inserts a step between body steps without moving the links outside the body', () => {
+    const graph = orderLoopGraph();
+    const next = insertStepIntoLink({
+      graph,
+      edgeId: 'check-reserve',
+      definition: bodyStepDefinition,
+      nodeId: 'inserted',
+      nextEdgeId: 'check-inserted',
+    });
+    if (next === null) throw new Error('Expected the link to accept the step');
+    expect(next.edges).toEqual(graph.edges);
+    expect(bodyOf(next).edges).toEqual([
+      link('check-reserve', 'inserted', 'reserve'),
+      link('check-inserted', 'check', 'inserted'),
+    ]);
+    expect(scopeOf(next, 'inserted')).toEqual(['loop']);
+  });
   it('adds a first body step, creating a body the For each lacked', () => {
     const bare: WorkflowGraphContract = {
       ...emptyGraph,

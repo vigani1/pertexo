@@ -51,9 +51,8 @@ export function HttpPaginationSetup({
   return (
     <Disclosure
       summary={`Pagination · ${label}`}
-      className="border-t border-border pt-3"
       contentClassName="mt-0 flex flex-col gap-4 pt-3"
-      appearance={{ tone: 'strong' }}
+      appearance={{ tone: 'strong', look: 'ruled' }}
     >
       <Field>
         <FieldLabel htmlFor={id}>Pagination mode</FieldLabel>

@@ -62,7 +62,10 @@ test('keeps file pages authorized in previews and draft test history without all
   await pin.getByRole('button', { name: 'Close', exact: true }).click();
   await page.keyboard.press('Escape');
   await page
-    .getByRole('button', { name: 'Test workflow', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test workflow', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
     name: 'Test workflow',

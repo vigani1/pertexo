@@ -1,11 +1,13 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  EdgeToolbar,
   getSmoothStepPath,
   type EdgeProps,
 } from '@xyflow/react';
-import { XIcon } from 'lucide-react';
+import { PlusIcon, XIcon } from 'lucide-react';
 import { use, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Button } from '@/components/ui/button';
 import { TimedOutGlyph } from '@/components/patterns/dates/timed-out-glyph';
 import { cn } from '@/lib/class-names';
 import type { WorkflowFlowEdge } from '../../model/graph/adapter';
@@ -37,7 +39,7 @@ export function WorkflowEdge({
   targetX,
   targetY,
 }: EdgeProps<WorkflowFlowEdge>) {
-  const { editable, removeEdge } = use(CanvasActionsContext);
+  const { editable } = use(CanvasActionsContext);
   const [hovered, setHovered] = useState(false);
   const hideTimer = useRef<number | undefined>(undefined);
   const [path, labelX, labelY] = getSmoothStepPath({
@@ -67,9 +69,9 @@ export function WorkflowEdge({
     }, HIDE_DELAY_MS);
   }
 
-  const { intoIssue, failure, timedOut, flowing, isSelected, weaveOrder } =
-    edgePresentation({ data, selected });
-  const showRemove = editable && (hovered || isSelected);
+  const look = edgePresentation({ data, selected });
+  const { failure, timedOut, flowing, isSelected, weaveOrder, proposed } = look;
+  const showActions = editable && !proposed && (hovered || isSelected);
   return (
     <>
       <BaseEdge
@@ -77,26 +79,18 @@ export function WorkflowEdge({
         path={path}
         {...(markerEnd === undefined ? {} : { markerEnd })}
         interactionWidth={18}
-        className={cn(
-          '!stroke-[1.6] transition-[stroke] duration-150 motion-reduce:transition-none',
-          intoIssue
-            ? '!stroke-destructive [stroke-dasharray:4_5]'
-            : '!stroke-graph-link',
-          failure && '!stroke-destructive [stroke-dasharray:1_4_7_4]',
-          timedOut && '!stroke-warning/75 [stroke-dasharray:6_4]',
-          hovered && '!stroke-accent-foreground/75',
-          isSelected && '!stroke-primary !stroke-2',
-          FOCUSED_THREAD,
-        )}
+        className={edgeClassName(look, hovered)}
       />
-      <path
-        d={path}
-        fill="none"
-        stroke="transparent"
-        strokeWidth={18}
-        onMouseEnter={show}
-        onMouseLeave={hideSoon}
-      />
+      {proposed ? null : (
+        <path
+          d={path}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={18}
+          onMouseEnter={show}
+          onMouseLeave={hideSoon}
+        />
+      )}
       {flowing ? (
         <path
           d={path}
@@ -120,45 +114,22 @@ export function WorkflowEdge({
         />
       )}
       {failure || timedOut ? (
-        <EdgeLabelRenderer>
-          <span
-            className={cn(
-              'pointer-events-none absolute flex items-center gap-1 rounded bg-card/90 px-1.5 text-caption whitespace-nowrap',
-              failure ? 'text-destructive' : 'text-warning',
-            )}
-            style={{
-              transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY - 14)}px)`,
-            }}
-          >
-            {failure ? (
-              '× Failure'
-            ) : (
-              <>
-                <TimedOutGlyph className="size-3" />
-                Timed out
-              </>
-            )}
-          </span>
-        </EdgeLabelRenderer>
+        <EdgeStatusLabel
+          x={labelX}
+          y={labelY}
+          failure={failure}
+          proposed={proposed}
+        />
       ) : null}
-      {showRemove ? (
-        <EdgeLabelRenderer>
-          <button
-            type="button"
-            aria-label={`Remove link from ${data?.sourceLabel ?? 'a step'} to ${data?.targetLabel ?? 'a step'}`}
-            className="nodrag nopan lens pointer-events-auto absolute grid size-6 place-items-center rounded-full text-muted-foreground outline-none hover:text-destructive focus-ring [&_svg]:size-3.5"
-            style={{
-              transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)`,
-            }}
-            onMouseEnter={show}
-            onMouseLeave={hideSoon}
-            onClick={() => {
-              removeEdge(id);
-            }}
-          >
-            <XIcon aria-hidden="true" />
-          </button>
-        </EdgeLabelRenderer>
+      {showActions ? (
+        <EdgeActions
+          id={id}
+          x={labelX}
+          y={labelY}
+          data={data}
+          onShow={show}
+          onHide={hideSoon}
+        />
       ) : null}
     </>
   );
@@ -173,10 +144,119 @@ function edgePresentation({
 }>) {
   return {
     intoIssue: data?.intoIssue ?? false,
+    proposed: data?.proposed ?? false,
     failure: data?.failure ?? false,
     timedOut: data?.timedOut ?? false,
     flowing: data?.flowing ?? false,
     isSelected: selected ?? false,
     weaveOrder: data?.weaveOrder ?? null,
   };
+}
+
+function edgeClassName(
+  {
+    intoIssue,
+    failure,
+    timedOut,
+    isSelected,
+    proposed,
+  }: ReturnType<typeof edgePresentation>,
+  hovered: boolean,
+) {
+  return cn(
+    '!stroke-[1.6] transition-[stroke] duration-(--duration-quick) motion-reduce:transition-none',
+    intoIssue
+      ? '!stroke-destructive [stroke-dasharray:4_5]'
+      : '!stroke-graph-link',
+    failure && '!stroke-destructive [stroke-dasharray:1_4_7_4]',
+    timedOut && '!stroke-warning/75 [stroke-dasharray:6_4]',
+    hovered && '!stroke-accent-foreground/75',
+    isSelected && '!stroke-primary !stroke-2',
+    proposed && '!stroke-live [stroke-dasharray:5_5]',
+    FOCUSED_THREAD,
+  );
+}
+
+function EdgeStatusLabel({
+  x,
+  y,
+  failure,
+  proposed,
+}: Readonly<{ x: number; y: number; failure: boolean; proposed: boolean }>) {
+  const failureLabel = proposed ? 'On failure' : '× Failure';
+  return (
+    <EdgeLabelRenderer>
+      <span
+        className={cn(
+          'pointer-events-none absolute flex items-center gap-1 rounded bg-card/90 px-1.5 text-caption whitespace-nowrap',
+          failure ? 'text-destructive' : 'text-warning',
+        )}
+        style={{
+          transform: `translate(-50%, -50%) translate(${String(x)}px, ${String(y - 14)}px)`,
+        }}
+      >
+        {failure ? (
+          failureLabel
+        ) : (
+          <>
+            <TimedOutGlyph className="size-3" />
+            Timed out
+          </>
+        )}
+      </span>
+    </EdgeLabelRenderer>
+  );
+}
+
+function EdgeActions({
+  id,
+  x,
+  y,
+  data,
+  onShow,
+  onHide,
+}: Readonly<{
+  id: string;
+  x: number;
+  y: number;
+  data: WorkflowFlowEdge['data'];
+  onShow: () => void;
+  onHide: () => void;
+}>) {
+  const { insertIntoLink, removeEdge } = use(CanvasActionsContext);
+  const link = `link from ${data?.sourceLabel ?? 'a step'} to ${data?.targetLabel ?? 'a step'}`;
+  return (
+    <EdgeToolbar
+      edgeId={id}
+      x={x}
+      y={y}
+      isVisible
+      className="nodrag nopan lens flex items-center rounded-lg"
+      onMouseEnter={onShow}
+      onMouseLeave={onHide}
+    >
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        aria-label={`Insert step into ${link}`}
+        onClick={(event) => {
+          insertIntoLink(id, event.currentTarget);
+        }}
+      >
+        <PlusIcon aria-hidden="true" />
+      </Button>
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        aria-label={`Remove ${link}`}
+        onClick={() => {
+          removeEdge(id);
+        }}
+      >
+        <XIcon aria-hidden="true" />
+      </Button>
+    </EdgeToolbar>
+  );
 }

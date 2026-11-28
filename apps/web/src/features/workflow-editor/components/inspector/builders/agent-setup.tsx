@@ -40,6 +40,7 @@ import {
   toolFormAt,
 } from '../../../model/agent-tool';
 import { AgentCallableSetup } from './agent-callable-setup';
+import { AgentLastRun } from './agent-last-run';
 import { AgentApprovalSetup } from './agent-approval-setup';
 
 const costLimit = new Intl.NumberFormat(FORMAT_LOCALE, {
@@ -66,9 +67,7 @@ export function AgentSetup({
     <>
       <SchemaFieldList
         fields={schemaFields(schema).filter(
-          ({ key, parent }) =>
-            (key === 'model' || key === 'timeoutMillis') &&
-            parent === undefined,
+          ({ key, parent }) => key === 'model' && parent === undefined,
         )}
         config={config}
         form={form}
@@ -88,6 +87,15 @@ export function AgentSetup({
         The mapped task and input, tool schemas and bounded tool results enter
         the model request.
       </p>
+      <RuleHeading appearance="compact">Limits</RuleHeading>
+      <SchemaFieldList
+        fields={schemaFields(schema).filter(
+          ({ key, parent }) => key === 'timeoutMillis' && parent === undefined,
+        )}
+        config={config}
+        form={form}
+        jsonOnlySettings={false}
+      />
       <Disclosure summary="Agent limits">
         <p className="text-sm text-muted-foreground">
           Up to {formatCount(AGENT_LIMITS.turns, 'model turn')},{' '}
@@ -105,6 +113,7 @@ export function AgentSetup({
           {costLimit} in estimated model cost.
         </p>
       </Disclosure>
+      <AgentLastRun nodeId={form.nodeId} />
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { localTimeZone } from '@/lib/format/time';
 import { cronHasUnsupportedOperators, isRecord } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 import { pluralWord } from '@/lib/format/count';
@@ -285,7 +286,7 @@ export function timezoneChoices(current: string): readonly string[] {
 
 /** This browser's timezone when it's one people can pick, otherwise ''. */
 export function browserTimezone(): string {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zone = localTimeZone({ current: true });
   return timezoneChoices('').includes(zone) ? zone : '';
 }
 

@@ -2,7 +2,8 @@ import { useInspectorSession } from '../../hooks/inspector/use-session';
 import { findDefinition } from '../../model/graph/adapter';
 
 import type { Connection } from '@xyflow/react';
-import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
+import { StatusMark } from '@/components/patterns/status/status-mark';
+import { CheckIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
@@ -225,13 +226,9 @@ function InspectorFooter({
     >
       {scratch ? (
         <>
-          <TriangleAlertIcon
-            aria-hidden="true"
-            className="size-3.5 text-warning"
-          />
-          <span className="flex-1">
+          <StatusMark tone="attention" className="flex-1">
             An edit isn’t valid yet, so it isn’t saved.
-          </span>
+          </StatusMark>
           <Button type="button" size="xs" variant="ghost" onClick={onDiscard}>
             Discard it
           </Button>

@@ -76,7 +76,10 @@ async function startTest(
     response.url().endsWith(`${path}/draft/tests/prepare`),
   );
   await page
-    .getByRole('button', { name: 'Test workflow', exact: true })
+    .getByRole('button', { name: 'Test and run actions', exact: true })
+    .click();
+  await page
+    .getByRole('menuitem', { name: 'Test workflow', exact: true })
     .click();
   const prepared = await preparedResponse;
   expect(prepared.status(), JSON.stringify(await prepared.json())).toBe(200);
@@ -251,15 +254,15 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
     path: temporaryTestPath('pertexo-draft-tests-desktop.png'),
   });
   await page.setViewportSize({ width: 375, height: 768 });
-  await expect(
-    page.getByRole('button', { name: 'Test workflow', exact: true }),
-  ).toBeInViewport();
   const testAndRun = page.getByRole('button', {
     name: 'Test and run actions',
     exact: true,
   });
   await expect(testAndRun).toBeInViewport();
   await testAndRun.click();
+  await expect(
+    page.getByRole('menuitem', { name: 'Test workflow', exact: true }),
+  ).toBeInViewport();
   await expect(
     page.getByRole('menuitem', { name: 'Run (publish first)', exact: true }),
   ).toBeDisabled();

@@ -62,8 +62,7 @@ export function EventCoordinationSetup({
     <Disclosure
       summary={`Event coordination · ${policy === undefined ? 'Off' : 'On'}`}
       defaultOpen={node.config.coordination !== undefined}
-      appearance={{ tone: 'strong' }}
-      className="border-t border-border pt-3"
+      appearance={{ tone: 'strong', look: 'ruled' }}
     >
       <fieldset className="flex min-w-0 flex-col gap-3">
         <legend className="sr-only">Event coordination</legend>

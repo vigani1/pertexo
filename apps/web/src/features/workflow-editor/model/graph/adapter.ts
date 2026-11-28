@@ -48,6 +48,7 @@ type BodyArea = Readonly<{
 }>;
 
 interface WorkflowNodeData extends Record<string, unknown> {
+  proposed?: boolean;
   label: string | undefined;
   definitionKey: string;
   definitionVersion: number;
@@ -89,6 +90,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
 }
 
 interface WorkflowEdgeData extends Record<string, unknown> {
+  proposed?: boolean;
   failure?: boolean;
   timedOut?: boolean;
   sourceLabel: string;

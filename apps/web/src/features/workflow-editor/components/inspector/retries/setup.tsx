@@ -60,9 +60,9 @@ function ActionRetries({ node, form }: Props) {
   return (
     <Disclosure
       summary={`Retries · ${label}`}
-      className="mt-4 border-t border-border pt-3"
+      className="mt-4"
       contentClassName="flex flex-col gap-4"
-      appearance={{ tone: 'strong' }}
+      appearance={{ tone: 'strong', look: 'ruled' }}
     >
       <Field>
         <FieldLabel htmlFor={id}>Retry policy</FieldLabel>
