@@ -205,8 +205,13 @@ export function formatDateTimeInZone(
 }
 
 /** The person's IANA time zone, e.g. `Europe/Berlin`. */
-export function localTimeZone(): string {
-  return dateTimeFormatter.resolvedOptions().timeZone;
+export function localTimeZone({
+  current = false,
+}: Readonly<{ current?: boolean }> = {}): string {
+  const formatter = current
+    ? new Intl.DateTimeFormat(FORMAT_LOCALE)
+    : dateTimeFormatter;
+  return formatter.resolvedOptions().timeZone;
 }
 
 /** "UTC+2" or "UTC−3:30", from the browser's current offset. */
