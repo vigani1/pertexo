@@ -78,13 +78,13 @@ export function formatMoment(value: string | null | undefined): string {
  */
 export function formatShortTime(
   value: string | number | null | undefined,
-  clock: 'regional' | '24-hour' = 'regional',
+  clock: 'regional' | 'h23' = 'regional',
 ): string {
   const date = toDate(value);
   if (date === undefined) return MISSING;
-  return (
-    clock === '24-hour' ? short24HourFormatter : shortTimeFormatter
-  ).format(date);
+  return (clock === 'h23' ? short24HourFormatter : shortTimeFormatter).format(
+    date,
+  );
 }
 
 /** "Today", "Yesterday" or "24 Sep" for grouping lists by day. */
