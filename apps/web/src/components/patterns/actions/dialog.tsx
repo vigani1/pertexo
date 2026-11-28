@@ -1,3 +1,10 @@
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import type { ReactNode } from 'react';
 import { XIcon } from 'lucide-react';
 import {
@@ -18,6 +25,7 @@ import { cn } from '@/lib/class-names';
  */
 export function ActionDialog({
   title,
+  surface = 'dialog',
   description,
   locked,
   onClose,
@@ -26,6 +34,7 @@ export function ActionDialog({
   children,
 }: Readonly<{
   title: string;
+  surface?: 'dialog' | 'drawer';
   description: ReactNode;
   locked: boolean;
   onClose: () => void;
@@ -33,6 +42,24 @@ export function ActionDialog({
   className?: string;
   children: ReactNode;
 }>) {
+  if (surface === 'drawer')
+    return (
+      <Sheet
+        open
+        onOpenChange={(open) => {
+          if (!open && !locked) onClose();
+        }}
+      >
+        <SheetContent variant="form" className={cn('gap-5', className)}>
+          <div className="min-w-0">
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </div>
+          {children}
+          <SheetFooter>{footer}</SheetFooter>
+        </SheetContent>
+      </Sheet>
+    );
   return (
     <Dialog
       open
