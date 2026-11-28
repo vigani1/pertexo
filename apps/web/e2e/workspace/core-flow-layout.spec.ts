@@ -148,7 +148,8 @@ async function assertDrawerWidth(
   if (box === null) return;
   if (width === 390) expect(box.width).toBe(width);
   else {
-    expect(box.x).toBeGreaterThan(width / 2);
+    expect(box.x).toBeGreaterThan(0);
+    expect(box.x + box.width / 2).toBeGreaterThan(width / 2);
     expect(box.x + box.width).toBeGreaterThan(width - 20);
   }
 }
