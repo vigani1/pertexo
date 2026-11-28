@@ -63,10 +63,10 @@ describe('manual workflow trigger pause', () => {
       pauseState: 'paused',
       pauseReason: 'consecutive_failures',
       pausedFailures: 3,
-      pausedLastRunId: expect.any(String),
-      pausedAt: expect.any(String),
       pauseRevision: '2',
     });
+    expect(settings.pausedLastRunId).toBeTypeOf('string');
+    expect(settings.pausedAt).toBeTypeOf('string');
     const audits = await auditCount(scope, 'workflow.triggers_paused');
     expect(audits).toBe(1);
     await expect(
