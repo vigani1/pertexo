@@ -22,6 +22,7 @@ type Screen = Readonly<{
   ready: (page: Page) => Locator;
   /** Pages shown before anyone signs in. */
   signedOut?: boolean;
+  prepare?: (page: Page) => Promise<void>;
   open?: (page: Page) => Promise<void>;
 }>;
 
@@ -318,6 +319,37 @@ export const workspaceScreens: readonly Screen[] = [
     name: 'workspaces',
     path: '/workspaces',
     ready: (page) => page.getByText('Control Operations').first(),
+  },
+  {
+    name: 'workspace-forbidden',
+    path: '/workspaces',
+    prepare: async (page) => {
+      await page.route('**/v1/workspaces?**', (route) =>
+        route.fulfill({
+          status: 403,
+          contentType: 'application/problem+json',
+          json: {
+            code: 'workspace.forbidden',
+            title: 'Forbidden',
+            type: 'about:blank',
+            status: 403,
+            requestId: 'request-forbidden',
+          },
+        }),
+      );
+    },
+    ready: (page) => page.getByText('403 · Held at the door', { exact: true }),
+  },
+  {
+    name: 'workspace-offline',
+    path: '/workspaces',
+    prepare: async (page) => {
+      await page.route('**/v1/workspaces?**', (route) =>
+        route.abort('internetdisconnected'),
+      );
+    },
+    ready: (page) =>
+      page.getByText('Offline · Reaching for the server', { exact: true }),
   },
   {
     name: 'workspace-unavailable',

@@ -35,6 +35,7 @@ for (const [width, height] of viewports) {
             await installWorkspaceRoutes(page);
             await addCsrfCookie(context);
           }
+          await screen.prepare?.(page);
           await page.goto(screen.path);
           await screen.open?.(page);
           await expect(screen.ready(page)).toBeVisible();
