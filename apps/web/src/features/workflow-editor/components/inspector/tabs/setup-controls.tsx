@@ -8,7 +8,7 @@ import {
 } from '@pertexo/workflow-model';
 import { ClassifyCategories } from '../builders/classify-categories';
 import { readClassifyCategories } from '../../../model/classify-categories';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { WaitSetup } from '../wait/setup';
 import {
   httpAdvancedInUse,

@@ -1,4 +1,4 @@
-import type { usePublicationReview } from './use-publication-review';
+import type { usePublicationReview } from '../../hooks/use-publication-review';
 import { Button } from '@/components/ui/button';
 
 function RunVersionNotice({

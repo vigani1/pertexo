@@ -27,11 +27,11 @@ import {
   directPredecessorOptions,
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
-import { useInspectorSession } from '../use-session';
+import { useInspectorSession } from '../../../hooks/inspector/use-session';
 import { AttachPicker } from './attach-picker';
 import { AttachmentRow } from './attachment-row';
 import { AttachmentSizeMeter } from './size-meter';
-import { useAttachmentsDraft } from './use-draft';
+import { useAttachmentsDraft } from '../../../hooks/inspector/use-attachments-draft';
 import { pluralWord } from '@/lib/format/count';
 
 type Props = Readonly<{

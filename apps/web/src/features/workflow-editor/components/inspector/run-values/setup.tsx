@@ -21,7 +21,7 @@ import {
   validateInputMappingRows,
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 import { RunValueRow } from './row';
 
 const VALUE_LENGTH = formatCount(RUN_VALUE_LIMITS.valueCharacters, 'character');

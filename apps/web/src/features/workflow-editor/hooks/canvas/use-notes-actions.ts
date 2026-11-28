@@ -3,12 +3,12 @@ import {
   WORKFLOW_NOTE_LIMITS,
   type WorkflowNote,
 } from '@pertexo/workflow-model';
-import { useEditorStoreApi } from '../../../model/state/context';
+import { useEditorStoreApi } from '../../model/state/context';
 import {
   addWorkflowNote,
   removeWorkflowNote,
   updateWorkflowNote,
-} from '../../../model/notes/note-commands';
+} from '../../model/notes/note-commands';
 
 export function useNoteActions() {
   const store = useEditorStoreApi();

@@ -2,7 +2,7 @@ import { formRedirectUrlSchema } from '@pertexo/workflow-model';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 
 export function FormDestination({
   value,

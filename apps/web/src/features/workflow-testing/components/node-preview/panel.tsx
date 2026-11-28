@@ -3,7 +3,7 @@ import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 import type { PreviewRunSummary } from '@pertexo/contracts';
 import { SampleAvailability } from '../samples/availability';
 import { PreviewInputFields, RealTestPermission } from './inputs';
-import { useStepSample } from './use-step-sample';
+import { useStepSample } from '../../hooks/use-step-sample';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref, type ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';

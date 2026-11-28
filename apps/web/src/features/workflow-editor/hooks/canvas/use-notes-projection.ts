@@ -1,16 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { NodeChange } from '@xyflow/react';
-import {
-  useEditorStore,
-  useEditorStoreApi,
-} from '../../../model/state/context';
-import { moveWorkflowNotes } from '../../../model/notes/note-commands';
+import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
+import { moveWorkflowNotes } from '../../model/notes/note-commands';
 import {
   noteIdFromFlowId,
   noteFlowId,
   type CanvasFlowNode,
   type NoteFlowNode,
-} from './canvas-note-identity';
+} from '../../components/canvas/notes/canvas-note-identity';
 
 type Point = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;

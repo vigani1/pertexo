@@ -29,7 +29,7 @@ import {
   formatFieldText,
   parseFieldText,
 } from '../../../model/inspector/field-text';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import { LookupSelect } from './lookup-select';
 import {

@@ -28,7 +28,7 @@ import {
 } from '../../../model/canvas/framing';
 import { boundedNotePosition } from '../../../model/notes/note-commands';
 import { NoteForm } from './form';
-import { useNoteActions } from './use-actions';
+import { useNoteActions } from '../../../hooks/canvas/use-notes-actions';
 
 type NoteToolsProps = Readonly<{
   editable: boolean;

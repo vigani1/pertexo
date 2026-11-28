@@ -1,14 +1,14 @@
 import type { ValueSource } from '@pertexo/workflow-model';
-import type { GraphLevel } from '../../../model/graph/scopes';
-import type { NodeFormApi } from '../../../model/inspector/node-form';
+import type { GraphLevel } from '../../model/graph/scopes';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 import {
   ATTACHMENTS_KEY,
   attachmentsDraft,
   checkAttachments,
   sameAttachments,
   type AttachmentsDraft,
-} from '../../../model/inspector/object-mappings/attachments';
-import { useInspectorDraftField } from '../use-draft-field';
+} from '../../model/inspector/object-mappings/attachments';
+import { useInspectorDraftField } from './use-draft-field';
 
 /**
  * The attachment rows under live apply: complete rows save as the step's one

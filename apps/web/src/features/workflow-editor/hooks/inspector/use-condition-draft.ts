@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { WorkflowNode } from '../../../model/graph/scopes';
+import type { WorkflowNode } from '../../model/graph/scopes';
 import {
   blankConditionRule,
   isBlankCondition,
@@ -7,9 +7,9 @@ import {
   writeCondition,
   type ConditionDraft,
   type ConditionRule,
-} from '../../../model/inspector/condition/rules';
-import { sourceReference } from '../../../model/inspector/input-mappings/reference';
-import type { NodeFormApi } from '../../../model/inspector/node-form';
+} from '../../model/inspector/condition/rules';
+import { sourceReference } from '../../model/inspector/input-mappings/reference';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 
 export const CONDITION_INPUT = 'condition';
 

@@ -17,7 +17,7 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import { Disclosure } from '@/components/ui/disclosure';
 import { ChoiceSelect } from './fields/choice-select';
 import { MappingValueEditor } from './input-mappings/value-editor';
-import { useInspectorDraftField } from './use-draft-field';
+import { useInspectorDraftField } from '../../hooks/inspector/use-draft-field';
 import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
 import type { NodeFormApi } from '../../model/inspector/node-form';
 import {

@@ -10,7 +10,7 @@ import {
   parseConfigJson,
   type NodeConfig,
 } from '../../../model/inspector/draft';
-import { useInspectorDraftField } from '../use-draft-field';
+import { useInspectorDraftField } from '../../../hooks/inspector/use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 
 const CONFIG_JSON_FIELD = '\u0000json';

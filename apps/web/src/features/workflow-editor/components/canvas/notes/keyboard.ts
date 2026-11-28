@@ -4,7 +4,7 @@ import {
   type WorkflowNote,
 } from '@pertexo/workflow-model';
 import { boundedNotePosition } from '../../../model/notes/note-commands';
-import type { useNoteActions } from './use-actions';
+import type { useNoteActions } from '../../../hooks/canvas/use-notes-actions';
 
 const arrowDeltas: Readonly<
   Record<string, { x: number; y: number } | undefined>
