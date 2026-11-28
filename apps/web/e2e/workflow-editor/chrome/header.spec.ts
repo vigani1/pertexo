@@ -57,7 +57,7 @@ async function expectSameHeader(
     for (const key of ['x', 'y', 'width', 'height'] as const)
       expect(
         Math.abs(box[key] - before[key]),
-        `Header control ${index} ${key}`,
+        `Header control ${String(index)} ${key}`,
       ).toBeLessThan(1);
   }
   expect(

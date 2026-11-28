@@ -267,13 +267,13 @@ for (const width of [1280, 375])
       path: testInfo.outputPath(`pause-read-${String(width)}.png`),
     });
     const box = await line.boundingBox();
-    // One line: a phone's 44 px Retry target sets its height there.
-    expect(box?.height).toBeLessThanOrEqual(width < 640 ? 56 : 40);
     const toolbar = await page
       .getByRole('toolbar', { name: 'Canvas toolbar', exact: true })
       .boundingBox();
     if (box === null || toolbar === null)
       throw new Error('Missing canvas controls');
+    // The Retry target sets the notice's height on a phone.
+    expect(box.height).toBeLessThanOrEqual(width < 640 ? 56 : 40);
     // The notice floats above the canvas and clears the bottom toolbar.
     expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y);
     expect(box.x).toBeGreaterThanOrEqual(0);
@@ -283,7 +283,7 @@ for (const width of [1280, 375])
     await expect(
       line.getByRole('button', { name: 'Checking…' }),
     ).toBeDisabled();
-    expect((await line.boundingBox())?.width).toBe(box?.width);
+    expect((await line.boundingBox())?.width).toBe(box.width);
     expect(await at()).toBe(failing);
     answer = 'ok';
     release();
