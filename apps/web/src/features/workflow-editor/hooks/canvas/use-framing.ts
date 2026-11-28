@@ -182,7 +182,9 @@ export function useCanvasFraming(
     pressed,
   );
 
-  return fit;
+  return () => {
+    fit({ animate: true });
+  };
 }
 
 function useRevealProposal({

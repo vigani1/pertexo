@@ -24,7 +24,7 @@ export function StepTriggerRows({
   publishedVersionId: string | null | undefined;
   form: boolean;
   formsPaused: boolean;
-  formLink?: Readonly<{ workspaceId: string; workflowId: string }>;
+  formLink: Readonly<{ workspaceId: string; workflowId: string }> | undefined;
   onFailure: boolean;
 }>) {
   const router = useRouter();

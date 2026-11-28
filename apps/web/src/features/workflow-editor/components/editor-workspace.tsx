@@ -10,9 +10,8 @@ import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
 import { LastRunContext } from '../model/canvas/last-run-context';
 import { useLastRun } from '../hooks/use-last-run';
-import { PhoneCanvasFit } from './canvas/phone-fit';
 import { useCanvasFraming } from '../hooks/canvas/use-framing';
-import { LastRunLine } from './canvas/last-run-line';
+import { CanvasTopTools } from './canvas/last-run-line';
 import { useAssistantOpening } from '../hooks/use-assistant-opening';
 import { AddStepLens } from './add-step/lens';
 import { TestResultBar } from './chrome/test-result-bar';
@@ -74,8 +73,6 @@ export function EditorWorkspace({
     tests,
     onFix: navigation.fix,
   });
-  const { issuesOpen, onShortcutsOpenChange: setShortcutsOpen } =
-    workspaceChrome;
   const { editable, canvasRef, addStep, adding, selection, placeable } =
     useCanvasEditing({
       definitions,
@@ -86,7 +83,7 @@ export function EditorWorkspace({
       testRef,
       flushSave: editing.flushSave,
       onShortcuts: () => {
-        setShortcutsOpen(true);
+        workspaceChrome.onShortcutsOpenChange(true);
       },
     });
   const assistant = useAssistantOpening({
@@ -99,8 +96,10 @@ export function EditorWorkspace({
     lastRun,
     proposal: assistant.open ? proposal : undefined,
   });
-  const fit = useCanvasFraming(canvasRef, overlays.proposal !== undefined);
-  const fitCanvas = () => fit({ animate: true });
+  const fitCanvas = useCanvasFraming(
+    canvasRef,
+    overlays.proposal !== undefined,
+  );
   return (
     <EditorLayout
       addStep={
@@ -145,7 +144,7 @@ export function EditorWorkspace({
       bottomLens={
         <>
           {bottomLens(chrome)}
-          {issuesOpen ? null : (
+          {workspaceChrome.issuesOpen ? null : (
             <TestResultBar
               test={lastTest.last}
               onViewOutput={navigation.showTestOutput}
@@ -153,7 +152,6 @@ export function EditorWorkspace({
           )}
         </>
       }
-
       canvas={
         <WorkspaceSurface
           definitions={definitions}
@@ -193,13 +191,8 @@ export function EditorWorkspace({
       }}
       header={{
         bar: bar(chrome),
-        canvasTools: (
-          <div className="flex items-start justify-between gap-2">
-            <LastRunLine lastRun={lastRun} />
-            <PhoneCanvasFit onFit={fitCanvas} />
-          </div>
-        ),
-        banner: <>{banner}</>,
+        canvasTools: <CanvasTopTools lastRun={lastRun} onFit={fitCanvas} />,
+        banner,
       }}
     />
   );

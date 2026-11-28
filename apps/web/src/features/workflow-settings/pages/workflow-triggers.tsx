@@ -1,5 +1,4 @@
-import { useNavigate } from '@tanstack/react-router';
-import { canRunWorkflow, useRunWorkflow } from '@/features/workflows/public';
+import { canRunWorkflow } from '@/features/workflows/public';
 import { TriggersHeader } from '../components/triggers/header';
 import type { ComponentProps } from 'react';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
@@ -7,6 +6,7 @@ import { Notice } from '@/components/patterns/notices/inline-notice';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
+  WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { PollingRows } from '../components/triggers/polling-rows';
@@ -85,26 +85,12 @@ function TriggersSession({
     pollingTitle,
     publicationKnown,
   } = publication;
-  const workflow = shownData(summary);
-  const runnable =
-    workspace.status === 'active' &&
-    workflow !== undefined &&
-    canRunWorkflow(workspace, workflow);
-  const navigate = useNavigate();
-  const runner = useRunWorkflow({
-    apiClient,
-    userId: user.id,
-    workspaceId: workspace.id,
-    onRunStarted: (runId) => {
-      void navigate({
-        to: '/w/$workspaceId/runs/$runId',
-        params: { workspaceId: workspace.id, runId },
-      });
-    },
+  const action = publishedRunActions({
+    workspace,
+    workflow: shownData(summary),
+    form,
+    publicationKnown,
   });
-  const runLink = runnable
-    ? { workspaceId: workspace.id, workflowId }
-    : undefined;
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName: TriggerStepName = (trigger, fallback) =>
@@ -139,17 +125,9 @@ function TriggersSession({
       <TriggersHeader
         versions={versions.data?.items}
         publishedVersionId={summary.data?.publishedVersionId}
-        run={
-          runnable && publicationKnown && !form
-            ? {
-                pending: runner.pendingId === workflow.id,
-                start: () => {
-                  void runner.run(workflow);
-                },
-              }
-            : undefined
-        }
-        {...(runLink === undefined ? {} : { runFromBuild: runLink })}
+        commandScope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+        manualRun={action.manualRun}
+        runFromBuild={action.link}
       />
       <PublicationDiscovery discovery={publication} />
       <TriggersSection
@@ -163,7 +141,7 @@ function TriggersSession({
           publishedVersionId: summary.data?.publishedVersionId,
           form,
           formsPaused,
-          ...(runLink === undefined ? {} : { formLink: runLink }),
+          formLink: action.link,
           onFailure,
         }}
       />
@@ -179,6 +157,30 @@ function TriggersSession({
       )}
     </div>
   );
+}
+
+function publishedRunActions({
+  workspace,
+  workflow,
+  form,
+  publicationKnown,
+}: Readonly<{
+  workspace: AccessibleWorkspace;
+  workflow: WorkflowSummary | undefined;
+  form: boolean;
+  publicationKnown: boolean;
+}>) {
+  if (
+    workspace.status !== 'active' ||
+    workflow === undefined ||
+    !canRunWorkflow(workspace, workflow)
+  )
+    return { link: undefined, manualRun: undefined };
+
+  return {
+    link: { workspaceId: workspace.id, workflowId: workflow.id },
+    manualRun: publicationKnown && !form ? workflow : undefined,
+  };
 }
 
 type TriggerStepName = (
